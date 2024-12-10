@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema FACBA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        label, input, button, select {
+            margin-top: 10px;
+            display: block;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore-compat.js"></script>
+<script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vGxd4ISaRBQ5SVY",
+            authDomain: "facba-a160c.firebaseapp.com",
+            projectId: "facba-a160c",
+            storageBucket: "facba-a160c.appspot.com",
+            messagingSenderId: "585530132394",
+            appId: "1:585530132394:web:a25cda63f883f786804dd3",
+            measurementId: "G-S29LSYM8TQ"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const empresas = ["Empresa 1", "Empresa 2", "Empresa 3"];
+function mostrarRegistro() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        }
+
+        function mostrarLogin() {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+        }
+
+        function filtrarEmpresas(inputId, datalistId) {
+            const input = document.getElementById(inputId).value.toLowerCase();
+            const listaEmpresas = document.getElementById(datalistId);
+            listaEmpresas.innerHTML = '';
+            empresas.filter(e => e.toLowerCase().includes(input)).forEach(e => {
+                const option = document.createElement('option');
+                option.value = e;
+                listaEmpresas.appendChild(option);
+            });
+        }
+
+        async function registrarUsuario() {
+            const nombreCompleto = document.getElementById("nombreCompleto").value;
+            const tipoDocumento = document.getElementById("tipoDocumento").value;
+            const celular = document.getElementById("celular").value;
+            const correo = document.getElementById("correo").value;
+            const direccion = document.getElementById("direccion").value;
+            const municipio = document.getElementById("municipio").value;
+            const tipoContrato = document.getElementById("tipoContrato").value;
+            const permisos = document.getElementById("permisos").value;
+            const nuevaEmpresa = document.getElementById("nuevaEmpresa").value;
+            const empresaSeleccionada = document.getElementById("empresaSeleccionadaRegistro").value;
+            const usuario = document.getElementById("usuarioRegistro").value;
+            const empresa = nuevaEmpresa || empresaSeleccionada;
+if (!nombreCompleto || !empresa || !usuario) {
+                alert("Por favor, complete todos los campos obligatorios.");
+                return;
+            }
+
+            if (nuevaEmpresa && !empresas.includes(nuevaEmpresa)) {
+                empresas.push(nuevaEmpresa);
+            }
+
+            try {
+                await db.collection('usuarios').add({
+                    nombreCompleto,
+                    tipoDocumento,
+                    celular,
+                    correo,
+                    direccion,
+                    municipio,
+                    tipoContrato,
+                    permisos,
+                    empresa,
+                    usuario
+                });
+                alert("Usuario registrado: " + nombreCompleto + " (Usuario: " + usuario + ") en la empresa " + empresa);
+            } catch (error) {
+                console.error("Error registrando usuario: ", error);
+            }
+        }
+
+        function suscribirActualizaciones() {
+            db.collection('usuarios').onSnapshot((snapshot) => {
+                const users = snapshot.docs.map(doc => doc.data());
+                console.log('Usuarios actualizados:', users);
+                mostrarUsuarios(users);
+            });
+        }
+
+        function mostrarUsuarios(users) {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
+            users.forEach(user => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `Nombre: ${user.nombreCompleto}, Empresa: ${user.empresa}, Usuario: ${user.usuario}`;
+                usersList.appendChild(listItem);
+            });
+        }
+
+        function mostrarListaUsuarios() {
+            db.collection('usuarios').get().then((snapshot) => {
+                const users = snapshot.docs.map(doc => doc.data());
+                mostrarUsuarios(users);
+            }).catch((error) => {
+                console.error("Error obteniendo usuarios: ", error);
+            });
+        }
+
+        window.onload = function() {
+            suscribirActualizaciones();
+        };
+    </script>
+</head>
+<body>
+    <div id="loginForm">
+        <h1>Acceso al sistema FACBA</h1>
+        <form>
+            <label for="usuario">Usuario:</label>
+            <input type="text" id="usuario" name="usuario">
+
+            <label for="contrasena">Contraseña:</label>
+            <input type="password" id="contrasena" name="contrasena">
+
+            <label for="empresaSeleccionada">Empresa:</label>
+            <input list="listaEmpresas" id="empresaSeleccionada" name="empresaSeleccionada" oninput="filtrarEmpresas('empresaSeleccionada', 'listaEmpresas')">
+            <datalist id="listaEmpresas"></datalist>
+
+            <button type="button" onclick="alert('Ingresando al sistema FACBA')">Entrar</button>
+        </form>
+
+        <p>¿No tienes una cuenta? <button type="button" onclick="mostrarRegistro()">Regístrate aquí</button></p>
+    </div>
+<div id="registerForm" class="hidden">
+        <h1>Registrar un nuevo usuario</h1>
+        <form onsubmit="event.preventDefault(); registrarUsuario();">
+            <label for="usuarioRegistro">Usuario:</label>
+            <input type="text" id="usuarioRegistro" name="usuarioRegistro">
+
+            <label for="nombreCompleto">Nombre completo:</label>
+            <input type="text" id="nombreCompleto" name="nombreCompleto">
+
+            <label for="tipoDocumento">Tipo de documento:</label>
+            <input type="text" id="tipoDocumento" name="tipoDocumento">
+
+            <label for="celular">Celular:</label>
+            <input type="text" id="celular" name="celular">
+
+            <label for="correo">Correo:</label>
+            <input type="email" id="correo" name="correo">
+
+            <label for="direccion">Dirección:</label>
+            <input type="text" id="direccion" name="direccion">
+
+            <label for="municipio">Municipio:</label>
+            <input type="text" id="municipio" name="municipio">
+
+            <label for="tipoContrato">Tipo de contrato:</label>
+            <select id="tipoContrato" name="tipoContrato">
+                <option value="Fijo">Fijo</option>
+                <option value="Temporal">Temporal</option>
+                <option value="Indefinido">Indefinido</option>
+            </select>
+
+            <label for="permisos">Permisos:</label>
+            <select id="permisos" name="permisos">
+                <option value="Administrador">Administrador</option>
+                <option value="Operador">Operador</option>
+            </select>
+
+            <label for="nuevaEmpresa">Nueva Empresa (si no está en la lista):</label>
+            <input type="text" id="nuevaEmpresa" name="nuevaEmpresa">
+
+            <label for="empresaSeleccionadaRegistro">Seleccionar Empresa:</label>
+            <input list="listaEmpresasRegistro" id="empresaSeleccionadaRegistro" name="empresaSeleccionadaRegistro" oninput="filtrarEmpresas('empresaSeleccionadaRegistro', 'listaEmpresasRegistro')">
+            <datalist id="listaEmpresasRegistro"></datalist>
+
+            <button type="submit">Registrar</button>
+            <button type="button" onclick="mostrarListaUsuarios()">Mostrar Usuarios Registrados</button>
+        </form>
+
+        <p>¿Ya tienes una cuenta? <button type="button" onclick="mostrarLogin()">Inicia sesión aquí</button></p>
+
+        <!-- Lista de usuarios registrados -->
+        <ul id="usersList"></ul>
+    </div>
+</body>
+</html>
