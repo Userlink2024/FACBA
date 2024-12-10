@@ -6,20 +6,60 @@
     <title>Sistema FACBA</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #5D3FD3;
         }
         label, input, button, select {
-            margin-top: 10px;
-            display: block;
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background: #5D3FD3;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #4b2bbd;
         }
         .hidden {
             display: none;
         }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        ul li {
+            background: #f9f9f9;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore-compat.js"></script>
-<script>
+    <script>
         // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vGxd4ISaRBQ5SVY",
@@ -36,7 +76,8 @@
         const db = firebase.firestore();
 
         const empresas = ["Empresa 1", "Empresa 2", "Empresa 3"];
-function mostrarRegistro() {
+
+        function mostrarRegistro() {
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('registerForm').classList.remove('hidden');
         }
@@ -56,7 +97,6 @@ function mostrarRegistro() {
                 listaEmpresas.appendChild(option);
             });
         }
-
         async function registrarUsuario() {
             const nombreCompleto = document.getElementById("nombreCompleto").value;
             const tipoDocumento = document.getElementById("tipoDocumento").value;
@@ -70,7 +110,8 @@ function mostrarRegistro() {
             const empresaSeleccionada = document.getElementById("empresaSeleccionadaRegistro").value;
             const usuario = document.getElementById("usuarioRegistro").value;
             const empresa = nuevaEmpresa || empresaSeleccionada;
-if (!nombreCompleto || !empresa || !usuario) {
+
+            if (!nombreCompleto || !empresa || !usuario) {
                 alert("Por favor, complete todos los campos obligatorios.");
                 return;
             }
@@ -131,76 +172,78 @@ if (!nombreCompleto || !empresa || !usuario) {
     </script>
 </head>
 <body>
-    <div id="loginForm">
-        <h1>Acceso al sistema FACBA</h1>
-        <form>
-            <label for="usuario">Usuario:</label>
-            <input type="text" id="usuario" name="usuario">
+    <div class="container">
+        <div id="loginForm">
+            <h1>Acceso al sistema FACBA</h1>
+            <form>
+                <label for="usuario">Usuario:</label>
+                <input type="text" id="usuario" name="usuario" placeholder="Ingresa tu usuario">
 
-            <label for="contrasena">Contraseña:</label>
-            <input type="password" id="contrasena" name="contrasena">
+                <label for="contrasena">Contraseña:</label>
+                <input type="password" id="contrasena" name="contrasena" placeholder="Ingresa tu contraseña">
 
-            <label for="empresaSeleccionada">Empresa:</label>
-            <input list="listaEmpresas" id="empresaSeleccionada" name="empresaSeleccionada" oninput="filtrarEmpresas('empresaSeleccionada', 'listaEmpresas')">
-            <datalist id="listaEmpresas"></datalist>
+                <label for="empresaSeleccionada">Empresa:</label>
+                <input list="listaEmpresas" id="empresaSeleccionada" name="empresaSeleccionada" placeholder="Selecciona tu empresa" oninput="filtrarEmpresas('empresaSeleccionada', 'listaEmpresas')">
+                <datalist id="listaEmpresas"></datalist>
 
-            <button type="button" onclick="alert('Ingresando al sistema FACBA')">Entrar</button>
-        </form>
+                <button type="button" onclick="alert('Ingresando al sistema FACBA')">Entrar</button>
+            </form>
 
-        <p>¿No tienes una cuenta? <button type="button" onclick="mostrarRegistro()">Regístrate aquí</button></p>
-    </div>
-<div id="registerForm" class="hidden">
-        <h1>Registrar un nuevo usuario</h1>
-        <form onsubmit="event.preventDefault(); registrarUsuario();">
-            <label for="usuarioRegistro">Usuario:</label>
-            <input type="text" id="usuarioRegistro" name="usuarioRegistro">
+            <p>¿No tienes una cuenta? <button type="button" onclick="mostrarRegistro()">Regístrate aquí</button></p>
+        </div>
+        <div id="registerForm" class="hidden">
+            <h1>Registrar un nuevo usuario</h1>
+            <form onsubmit="event.preventDefault(); registrarUsuario();">
+                <label for="usuarioRegistro">Usuario:</label>
+                <input type="text" id="usuarioRegistro" name="usuarioRegistro" placeholder="Ingresa tu usuario">
 
-            <label for="nombreCompleto">Nombre completo:</label>
-            <input type="text" id="nombreCompleto" name="nombreCompleto">
+                <label for="nombreCompleto">Nombre completo:</label>
+                <input type="text" id="nombreCompleto" name="nombreCompleto" placeholder="Ingresa tu nombre completo">
 
-            <label for="tipoDocumento">Tipo de documento:</label>
-            <input type="text" id="tipoDocumento" name="tipoDocumento">
+                <label for="tipoDocumento">Tipo de documento:</label>
+                <input type="text" id="tipoDocumento" name="tipoDocumento" placeholder="Ingresa tu tipo de documento">
 
-            <label for="celular">Celular:</label>
-            <input type="text" id="celular" name="celular">
+                <label for="celular">Celular:</label>
+                <input type="text" id="celular" name="celular" placeholder="Ingresa tu número de celular">
 
-            <label for="correo">Correo:</label>
-            <input type="email" id="correo" name="correo">
+                <label for="correo">Correo:</label>
+                <input type="email" id="correo" name="correo" placeholder="Ingresa tu correo electrónico">
 
-            <label for="direccion">Dirección:</label>
-            <input type="text" id="direccion" name="direccion">
+                <label for="direccion">Dirección:</label>
+                <input type="text" id="direccion" name="direccion" placeholder="Ingresa tu dirección">
 
-            <label for="municipio">Municipio:</label>
-            <input type="text" id="municipio" name="municipio">
+                <label for="municipio">Municipio:</label>
+                <input type="text" id="municipio" name="municipio" placeholder="Ingresa tu municipio">
 
-            <label for="tipoContrato">Tipo de contrato:</label>
-            <select id="tipoContrato" name="tipoContrato">
-                <option value="Fijo">Fijo</option>
-                <option value="Temporal">Temporal</option>
-                <option value="Indefinido">Indefinido</option>
-            </select>
+                <label for="tipoContrato">Tipo de contrato:</label>
+                <select id="tipoContrato" name="tipoContrato">
+                    <option value="Fijo">Fijo</option>
+                    <option value="Temporal">Temporal</option>
+                    <option value="Indefinido">Indefinido</option>
+                </select>
 
-            <label for="permisos">Permisos:</label>
-            <select id="permisos" name="permisos">
-                <option value="Administrador">Administrador</option>
-                <option value="Operador">Operador</option>
-            </select>
+                <label for="permisos">Permisos:</label>
+                <select id="permisos" name="permisos">
+                    <option value="Administrador">Administrador</option>
+                    <option value="Operador">Operador</option>
+                </select>
 
-            <label for="nuevaEmpresa">Nueva Empresa (si no está en la lista):</label>
-            <input type="text" id="nuevaEmpresa" name="nuevaEmpresa">
+                <label for="nuevaEmpresa">Nueva Empresa (si no está en la lista):</label>
+                <input type="text" id="nuevaEmpresa" name="nuevaEmpresa" placeholder="Ingresa el nombre de la nueva empresa">
 
-            <label for="empresaSeleccionadaRegistro">Seleccionar Empresa:</label>
-            <input list="listaEmpresasRegistro" id="empresaSeleccionadaRegistro" name="empresaSeleccionadaRegistro" oninput="filtrarEmpresas('empresaSeleccionadaRegistro', 'listaEmpresasRegistro')">
-            <datalist id="listaEmpresasRegistro"></datalist>
+                <label for="empresaSeleccionadaRegistro">Seleccionar Empresa:</label>
+                <input list="listaEmpresasRegistro" id="empresaSeleccionadaRegistro" name="empresaSeleccionadaRegistro" placeholder="Selecciona tu empresa" oninput="filtrarEmpresas('empresaSeleccionadaRegistro', 'listaEmpresasRegistro')">
+                <datalist id="listaEmpresasRegistro"></datalist>
 
-            <button type="submit">Registrar</button>
-            <button type="button" onclick="mostrarListaUsuarios()">Mostrar Usuarios Registrados</button>
-        </form>
+                <button type="submit">Registrar</button>
+                <button type="button" onclick="mostrarListaUsuarios()">Mostrar Usuarios Registrados</button>
+            </form>
 
-        <p>¿Ya tienes una cuenta? <button type="button" onclick="mostrarLogin()">Inicia sesión aquí</button></p>
+            <p>¿Ya tienes una cuenta? <button type="button" onclick="mostrarLogin()">Inicia sesión aquí</button></p>
 
-        <!-- Lista de usuarios registrados -->
-        <ul id="usersList"></ul>
+            <!-- Lista de usuarios registrados -->
+            <ul id="usersList"></ul>
+        </div>
     </div>
 </body>
 </html>
