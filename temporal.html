@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario La Zapatería</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        .container {
+            width: 80%;
+            margin: 20px auto;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: calc(100% - 12px);
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #inventory-list {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .item {
+            border-bottom: 1px solid #eee;
+            padding: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .item span {
+            margin-right: 10px;
+        }
+        #total-value {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "firebase/app";
+        import { getFirestore, collection, addDoc, onSnapshot } from "firebase/firestore";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
+            authDomain: "lazapateria-ce24f.firebaseapp.com",
+            projectId: "lazapateria-ce24f",
+            storageBucket: "lazapateria-ce24f.firebasestorage.app",
+            messagingSenderId: "642571845821",
+            appId: "1:642571845821:web:45858a0abc0df728fd77d4",
+            measurementId: "G-6JCF33H0K1"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const inventoryCollection = collection(db, 'inventario');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const productInput = document.getElementById('product-name');
+            const unitSelect = document.getElementById('unit');
+            const metersInput = document.getElementById('meters');
+            const centimetersInput = document.getElementById('centimeters');
+            const valueInput = document.getElementById('value');
+            const addButton = document.getElementById('add-item');
+            const inventoryList = document.getElementById('inventory-list');
+            const totalValueDisplay = document.getElementById('total-value');
+
+            let totalValue = 0;
+
+            // Función para mostrar el inventario en la interfaz
+            const renderInventory = (items) => {
+                inventoryList.innerHTML = '';
+                totalValue = 0;
+                items.forEach(item => {
+                    const listItem = document.createElement('div');
+                    listItem.classList.add('item');
+                    let unitDisplay = item.unit;
+                    if (item.unit === 'metros') {
+                        unitDisplay = `${item.meters} m ${item.centimeters} cm`;
+                    }
+                    listItem.innerHTML = `
+                        <span>Producto: ${item.product}</span>
+                        <span>Unidad: ${unitDisplay}</span>
+                        <span>Valor: $${item.value.toFixed(2)}</span>
+                    `;
+                    inventoryList.appendChild(listItem);
+                    totalValue += parseFloat(item.value);
+                });
+                totalValueDisplay.textContent = `Valor Total del Inventario: $${totalValue.toFixed(2)}`;
+            };
+
+            // Escuchar los cambios en la colección de inventario en Firestore
+            onSnapshot(inventoryCollection, (snapshot) => {
+                const inventoryItems = [];
+                snapshot.forEach(doc => {
+                    inventoryItems.push({ id: doc.id, ...doc.data() });
+                });
+                renderInventory(inventoryItems);
+            });
+
+            // Evento para el botón de agregar producto
+            addButton.addEventListener('click', async () => {
+                const product = productInput.value.trim();
+                const unit = unitSelect.value;
+                let meters = 0;
+                let centimeters = 0;
+                if (unit === 'metros') {
+                    meters = parseInt(metersInput.value) || 0;
+                    centimeters = parseInt(centimetersInput.value) || 0;
+                }
+                const value = parseFloat(valueInput.value);
+
+                if (product && !isNaN(value)) {
+                    try {
+                        await addDoc(inventoryCollection, {
+                            product: product,
+                            unit: unit,
+                            meters: meters,
+                            centimeters: centimeters,
+                            value: value,
+                            timestamp: new Date()
+                        });
+                        productInput.value = '';
+                        metersInput.value = '';
+                        centimetersInput.value = '';
+                        valueInput.value = '';
+                    } catch (error) {
+                        console.error("Error al agregar el documento: ", error);
+                    }
+                } else {
+                    alert('Por favor, ingresa el nombre del producto y un valor válido.');
+                }
+            });
+
+            // Mostrar/ocultar los campos de metros y centímetros según la unidad seleccionada
+            unitSelect.addEventListener('change', () => {
+                const metersGroup = document.getElementById('meters-group');
+                const centimetersGroup = document.getElementById('centimeters-group');
+                if (unitSelect.value === 'metros') {
+                    metersGroup.style.display = 'block';
+                    centimetersGroup.style.display = 'block';
+                } else {
+                    metersGroup.style.display = 'none';
+                    centimetersGroup.style.display = 'none';
+                    metersInput.value = '';
+                    centimetersInput.value = '';
+                }
+            });
+
+            // Inicialmente ocultar los campos de metros y centímetros
+            document.getElementById('meters-group').style.display = 'none';
+            document.getElementById('centimeters-group').style.display = 'none';
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Inventario La Zapatería (Productos de China)</h1>
+
+        <div class="input-group">
+            <label for="product-name">Producto:</label>
+            <input type="text" id="product-name" placeholder="Nombre del producto">
+        </div>
+
+        <div class="input-group">
+            <label for="unit">Unidad de medida:</label>
+            <select id="unit">
+                <option value="unidades">Unidades</option>
+                <option value="metros">Metros con centímetros</option>
+            </select>
+        </div>
+
+        <div class="input-group" id="meters-group">
+            <label for="meters">Metros:</label>
+            <input type="number" id="meters" placeholder="Metros">
+        </div>
+
+        <div class="input-group" id="centimeters-group">
+            <label for="centimeters">Centímetros:</label>
+            <input type="number" id="centimeters" placeholder="Centímetros">
+        </div>
+
+        <div class="input-group">
+            <label for="value">Valor:</label>
+            <input type="number" id="value" placeholder="Valor del producto">
+        </div>
+
+        <button id="add-item">Agregar al inventario</button>
+
+        <div id="inventory-list">
+            <h2>Inventario Actual</h2>
+            <p>Cargando inventario...</p>
+        </div>
+
+        <div id="total-value">
+            Valor Total del Inventario: $0.00
+        </div>
+    </div>
+</body>
+</html>
