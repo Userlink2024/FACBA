@@ -1,5 +1,5 @@
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY", // Reemplaza con tu API Key de Firebase
+    apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M", // Reemplaza con tu API Key de Firebase
     authDomain: "lazapateria-ce24f.firebaseapp.com",
     projectId: "lazapateria-ce24f",
     storageBucket: "lazapateria-ce24f.firebasestorage.app",
