@@ -9,7 +9,7 @@
             font-family: sans-serif;
         }
         .container {
-            width: 80%;
+            width: 90%;
             margin: 20px auto;
         }
         .input-group {
@@ -29,12 +29,13 @@
             box-sizing: border-box;
         }
         button {
-            padding: 10px 15px;
+            padding: 8px 12px;
             background-color: #007bff;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            margin-right: 5px;
         }
         button:hover {
             background-color: #0056b3;
@@ -46,16 +47,45 @@
         }
         .item {
             border-bottom: 1px solid #eee;
-            padding: 5px 0;
+            padding: 10px 0;
             display: flex;
-            justify-content: space-between;
+            align-items: center;
         }
         .item span {
-            margin-right: 10px;
+            margin-right: 15px;
+        }
+        .item-details {
+            flex-grow: 1;
+        }
+        .item-actions {
+            display: flex;
+            align-items: center;
+        }
+        .item-actions input[type="number"] {
+            width: 50px;
+            margin-right: 3px;
+        }
+        .item-actions span {
+            font-size: 0.8em;
+            margin-right: 5px;
         }
         #total-value {
             margin-top: 10px;
             font-weight: bold;
+        }
+        #search-input {
+            width: calc(50% - 12px);
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        .quantity-input-group {
+            display: none; /* Oculto por defecto */
+        }
+        .quantity-input-group.active {
+            display: block;
         }
     </style>
 
@@ -63,7 +93,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script type="text/javascript">
-        // Tu configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
             authDomain: "lazapateria-ce24f.firebaseapp.com",
@@ -74,7 +103,6 @@
             measurementId: "G-6JCF33H0K1"
         };
 
-        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const inventoryCollection = db.collection('inventario');
@@ -88,7 +116,13 @@
             const addButton = document.getElementById('add-item');
             const inventoryList = document.getElementById('inventory-list');
             const totalValueDisplay = document.getElementById('total-value');
+            const searchInput = document.getElementById('search-input');
+            const providerInput = document.getElementById('provider');
+            const clientInput = document.getElementById('client');
+            const quantityInputGroup = document.getElementById('quantity-input-group');
+            const quantityInput = document.getElementById('quantity');
 
+            let inventoryData = [];
             let totalValue = 0;
 
             const renderInventory = (items) => {
@@ -98,53 +132,146 @@
                     const listItem = document.createElement('div');
                     listItem.classList.add('item');
                     let unitDisplay = item.unit;
+                    let quantityDisplay = '';
                     if (item.unit === 'metros') {
                         unitDisplay = `${item.meters} m ${item.centimeters} cm`;
+                    } else if (item.unit === 'unidades' && item.quantity !== undefined) {
+                        quantityDisplay = `Cantidad: ${item.quantity}`;
                     }
                     listItem.innerHTML = `
-                        <span>Producto: ${item.product}</span>
-                        <span>Unidad: ${unitDisplay}</span>
-                        <span>Valor: $${item.value.toFixed(2)}</span>
+                        <div class="item-details">
+                            <span>Producto: ${item.product}</span><br>
+                            <span>Unidad: ${unitDisplay}</span>
+                            ${quantityDisplay ? `<span>${quantityDisplay}</span><br>` : ''}
+                            <span>Valor: $${item.value.toFixed(2)}</span><br>
+                            ${item.provider ? `<span>Proveedor: ${item.provider}</span><br>` : ''}
+                            ${item.client ? `<span>Cliente: ${item.client}</span>` : ''}
+                        </div>
+                        <div class="item-actions" data-unit="<span class="math-inline">\{item\.unit\}" data\-item\-id\="</span>{item.id}">
+                            <input type="number" class="add-units" placeholder="+ Unidades" value="0" style="display: ${item.unit === 'unidades' ? 'inline' : 'none'}">
+                            <input type="number" class="add-metros" placeholder="+ Metros" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
+                            <input type="number" class="add-centimetros" placeholder="+ Cm" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
+                            <button class="add-button">Agregar</button>
+                            <input type="number" class="remove-units" placeholder="- Unidades" value="0" style="display: ${item.unit === 'unidades' ? 'inline' : 'none'}">
+                            <input type="number" class="remove-metros" placeholder="- Metros" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
+                            <input type="number" class="remove-centimetros" placeholder="- Cm" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
+                            <button class="remove-button">Quitar</button>
+                        </div>
                     `;
                     inventoryList.appendChild(listItem);
                     totalValue += parseFloat(item.value);
                 });
                 totalValueDisplay.textContent = `Valor Total del Inventario: $${totalValue.toFixed(2)}`;
+
+                document.querySelectorAll('.item-actions').forEach(actionsDiv => {
+                    const itemId = actionsDiv.dataset.itemId;
+                    const unit = actionsDiv.dataset.unit;
+                    const addButton = actionsDiv.querySelector('.add-button');
+                    const removeButton = actionsDiv.querySelector('.remove-button');
+
+                    addButton.addEventListener('click', async () => {
+                        let updateData = {};
+                        if (unit === 'unidades') {
+                            const addQuantity = parseInt(actionsDiv.querySelector('.add-units').value) || 0;
+                            if (addQuantity > 0) {
+                                const itemToUpdate = inventoryData.find(item => item.id === itemId);
+                                updateData = { quantity: (itemToUpdate.quantity || 0) + addQuantity };
+                            }
+                        } else if (unit === 'metros') {
+                            const addMeters = parseInt(actionsDiv.querySelector('.add-metros').value) || 0;
+                            const addCentimeters = parseInt(actionsDiv.querySelector('.add-centimetros').value) || 0;
+                            const itemToUpdate = inventoryData.find(item => item.id === itemId);
+                            const currentMeters = itemToUpdate.meters || 0;
+                            const currentCentimeters = itemToUpdate.centimeters || 0;
+                            let newTotalCentimeters = (currentMeters * 100 + currentCentimeters) + (addMeters * 100 + addCentimeters);
+                            updateData.meters = Math.floor(newTotalCentimeters / 100);
+                            updateData.centimeters = newTotalCentimeters % 100;
+                        }
+
+                        if (Object.keys(updateData).length > 0) {
+                            try {
+                                await db.collection('inventario').doc(itemId).update(updateData);
+                                actionsDiv.querySelectorAll('input[type="number"]').forEach(input => input.value = 0);
+                            } catch (error) {
+                                console.error("Error al agregar stock: ", error);
+                            }
+                        }
+                    });
+
+                    removeButton.addEventListener('click', async () => {
+                        let updateData = {};
+                        if (unit === 'unidades') {
+                            const removeQuantity = parseInt(actionsDiv.querySelector('.remove-units').value) || 0;
+                            if (removeQuantity > 0) {
+                                const itemToUpdate = inventoryData.find(item => item.id === itemId);
+                                updateData = { quantity: Math.max(0, (itemToUpdate.quantity || 0) - removeQuantity) };
+                            }
+                        } else if (unit === 'metros') {
+                            const removeMeters = parseInt(actionsDiv.querySelector('.remove-metros').value) || 0;
+                            const removeCentimeters = parseInt(actionsDiv.querySelector('.remove-centimetros').value) || 0;
+                            const itemToUpdate = inventoryData.find(item => item.id === itemId);
+                            const currentMeters = itemToUpdate.meters || 0;
+                            const currentCentimeters = itemToUpdate.centimeters || 0;
+                            let newTotalCentimeters = (currentMeters * 100 + currentCentimeters) - (removeMeters * 100 + removeCentimeters);
+                            updateData.meters = Math.max(0, Math.floor(newTotalCentimeters / 100));
+                            updateData.centimeters = Math.max(0, newTotalCentimeters % 100);
+                        }
+
+                        if (Object.keys(updateData).length > 0) {
+                            try {
+                                await db.collection('inventario').doc(itemId).update(updateData);
+                                actionsDiv.querySelectorAll('input[type="number"]').forEach(input => input.value = 0);
+                            } catch (error) {
+                                console.error("Error al quitar stock: ", error);
+                            }
+                        }
+                    });
+                });
             };
 
             db.collection('inventario').onSnapshot((snapshot) => {
-                const inventoryItems = [];
+                inventoryData = [];
                 snapshot.forEach(doc => {
-                    inventoryItems.push({ id: doc.id, ...doc.data() });
+                    inventoryData.push({ id: doc.id, ...doc.data() });
                 });
-                renderInventory(inventoryItems);
+                renderInventory(inventoryData);
             });
 
             addButton.addEventListener('click', async () => {
                 const product = productInput.value.trim();
                 const unit = unitSelect.value;
-                let meters = 0;
-                let centimeters = 0;
-                if (unit === 'metros') {
-                    meters = parseInt(metersInput.value) || 0;
-                    centimeters = parseInt(centimetersInput.value) || 0;
-                }
+                let meters = parseInt(metersInput.value) || 0;
+                let centimeters = parseInt(centimetersInput.value) || 0;
                 const value = parseFloat(valueInput.value);
+                const provider = providerInput.value.trim();
+                const client = clientInput.value.trim();
+                const quantity = unit === 'unidades' ? parseInt(quantityInput.value) || 0 : null;
 
                 if (product && !isNaN(value)) {
+                    const newItem = {
+                        product: product,
+                        unit: unit,
+                        value: value,
+                        timestamp: new Date()
+                    };
+                    if (provider) newItem.provider = provider;
+                    if (client) newItem.client = client;
+                    if (unit === 'metros') {
+                        newItem.meters = meters;
+                        newItem.centimeters = centimeters;
+                    } else if (unit === 'unidades') {
+                        newItem.quantity = quantity;
+                    }
+
                     try {
-                        await db.collection('inventario').add({
-                            product: product,
-                            unit: unit,
-                            meters: meters,
-                            centimeters: centimeters,
-                            value: value,
-                            timestamp: new Date()
-                        });
+                        await db.collection('inventario').add(newItem);
                         productInput.value = '';
                         metersInput.value = '';
                         centimetersInput.value = '';
                         valueInput.value = '';
+                        providerInput.value = '';
+                        clientInput.value = '';
+                        quantityInput.value = '';
                     } catch (error) {
                         console.error("Error al agregar el documento: ", error);
                     }
@@ -154,19 +281,27 @@
             });
 
             unitSelect.addEventListener('change', () => {
-                const metersGroup = document.getElementById('meters-group');
-                const centimetersGroup = document.getElementById('centimeters-group');
-                if (unitSelect.value === 'metros') {
-                    metersGroup.style.display = 'block';
-                    centimetersGroup.style.display = 'block';
-                } else {
-                    metersGroup.style.display = 'none';
-                    centimetersGroup.style.display = 'none';
-                    metersInput.value = '';
-                    centimetersInput.value = '';
-                }
+                const isMetros = unitSelect.value === 'metros';
+                const isUnidades = unitSelect.value === 'unidades';
+                document.getElementById('meters-group').style.display = isMetros ? 'block' : 'none';
+                document.getElementById('centimeters-group').style.display = isMetros ? 'block' : 'none';
+                quantityInputGroup.classList.toggle('active', isUnidades);
+                metersInput.value = '';
+                centimetersInput.value = '';
+                quantityInput.value = '';
             });
 
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredInventory = inventoryData.filter(item =>
+                    item.product.toLowerCase().includes(searchTerm) ||
+                    (item.provider && item.provider.toLowerCase().includes(searchTerm)) ||
+                    (item.client && item.client.toLowerCase().includes(searchTerm))
+                );
+                renderInventory(filteredInventory);
+            });
+
+            // Inicialmente ocultar los campos de metros y centímetros y cantidad
             document.getElementById('meters-group').style.display = 'none';
             document.getElementById('centimeters-group').style.display = 'none';
         });
@@ -174,10 +309,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>Inventario La Zapatería (Productos de China)</h1>
+        <h1>Inventario La Zapatería</h1>
 
         <div class="input-group">
-            <label for="product-name">Producto:</label>
+            <label for="product-name">Nuevo Producto:</label>
             <input type="text" id="product-name" placeholder="Nombre del producto">
         </div>
 
@@ -187,6 +322,11 @@
                 <option value="unidades">Unidades</option>
                 <option value="metros">Metros con centímetros</option>
             </select>
+        </div>
+
+        <div class="input-group quantity-input-group" id="quantity-input-group">
+            <label for="quantity">Cantidad:</label>
+            <input type="number" id="quantity" placeholder="Cantidad">
         </div>
 
         <div class="input-group" id="meters-group">
@@ -204,16 +344,24 @@
             <input type="number" id="value" placeholder="Valor del producto">
         </div>
 
-        <button id="add-item">Agregar al inventario</button>
+        <div class="input-group">
+            <label for="provider">Proveedor:</label>
+            <input type="text" id="provider" placeholder="Nombre del proveedor (opcional)">
+        </div>
 
+        <div class="input-group">
+            <label for="client">Cliente:</label>
+            <input type="text" id="client" placeholder="Nombre del cliente (opcional)">
+        </div>
+
+        <button id="add-item">Agregar Nuevo Producto</button>
+
+        <h2>Inventario Actual</h2>
+        <input type="text" id="search-input" placeholder="Buscar producto, proveedor o cliente...">
         <div id="inventory-list">
-            <h2>Inventario Actual</h2>
             <p>Cargando inventario...</p>
         </div>
 
         <div id="total-value">
             Valor Total del Inventario: $0.00
         </div>
-    </div>
-</body>
-</html>
