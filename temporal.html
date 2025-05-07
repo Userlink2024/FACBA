@@ -158,11 +158,11 @@
                     let unitDisplay = item.unit;
                     let quantityDisplay = '';
                     if (item.unit === 'metros') {
-                        unitDisplay = `${item.meters} m ${item.centimeters} cm`;
+                        unitDisplay = (item.meters || 0) + ' m ' + (item.centimeters || 0) + ' cm';
                     } else if (item.unit === 'unidades' && item.quantity !== undefined) {
-                        quantityDisplay = `Cantidad: ${item.quantity}`;
+                        quantityDisplay = 'Cantidad: ' + item.quantity;
                     }
-                    listItem.innerHTML = `
+                    let itemHTML = `
                         <div class="item-details">
                             <span class="product-name"><span class="math-inline">\{item\.product\}</span\>
 <input type\="text" class\="edit\-input" value\="</span>{item.product}">
@@ -173,14 +173,14 @@
                                 <option value="metros" ${item.unit === 'metros' ? 'selected' : ''}>Metros con centímetros</option>
                             </select>
                             <br>
-                            ${quantityDisplay ? `<span class="quantity">${quantityDisplay}</span><input type="number" class="edit-input quantity-input" value="${item.quantity}">` : ''}
+                            ${quantityDisplay ? `<span class="quantity">${quantityDisplay}</span><input type="number" class="edit-input quantity-input" value="${item.quantity || 0}">` : ''}
                             <br>
-                            <span class="value">$<span class="math-inline">\{item\.value\.toFixed\(2\)\}</span\>
-<input type\="number" class\="edit\-input value\-input" value\="</span>{item.value}">
+                            <span class="value">$<span class="math-inline">\{item\.value ? item\.value\.toFixed\(2\) \: '0\.00'\}</span\>
+<input type\="number" class\="edit\-input value\-input" value\="</span>{item.value || 0}">
                             <br>
-                            ${item.provider ? `<span class="provider">Proveedor: ${item.provider}</span><input type="text" class="edit-input provider-input" value="${item.provider}">` : ''}
+                            ${item.provider ? `<span class="provider">Proveedor: ${item.provider}</span><input type="text" class="edit-input provider-input" value="${item.provider || ''}">` : ''}
                             <br>
-                            ${item.client ? `<span class="client">Cliente: ${item.client}</span><input type="text" class="edit-input client-input" value="${item.client}">` : ''}
+                            ${item.client ? `<span class="client">Cliente: ${item.client}</span><input type="text" class="edit-input client-input" value="${item.client || ''}">` : ''}
                         </div>
                         <div class="item-actions" data-unit="<span class="math-inline">\{item\.unit\}" data\-item\-id\="</span>{item.id}">
                             <input type="number" class="add-units" placeholder="+ Unidades" value="0" style="display: ${item.unit === 'unidades' ? 'inline' : 'none'}">
@@ -199,8 +199,9 @@
                             </div>
                         </div>
                     `;
+                    listItem.innerHTML = itemHTML;
                     inventoryList.appendChild(listItem);
-                    totalValue += parseFloat(item.value);
+                    totalValue += parseFloat(item.value || 0);
                 });
                 totalValueDisplay.textContent = `Valor Total del Inventario: $${totalValue.toFixed(2)}`;
 
@@ -315,19 +316,18 @@
                         if (providerInput) updatedData.provider = providerInput.value;
                         const clientInput = listItem.querySelector('.edit-input.client-input');
                         if (clientInput) updatedData.client = clientInput.value;
-                        const quantityInput = listItem.querySelector('.edit-input.quantity-input');
-                        if (quantityInput) updatedData.quantity = parseInt(quantityInput.value);
+                        const quantityInputEdit = listItem.querySelector('.edit-input.quantity-input');
+                        if (quantityInputEdit && listItem.querySelector('.quantity')) updatedData.quantity = parseInt(quantityInputEdit.value);
                         const metersInputEdit = listItem.querySelector('.edit-input.meters-input');
-                        if (metersInputEdit) updatedData.meters = parseInt(metersInputEdit.value);
+                        if (metersInputEdit && updatedData.unit === 'metros') updatedData.meters = parseInt(metersInputEdit.value);
                         const centimetersInputEdit = listItem.querySelector('.edit-input.centimeters-input');
-                        if (centimetersInputEdit) updatedData.centimeters = parseInt(centimetersInputEdit.value);
+                        if (centimetersInputEdit && updatedData.unit === 'metros') updatedData.centimeters = parseInt(centimetersInputEdit.value);
 
                         try {
                             await db.collection('inventario').doc(itemIdToUpdate).update(updatedData);
                             editingId = null; // Salir del modo edición
                             renderInventory(inventoryData); // Re-render para mostrar los valores actualizados
-                        } catch (error) {
-                            console.error("Error al guardar las modificaciones: ", error);
+                        } catch (error) {console.error("Error al guardar las modificaciones: ", error);
                         }
                     });
                 });
@@ -338,7 +338,8 @@
                 snapshot.forEach(doc => {
                     inventoryData.push({ id: doc.id, ...doc.data() });
                 });
-                renderInventory(inventoryData);});
+                renderInventory(inventoryData);
+            });
 
             addButton.addEventListener('click', async () => {
                 const product = productInput.value.trim();
