@@ -143,29 +143,30 @@
             const quantityInput = document.getElementById('quantity');
 
             let inventoryData = [];
-            let totalValue = 0;
-            let editingId = null; // ID del item que se está editando
+            let editingId = null;
 
             const renderInventory = (items) => {
                 inventoryList.innerHTML = '';
-                totalValue = 0;
+                let totalValue = 0;
                 items.forEach(item => {
                     const listItem = document.createElement('div');
                     listItem.classList.add('item');
                     if (editingId === item.id) {
                         listItem.classList.add('editing');
                     }
+
                     let unitDisplay = item.unit;
                     let quantityDisplay = '';
                     if (item.unit === 'metros') {
-                        unitDisplay = (item.meters || 0) + ' m ' + (item.centimeters || 0) + ' cm';
+                        unitDisplay = `${item.meters || 0} m ${item.centimeters || 0} cm`;
                     } else if (item.unit === 'unidades' && item.quantity !== undefined) {
-                        quantityDisplay = 'Cantidad: ' + item.quantity;
+                        quantityDisplay = `Cantidad: ${item.quantity}`;
                     }
-                    let itemHTML = `
+
+                    listItem.innerHTML = `
                         <div class="item-details">
-                            <span class="product-name"><span class="math-inline">\{item\.product\}</span\>
-<input type\="text" class\="edit\-input" value\="</span>{item.product}">
+                            <span class="product-name">${item.product}</span>
+                            <input type="text" class="edit-input" value="${item.product}">
                             <br>
                             <span class="unit">${unitDisplay}</span>
                             <select class="edit-input unit-select">
@@ -175,162 +176,37 @@
                             <br>
                             ${quantityDisplay ? `<span class="quantity">${quantityDisplay}</span><input type="number" class="edit-input quantity-input" value="${item.quantity || 0}">` : ''}
                             <br>
-                            <span class="value">$<span class="math-inline">\{item\.value ? item\.value\.toFixed\(2\) \: '0\.00'\}</span\>
-<input type\="number" class\="edit\-input value\-input" value\="</span>{item.value || 0}">
+                            <span class="value">$${item.value ? item.value.toFixed(2) : '0.00'}</span>
+                            <input type="number" class="edit-input value-input" value="${item.value || 0}">
                             <br>
                             ${item.provider ? `<span class="provider">Proveedor: ${item.provider}</span><input type="text" class="edit-input provider-input" value="${item.provider || ''}">` : ''}
                             <br>
                             ${item.client ? `<span class="client">Cliente: ${item.client}</span><input type="text" class="edit-input client-input" value="${item.client || ''}">` : ''}
                         </div>
-                        <div class="item-actions" data-unit="<span class="math-inline">\{item\.unit\}" data\-item\-id\="</span>{item.id}">
+                        <div class="item-actions" data-unit="${item.unit}" data-item-id="${item.id}">
                             <input type="number" class="add-units" placeholder="+ Unidades" value="0" style="display: ${item.unit === 'unidades' ? 'inline' : 'none'}">
                             <input type="number" class="add-metros" placeholder="+ Metros" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
                             <input type="number" class="add-centimetros" placeholder="+ Cm" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
                             <button class="add-button">Agregar</button>
                             <input type="number" class="remove-units" placeholder="- Unidades" value="0" style="display: ${item.unit === 'unidades' ? 'inline' : 'none'}">
                             <input type="number" class="remove-metros" placeholder="- Metros" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
-                            <input type="number" class="remove-centimetros" placeholder="- Cm" value="0" style="display: <span class="math-inline">\{item\.unit \=\=\= 'metros' ? 'inline' \: 'none'\}"\>
-<button class\="remove\-button"\>Quitar</button\>
-<button class\="edit\-button" data\-id\="</span>{item.id}">Editar</button>
-                            <button class="delete-button" data-id="<span class="math-inline">\{item\.id\}"\>Eliminar</button\>
-<div class\="edit\-controls"\>
-<button class\="save\-button" data\-id\="</span>{item.id}">Guardar</button>
+                            <input type="number" class="remove-centimetros" placeholder="- Cm" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
+                            <button class="remove-button">Quitar</button>
+                            <button class="edit-button" data-id="${item.id}">Editar</button>
+                            <button class="delete-button" data-id="${item.id}">Eliminar</button>
+                            <div class="edit-controls">
+                                <button class="save-button" data-id="${item.id}">Guardar</button>
                                 <button class="cancel-button" data-id="${item.id}">Cancelar</button>
                             </div>
                         </div>
                     `;
-                    listItem.innerHTML = itemHTML;
+
                     inventoryList.appendChild(listItem);
                     totalValue += parseFloat(item.value || 0);
                 });
                 totalValueDisplay.textContent = `Valor Total del Inventario: $${totalValue.toFixed(2)}`;
 
-                document.querySelectorAll('.item-actions .add-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const actionsDiv = e.target.parentNode;
-                        const itemId = actionsDiv.dataset.itemId;
-                        const unit = actionsDiv.dataset.unit;
-                        let updateData = {};
-                        if (unit === 'unidades') {
-                            const addQuantity = parseInt(actionsDiv.querySelector('.add-units').value) || 0;
-                            if (addQuantity > 0) {
-                                const itemToUpdate = inventoryData.find(item => item.id === itemId);
-                                updateData = { quantity: (itemToUpdate.quantity || 0) + addQuantity };
-                            }
-                        } else if (unit === 'metros') {
-                            const addMeters = parseInt(actionsDiv.querySelector('.add-metros').value) || 0;
-                            const addCentimeters = parseInt(actionsDiv.querySelector('.add-centimetros').value) || 0;
-                            if (addMeters !== 0 || addCentimeters !== 0) {
-                                const itemToUpdate = inventoryData.find(item => item.id === itemId);
-                                const currentMeters = itemToUpdate.meters || 0;
-                                const currentCentimeters = itemToUpdate.centimeters || 0;
-                                let newTotalCentimeters = (currentMeters * 100 + currentCentimeters) + (addMeters * 100 + addCentimeters);
-                                updateData.meters = Math.floor(newTotalCentimeters / 100);
-                                updateData.centimeters = newTotalCentimeters % 100;
-                            }
-                        }
-                        if (Object.keys(updateData).length > 0) {
-                            try {
-                                await db.collection('inventario').doc(itemId).update(updateData);
-                                actionsDiv.querySelectorAll('input[type="number"]').forEach(input => input.value = 0);
-                            } catch (error) {
-                                console.error("Error al agregar stock: ", error);
-                            }
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.item-actions .remove-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const actionsDiv = e.target.parentNode;
-                        const itemId = actionsDiv.dataset.itemId;
-                        const unit = actionsDiv.dataset.unit;
-                        let updateData = {};
-                        if (unit === 'unidades') {
-                            const removeQuantity = parseInt(actionsDiv.querySelector('.remove-units').value) || 0;
-                            if (removeQuantity > 0) {
-                                const itemToUpdate = inventoryData.find(item => item.id === itemId);
-                                updateData = { quantity: Math.max(0, (itemToUpdate.quantity || 0) - removeQuantity) };
-                            }
-                        } else if (unit === 'metros') {
-                            const removeMeters = parseInt(actionsDiv.querySelector('.remove-metros').value) || 0;
-                            const removeCentimeters = parseInt(actionsDiv.querySelector('.remove-centimetros').value) || 0;
-                            if (removeMeters !== 0 || removeCentimeters !== 0) {
-                                const itemToUpdate = inventoryData.find(item => item.id === itemId);
-                                const currentMeters = itemToUpdate.meters || 0;
-                                const currentCentimeters = itemToUpdate.centimeters || 0;
-                                let newTotalCentimeters = (currentMeters * 100 + currentCentimeters) - (removeMeters * 100 + removeCentimeters);
-                                updateData.meters = Math.max(0, Math.floor(newTotalCentimeters / 100));
-                                updateData.centimeters = Math.max(0, newTotalCentimeters % 100);
-                            }
-                        }
-                        if (Object.keys(updateData).length > 0) {
-                            try {
-                                await db.collection('inventario').doc(itemId).update(updateData);
-                                actionsDiv.querySelectorAll('input[type="number"]').forEach(input => input.value = 0);
-                            } catch (error) {
-                                console.error("Error al quitar stock: ", error);
-                            }
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.item-actions .delete-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const itemIdToDelete = e.target.dataset.id;
-                        if (confirm('¿Seguro que quieres eliminar este producto?')) {
-                            try {
-                                await db.collection('inventario').doc(itemIdToDelete).delete();
-                                console.log(`Producto con ID ${itemIdToDelete} eliminado.`);
-                            } catch (error) {
-                                console.error("Error al eliminar el documento: ", error);
-                            }
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.item-actions .edit-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        editingId = e.target.dataset.id;
-                        renderInventory(inventoryData); // Re-render para mostrar los campos de edición
-                    });
-                });
-
-                document.querySelectorAll('.item-actions .cancel-button').forEach(button => {
-                    button.addEventListener('click', () => {
-                        editingId = null;
-                        renderInventory(inventoryData); // Re-render para ocultar los campos de edición
-                    });
-                });
-
-                document.querySelectorAll('.item-actions .save-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const itemIdToUpdate = e.target.dataset.id;
-                        const listItem = e.target.closest('.item');
-                        const updatedData = {};
-
-                        updatedData.product = listItem.querySelector('.edit-input[type="text"]').value;
-                        updatedData.unit = listItem.querySelector('.edit-input.unit-select').value;
-                        updatedData.value = parseFloat(listItem.querySelector('.edit-input.value-input').value);
-                        const providerInput = listItem.querySelector('.edit-input.provider-input');
-                        if (providerInput) updatedData.provider = providerInput.value;
-                        const clientInput = listItem.querySelector('.edit-input.client-input');
-                        if (clientInput) updatedData.client = clientInput.value;
-                        const quantityInputEdit = listItem.querySelector('.edit-input.quantity-input');
-                        if (quantityInputEdit && listItem.querySelector('.quantity')) updatedData.quantity = parseInt(quantityInputEdit.value);
-                        const metersInputEdit = listItem.querySelector('.edit-input.meters-input');
-                        if (metersInputEdit && updatedData.unit === 'metros') updatedData.meters = parseInt(metersInputEdit.value);
-                        const centimetersInputEdit = listItem.querySelector('.edit-input.centimeters-input');
-                        if (centimetersInputEdit && updatedData.unit === 'metros') updatedData.centimeters = parseInt(centimetersInputEdit.value);
-
-                        try {
-                            await db.collection('inventario').doc(itemIdToUpdate).update(updatedData);
-                            editingId = null; // Salir del modo edición
-                            renderInventory(inventoryData); // Re-render para mostrar los valores actualizados
-                        } catch (error) {console.error("Error al guardar las modificaciones: ", error);
-                        }
-                    });
-                });
+                // Event listeners will be added in the second part
             };
 
             db.collection('inventario').onSnapshot((snapshot) => {
