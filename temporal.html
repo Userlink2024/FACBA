@@ -59,12 +59,11 @@
         }
     </style>
 
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "firebase/app";
-        import { getFirestore, collection, addDoc, onSnapshot } from "firebase/firestore";
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-        // Your web app's Firebase configuration
+    <script type="text/javascript">
+        // Tu configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
             authDomain: "lazapateria-ce24f.firebaseapp.com",
@@ -75,10 +74,10 @@
             measurementId: "G-6JCF33H0K1"
         };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const inventoryCollection = collection(db, 'inventario');
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const inventoryCollection = db.collection('inventario');
 
         document.addEventListener('DOMContentLoaded', () => {
             const productInput = document.getElementById('product-name');
@@ -92,7 +91,6 @@
 
             let totalValue = 0;
 
-            // Función para mostrar el inventario en la interfaz
             const renderInventory = (items) => {
                 inventoryList.innerHTML = '';
                 totalValue = 0;
@@ -114,8 +112,7 @@
                 totalValueDisplay.textContent = `Valor Total del Inventario: $${totalValue.toFixed(2)}`;
             };
 
-            // Escuchar los cambios en la colección de inventario en Firestore
-            onSnapshot(inventoryCollection, (snapshot) => {
+            db.collection('inventario').onSnapshot((snapshot) => {
                 const inventoryItems = [];
                 snapshot.forEach(doc => {
                     inventoryItems.push({ id: doc.id, ...doc.data() });
@@ -123,7 +120,6 @@
                 renderInventory(inventoryItems);
             });
 
-            // Evento para el botón de agregar producto
             addButton.addEventListener('click', async () => {
                 const product = productInput.value.trim();
                 const unit = unitSelect.value;
@@ -137,7 +133,7 @@
 
                 if (product && !isNaN(value)) {
                     try {
-                        await addDoc(inventoryCollection, {
+                        await db.collection('inventario').add({
                             product: product,
                             unit: unit,
                             meters: meters,
@@ -157,7 +153,6 @@
                 }
             });
 
-            // Mostrar/ocultar los campos de metros y centímetros según la unidad seleccionada
             unitSelect.addEventListener('change', () => {
                 const metersGroup = document.getElementById('meters-group');
                 const centimetersGroup = document.getElementById('centimeters-group');
@@ -172,7 +167,6 @@
                 }
             });
 
-            // Inicialmente ocultar los campos de metros y centímetros
             document.getElementById('meters-group').style.display = 'none';
             document.getElementById('centimeters-group').style.display = 'none';
         });
