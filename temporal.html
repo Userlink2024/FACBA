@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario La Zapatería - Moderno</title>
+    <title>Inventario La Zapatería - Reinventado</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,8 +12,8 @@
             color: #333;
         }
         .container {
-            max-width: 800px; /* Aumentar un poco el ancho para el diseño moderno */
-            margin: 20px auto;
+            max-width: 800px;
+            margin: 30px auto;
             padding: 30px;
             background-color: #fff;
             border-radius: 12px;
@@ -74,7 +74,7 @@
         }
         .inventory-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Tarjetas más anchas */
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-top: 20px;
         }
@@ -197,6 +197,22 @@
                         itemCard.classList.add('editing');
                     }
 
+                    // --- Construcción del HTML de la tarjeta ---
+                    const h3 = document.createElement('h3');
+                    const productNameSpan = document.createElement('span');
+                    productNameSpan.classList.add('product-name');
+                    productNameSpan.textContent = item.product;
+                    const editInputProduct = document.createElement('input');
+                    editInputProduct.type = 'text';
+                    editInputProduct.classList.add('edit-input');
+                    editInputProduct.value = item.product;
+                    h3.appendChild(productNameSpan);
+                    h3.appendChild(editInputProduct);
+                    itemCard.appendChild(h3);
+
+                    const itemDetailsCard = document.createElement('div');
+                    itemDetailsCard.classList.add('item-details-card');
+
                     let unitDisplay = item.unit;
                     if (item.unit === 'metros') {
                         unitDisplay = `${item.meters || 0} m ${item.centimeters || 0} cm`;
@@ -204,39 +220,116 @@
                         unitDisplay = `Cantidad: ${item.quantity}`;
                     }
 
-                    const valueFormatted = item.value !== undefined ? parseFloat(item.value).toFixed(2) : '0.00';
+                    const unitSpan = document.createElement('span');
+                    unitSpan.textContent = `Unidad: `;
+                    const unitValueSpan = document.createElement('span');
+                    unitValueSpan.classList.add('unit');
+                    unitValueSpan.textContent = unitDisplay;
+                    unitSpan.appendChild(unitValueSpan);
+                    itemDetailsCard.appendChild(unitSpan);
 
-                    itemCard.innerHTML = `
-                        <h3><span class="product-name"><span class="math-inline">\{item\.product\}</span\><input type\="text" class\="edit\-input" value\="</span>{item.product}"></h3>
-                        <div class="item-details-card">
-                            <span>Unidad: <span class="unit">${unitDisplay}</span>
-                                <select class="edit-input unit-select">
-                                    <option value="unidades" ${item.unit === 'unidades' ? 'selected' : ''}>Unidades</option>
-                                    <option value="metros" ${item.unit === 'metros' ? 'selected' : ''}>Metros con cm</option>
-                                </select>
-                            </span>
-                            ${item.unit === 'unidades' ? `<span>Cantidad: ${item.quantity}<input type="number" class="edit-input quantity-input" value="${item.quantity || 0}"></span>` : ''}
-                            <span>Valor: <span class="math-inline"><span class\="value"\></span>{valueFormatted}</span><input type="number" class="edit-input value-input" value="${item.value || 0}"></span>
-                            ${item.provider ? `<span>Proveedor: <span class="provider">${item.provider}</span><input type="text" class="edit-input provider-input" value="${item.provider || ''}"></span>` : ''}
-                            ${item.client ? `<span>Cliente: <span class="client">${item.client}</span><input type="text" class="edit-input client-input" value="${item.client || ''}"></span>` : ''}
-                        </div>
-                        <div class="item-actions-card" data-unit="<span class="math-inline">\{item\.unit\}" data\-item\-id\="</span>{item.id}">
-                            <input type="number" class="add-units" placeholder="+ Un" value="0" style="display: ${item.unit === 'unidades' ? 'inline' : 'none'}">
-                            <input type="number" class="add-metros" placeholder="+ M" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
-                            <input type="number" class="add-centimetros" placeholder="+ Cm" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
-                            <button class="action-button add-button">Agregar</button>
-                            <input type="number" class="remove-units" placeholder="- Un" value="0" style="display: ${item.unit === 'unidades' ? 'inline' : 'none'}">
-                            <input type="number" class="remove-metros" placeholder="- M" value="0" style="display: ${item.unit === 'metros' ? 'inline' : 'none'}">
-                            <input type="number" class="remove-centimetros" placeholder="- Cm" value="0" style="display: <span class="math-inline">\{item\.unit \=\=\= 'metros' ? 'inline' \: 'none'\}"\>
-<button class\="action\-button remove\-button"\>Quitar</button\>
-<button class\="action\-button edit\-button" data\-id\="</span>{item.id}">Editar</button>
-                            <button class="action-button delete-button" data-id="<span class="math-inline">\{item\.id\}"\>Eliminar</button\>
-<div class\="edit\-controls"\>
-<button class\="action\-button save\-button" data\-id\="</span>{item.id}">Guardar</button>
-                                <button class="action-button cancel-button" data-id="${item.id}">Cancelar</button>
-                            </div>
-                        </div>
-                    `;
+                    const unitSelect = document.createElement('select');
+                    unitSelect.classList.add('edit-input', 'unit-select');
+                    const unidadesOption = document.createElement('option');
+                    unidadesOption.value = 'unidades';
+                    unidadesOption.textContent = 'Unidades';
+                    unidadesOption.selected = item.unit === 'unidades';
+                    const metrosOption = document.createElement('option');
+                    metrosOption.value = 'metros';
+                    metrosOption.textContent = 'Metros con cm';
+                    metrosOption.selected = item.unit === 'metros';
+                    unitSelect.appendChild(unidadesOption);
+                    unitSelect.appendChild(metrosOption);
+                    itemDetailsCard.appendChild(unitSelect);
+
+                    if (item.unit === 'unidades' && item.quantity !== undefined) {
+                        const quantitySpan = document.createElement('span');
+                        quantitySpan.textContent = `Cantidad: ${item.quantity}`;
+                        const quantityInput = document.createElement('input');
+                        quantityInput.type = 'number';
+                        quantityInput.classList.add('edit-input', 'quantity-input');
+                        quantityInput.value = item.quantity || 0;
+                        itemDetailsCard.appendChild(quantitySpan);
+                        itemDetailsCard.appendChild(quantityInput);
+                    }
+
+                    const valueFormatted = item.value !== undefined ? parseFloat(item.value).toFixed(2) : '0.00';
+                    const valueSpan = document.createElement('span');
+                    valueSpan.textContent = `Valor: $${valueFormatted}`;
+                    const valueInput = document.createElement('input');
+                    valueInput.type = 'number';
+                    valueInput.classList.add('edit-input', 'value-input');
+                    valueInput.value = item.value || 0;
+                    itemDetailsCard.appendChild(valueSpan);
+                    itemDetailsCard.appendChild(valueInput);
+
+                    if (item.provider) {
+                        const providerSpan = document.createElement('span');
+                        providerSpan.textContent = `Proveedor: ${item.provider}`;
+                        const providerInput = document.createElement('input');
+                        providerInput.type = 'text';
+                        providerInput.classList.add('edit-input', 'provider-input');
+                        providerInput.value = item.provider || '';
+                        itemDetailsCard.appendChild(providerSpan);
+                        itemDetailsCard.appendChild(providerInput);
+                    }
+
+                    if (item.client) {
+                        const clientSpan = document.createElement('span');
+                        clientSpan.textContent = `Cliente: ${item.client}`;
+                        const clientInput = document.createElement('input');
+                        clientInput.type = 'text';
+                        clientInput.classList.add('edit-input', 'client-input');
+                        clientInput.value = item.client || '';
+                        itemDetailsCard.appendChild(clientSpan);
+                        itemDetailsCard.appendChild(clientInput);
+                    }
+
+                    itemCard.appendChild(itemDetailsCard);
+
+                    const itemActionsCard = document.createElement('div');
+                    itemActionsCard.classList.add('item-actions-card');
+                    itemActionsCard.dataset.unit = item.unit;
+                    itemActionsCard.dataset.itemId = item.id;
+
+                    const createActionButton = (text, className, styleDisplay = 'inline', datasetId = null) => {
+                        const button = document.createElement('button');
+                        button.textContent = text;
+                        button.classList.add('action-button', className);
+                        if (datasetId) button.dataset.id = datasetId;
+                        button.style.display = styleDisplay;
+                        return button;
+                    };
+
+                    const createActionInput = (placeholder, className, styleDisplay = 'inline') => {
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.classList.add(className);
+                        input.placeholder = placeholder;
+                        input.value = '0';
+                        input.style.display = styleDisplay;
+                        return input;
+                    };
+
+                    itemActionsCard.appendChild(createActionInput('+ Un', 'add-units', item.unit === 'unidades' ? 'inline' : 'none'));
+                    itemActionsCard.appendChild(createActionInput('+ M', 'add-metros', item.unit === 'metros' ? 'inline' : 'none'));
+                    itemActionsCard.appendChild(createActionInput('+ Cm', 'add-centimetros', item.unit === 'metros' ? 'inline' : 'none'));
+                    itemActionsCard.appendChild(createActionButton('Agregar', 'add-button'));
+                    itemActionsCard.appendChild(createActionInput('- Un', 'remove-units', item.unit === 'unidades' ? 'inline' : 'none'));
+                    itemActionsCard.appendChild(createActionInput('- M', 'remove-metros', item.unit === 'metros' ? 'inline' : 'none'));
+                    itemActionsCard.appendChild(createActionInput('- Cm', 'remove-centimetros', item.unit === 'metros' ? 'inline' : 'none'));
+                    itemActionsCard.appendChild(createActionButton('Quitar', 'remove-button'));
+                    itemActionsCard.appendChild(createActionButton('Editar', 'edit-button', 'inline', item.id));
+                    itemActionsCard.appendChild(createActionButton('Eliminar', 'delete-button', 'inline', item.id));
+
+                    const editControls = document.createElement('div');
+                    editControls.classList.add('edit-controls');
+                    editControls.appendChild(createActionButton('Guardar', 'save-button', 'inline', item.id));
+                    editControls.appendChild(createActionButton('Cancelar', 'cancel-button', 'inline', item.id));
+                    itemActionsCard.appendChild(editControls);
+
+                    itemCard.appendChild(itemActionsCard);
+                    // --- Fin de la construcción de la tarjeta ---
 
                     inventoryGrid.appendChild(itemCard);
                     totalValue += parseFloat(item.value || 0);
@@ -244,7 +337,7 @@
                 inventoryList.appendChild(inventoryGrid);
                 totalValueDisplay.textContent = `Valor Total del Inventario: $${totalValue.toFixed(2)}`;
 
-                // Los event listeners para las acciones de los items irán en la segunda parte
+                // Los event listeners para las acciones de los items irán aquí (parte 2)
             };
 
             db.collection('inventario').onSnapshot((snapshot) => {
@@ -258,8 +351,8 @@
             addButton.addEventListener('click', async () => {
                 const product = productInput.value.trim();
                 const unit = unitSelect.value;
-                let meters = parseInt(metersInput.value) || 0;
-                let centimeters = parseInt(centimetersInput.value) || 0;
+                const meters = parseInt(metersInput.value) || 0;
+                const centimeters = parseInt(centimetersInput.value) || 0;
                 const value = parseFloat(valueInput.value);
                 const provider = providerInput.value.trim();
                 const client = clientInput.value.trim();
@@ -322,6 +415,100 @@
             // Inicialmente ocultar los campos de metros y centímetros y cantidad
             document.getElementById('meters-group').style.display = 'none';
             document.getElementById('centimeters-group').style.display = 'none';
+
+            // --- Parte 2: Event Listeners para las acciones de los items (se añadirán aquí en la siguiente iteración) ---
+            inventoryList.addEventListener('click', (event) => {
+                const target = event.target;
+                const itemCard = target.closest('.item-card');
+                if (!itemCard) return;
+                const itemId = itemCard.querySelector('.item-actions-card')?.dataset.itemId;
+
+                if (target.classList.contains('delete-button')) {
+                    if (confirm('¿Seguro que quieres eliminar este producto?')) {
+                        db.collection('inventario').doc(itemId).delete()
+                            .catch((error) => console.error("Error al eliminar el documento: ", error));
+                    }
+                } else if (target.classList.contains('edit-button')) {
+                    itemCard.classList.add('editing');
+                } else if (target.classList.contains('cancel-button')) {
+                    itemCard.classList.remove('editing');
+                } else if (target.classList.contains('save-button')) {
+                    const productName = itemCard.querySelector('.edit-input[type="text"]').value;
+                    const unit = itemCard.querySelector('.edit-input.unit-select').value;
+                    const value = parseFloat(itemCard.querySelector('.edit-input.value-input').value);
+                    const provider = itemCard.querySelector('.edit-input.provider-input')?.value;
+                    const client = itemCard.querySelector('.edit-input.client-input')?.value;
+                    const quantityInput = itemCard.querySelector('.edit-input.quantity-input');
+                    const quantity = unit === 'unidades' && quantityInput ? parseInt(quantityInput.value) : null;
+                    const metersInputEdit = itemCard.querySelector('.edit-input[type="number"][id^="metros-edit-"]');
+                    const centimetersInputEdit = itemCard.querySelector('.edit-input[type="number"][id^="centimeters-edit-"]');
+                    const meters = unit === 'metros' && metersInputEdit ? parseInt(metersInputEdit.value) : null;
+                    const centimeters = unit === 'metros' && centimetersInputEdit ? parseInt(centimetersInputEdit.value) : null;
+
+                    if (productName && !isNaN(value)) {
+                        const updatedItem = {
+                            product: productName,
+                            unit: unit,
+                            value: value
+                        };
+                        if (provider !== undefined) updatedItem.provider = provider;
+                        if (client !== undefined) updatedItem.client = client;
+                        if (quantity !== null) updatedItem.quantity = quantity;
+                        if (meters !== null) updatedItem.meters = meters;
+                        if (centimeters !== null) updatedItem.centimeters = centimeters;
+
+                        db.collection('inventario').doc(itemId).update(updatedItem)
+                            .then(() => itemCard.classList.remove('editing'))
+                            .catch((error) => console.error("Error al actualizar el documento: ", error));
+                    } else {
+                        alert('Por favor, asegúrate de que el nombre del producto y el valor sean válidos.');
+                    }
+                } else if (target.classList.contains('add-button') || target.classList.contains('remove-button')) {
+                    const unitType = itemCard.querySelector('.item-actions-card').dataset.unit;
+                    const addUnits = parseInt(itemCard.querySelector('.add-units')?.value) || 0;
+                    const removeUnits = parseInt(itemCard.querySelector('.remove-units')?.value) || 0;
+                    const addMetros = parseInt(itemCard.querySelector('.add-metros')?.value) || 0;
+                    const addCentimetros = parseInt(itemCard.querySelector('.add-centimetros')?.value) || 0;
+                    const removeMetros = parseInt(itemCard.querySelector('.remove-metros')?.value) || 0;
+                    const removeCentimetros = parseInt(itemCard.querySelector('.remove-centimetros')?.value) || 0;
+
+                    const updateData = {};
+
+                    if (unitType === 'unidades' && (addUnits !== 0 || removeUnits !== 0)) {
+                        const currentQuantity = inventoryData.find(item => item.id === itemId)?.quantity || 0;
+                        updateData.quantity = Math.max(0, currentQuantity + addUnits - removeUnits);
+                    } else if (unitType === 'metros' && (addMetros !== 0 || addCentimetros !== 0 || removeMetros !== 0 || removeCentimetros !== 0)) {
+                        const currentMeters = inventoryData.find(item => item.id === itemId)?.meters || 0;
+                        const currentCentimeters = inventoryData.find(item => item.id === itemId)?.centimeters || 0;
+
+                        let newMeters = currentMeters + addMetros - removeMetros;
+                        let newCentimeters = currentCentimeters + addCentimetros - removeCentimetros;
+
+                        if (newCentimeters >= 100) {
+                            newMeters += Math.floor(newCentimeters / 100);
+                            newCentimeters %= 100;
+                        } else if (newCentimeters < 0) {
+                            newMeters += Math.ceil(newCentimeters / 100) -1;
+                            newCentimeters = (newCentimeters % 100 + 100) % 100;
+                        }
+                        updateData.meters = Math.max(0, newMeters);
+                        updateData.centimeters = Math.max(0, newCentimeters);
+                    }
+
+                    if (Object.keys(updateData).length > 0) {
+                        db.collection('inventario').doc(itemId).update(updateData)
+                            .then(() => {
+                                if (itemCard.querySelector('.add-units')) itemCard.querySelector('.add-units').value = 0;
+                                if (itemCard.querySelector('.remove-units')) itemCard.querySelector('.remove-units').value = 0;
+                                if (itemCard.querySelector('.add-metros')) itemCard.querySelector('.add-metros').value = 0;
+                                if (itemCard.querySelector('.add-centimetros')) itemCard.querySelector('.add-centimetros').value = 0;
+                                if (itemCard.querySelector('.remove-metros')) itemCard.querySelector('.remove-metros').value = 0;
+                                if (itemCard.querySelector('.remove-centimetros')) itemCard.querySelector('.remove-centimetros').value = 0;
+                            })
+                            .catch((error) => console.error("Error al actualizar la cantidad/medida: ", error));
+                    }
+                }
+            });
         });
     </script>
 </head>
@@ -364,7 +551,7 @@
 
         <div class="input-group">
             <label for="provider">Proveedor:</label>
-            <input typetype="text" id="provider" placeholder="Nombre del proveedor (opcional)">
+            <input type="text" id="provider" placeholder="Nombre del proveedor (opcional)">
         </div>
 
         <div class="input-group">
