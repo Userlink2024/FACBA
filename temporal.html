@@ -108,7 +108,8 @@
             <div class="mb-6">
                 <h3 class="text-lg font-medium mb-3" id="formInventarioTitle">Agregar Producto</h3>
                 <form id="formInventario" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="hidden" id="invProductId"> <div>
+                    <input type="hidden" id="invProductId">
+                    <div>
                         <label for="invFechaHora" class="form-label">Fecha y Hora:</label>
                         <input type="text" id="invFechaHora" class="form-input bg-gray-100" readonly>
                     </div>
@@ -200,7 +201,12 @@
             <h2 class="text-xl font-semibold mb-4">Crear Factura</h2>
 
             <form id="formFacturacion" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <input type="hidden" id="facProductId"> <input type="hidden" id="facProductUnit"> <input type="hidden" id="facProductMetros"> <input type="hidden" id="facProductCentimetros"> <input type="hidden" id="facProductUnidades"> <div>
+                 <input type="hidden" id="facProductId">
+                 <input type="hidden" id="facProductUnit">
+                 <input type="hidden" id="facProductMetros">
+                 <input type="hidden" id="facProductCentimetros">
+                 <input type="hidden" id="facProductUnidades">
+                 <div>
                     <label for="facFechaHora" class="form-label">Fecha y Hora:</label>
                     <input type="text" id="facFechaHora" class="form-input bg-gray-100" readonly>
                 </div>
@@ -274,7 +280,7 @@
             apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
             authDomain: "lazapateria-ce24f.firebaseapp.com",
             projectId: "lazapateria-ce24f",
-            storageBucket: "lazapateria-ce24f.firebasestorage.app",
+            storageBucket: "lazapateria-ce24f.firebaseapp.com", // Corregido: .firebaseapp.com
             messagingSenderId: "642571845821",
             appId: "1:642571845821:web:45858a0abc0df728fd77d4",
             measurementId: "G-6JCF33H0K1" // Opcional
@@ -340,7 +346,9 @@
         function getFechaHoraActual() {
             const now = new Date();
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-            return now.toLocaleString('es-ES', options);
+            const formattedDateTime = now.toLocaleString('es-ES', options);
+            console.log('DEBUG: Fecha y Hora Generada:', formattedDateTime); // Log para depuración
+            return formattedDateTime;
         }
 
          // Función para mostrar mensajes de estado
@@ -360,22 +368,45 @@
 
         // Función para mostrar un módulo y ocultar los otros
         function mostrarModulo(moduloAMostrar) {
-            moduloInventario.style.display = 'none';
-            moduloFacturacion.style.display = 'none';
-            // Ocultar también el módulo de búsqueda de producto si está abierto
-            moduloBuscarProducto.style.display = 'none';
+             try {
+                moduloInventario.style.display = 'none';
+                moduloFacturacion.style.display = 'none';
+                // Ocultar también el módulo de búsqueda de producto si está abierto
+                moduloBuscarProducto.style.display = 'none';
 
-            moduloAMostrar.style.display = 'block';
+                moduloAMostrar.style.display = 'block';
 
-            // Actualizar fecha y hora al mostrar el módulo
-            if (moduloAMostrar === moduloInventario) {
-                invFechaHora.value = getFechaHoraActual();
-                 resetFormInventario(); // Limpiar y resetear formulario al cambiar de módulo
-                 cargarInventario(); // Cargar inventario al mostrar el módulo
-            } else if (moduloAMostrar === moduloFacturacion) {
-                facFechaHora.value = getFechaHoraActual();
-                 resetFormFacturacion(); // Limpiar y resetear formulario de facturación
-            }
+                // Actualizar fecha y hora al mostrar el módulo
+                if (moduloAMostrar === moduloInventario) {
+                    console.log('DEBUG: Mostrando Módulo Inventario.');
+                    console.log('DEBUG: Elemento invFechaHora:', invFechaHora); // Log para depuración
+                    if (invFechaHora) { // Verificar si el elemento fue encontrado
+                         const currentDateTime = getFechaHoraActual();
+                         console.log('DEBUG: Valor a asignar a invFechaHora:', currentDateTime); // Log para depuración
+                         invFechaHora.value = currentDateTime;
+                         console.log('DEBUG: Valor de invFechaHora DESPUÉS de asignar:', invFechaHora.value); // Log para depuración
+                    } else {
+                         console.error('DEBUG: Elemento invFechaHora no encontrado!'); // Error si el elemento no existe
+                    }
+                    resetFormInventario(); // Limpiar y resetear formulario al cambiar de módulo
+                    cargarInventario(); // Cargar inventario al mostrar el módulo
+                } else if (moduloAMostrar === moduloFacturacion) {
+                    console.log('DEBUG: Mostrando Módulo Facturación.');
+                    console.log('DEBUG: Elemento facFechaHora:', facFechaHora); // Log para depuración
+                    if (facFechaHora) { // Verificar si el elemento fue encontrado
+                         const currentDateTime = getFechaHoraActual();
+                         console.log('DEBUG: Valor a asignar a facFechaHora:', currentDateTime); // Log para depuración
+                         facFechaHora.value = currentDateTime;
+                         console.log('DEBUG: Valor de facFechaHora DESPUÉS de asignar:', facFechaHora.value); // Log para depuración
+                    } else {
+                         console.error('DEBUG: Elemento facFechaHora no encontrado!'); // Error si el elemento no existe
+                    }
+                    resetFormFacturacion(); // Limpiar y resetear formulario de facturación
+                }
+             } catch (error) {
+                 console.error("Error en mostrarModulo:", error);
+                 showStatusMessage("Error interno al cambiar de módulo.", true);
+             }
         }
 
         // Función para manejar la visibilidad de los campos de unidad de medida en inventario
@@ -704,6 +735,8 @@
 
              try {
                  // Buscar por Referencia o Color (ejemplo simple, podrías necesitar índices compuestos)
+                 // Nota: Las consultas de rango en Firestore solo funcionan en un campo a la vez sin índices compuestos
+                 // Para búsquedas más complejas, considera usar una solución de búsqueda como Algolia o ElasticSearch
                  const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
                  const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
 
@@ -956,11 +989,18 @@
 
         // --- Inicialización ---
         // Mostrar el módulo de inventario por defecto al cargar la página
-        mostrarModulo(moduloInventario);
+        // Asegurarse de que el DOM esté completamente cargado antes de mostrar el módulo inicial
+        document.addEventListener('DOMContentLoaded', () => {
+             console.log('DEBUG: DOM completamente cargado. Iniciando...'); // Log de inicio
+             // Verificar si los elementos de fecha existen al cargar
+             console.log('DEBUG: invFechaHora al cargar:', document.getElementById('invFechaHora'));
+             console.log('DEBUG: facFechaHora al cargar:', document.getElementById('facFechaHora'));
 
-        // Asegurarse de que los campos condicionales estén ocultos al inicio
-        handleUnidadMedida(); // Para inventario
-        handleCamposDescuento(''); // Para facturación (ocultar todo al inicio)
+             mostrarModulo(moduloInventario);
+             // Asegurarse de que los campos condicionales estén ocultos al inicio
+             handleUnidadMedida(); // Para inventario
+             handleCamposDescuento(''); // Para facturación (ocultar todo al inicio)
+        });
 
 
     </script>
