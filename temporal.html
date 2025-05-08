@@ -100,7 +100,7 @@
         <div class="flex justify-center space-x-4 mb-8">
             <button id="btnInventario" class="btn btn-primary">Ver Inventarios</button>
             <button id="btnFacturacion" class="btn btn-primary">Abrir Módulo Facturación</button>
-        </div>
+            <button id="btnVerFacturas" class="btn btn-primary">Ver Facturas</button> </div>
 
         <div id="moduloInventario" class="module card">
             <h2 class="text-xl font-semibold mb-4">Gestión de Inventario</h2>
@@ -110,8 +110,8 @@
                 <form id="formInventario" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="hidden" id="invProductId">
                     <div>
-                        <label for="invFechaHora" class="form-label">Fecha y Hora:</label>
-                        <input type="text" id="invFechaHora" class="form-input bg-gray-100" readonly>
+                        <label for="invFechaHora" class="form-label">Fecha:</label>
+                        <input type="date" id="invFechaHora" class="form-input bg-gray-100" required>
                     </div>
                     <div>
                         <label for="invReferencia" class="form-label">Referencia:</label>
@@ -175,7 +175,7 @@
                     <table id="tablaInventario" class="min-w-full bg-white border border-gray-200 rounded-lg">
                         <thead>
                             <tr>
-                                <th class="px-4 py-2 border-b text-left">Fecha/Hora</th>
+                                <th class="px-4 py-2 border-b text-left">Fecha</th>
                                 <th class="px-4 py-2 border-b text-left">Referencia</th>
                                 <th class="px-4 py-2 border-b text-left">Color</th>
                                 <th class="px-4 py-2 border-b text-left">Cantidad</th>
@@ -207,8 +207,8 @@
                  <input type="hidden" id="facProductCentimetros">
                  <input type="hidden" id="facProductUnidades">
                  <div>
-                    <label for="facFechaHora" class="form-label">Fecha y Hora:</label>
-                    <input type="text" id="facFechaHora" class="form-input bg-gray-100" readonly>
+                    <label for="facFechaHora" class="form-label">Fecha:</label>
+                     <input type="date" id="facFechaHora" class="form-input bg-gray-100" required>
                 </div>
                 <div>
                     <label for="facCliente" class="form-label">Cliente:</label>
@@ -251,6 +251,33 @@
             </form>
 
             </div>
+
+        <div id="moduloVerFacturas" class="module card">
+            <h2 class="text-xl font-semibold mb-4">Facturas Emitidas</h2>
+
+            <div>
+                <h3 class="text-lg font-medium mb-3">Lista de Facturas</h3>
+                <div class="overflow-x-auto">
+                    <table id="tablaFacturas" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 border-b text-left">Fecha</th>
+                                <th class="px-4 py-2 border-b text-left">Cliente</th>
+                                <th class="px-4 py-2 border-b text-left">Producto</th>
+                                <th class="px-4 py-2 border-b text-left">Cantidad</th>
+                                <th class="px-4 py-2 border-b text-left">Valor Total</th>
+                                </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center py-4">Cargando facturas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                </div>
+        </div>
+
 
         <div id="moduloBuscarProducto" class="modal">
             <div class="modal-content">
@@ -297,8 +324,10 @@
         console.log('DEBUG: Obteniendo referencias a elementos del DOM...');
         const btnInventario = document.getElementById('btnInventario');
         const btnFacturacion = document.getElementById('btnFacturacion');
+        const btnVerFacturas = document.getElementById('btnVerFacturas');
         const moduloInventario = document.getElementById('moduloInventario');
         const moduloFacturacion = document.getElementById('moduloFacturacion');
+        const moduloVerFacturas = document.getElementById('moduloVerFacturas');
         const formInventario = document.getElementById('formInventario');
         const formInventarioTitle = document.getElementById('formInventarioTitle');
         const invProductId = document.getElementById('invProductId');
@@ -341,20 +370,15 @@
         const inputBuscarProducto = document.getElementById('inputBuscarProducto');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
         const statusMessage = document.getElementById('statusMessage');
+        const tablaFacturas = document.getElementById('tablaFacturas').querySelector('tbody');
 
         console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
         console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
+        console.log('DEBUG: btnVerFacturas al obtener referencia:', btnVerFacturas);
+        console.log('DEBUG: moduloVerFacturas al obtener referencia:', moduloVerFacturas);
 
 
         // --- Funciones de Utilidad ---
-
-        function getFechaHoraActual() {
-            const now = new Date();
-            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-            const formattedDateTime = now.toLocaleString('es-ES', options);
-            console.log('DEBUG: Fecha y Hora Generada (getFechaHoraActual):', formattedDateTime);
-            return formattedDateTime;
-        }
 
          function showStatusMessage(message, isError = false) {
              statusMessage.textContent = message;
@@ -374,35 +398,21 @@
              try {
                 moduloInventario.style.display = 'none';
                 moduloFacturacion.style.display = 'none';
+                moduloVerFacturas.style.display = 'none';
                 moduloBuscarProducto.style.display = 'none';
 
                 moduloAMostrar.style.display = 'block';
 
                 if (moduloAMostrar === moduloInventario) {
-                    console.log('DEBUG: Mostrando Módulo Inventario. Intentando asignar fecha/hora.');
-                    console.log('DEBUG: Elemento invFechaHora (dentro de mostrarModulo):', invFechaHora);
-                    if (invFechaHora) {
-                         const currentDateTime = getFechaHoraActual();
-                         console.log('DEBUG: Valor a asignar a invFechaHora:', currentDateTime);
-                         invFechaHora.value = currentDateTime;
-                         console.log('DEBUG: Valor de invFechaHora DESPUÉS de asignar:', invFechaHora.value);
-                    } else {
-                         console.error('DEBUG: Elemento invFechaHora no encontrado dentro de mostrarModulo!');
-                    }
+                    console.log('DEBUG: Mostrando Módulo Inventario.');
                     resetFormInventario();
                     cargarInventario();
                 } else if (moduloAMostrar === moduloFacturacion) {
-                    console.log('DEBUG: Mostrando Módulo Facturación. Intentando asignar fecha/hora.');
-                    console.log('DEBUG: Elemento facFechaHora (dentro de mostrarModulo):', facFechaHora);
-                    if (facFechaHora) {
-                         const currentDateTime = getFechaHoraActual();
-                         console.log('DEBUG: Valor a asignar a facFechaHora:', currentDateTime);
-                         facFechaHora.value = currentDateTime;
-                         console.log('DEBUG: Valor de facFechaHora DESPUÉS de asignar:', facFechaHora.value);
-                    } else {
-                         console.error('DEBUG: Elemento facFechaHora no encontrado dentro de mostrarModulo!');
-                    }
+                    console.log('DEBUG: Mostrando Módulo Facturación.');
                     resetFormFacturacion();
+                } else if (moduloAMostrar === moduloVerFacturas) {
+                     console.log('DEBUG: Mostrando Módulo Ver Facturas.');
+                     cargarFacturas();
                 }
              } catch (error) {
                  console.error("Error en mostrarModulo:", error);
@@ -464,6 +474,7 @@
              radioMetros.checked = false;
              radioUnidades.checked = false;
              handleUnidadMedida();
+             if(invFechaHora) invFechaHora.value = '';
          }
 
          function resetFormFacturacion() {
@@ -475,6 +486,7 @@
              facProductUnidades.value = '';
              detalleProductoFactura.classList.add('hidden');
              handleCamposDescuento('');
+             if(facFechaHora) facFechaHora.value = '';
          }
 
 
@@ -528,6 +540,47 @@
             });
         }
 
+        function cargarFacturas() {
+             tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">Cargando facturas...</td></tr>';
+
+             onSnapshot(facturasCol, (snapshot) => {
+                 tablaFacturas.innerHTML = '';
+
+                 if (snapshot.empty) {
+                     tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay facturas emitidas.</td></tr>';
+                     return;
+                 }
+
+                 snapshot.forEach((doc) => {
+                     const factura = doc.data();
+                     const row = tablaFacturas.insertRow();
+
+                     let cantidadFacturadaDisplay = '';
+                     if (factura.producto && factura.producto.unidadMedida === 'metros') {
+                          const metros = factura.producto.metrosFacturados || 0;
+                          const centimetros = factura.producto.centimetrosFacturados || 0;
+                          cantidadFacturadaDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                     } else if (factura.producto && factura.producto.unidadMedida === 'unidades') {
+                         cantidadFacturadaDisplay = `${factura.producto.unidadesFacturadas || 0} Unidades`;
+                     } else {
+                         cantidadFacturadaDisplay = 'N/A';
+                     }
+
+                     row.innerHTML = `
+                         <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
+                         <td class="px-4 py-2 border-b">${factura.cliente}</td>
+                         <td class="px-4 py-2 border-b">${factura.producto ? factura.producto.referencia + ' - ' + factura.producto.color : 'Producto Desconocido'}</td>
+                         <td class="px-4 py-2 border-b">${cantidadFacturadaDisplay}</td>
+                         <td class="px-4 py-2 border-b">${factura.valorTotal.toFixed(2)}</td>
+                     `;
+                 });
+             }, (error) => {
+                 console.error("Error cargando facturas:", error);
+                 tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>';
+                 showStatusMessage("Error al cargar facturas.", true);
+             });
+        }
+
 
         async function productoExiste(referencia, color, excludeId = null) {
             const q = query(inventarioCol, where("referencia", "==", referencia), where("color", "==", color));
@@ -545,11 +598,17 @@
             event.preventDefault();
 
             const id = invProductId.value;
-            const referencia = invReferencia.value.trim();
-            const color = invColor.value.trim();
+            const referencia = invReferencia.value.trim().toLowerCase();
+            const color = invColor.value.trim().toLowerCase();
             const valor = parseFloat(invValor.value);
             const proveedor = invProveedor.value.trim();
-            const fechaHora = invFechaHora.value;
+            const fechaHora = invFechaHora.value.trim(); // Obtener fecha/hora del campo de input
+
+            if (!fechaHora) {
+                 showStatusMessage("La fecha es obligatoria.", true);
+                 return;
+            }
+
 
             let unidad = '';
             let metros = 0;
@@ -587,7 +646,7 @@
              }
 
             const productoData = {
-                fechaHora: fechaHora,
+                fechaHora: fechaHora, // Usar fecha del campo de input
                 referencia: referencia,
                 color: color,
                 unidadMedida: unidad,
@@ -634,7 +693,7 @@
                  if (productSnap.exists()) {
                      const producto = productSnap.data();
                      invProductId.value = idProducto;
-                     invFechaHora.value = producto.fechaHora;
+                     invFechaHora.value = producto.fechaHora; // Cargar fecha guardada
                      invReferencia.value = producto.referencia;
                      invColor.value = producto.color;
                      invValor.value = producto.valor;
@@ -673,11 +732,11 @@
 
         // Función para buscar producto en Firebase para facturación
         async function buscarProductoParaFacturacion() {
-            console.log('DEBUG: Iniciando búsqueda de producto para facturación...'); // Log de inicio
+            console.log('DEBUG: Iniciando búsqueda de producto para facturación...');
             const searchTerm = inputBuscarProducto.value.toLowerCase().trim();
             resultadosBusqueda.innerHTML = '';
 
-            console.log('DEBUG: Término de búsqueda:', searchTerm); // Log del término de búsqueda
+            console.log('DEBUG: Término de búsqueda (en minúsculas):', searchTerm);
 
              if (searchTerm.length < 2) {
                  resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe al menos 2 caracteres para buscar.</p>';
@@ -686,22 +745,19 @@
              }
 
              try {
-                 // Buscar por Referencia o Color
-                 // Nota: Las consultas de rango en Firestore solo funcionan en un campo a la vez sin índices compuestos
-                 // Para búsquedas más complejas, considera usar una solución de búsqueda como Algolia o ElasticSearch
                  const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
                  const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
 
-                 console.log('DEBUG: Ejecutando consultas a Firestore...'); // Log antes de getDocs
+                 console.log('DEBUG: Ejecutando consultas a Firestore...');
                  const [snapshotRef, snapshotColor] = await Promise.all([getDocs(qRef), getDocs(qColor)]);
-                 console.log('DEBUG: Consultas ejecutadas. snapshotRef:', snapshotRef.docs.length, 'resultados. snapshotColor:', snapshotColor.docs.length, 'resultados.'); // Log después de getDocs
+                 console.log('DEBUG: Consultas ejecutadas. snapshotRef:', snapshotRef.docs.length, 'resultados. snapshotColor:', snapshotColor.docs.length, 'resultados.');
 
                  const resultados = new Map();
 
                  snapshotRef.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
                  snapshotColor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
 
-                 console.log('DEBUG: Total de resultados únicos encontrados:', resultados.size); // Log del total de resultados
+                 console.log('DEBUG: Total de resultados únicos encontrados:', resultados.size);
 
                  if (resultados.size === 0) {
                      resultadosBusqueda.innerHTML = '<p class="text-center py-2">No se encontraron productos.</p>';
@@ -726,17 +782,17 @@
                      resultadoDiv.onclick = () => seleccionarProductoParaFactura(producto);
                      resultadosBusqueda.appendChild(resultadoDiv);
                  });
-                 console.log('DEBUG: Resultados de búsqueda mostrados.'); // Log después de mostrar resultados
+                 console.log('DEBUG: Resultados de búsqueda mostrados.');
 
              } catch (error) {
-                 console.error("Error buscando producto:", error); // Log de error detallado
+                 console.error("Error buscando producto:", error);
                  resultadosBusqueda.innerHTML = '<p class="text-center py-2 text-red-500">Error buscando productos.</p>';
                  showStatusMessage("Error buscando productos.", true);
              }
         }
 
         function seleccionarProductoParaFactura(producto) {
-            console.log("DEBUG: Producto seleccionado para factura:", producto); // Log al seleccionar producto
+            console.log("DEBUG: Producto seleccionado para factura:", producto);
             moduloBuscarProducto.style.display = 'none';
 
             facProductId.value = producto.id;
@@ -751,7 +807,7 @@
             let cantidadDisplay = '';
             if (producto.unidadMedida === 'metros') {
                  const metros = producto.metros || 0;
-                 const centimetros = producto.centimetros || 0;
+                 const centimetros = producto.centimetros || 0; // Corregido aquí también por si acaso
                  cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
                  descMetros.max = metros;
                  descCentimetros.max = 99;
@@ -776,8 +832,14 @@
 
             const cliente = facCliente.value.trim();
             const valorTotal = parseFloat(facValor.value);
-            const fechaHora = facFechaHora.value;
+            const fechaHora = facFechaHora.value.trim(); // Obtener fecha del campo de input
             const productoId = facProductId.value;
+
+             if (!fechaHora) {
+                 showStatusMessage("La fecha es obligatoria.", true);
+                 return;
+            }
+
 
             if (!productoId) {
                  showStatusMessage("Debe seleccionar un producto del inventario.", true);
@@ -837,7 +899,7 @@
 
 
             const nuevaFactura = {
-                fechaHora: fechaHora,
+                fechaHora: fechaHora, // Usar fecha del campo de input
                 cliente: cliente,
                 producto: {
                     id: productoId,
@@ -888,6 +950,7 @@
         // --- Event Listeners ---
         btnInventario.addEventListener('click', () => mostrarModulo(moduloInventario));
         btnFacturacion.addEventListener('click', () => mostrarModulo(moduloFacturacion));
+        btnVerFacturas.addEventListener('click', () => mostrarModulo(moduloVerFacturas));
 
         radioMetros.addEventListener('change', handleUnidadMedida);
         radioUnidades.addEventListener('change', handleUnidadMedida);
