@@ -294,6 +294,7 @@
         const db = getFirestore(app); // Usaremos Firestore
 
         // --- Elementos del DOM ---
+        console.log('DEBUG: Obteniendo referencias a elementos del DOM...');
         const btnInventario = document.getElementById('btnInventario');
         const btnFacturacion = document.getElementById('btnFacturacion');
         const moduloInventario = document.getElementById('moduloInventario');
@@ -341,19 +342,20 @@
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
         const statusMessage = document.getElementById('statusMessage');
 
+        console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
+        console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
+
 
         // --- Funciones de Utilidad ---
 
-        // Función para obtener fecha y hora actual
         function getFechaHoraActual() {
             const now = new Date();
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
             const formattedDateTime = now.toLocaleString('es-ES', options);
-            console.log('DEBUG: Fecha y Hora Generada:', formattedDateTime);
+            console.log('DEBUG: Fecha y Hora Generada (getFechaHoraActual):', formattedDateTime);
             return formattedDateTime;
         }
 
-         // Función para mostrar mensajes de estado
          function showStatusMessage(message, isError = false) {
              statusMessage.textContent = message;
              statusMessage.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
@@ -364,43 +366,43 @@
              }
              setTimeout(() => {
                  statusMessage.classList.add('hidden');
-             }, 3000); // Ocultar después de 3 segundos
+             }, 3000);
          }
 
 
-        // Función para mostrar un módulo y ocultar los otros
         function mostrarModulo(moduloAMostrar) {
              try {
                 moduloInventario.style.display = 'none';
                 moduloFacturacion.style.display = 'none';
-                moduloBuscarProducto.style.display = 'none'; // Ocultar modal de búsqueda
+                moduloBuscarProducto.style.display = 'none';
 
                 moduloAMostrar.style.display = 'block';
 
-                // Actualizar fecha y hora al mostrar el módulo
                 if (moduloAMostrar === moduloInventario) {
                     console.log('DEBUG: Mostrando Módulo Inventario. Intentando asignar fecha/hora.');
+                    console.log('DEBUG: Elemento invFechaHora (dentro de mostrarModulo):', invFechaHora);
                     if (invFechaHora) {
                          const currentDateTime = getFechaHoraActual();
                          console.log('DEBUG: Valor a asignar a invFechaHora:', currentDateTime);
                          invFechaHora.value = currentDateTime;
                          console.log('DEBUG: Valor de invFechaHora DESPUÉS de asignar:', invFechaHora.value);
                     } else {
-                         console.error('DEBUG: Elemento invFechaHora no encontrado!');
+                         console.error('DEBUG: Elemento invFechaHora no encontrado dentro de mostrarModulo!');
                     }
-                    resetFormInventario(); // Limpiar y resetear formulario al cambiar de módulo
-                    cargarInventario(); // Cargar inventario al mostrar el módulo
+                    resetFormInventario();
+                    cargarInventario();
                 } else if (moduloAMostrar === moduloFacturacion) {
                     console.log('DEBUG: Mostrando Módulo Facturación. Intentando asignar fecha/hora.');
+                    console.log('DEBUG: Elemento facFechaHora (dentro de mostrarModulo):', facFechaHora);
                     if (facFechaHora) {
                          const currentDateTime = getFechaHoraActual();
                          console.log('DEBUG: Valor a asignar a facFechaHora:', currentDateTime);
                          facFechaHora.value = currentDateTime;
                          console.log('DEBUG: Valor de facFechaHora DESPUÉS de asignar:', facFechaHora.value);
                     } else {
-                         console.error('DEBUG: Elemento facFechaHora no encontrado!');
+                         console.error('DEBUG: Elemento facFechaHora no encontrado dentro de mostrarModulo!');
                     }
-                    resetFormFacturacion(); // Limpiar y resetear formulario de facturación
+                    resetFormFacturacion();
                 }
              } catch (error) {
                  console.error("Error en mostrarModulo:", error);
@@ -408,7 +410,6 @@
              }
         }
 
-        // Función para manejar la visibilidad de los campos de unidad de medida en inventario
         function handleUnidadMedida() {
             if (radioMetros.checked) {
                 camposMetros.classList.remove('hidden');
@@ -426,13 +427,10 @@
                  invMetros.value = 0;
                  invCentimetros.value = 0;
             }
-             // Asegurarse de que al menos una opción esté seleccionada al inicio si no hay value
              if (!radioMetros.checked && !radioUnidades.checked) {
-                 // Podrías seleccionar una por defecto o dejar que el 'required' de los radio buttons actúe
              }
         }
 
-         // Función para manejar la visibilidad de los campos de descuento en facturación
          function handleCamposDescuento(unidad) {
              camposDescuentoMetros.classList.add('hidden');
              camposDescuentoUnidades.classList.add('hidden');
@@ -456,20 +454,18 @@
              }
          }
 
-         // Función para resetear el formulario de inventario
          function resetFormInventario() {
              formInventario.reset();
-             invProductId.value = ''; // Limpiar ID del producto
+             invProductId.value = '';
              formInventarioTitle.textContent = 'Agregar Producto';
              btnCancelarEdicion.classList.add('hidden');
              camposMetros.classList.add('hidden');
              camposUnidades.classList.add('hidden');
              radioMetros.checked = false;
              radioUnidades.checked = false;
-             handleUnidadMedida(); // Aplicar visibilidad inicial
+             handleUnidadMedida();
          }
 
-         // Función para resetear el formulario de facturación
          function resetFormFacturacion() {
              formFacturacion.reset();
              facProductId.value = '';
@@ -478,24 +474,21 @@
              facProductCentimetros.value = '';
              facProductUnidades.value = '';
              detalleProductoFactura.classList.add('hidden');
-             handleCamposDescuento(''); // Ocultar campos de descuento
+             handleCamposDescuento('');
          }
 
 
         // --- Lógica de Firebase ---
 
-        // Colección de inventario en Firestore
         const inventarioCol = collection(db, "inventario");
-        // Colección de facturas en Firestore
         const facturasCol = collection(db, "facturas");
 
 
-        // Función para cargar inventario desde Firebase en tiempo real
         function cargarInventario() {
             tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4">Cargando inventario...</td></tr>';
 
             onSnapshot(inventarioCol, (snapshot) => {
-                tablaInventario.innerHTML = ''; // Limpiar tabla
+                tablaInventario.innerHTML = '';
 
                 if (snapshot.empty) {
                     tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4">No hay productos en el inventario.</td></tr>';
@@ -536,7 +529,6 @@
         }
 
 
-        // Función para verificar si un producto ya existe por Referencia y Color
         async function productoExiste(referencia, color, excludeId = null) {
             const q = query(inventarioCol, where("referencia", "==", referencia), where("color", "==", color));
             const snapshot = await getDocs(q);
@@ -549,7 +541,6 @@
         }
 
 
-        // Función para agregar/modificar producto en Firebase
         async function guardarProducto(event) {
             event.preventDefault();
 
@@ -623,7 +614,6 @@
             }
         }
 
-        // Función para eliminar producto en Firebase
         async function eliminarProducto(idProducto) {
             if (confirm("¿Estás seguro de eliminar este producto?")) {
                 try {
@@ -636,7 +626,6 @@
             }
         }
 
-        // Función para modificar producto (cargar datos en formulario)
         async function modificarProducto(idProducto) {
              try {
                  const productRef = doc(db, "inventario", idProducto);
@@ -674,39 +663,49 @@
              }
         }
 
-        // Exponer las funciones al ámbito global
         window.modificarProducto = modificarProducto;
         window.eliminarProducto = eliminarProducto;
 
 
-        // Función para exportar a Excel (Placeholder)
         function exportarAExcel() {
              showStatusMessage("Funcionalidad de Exportar a Excel pendiente.");
         }
 
         // Función para buscar producto en Firebase para facturación
         async function buscarProductoParaFacturacion() {
+            console.log('DEBUG: Iniciando búsqueda de producto para facturación...'); // Log de inicio
             const searchTerm = inputBuscarProducto.value.toLowerCase().trim();
             resultadosBusqueda.innerHTML = '';
 
+            console.log('DEBUG: Término de búsqueda:', searchTerm); // Log del término de búsqueda
+
              if (searchTerm.length < 2) {
                  resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe al menos 2 caracteres para buscar.</p>';
+                 console.log('DEBUG: Término de búsqueda demasiado corto.');
                  return;
              }
 
              try {
+                 // Buscar por Referencia o Color
+                 // Nota: Las consultas de rango en Firestore solo funcionan en un campo a la vez sin índices compuestos
+                 // Para búsquedas más complejas, considera usar una solución de búsqueda como Algolia o ElasticSearch
                  const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
                  const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
 
+                 console.log('DEBUG: Ejecutando consultas a Firestore...'); // Log antes de getDocs
                  const [snapshotRef, snapshotColor] = await Promise.all([getDocs(qRef), getDocs(qColor)]);
+                 console.log('DEBUG: Consultas ejecutadas. snapshotRef:', snapshotRef.docs.length, 'resultados. snapshotColor:', snapshotColor.docs.length, 'resultados.'); // Log después de getDocs
 
                  const resultados = new Map();
 
                  snapshotRef.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
                  snapshotColor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
 
+                 console.log('DEBUG: Total de resultados únicos encontrados:', resultados.size); // Log del total de resultados
+
                  if (resultados.size === 0) {
                      resultadosBusqueda.innerHTML = '<p class="text-center py-2">No se encontraron productos.</p>';
+                     console.log('DEBUG: No se encontraron productos.');
                      return;
                  }
 
@@ -727,17 +726,17 @@
                      resultadoDiv.onclick = () => seleccionarProductoParaFactura(producto);
                      resultadosBusqueda.appendChild(resultadoDiv);
                  });
+                 console.log('DEBUG: Resultados de búsqueda mostrados.'); // Log después de mostrar resultados
 
              } catch (error) {
-                 console.error("Error buscando producto:", error);
+                 console.error("Error buscando producto:", error); // Log de error detallado
                  resultadosBusqueda.innerHTML = '<p class="text-center py-2 text-red-500">Error buscando productos.</p>';
                  showStatusMessage("Error buscando productos.", true);
              }
         }
 
-        // Función para seleccionar producto y mostrar detalles en formulario de factura
         function seleccionarProductoParaFactura(producto) {
-            console.log("Producto seleccionado para factura:", producto);
+            console.log("DEBUG: Producto seleccionado para factura:", producto); // Log al seleccionar producto
             moduloBuscarProducto.style.display = 'none';
 
             facProductId.value = producto.id;
@@ -772,7 +771,6 @@
         }
 
 
-        // Función para crear factura y descontar inventario en Firebase
         async function crearFactura(event) {
             event.preventDefault();
 
@@ -930,6 +928,7 @@
 
              console.log('DEBUG: invFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('invFechaHora'));
              console.log('DEBUG: facFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('facFechaHora'));
+
 
              mostrarModulo(moduloInventario);
              handleUnidadMedida();
