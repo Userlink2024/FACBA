@@ -270,6 +270,8 @@
     </div>
 
     <script type="module">
+        console.log('DEBUG: Script module iniciado.');
+
         // Importar las funciones necesarias de Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         // import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js"; // Opcional si no usas Analytics
@@ -280,7 +282,7 @@
             apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
             authDomain: "lazapateria-ce24f.firebaseapp.com",
             projectId: "lazapateria-ce24f",
-            storageBucket: "lazapateria-ce24f.firebaseapp.com", // Corregido: .firebaseapp.com
+            storageBucket: "lazapateria-ce24f.firebaseapp.com",
             messagingSenderId: "642571845821",
             appId: "1:642571845821:web:45858a0abc0df728fd77d4",
             measurementId: "G-6JCF33H0K1" // Opcional
@@ -347,7 +349,7 @@
             const now = new Date();
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
             const formattedDateTime = now.toLocaleString('es-ES', options);
-            console.log('DEBUG: Fecha y Hora Generada:', formattedDateTime); // Log para depuración
+            console.log('DEBUG: Fecha y Hora Generada:', formattedDateTime);
             return formattedDateTime;
         }
 
@@ -371,35 +373,32 @@
              try {
                 moduloInventario.style.display = 'none';
                 moduloFacturacion.style.display = 'none';
-                // Ocultar también el módulo de búsqueda de producto si está abierto
-                moduloBuscarProducto.style.display = 'none';
+                moduloBuscarProducto.style.display = 'none'; // Ocultar modal de búsqueda
 
                 moduloAMostrar.style.display = 'block';
 
                 // Actualizar fecha y hora al mostrar el módulo
                 if (moduloAMostrar === moduloInventario) {
-                    console.log('DEBUG: Mostrando Módulo Inventario.');
-                    console.log('DEBUG: Elemento invFechaHora:', invFechaHora); // Log para depuración
-                    if (invFechaHora) { // Verificar si el elemento fue encontrado
+                    console.log('DEBUG: Mostrando Módulo Inventario. Intentando asignar fecha/hora.');
+                    if (invFechaHora) {
                          const currentDateTime = getFechaHoraActual();
-                         console.log('DEBUG: Valor a asignar a invFechaHora:', currentDateTime); // Log para depuración
+                         console.log('DEBUG: Valor a asignar a invFechaHora:', currentDateTime);
                          invFechaHora.value = currentDateTime;
-                         console.log('DEBUG: Valor de invFechaHora DESPUÉS de asignar:', invFechaHora.value); // Log para depuración
+                         console.log('DEBUG: Valor de invFechaHora DESPUÉS de asignar:', invFechaHora.value);
                     } else {
-                         console.error('DEBUG: Elemento invFechaHora no encontrado!'); // Error si el elemento no existe
+                         console.error('DEBUG: Elemento invFechaHora no encontrado!');
                     }
                     resetFormInventario(); // Limpiar y resetear formulario al cambiar de módulo
                     cargarInventario(); // Cargar inventario al mostrar el módulo
                 } else if (moduloAMostrar === moduloFacturacion) {
-                    console.log('DEBUG: Mostrando Módulo Facturación.');
-                    console.log('DEBUG: Elemento facFechaHora:', facFechaHora); // Log para depuración
-                    if (facFechaHora) { // Verificar si el elemento fue encontrado
+                    console.log('DEBUG: Mostrando Módulo Facturación. Intentando asignar fecha/hora.');
+                    if (facFechaHora) {
                          const currentDateTime = getFechaHoraActual();
-                         console.log('DEBUG: Valor a asignar a facFechaHora:', currentDateTime); // Log para depuración
+                         console.log('DEBUG: Valor a asignar a facFechaHora:', currentDateTime);
                          facFechaHora.value = currentDateTime;
-                         console.log('DEBUG: Valor de facFechaHora DESPUÉS de asignar:', facFechaHora.value); // Log para depuración
+                         console.log('DEBUG: Valor de facFechaHora DESPUÉS de asignar:', facFechaHora.value);
                     } else {
-                         console.error('DEBUG: Elemento facFechaHora no encontrado!'); // Error si el elemento no existe
+                         console.error('DEBUG: Elemento facFechaHora no encontrado!');
                     }
                     resetFormFacturacion(); // Limpiar y resetear formulario de facturación
                 }
@@ -417,7 +416,6 @@
                  invMetros.setAttribute('required', 'required');
                  invCentimetros.setAttribute('required', 'required');
                  invUnidades.removeAttribute('required');
-                 // Resetear valores al cambiar
                  invUnidades.value = 0;
             } else if (radioUnidades.checked) {
                 camposMetros.classList.add('hidden');
@@ -425,7 +423,6 @@
                  invUnidades.setAttribute('required', 'required');
                  invMetros.removeAttribute('required');
                  invCentimetros.removeAttribute('required');
-                 // Resetear valores al cambiar
                  invMetros.value = 0;
                  invCentimetros.value = 0;
             }
@@ -465,10 +462,8 @@
              invProductId.value = ''; // Limpiar ID del producto
              formInventarioTitle.textContent = 'Agregar Producto';
              btnCancelarEdicion.classList.add('hidden');
-             // Asegurarse de que los campos condicionales se reseteen visualmente
              camposMetros.classList.add('hidden');
              camposUnidades.classList.add('hidden');
-             // Resetear estado de los radio buttons (ninguno seleccionado visualmente)
              radioMetros.checked = false;
              radioUnidades.checked = false;
              handleUnidadMedida(); // Aplicar visibilidad inicial
@@ -511,10 +506,8 @@
                     const producto = doc.data();
                     const row = tablaInventario.insertRow();
 
-                    // Formatear la cantidad según la unidad de medida
                     let cantidadDisplay = '';
                     if (producto.unidadMedida === 'metros') {
-                         // Asegurarse de que metros y centimetros son números para mostrar .00 si es necesario
                          const metros = producto.metros || 0;
                          const centimetros = producto.centimetros || 0;
                          cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
@@ -530,8 +523,8 @@
                         <td class="px-4 py-2 border-b">${producto.valor.toFixed(2)}</td>
                         <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
                         <td class="px-4 py-2 border-b">
-                            <button class="btn btn-primary btn-sm mr-2" data-id="${doc.id}" onclick="modificarProducto('${doc.id}')">Modificar</button>
-                            <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="eliminarProducto('${doc.id}')">Eliminar</button>
+                            <button class="btn btn-primary btn-sm mr-2" data-id="${doc.id}" onclick="window.modificarProducto('${doc.id}')">Modificar</button>
+                            <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarProducto('${doc.id}')">Eliminar</button>
                         </td>
                     `;
                 });
@@ -549,10 +542,8 @@
             const snapshot = await getDocs(q);
 
             if (excludeId) {
-                 // Si estamos modificando, ignorar el documento actual
                  return snapshot.docs.some(doc => doc.id !== excludeId);
             } else {
-                 // Si estamos agregando, cualquier resultado significa que existe
                  return !snapshot.empty;
             }
         }
@@ -560,14 +551,14 @@
 
         // Función para agregar/modificar producto en Firebase
         async function guardarProducto(event) {
-            event.preventDefault(); // Prevenir recarga de la página
+            event.preventDefault();
 
-            const id = invProductId.value; // Si hay un ID, estamos modificando
+            const id = invProductId.value;
             const referencia = invReferencia.value.trim();
             const color = invColor.value.trim();
             const valor = parseFloat(invValor.value);
             const proveedor = invProveedor.value.trim();
-            const fechaHora = invFechaHora.value; // Fecha y hora ya está en el campo
+            const fechaHora = invFechaHora.value;
 
             let unidad = '';
             let metros = 0;
@@ -578,7 +569,6 @@
                 unidad = 'metros';
                 metros = parseInt(invMetros.value) || 0;
                 centimetros = parseInt(invCentimetros.value) || 0;
-                 // Validar que al menos metros o centímetros sea > 0
                  if (metros === 0 && centimetros === 0) {
                      showStatusMessage("La cantidad en metros o centímetros debe ser mayor a 0.", true);
                      return;
@@ -586,7 +576,6 @@
             } else if (radioUnidades.checked) {
                 unidad = 'unidades';
                 unidades = parseInt(invUnidades.value) || 0;
-                 // Validar que unidades sea > 0
                  if (unidades === 0) {
                      showStatusMessage("La cantidad en unidades debe ser mayor a 0.", true);
                      return;
@@ -596,18 +585,15 @@
                  return;
             }
 
-            // Verificar si el producto ya existe (solo al agregar)
             if (!id && await productoExiste(referencia, color)) {
                 showStatusMessage(`El producto con referencia "${referencia}" y color "${color}" ya existe.`, true);
                 return;
             }
 
-             // Verificar si el producto existe con otro ID al modificar
              if (id && await productoExiste(referencia, color, id)) {
                  showStatusMessage(`Ya existe otro producto con referencia "${referencia}" y color "${color}".`, true);
                  return;
              }
-
 
             const productoData = {
                 fechaHora: fechaHora,
@@ -623,17 +609,14 @@
 
             try {
                 if (id) {
-                    // Modificar producto existente
                     const productRef = doc(db, "inventario", id);
                     await updateDoc(productRef, productoData);
                     showStatusMessage("Producto actualizado con éxito!");
                 } else {
-                    // Agregar nuevo producto
                     await addDoc(inventarioCol, productoData);
                     showStatusMessage("Producto guardado con éxito!");
                 }
-                resetFormInventario(); // Limpiar formulario
-                 // La tabla se actualizará automáticamente si usas onSnapshot
+                resetFormInventario();
             } catch (e) {
                 console.error("Error al guardar el producto: ", e);
                 showStatusMessage("Error al guardar el producto.", true);
@@ -646,7 +629,6 @@
                 try {
                     await deleteDoc(doc(db, "inventario", idProducto));
                     showStatusMessage("Producto eliminado con éxito.");
-                     // La tabla se actualizará automáticamente si usas onSnapshot
                 } catch (error) {
                     console.error("Error al eliminar documento:", error);
                     showStatusMessage("Error al eliminar el producto.", true);
@@ -669,7 +651,6 @@
                      invValor.value = producto.valor;
                      invProveedor.value = producto.proveedor || '';
 
-                     // Seleccionar la unidad de medida correcta y llenar los campos
                      if (producto.unidadMedida === 'metros') {
                          radioMetros.checked = true;
                          invMetros.value = producto.metros || 0;
@@ -678,11 +659,10 @@
                          radioUnidades.checked = true;
                          invUnidades.value = producto.unidades || 0;
                      }
-                     handleUnidadMedida(); // Asegurarse de que los campos correctos se muestren
+                     handleUnidadMedida();
 
                      formInventarioTitle.textContent = 'Modificar Producto';
                      btnCancelarEdicion.classList.remove('hidden');
-                     // Desplazar al inicio del formulario si es necesario
                      formInventario.scrollIntoView({ behavior: 'smooth' });
 
                  } else {
@@ -694,39 +674,20 @@
              }
         }
 
+        // Exponer las funciones al ámbito global
+        window.modificarProducto = modificarProducto;
+        window.eliminarProducto = eliminarProducto;
+
+
         // Función para exportar a Excel (Placeholder)
         function exportarAExcel() {
              showStatusMessage("Funcionalidad de Exportar a Excel pendiente.");
-             // Implementación real requeriría una librería como SheetJS (xlsx) o similar
-             // Ejemplo básico (solo texto):
-             /*
-             let csvContent = "data:text/csv;charset=utf-8,";
-             const rows = tablaInventario.querySelectorAll("tr");
-             rows.forEach(function(row) {
-                 let rowData = [];
-                 row.querySelectorAll("th, td").forEach(function(cell) {
-                     // Excluir la columna de acciones
-                     if (cell.cellIndex < rows[0].cells.length - 1) {
-                          rowData.push(cell.textContent.trim());
-                     }
-                 });
-                 csvContent += rowData.join(";") + "\r\n"; // Usar ; como separador
-             });
-
-             const encodedUri = encodeURI(csvContent);
-             const link = document.createElement("a");
-             link.setAttribute("href", encodedUri);
-             link.setAttribute("download", "inventario.csv");
-             document.body.appendChild(link); // Required for FF
-             link.click(); // This will download the data file named "inventario.csv".
-             document.body.removeChild(link);
-             */
         }
 
         // Función para buscar producto en Firebase para facturación
         async function buscarProductoParaFacturacion() {
             const searchTerm = inputBuscarProducto.value.toLowerCase().trim();
-            resultadosBusqueda.innerHTML = ''; // Limpiar resultados
+            resultadosBusqueda.innerHTML = '';
 
              if (searchTerm.length < 2) {
                  resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe al menos 2 caracteres para buscar.</p>';
@@ -734,15 +695,12 @@
              }
 
              try {
-                 // Buscar por Referencia o Color (ejemplo simple, podrías necesitar índices compuestos)
-                 // Nota: Las consultas de rango en Firestore solo funcionan en un campo a la vez sin índices compuestos
-                 // Para búsquedas más complejas, considera usar una solución de búsqueda como Algolia o ElasticSearch
                  const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
                  const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
 
                  const [snapshotRef, snapshotColor] = await Promise.all([getDocs(qRef), getDocs(qColor)]);
 
-                 const resultados = new Map(); // Usar un mapa para evitar duplicados si coincide por ref y color
+                 const resultados = new Map();
 
                  snapshotRef.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
                  snapshotColor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
@@ -780,17 +738,14 @@
         // Función para seleccionar producto y mostrar detalles en formulario de factura
         function seleccionarProductoParaFactura(producto) {
             console.log("Producto seleccionado para factura:", producto);
-            // Cerrar el módulo de búsqueda
             moduloBuscarProducto.style.display = 'none';
 
-            // Llenar campos ocultos con datos del producto
             facProductId.value = producto.id;
             facProductUnit.value = producto.unidadMedida;
             facProductMetros.value = producto.metros || 0;
             facProductCentimetros.value = producto.centimetros || 0;
             facProductUnidades.value = producto.unidades || 0;
 
-            // Mostrar el detalle del producto seleccionado
             detalleProductoFactura.classList.remove('hidden');
             prodNombreFac.textContent = `${producto.referencia} - ${producto.color}`;
 
@@ -799,21 +754,16 @@
                  const metros = producto.metros || 0;
                  const centimetros = producto.centimetros || 0;
                  cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
-                 // Establecer límites máximos para los campos de descuento
                  descMetros.max = metros;
-                 descCentimetros.max = 99; // Centímetros siempre hasta 99
-                 // Lógica adicional si se descuentan más cm de los disponibles en el último metro
+                 descCentimetros.max = 99;
             } else if (producto.unidadMedida === 'unidades') {
                 cantidadDisplay = `${producto.unidades || 0} Unidades`;
-                 // Establecer límite máximo para las unidades a descontar
                  descUnidades.max = producto.unidades || 0;
             }
-            prodCantidadFac.textContent = cantidadDisplay; // Mostrar la cantidad disponible
+            prodCantidadFac.textContent = cantidadDisplay;
 
-            // Ocultar/mostrar campos de descuento según la unidad de medida
             handleCamposDescuento(producto.unidadMedida);
 
-            // Poner el foco en el primer campo de descuento
             if (producto.unidadMedida === 'metros') {
                  descMetros.focus();
             } else if (producto.unidadMedida === 'unidades') {
@@ -824,12 +774,12 @@
 
         // Función para crear factura y descontar inventario en Firebase
         async function crearFactura(event) {
-            event.preventDefault(); // Prevenir recarga de la página
+            event.preventDefault();
 
             const cliente = facCliente.value.trim();
             const valorTotal = parseFloat(facValor.value);
             const fechaHora = facFechaHora.value;
-            const productoId = facProductId.value; // ID del producto seleccionado
+            const productoId = facProductId.value;
 
             if (!productoId) {
                  showStatusMessage("Debe seleccionar un producto del inventario.", true);
@@ -846,7 +796,7 @@
             if (unidadMedida === 'metros') {
                  metrosADescontar = parseInt(descMetros.value) || 0;
                  centimetrosADescontar = parseInt(descCentimetros.value) || 0;
-                 cantidadADescontar = metrosADescontar + centimetrosADescontar / 100; // Convertir a un solo número para comparación
+                 cantidadADescontar = metrosADescontar + centimetrosADescontar / 100;
                  cantidadDisponible = (parseInt(facProductMetros.value) || 0) + (parseInt(facProductCentimetros.value) || 0) / 100;
 
                  if (cantidadADescontar <= 0) {
@@ -861,7 +811,7 @@
 
             } else if (unidadMedida === 'unidades') {
                 unidadesADescontar = parseInt(descUnidades.value) || 0;
-                cantidadADescontar = unidadesADescontar; // Para comparación
+                cantidadADescontar = unidadesADescontar;
                 cantidadDisponible = parseInt(facProductUnidades.value) || 0;
 
                  if (cantidadADescontar <= 0) {
@@ -878,7 +828,6 @@
                  return;
             }
 
-            // Obtener el producto actual para incluir sus detalles en la factura
             const productRef = doc(db, "inventario", productoId);
             const productSnap = await getDoc(productRef);
             const productoFacturado = productSnap.exists() ? productSnap.data() : null;
@@ -892,26 +841,24 @@
             const nuevaFactura = {
                 fechaHora: fechaHora,
                 cliente: cliente,
-                producto: { // Guardar detalles del producto facturado
+                producto: {
                     id: productoId,
                     referencia: productoFacturado.referencia,
                     color: productoFacturado.color,
                     unidadMedida: unidadMedida,
-                    cantidadFacturada: cantidadADescontar, // Cantidad total facturada (ej. 10.50 o 50)
+                    cantidadFacturada: cantidadADescontar,
                     metrosFacturados: unidadMedida === 'metros' ? metrosADescontar : 0,
                     centimetrosFacturados: unidadMedida === 'metros' ? centimetrosADescontar : 0,
                     unidadesFacturadas: unidadMedida === 'unidades' ? unidadesADescontar : 0,
-                    valorUnitario: productoFacturado.valor // Valor por unidad/metro
+                    valorUnitario: productoFacturado.valor
                 },
                 valorTotal: valorTotal
             };
 
             try {
-                // 1. Guardar la factura
                 await addDoc(facturasCol, nuevaFactura);
                 console.log("Factura creada con éxito.");
 
-                // 2. Descontar la cantidad del inventario
                 let nuevaCantidadEnInventario;
                 if (unidadMedida === 'metros') {
                      let totalCmDisponible = (parseInt(facProductMetros.value) || 0) * 100 + (parseInt(facProductCentimetros.value) || 0);
@@ -932,8 +879,7 @@
                 console.log("Inventario actualizado con éxito.");
 
                 showStatusMessage("Factura creada y inventario actualizado con éxito!");
-                resetFormFacturacion(); // Limpiar formulario de factura
-                 // El inventario se actualizará automáticamente en la tabla gracias a onSnapshot
+                resetFormFacturacion();
             } catch (e) {
                 console.error("Error al crear factura o actualizar inventario: ", e);
                 showStatusMessage("Error al crear la factura.", true);
@@ -945,63 +891,58 @@
         btnInventario.addEventListener('click', () => mostrarModulo(moduloInventario));
         btnFacturacion.addEventListener('click', () => mostrarModulo(moduloFacturacion));
 
-        // Event listeners para los radio buttons de unidad de medida en inventario
         radioMetros.addEventListener('change', handleUnidadMedida);
         radioUnidades.addEventListener('change', handleUnidadMedida);
 
-        // Event listener para el formulario de inventario (para guardar)
         formInventario.addEventListener('submit', guardarProducto);
 
-         // Event listener para cancelar edición en inventario
-         btnCancelarEdicion.addEventListener('click', resetFormInventario);
+        btnCancelarEdicion.addEventListener('click', resetFormInventario);
 
-
-        // Event listener para el botón de exportar (Placeholder)
         btnExportar.addEventListener('click', exportarAExcel);
 
-        // Event listener para abrir el módulo de búsqueda de producto
         btnBuscarProducto.addEventListener('click', () => {
             moduloBuscarProducto.style.display = 'block';
-             inputBuscarProducto.value = ''; // Limpiar campo de búsqueda
-             resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe para buscar...</p>'; // Resetear resultados
-             inputBuscarProducto.focus(); // Poner el foco en el campo de búsqueda
+             inputBuscarProducto.value = '';
+             resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe para buscar...</p>';
+             inputBuscarProducto.focus();
         });
 
-        // Event listener para cerrar el módulo de búsqueda de producto
         cerrarBuscarProducto.addEventListener('click', () => {
             moduloBuscarProducto.style.display = 'none';
         });
 
-         // Cerrar modal haciendo clic fuera del contenido
          window.addEventListener('click', (event) => {
              if (event.target === moduloBuscarProducto) {
                  moduloBuscarProducto.style.display = 'none';
              }
          });
 
-
-        // Event listener para buscar mientras se escribe en el campo de búsqueda
         inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
 
-        // Event listener para el formulario de facturación (para crear factura)
         formFacturacion.addEventListener('submit', crearFactura);
 
 
         // --- Inicialización ---
-        // Mostrar el módulo de inventario por defecto al cargar la página
-        // Asegurarse de que el DOM esté completamente cargado antes de mostrar el módulo inicial
+        console.log('DEBUG: Añadiendo listener para DOMContentLoaded.');
+
         document.addEventListener('DOMContentLoaded', () => {
-             console.log('DEBUG: DOM completamente cargado. Iniciando...'); // Log de inicio
-             // Verificar si los elementos de fecha existen al cargar
-             console.log('DEBUG: invFechaHora al cargar:', document.getElementById('invFechaHora'));
-             console.log('DEBUG: facFechaHora al cargar:', document.getElementById('facFechaHora'));
+             console.log('DEBUG: DOMContentLoaded disparado. Iniciando...');
+
+             console.log('DEBUG: invFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('invFechaHora'));
+             console.log('DEBUG: facFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('facFechaHora'));
 
              mostrarModulo(moduloInventario);
-             // Asegurarse de que los campos condicionales estén ocultos al inicio
-             handleUnidadMedida(); // Para inventario
-             handleCamposDescuento(''); // Para facturación (ocultar todo al inicio)
+             handleUnidadMedida();
+             handleCamposDescuento('');
+
+             console.log('DEBUG: Inicialización completada.');
         });
 
+         if (document.readyState === 'loading') {
+             console.log('DEBUG: document.readyState es "loading". Esperando DOMContentLoaded.');
+         } else {
+              console.log('DEBUG: document.readyState NO es "loading" (es "' + document.readyState + '"). DOM probablemente ya cargado.');
+         }
 
     </script>
 
