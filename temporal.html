@@ -171,6 +171,10 @@
 
             <div>
                 <h3 class="text-lg font-medium mb-3">Lista de Inventario</h3>
+                <div class="mb-4">
+                    <label for="inputBuscarInventario" class="form-label">Buscar en Inventario:</label>
+                    <input type="text" id="inputBuscarInventario" class="form-input" placeholder="Buscar por Referencia o Color...">
+                </div>
                 <div class="overflow-x-auto">
                     <table id="tablaInventario" class="min-w-full bg-white border border-gray-200 rounded-lg">
                         <thead>
@@ -192,7 +196,7 @@
                     </table>
                 </div>
                 <div class="mt-4 flex justify-end space-x-2">
-                    <button id="btnExportar" class="btn btn-primary">Exportar a Excel</button>
+                    <button id="btnExportarInventario" class="btn btn-primary">Exportar Inventario</button>
                 </div>
             </div>
         </div>
@@ -266,16 +270,17 @@
                                 <th class="px-4 py-2 border-b text-left">Producto</th>
                                 <th class="px-4 py-2 border-b text-left">Cantidad</th>
                                 <th class="px-4 py-2 border-b text-left">Valor Total</th>
-                                </tr>
+                                <th class="px-4 py-2 border-b text-left">Acciones</th> </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="5" class="text-center py-4">Cargando facturas...</td>
-                            </tr>
+                                <td colspan="6" class="text-center py-4">Cargando facturas...</td> </tr>
                         </tbody>
                     </table>
                 </div>
-                </div>
+                 <div class="mt-4 flex justify-end space-x-2">
+                    <button id="btnExportarFacturas" class="btn btn-primary">Exportar Facturas</button> </div>
+            </div>
         </div>
 
 
@@ -345,7 +350,8 @@
         const invProveedor = document.getElementById('invProveedor');
         const btnCancelarEdicion = document.getElementById('btnCancelarEdicion');
         const tablaInventario = document.getElementById('tablaInventario').querySelector('tbody');
-        const btnExportar = document.getElementById('btnExportar');
+        const inputBuscarInventario = document.getElementById('inputBuscarInventario'); // Nuevo input de búsqueda de inventario
+        const btnExportarInventario = document.getElementById('btnExportarInventario');
         const formFacturacion = document.getElementById('formFacturacion');
         const facFechaHora = document.getElementById('facFechaHora');
         const facCliente = document.getElementById('facCliente');
@@ -371,11 +377,15 @@
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
         const statusMessage = document.getElementById('statusMessage');
         const tablaFacturas = document.getElementById('tablaFacturas').querySelector('tbody');
+        const btnExportarFacturas = document.getElementById('btnExportarFacturas');
+
 
         console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
         console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
         console.log('DEBUG: btnVerFacturas al obtener referencia:', btnVerFacturas);
         console.log('DEBUG: moduloVerFacturas al obtener referencia:', moduloVerFacturas);
+        console.log('DEBUG: btnExportarFacturas al obtener referencia:', btnExportarFacturas);
+        console.log('DEBUG: inputBuscarInventario al obtener referencia:', inputBuscarInventario);
 
 
         // --- Funciones de Utilidad ---
@@ -475,6 +485,8 @@
              radioUnidades.checked = false;
              handleUnidadMedida();
              if(invFechaHora) invFechaHora.value = '';
+             if(inputBuscarInventario) inputBuscarInventario.value = ''; // Limpiar búsqueda al resetear
+             filtrarInventario(); // Aplicar filtro vacío
          }
 
          function resetFormFacturacion() {
@@ -496,6 +508,7 @@
         const facturasCol = collection(db, "facturas");
 
 
+        // Función para cargar inventario desde Firebase en tiempo real
         function cargarInventario() {
             tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4">Cargando inventario...</td></tr>';
 
@@ -510,6 +523,7 @@
                 snapshot.forEach((doc) => {
                     const producto = doc.data();
                     const row = tablaInventario.insertRow();
+                    row.dataset.id = doc.id; // Guardar ID en la fila para filtrado
 
                     let cantidadDisplay = '';
                     if (producto.unidadMedida === 'metros') {
@@ -525,14 +539,18 @@
                         <td class="px-4 py-2 border-b">${producto.referencia}</td>
                         <td class="px-4 py-2 border-b">${producto.color}</td>
                         <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
-                        <td class="px-4 py-2 border-b">${producto.valor.toFixed(2)}</td>
+                        <td class="px-4 py-2 border-b">${producto.valor}</td>
                         <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
                         <td class="px-4 py-2 border-b">
                             <button class="btn btn-primary btn-sm mr-2" data-id="${doc.id}" onclick="window.modificarProducto('${doc.id}')">Modificar</button>
                             <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarProducto('${doc.id}')">Eliminar</button>
                         </td>
                     `;
+                     // Guardar cantidadDisplay en el objeto producto para usarlo si se modifica
+                     producto.cantidadDisplay = cantidadDisplay;
                 });
+
+                 filtrarInventario(); // Aplicar el filtro inicial después de cargar
             }, (error) => {
                 console.error("Error cargando inventario:", error);
                 tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Error al cargar inventario.</td></tr>';
@@ -540,14 +558,38 @@
             });
         }
 
+        // Función para filtrar la tabla de inventario
+        function filtrarInventario() {
+            const searchTerm = inputBuscarInventario.value.toLowerCase().trim();
+            const rows = tablaInventario.querySelectorAll("tr");
+
+            rows.forEach(row => {
+                // Saltar la fila de "Cargando inventario..." o "No hay productos..."
+                if (row.querySelector('td[colspan="7"]')) {
+                    return;
+                }
+
+                const referencia = row.cells[1].textContent.toLowerCase(); // Columna Referencia
+                const color = row.cells[2].textContent.toLowerCase();      // Columna Color
+
+                if (referencia.includes(searchTerm) || color.includes(searchTerm)) {
+                    row.style.display = ''; // Mostrar fila si coincide
+                } else {
+                    row.style.display = 'none'; // Ocultar fila si no coincide
+                }
+            });
+        }
+
+
+        // Función para cargar facturas desde Firebase en tiempo real
         function cargarFacturas() {
-             tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">Cargando facturas...</td></tr>';
+             tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
 
              onSnapshot(facturasCol, (snapshot) => {
-                 tablaFacturas.innerHTML = '';
+                 tablaFacturas.innerHTML = ''; // Limpiar tabla
 
                  if (snapshot.empty) {
-                     tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay facturas emitidas.</td></tr>';
+                     tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
                      return;
                  }
 
@@ -571,14 +613,76 @@
                          <td class="px-4 py-2 border-b">${factura.cliente}</td>
                          <td class="px-4 py-2 border-b">${factura.producto ? factura.producto.referencia + ' - ' + factura.producto.color : 'Producto Desconocido'}</td>
                          <td class="px-4 py-2 border-b">${cantidadFacturadaDisplay}</td>
-                         <td class="px-4 py-2 border-b">${factura.valorTotal.toFixed(2)}</td>
+                         <td class="px-4 py-2 border-b">${factura.valorTotal}</td>
+                         <td class="px-4 py-2 border-b">
+                             <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>
+                         </td>
                      `;
                  });
              }, (error) => {
                  console.error("Error cargando facturas:", error);
-                 tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>';
+                 tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
                  showStatusMessage("Error al cargar facturas.", true);
              });
+        }
+
+        // Función para eliminar factura en Firebase
+        async function eliminarFactura(idFactura) {
+            if (confirm("¿Estás seguro de eliminar esta factura?")) {
+                try {
+                    await deleteDoc(doc(db, "facturas", idFactura));
+                    showStatusMessage("Factura eliminada con éxito.");
+                } catch (error) {
+                    console.error("Error al eliminar factura:", error);
+                    showStatusMessage("Error al eliminar la factura.", true);
+                }
+            }
+        }
+
+        // Exponer la función al ámbito global
+        window.eliminarFactura = eliminarFactura;
+
+
+        // Función para exportar facturas a Excel (CSV)
+        function exportarFacturasAExcel() {
+            console.log('DEBUG: Iniciando exportación de facturas a Excel.');
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            // Encabezados del CSV
+            const headers = ["Fecha", "Cliente", "Producto", "Cantidad", "Valor Total"];
+            csvContent += headers.join(";") + "\r\n"; // Usar ; como separador
+
+            // Datos de la tabla
+            const rows = tablaFacturas.querySelectorAll("tr");
+
+            rows.forEach(function(row) {
+                // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
+                if (row.querySelector('td[colspan="6"]')) { // Ajustar colspan
+                    return;
+                }
+
+                let rowData = [];
+                // Seleccionar solo las celdas de datos (excluir encabezados si se ejecuta después de cargar)
+                row.querySelectorAll("td").forEach(function(cell, index) {
+                     // Excluir la última celda que contiene el botón de eliminar
+                     if (index < row.cells.length - 1) {
+                        rowData.push(cell.textContent.trim());
+                     }
+                });
+                csvContent += rowData.join(";") + "\r\n";
+            });
+
+            // Crear enlace de descarga
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "facturas.csv");
+            document.body.appendChild(link); // Requerido para algunos navegadores como Firefox
+            link.click(); // Simular clic para descargar
+            document.body.removeChild(link); // Limpiar el enlace
+
+            showStatusMessage("Facturas exportadas a facturas.csv");
+            console.log('DEBUG: Exportación de facturas completada.');
         }
 
 
@@ -602,7 +706,7 @@
             const color = invColor.value.trim().toLowerCase();
             const valor = parseFloat(invValor.value);
             const proveedor = invProveedor.value.trim();
-            const fechaHora = invFechaHora.value.trim(); // Obtener fecha/hora del campo de input
+            const fechaHora = invFechaHora.value.trim();
 
             if (!fechaHora) {
                  showStatusMessage("La fecha es obligatoria.", true);
@@ -646,7 +750,7 @@
              }
 
             const productoData = {
-                fechaHora: fechaHora, // Usar fecha del campo de input
+                fechaHora: fechaHora,
                 referencia: referencia,
                 color: color,
                 unidadMedida: unidad,
@@ -693,7 +797,7 @@
                  if (productSnap.exists()) {
                      const producto = productSnap.data();
                      invProductId.value = idProducto;
-                     invFechaHora.value = producto.fechaHora; // Cargar fecha guardada
+                     invFechaHora.value = producto.fechaHora;
                      invReferencia.value = producto.referencia;
                      invColor.value = producto.color;
                      invValor.value = producto.valor;
@@ -726,9 +830,11 @@
         window.eliminarProducto = eliminarProducto;
 
 
-        function exportarAExcel() {
-             showStatusMessage("Funcionalidad de Exportar a Excel pendiente.");
+        function exportarInventarioAExcel() {
+             showStatusMessage("Funcionalidad de Exportar Inventario a Excel pendiente.");
+             // Implementación real requeriría una librería como SheetJS (xlsx) o similar
         }
+
 
         // Función para buscar producto en Firebase para facturación
         async function buscarProductoParaFacturacion() {
@@ -749,8 +855,16 @@
                  const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
 
                  console.log('DEBUG: Ejecutando consultas a Firestore...');
+                 console.log('DEBUG: Consulta Referencia:', qRef);
+                 console.log('DEBUG: Consulta Color:', qColor);
+
+
                  const [snapshotRef, snapshotColor] = await Promise.all([getDocs(qRef), getDocs(qColor)]);
+
                  console.log('DEBUG: Consultas ejecutadas. snapshotRef:', snapshotRef.docs.length, 'resultados. snapshotColor:', snapshotColor.docs.length, 'resultados.');
+                 console.log('DEBUG: Documentos de snapshotRef:', snapshotRef.docs.map(doc => doc.data()));
+                 console.log('DEBUG: Documentos de snapshotColor:', snapshotColor.docs.map(doc => doc.data()));
+
 
                  const resultados = new Map();
 
@@ -758,6 +872,8 @@
                  snapshotColor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
 
                  console.log('DEBUG: Total de resultados únicos encontrados:', resultados.size);
+                 console.log('DEBUG: Resultados combinados:', Array.from(resultados.values()));
+
 
                  if (resultados.size === 0) {
                      resultadosBusqueda.innerHTML = '<p class="text-center py-2">No se encontraron productos.</p>';
@@ -807,7 +923,7 @@
             let cantidadDisplay = '';
             if (producto.unidadMedida === 'metros') {
                  const metros = producto.metros || 0;
-                 const centimetros = producto.centimetros || 0; // Corregido aquí también por si acaso
+                 const centimetros = producto.centimetros || 0;
                  cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
                  descMetros.max = metros;
                  descCentimetros.max = 99;
@@ -832,7 +948,7 @@
 
             const cliente = facCliente.value.trim();
             const valorTotal = parseFloat(facValor.value);
-            const fechaHora = facFechaHora.value.trim(); // Obtener fecha del campo de input
+            const fechaHora = facFechaHora.value.trim();
             const productoId = facProductId.value;
 
              if (!fechaHora) {
@@ -899,7 +1015,7 @@
 
 
             const nuevaFactura = {
-                fechaHora: fechaHora, // Usar fecha del campo de input
+                fechaHora: fechaHora,
                 cliente: cliente,
                 producto: {
                     id: productoId,
@@ -959,7 +1075,9 @@
 
         btnCancelarEdicion.addEventListener('click', resetFormInventario);
 
-        btnExportar.addEventListener('click', exportarAExcel);
+        btnExportarInventario.addEventListener('click', exportarInventarioAExcel);
+        btnExportarFacturas.addEventListener('click', exportarFacturasAExcel);
+
 
         btnBuscarProducto.addEventListener('click', () => {
             moduloBuscarProducto.style.display = 'block';
@@ -979,6 +1097,8 @@
          });
 
         inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
+        inputBuscarInventario.addEventListener('input', filtrarInventario); // Event listener para filtrar inventario
+
 
         formFacturacion.addEventListener('submit', crearFactura);
 
