@@ -8,22 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-    <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M", // Reemplaza con tu API Key de Firebase
-            authDomain: "lazapateria-ce24f.firebaseapp.com",
-            projectId: "lazapateria-ce24f",
-            storageBucket: "lazapateria-ce24f.appspot.com",
-            messagingSenderId: "642571845821",
-            appId: "1:642571845821:web:45858a0abc0df728fd77d4",
-            measurementId: "G-6JCF33H0K1"
-        };
-
-        // Inicializar Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore(app);
-    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -495,6 +479,21 @@
     </div>
 
     <script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
+            authDomain: "lazapateria-ce24f.firebaseapp.com",
+            projectId: "lazapateria-ce24f",
+            storageBucket: "lazapateria-ce24f.appspot.com",
+            messagingSenderId: "642571845821",
+            appId: "1:642571845821:web:45858a0abc0df728fd77d4",
+            measurementId: "G-6JCF33H0K1"
+        };
+
+        // Inicializar Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app);
+
         const inventarioSection = document.getElementById('modulo-inventario');
         const facturacionSection = document.getElementById('modulo-facturacion');
         const cancelarInventarioBtn = document.getElementById('cancelar-inventario');
@@ -629,7 +628,7 @@
             }
 
             if (!proveedorProducto) {
-                showError('proveedor-producto-error', 'Por favor, ingrese el proveedor del producto.');
+                showError('proveedor-producto-error', 'Por favor,ingrese el proveedor del producto.');
                 isValid = false;
             }
 
