@@ -3,1014 +3,967 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Inventarios y Facturación</title>
+    <title>Inventario y Facturación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore.js"></script>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f9fafb;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            background-color: #f3f4f6; /* Fondo gris claro */
         }
-
-        .container {
-            max-width: 1200px;
-            width: 95%;
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            margin-top: 20px;
-            margin-bottom: 20px;
+        .module {
+            display: none; /* Ocultar módulos por defecto */
         }
-
-        h1, h2 {
-            color: #1e293b;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            margin-top: 30px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-size: 0.875rem;
-            color: #4b5563;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        input[type="text"],
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            outline: none;
-            font-size: 1rem;
-            transition: border-color 0.2s ease;
-        }
-
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        select:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .radio-group label {
-            margin-bottom: 0;
-            font-weight: normal;
-        }
-
-        .radio-group input[type="radio"] {
-            margin-right: 8px;
-        }
-
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 30px;
-        }
-
-        button {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-        }
-
-        button.primary {
-            background-color: #3b82f6;
-            color: #ffffff;
-        }
-
-        button.primary:hover {
-            background-color: #2563eb;
-            transform: translateY(-2px);
-        }
-
-        button.secondary {
-            background-color: #e5e7eb;
-            color: #374151;
-            margin-right: 10px;
-        }
-
-        button.secondary:hover {
-            background-color: #d1d5db;
-            transform: translateY(-2px);
-        }
-
-        #metros-centimetros-inputs {
-            display: flex;
-            gap: 20px;
-            margin-top: 10px;
-        }
-
-        #metros-centimetros-inputs input {
-            width: 48%;
-        }
-
-        .error-message {
-            color: #dc2626;
-            font-size: 0.875rem;
-            margin-top: 8px;
-        }
-
-        #buscar-producto-modal {
-            display: none;
-            position: fixed;
-            z-index: 10;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-        }
-
-        #buscar-producto-modal-content {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 800px;
-            position: relative;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        #buscar-producto-modal-content h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        #lista-productos-modal {
-            list-style: none;
-            padding: 0;
-            margin-bottom: 20px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        #lista-productos-modal li {
-            padding: 15px;
-            border-bottom: 1px solid #e5e7eb;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            border-radius: 6px;
-        }
-
-        #lista-productos-modal li:hover {
-            background-color: #f0f0f0;
-        }
-
-        #lista-productos-modal li:last-child {
-            border-bottom: none;
-        }
-
-        .modal-form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .modal-form-actions button {
+        .btn {
             padding: 10px 20px;
-        }
-
-        .selected-product {
-            background-color: #f0fdf4;
-            border: 1px solid #34d399;
-            color: #065f46;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .selected-product-info {
-            margin-right: 10px;
-        }
-
-        #cerrar-modal {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #6b7280;
-            transition: color 0.2s ease;
-        }
-
-        #cerrar-modal:hover {
-            color: #1f2937;
-        }
-
-        .menu-buttons {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-            gap: 10px;
-        }
-
-        .menu-buttons button {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
+            border-radius: 8px;
             font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer; /* Añadir cursor pointer */
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* Azul */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* Azul más oscuro al pasar el ratón */
+        }
+         .btn-danger {
+            background-color: #ef4444; /* Rojo */
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626; /* Rojo más oscuro al pasar el ratón */
+        }
+         .btn-sm {
+             padding: 5px 10px; /* Padding más pequeño para botones en tabla */
+             font-size: 0.875rem; /* Tamaño de fuente más pequeño */
+         }
+        .form-input {
+            padding: 8px;
+            border: 1px solid #d1d5db; /* Gris */
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box; /* Incluir padding y borde en el ancho */
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .modal {
+             display: none; /* Ocultar modal por defecto */
+             position: fixed; /* Posición fija */
+             z-index: 1000; /* Estar por encima de otros elementos */
+             left: 0;
+             top: 0;
+             width: 100%; /* Ancho completo */
+             height: 100%; /* Alto completo */
+             overflow: auto; /* Habilitar scroll si es necesario */
+             background-color: rgba(0, 0, 0, 0.4); /* Fondo oscuro semi-transparente */
+        }
+        .modal-content {
+             background-color: #fefefe;
+             margin: 15% auto; /* 15% desde arriba y centrado horizontalmente */
+             padding: 20px;
+             border: 1px solid #888;
+             width: 80%; /* Podrías ajustar esto */
+             max-width: 500px; /* Ancho máximo */
+             border-radius: 8px;
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
             cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-        }
-
-        .menu-buttons button.primary {
-            background-color: #3b82f6;
-            color: #ffffff;
-        }
-
-        .menu-buttons button.primary:hover {
-            background-color: #2563eb;
-            transform: translateY(-2px);
-        }
-
-        .menu-buttons button.secondary {
-            background-color: #e5e7eb;
-            color: #374151;
-        }
-
-        .menu-buttons button.secondary:hover {
-            background-color: #d1d5db;
-            transform: translateY(-2px);
-        }
-
-        #inventario-general {
-            margin-top: 30px;
-        }
-
-        #inventario-general h3 {
-            color: #1e293b;
-            margin-bottom: 20px;
-            text-align: left;
-            font-size: 1.25rem;
-        }
-
-        #lista-inventario {
-            list-style: none;
-            padding: 0;
-            margin-bottom: 20px;
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-        }
-
-        #lista-inventario li {
-            padding: 15px;
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s ease;
-            border-radius: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        #lista-inventario li:hover {
-            background-color: #f0f0f0;
-        }
-
-        #lista-inventario li:last-child {
-            border-bottom: none;
-        }
-
-        .inventario-acciones {
-            display: flex;
-            gap: 10px;
-        }
-
-        .inventario-acciones button {
-            padding: 8px 12px;
-            font-size: 0.875rem;
-        }
-
-        .inventario-acciones button.modificar {
-            background-color: #3b82f6;
-            color: #ffffff;
-        }
-
-        .inventario-acciones button.modificar:hover {
-            background-color: #2563eb;
-        }
-
-        .inventario-acciones button.eliminar {
-            background-color: #dc2626;
-            color: #ffffff;
-        }
-
-        .inventario-acciones button.eliminar:hover {
-            background-color: #b91c1c;
-        }
-
-        .inventario-acciones button.exportar {
-            background-color: #10b981;
-            color: #ffffff;
-        }
-
-        .inventario-acciones button.exportar:hover {
-            background-color: #059669;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Sistema de Inventarios y Facturación</h1>
+<body class="p-4">
 
-        <div class="menu-buttons">
-            <button class="primary" id="ver-inventario-btn">Ver Inventario</button>
-            <button class="primary" id="modulo-facturacion-btn">Facturación</button>
+    <div class="container mx-auto">
+        <h1 class="text-2xl font-bold text-center mb-6">Sistema de Inventario y Facturación</h1>
+
+        <div class="flex justify-center space-x-4 mb-8">
+            <button id="btnInventario" class="btn btn-primary">Ver Inventarios</button>
+            <button id="btnFacturacion" class="btn btn-primary">Abrir Módulo Facturación</button>
         </div>
 
-        <section id="modulo-inventario" style="display: none;">
-            <h2>Módulo de Inventario</h2>
-            <form id="form-nuevo-producto">
-                <div class="form-group">
-                    <label for="fecha-hora-inventario">Fecha y Hora:</label>
-                    <input type="text" id="fecha-hora-inventario" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="referencia-producto">Referencia:</label>
-                    <input type="text" id="referencia-producto" required>
-                    <div id="referencia-producto-error" class="error-message"></div>
-                </div>
-                <div class="form-group">
-                    <label for="color-producto">Color:</label>
-                    <input type="text" id="color-producto" required>
-                    <div id="color-producto-error" class="error-message"></div>
-                </div>
-                <div class="form-group">
-                    <label>Unidad de Medida:</label>
-                    <div class="radio-group">
-                        <input type="radio" id="unidad-metros" name="unidad-medida" value="metros" required>
-                        <label for="unidad-metros">Metros con Centímetros</label>
-                        <input type="radio" id="unidad-unidades" name="unidad-medida" value="unidades" required>
-                        <label for="unidad-unidades">Unidades</label>
+        <div id="moduloInventario" class="module card">
+            <h2 class="text-xl font-semibold mb-4">Gestión de Inventario</h2>
+
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3" id="formInventarioTitle">Agregar Producto</h3>
+                <form id="formInventario" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="hidden" id="invProductId"> <div>
+                        <label for="invFechaHora" class="form-label">Fecha y Hora:</label>
+                        <input type="text" id="invFechaHora" class="form-input bg-gray-100" readonly>
                     </div>
-                </div>
-                <div class="form-group" id="metros-centimetros-inputs" style="display: none;">
-                    <input type="number" id="metros" placeholder="Metros" required>
-                    <input type="number" id="centimetros" placeholder="Centímetros" required>
-                    <div id="metros-centimetros-error" class="error-message"></div>
-                </div>
-                <div class="form-group" id="unidades-input" style="display: none;">
-                    <input type="number" id="unidades" placeholder="Unidades" required>
-                    <div id="unidades-error" class="error-message"></div>
-                </div>
-                <div class="form-group">
-                    <label for="valor-producto">Valor:</label>
-                    <input type="number" id="valor-producto" required>
-                    <div id="valor-producto-error" class="error-message"></div>
-                </div>
-                <div class="form-group">
-                    <label for="proveedor-producto">Proveedor de China:</label>
-                    <input type="text" id="proveedor-producto" required>
-                    <div id="proveedor-producto-error" class="error-message"></div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="secondary" id="cancelar-inventario">Cancelar</button>
-                    <button type="submit" class="primary">Guardar Producto</button>
-                </div>
-            </form>
-
-            <div id="inventario-general">
-                <h3>Inventario General</h3>
-                <ul id="lista-inventario">
-                    </ul>
-            </div>
-        </section>
-
-        <section id="modulo-facturacion" style="display: none;">
-            <h2>Módulo de Facturación</h2>
-            <form id="form-nueva-factura">
-                <div class="form-group">
-                    <label for="fecha-hora-factura">Fecha y Hora:</label>
-                    <input type="text" id="fecha-hora-factura" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="cliente-factura">Cliente:</label>
-                    <input type="text" id="cliente-factura" required>
-                    <div id="cliente-factura-error" class="error-message"></div>
-                </div>
-                <div class="form-group">
-                    <label for="producto-factura">Producto:</label>
-                    <div class="selected-product" id="selected-product-container" style="display: none;">
-                        <div class="selected-product-info">
-                            <span id="selected-product-nombre"></span>
-                            <span id="selected-product-unidad"></span>
-                            <span id="selected-product-cantidad-inventario"></span>
+                    <div>
+                        <label for="invReferencia" class="form-label">Referencia:</label>
+                        <input type="text" id="invReferencia" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="invColor" class="form-label">Color:</label>
+                        <input type="text" id="invColor" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label mb-2">Unidad de Medida:</label>
+                        <div class="flex items-center space-x-4">
+                            <label>
+                                <input type="radio" name="unidadMedida" value="metros" id="radioMetros" class="mr-1" required>
+                                Metros con Centímetros
+                            </label>
+                            <label>
+                                <input type="radio" name="unidadMedida" value="unidades" id="radioUnidades" class="mr-1" required>
+                                Unidades
+                            </label>
                         </div>
-                        <button type="button" id="quitar-producto" class="secondary">Quitar</button>
                     </div>
-                    <button type="button" class="primary" id="buscar-producto-btn">Buscar Producto</button>
-                    <input type="hidden" id="producto-id-factura">
-                    <div id="producto-factura-error" class="error-message"></div>
-                </div>
-                <div class="form-group" id="cantidad-factura-inputs" style="display: none;">
-                    <label>Cantidad:</label>
-                    <input type="number" id="cantidad-factura" value="1" required>
-                    <div id="cantidad-factura-error" class="error-message"></div>
-                </div>
-                <div class="form-group" id="metros-centimetros-factura-inputs" style="display: none;">
-                    <label>Cantidad:</label>
-                    <input type="number" id="metros-factura" placeholder="Metros" required>
-                    <input type="number" id="centimetros-factura" placeholder="Centímetros" required>
-                    <div id="metros-centimetros-factura-error" class="error-message"></div>
-                </div>
-                <div class="form-group">
-                    <label for="valor-factura">Valor:</label>
-                    <input type="number" id="valor-factura" required readonly>
-                    <div id="valor-factura-error" class="error-message"></div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="secondary" id="cancelar-factura">Cancelar</button>
-                    <button type="submit" class="primary">Generar Factura</button>
-                </div>
-            </form>
-        </section>
 
-        <div id="buscar-producto-modal">
-            <div id="buscar-producto-modal-content">
-                <h2>Buscar Producto</h2>
-                <input type="text" id="buscar-producto-input" placeholder="Buscar producto por nombre...">
-                <ul id="lista-productos-modal">
-                    </ul>
-                <div class="modal-form-actions">
-                    <button type="button" class="secondary" id="cerrar-modal">Cancelar</button>
+                    <div id="camposMetros" class="grid grid-cols-2 gap-4 hidden">
+                        <div>
+                            <label for="invMetros" class="form-label">Metros:</label>
+                            <input type="number" id="invMetros" class="form-input" min="0" value="0">
+                        </div>
+                        <div>
+                            <label for="invCentimetros" class="form-label">Centímetros:</label>
+                            <input type="number" id="invCentimetros" class="form-input" min="0" max="99" value="0">
+                        </div>
+                    </div>
+
+                    <div id="camposUnidades" class="hidden">
+                         <div>
+                            <label for="invUnidades" class="form-label">Unidades:</label>
+                            <input type="number" id="invUnidades" class="form-input" min="0" value="0">
+                         </div>
+                    </div>
+
+                     <div>
+                        <label for="invValor" class="form-label">Valor:</label>
+                        <input type="number" id="invValor" class="form-input" min="0" step="0.01" required>
+                    </div>
+                    <div>
+                        <label for="invProveedor" class="form-label">Proveedor de China:</label>
+                        <input type="text" id="invProveedor" class="form-input">
+                    </div>
+
+                    <div class="md:col-span-2 flex justify-end space-x-2">
+                         <button type="button" id="btnCancelarEdicion" class="btn btn-danger hidden">Cancelar Edición</button>
+                        <button type="submit" class="btn btn-primary">Guardar Producto</button>
+                    </div>
+                </form>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-medium mb-3">Lista de Inventario</h3>
+                <div class="overflow-x-auto">
+                    <table id="tablaInventario" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 border-b text-left">Fecha/Hora</th>
+                                <th class="px-4 py-2 border-b text-left">Referencia</th>
+                                <th class="px-4 py-2 border-b text-left">Color</th>
+                                <th class="px-4 py-2 border-b text-left">Cantidad</th>
+                                <th class="px-4 py-2 border-b text-left">Valor</th>
+                                <th class="px-4 py-2 border-b text-left">Proveedor</th>
+                                <th class="px-4 py-2 border-b text-left">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="text-center py-4">Cargando inventario...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button id="btnExportar" class="btn btn-primary">Exportar a Excel</button>
                 </div>
             </div>
         </div>
+
+        <div id="moduloFacturacion" class="module card">
+            <h2 class="text-xl font-semibold mb-4">Crear Factura</h2>
+
+            <form id="formFacturacion" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <input type="hidden" id="facProductId"> <input type="hidden" id="facProductUnit"> <input type="hidden" id="facProductMetros"> <input type="hidden" id="facProductCentimetros"> <input type="hidden" id="facProductUnidades"> <div>
+                    <label for="facFechaHora" class="form-label">Fecha y Hora:</label>
+                    <input type="text" id="facFechaHora" class="form-input bg-gray-100" readonly>
+                </div>
+                <div>
+                    <label for="facCliente" class="form-label">Cliente:</label>
+                    <input type="text" id="facCliente" class="form-input" required>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="facProducto" class="form-label">Producto:</label>
+                    <input type="text" id="facProducto" class="form-input" placeholder="Buscar producto en inventario..." readonly required>
+                    <button id="btnBuscarProducto" type="button" class="btn btn-primary mt-2">Buscar Producto</button>
+                    <div id="detalleProductoFactura" class="mt-3 p-3 border rounded hidden">
+                        <p><strong>Producto Seleccionado:</strong> <span id="prodNombreFac"></span></p>
+                        <p><strong>Cantidad Disponible:</strong> <span id="prodCantidadFac"></span></p>
+                        <div id="camposDescuentoMetros" class="grid grid-cols-2 gap-4 mt-2 hidden">
+                            <div>
+                                <label for="descMetros" class="form-label">Metros a Descontar:</label>
+                                <input type="number" id="descMetros" class="form-input" min="0" value="0" required>
+                            </div>
+                            <div>
+                                <label for="descCentimetros" class="form-label">Centímetros a Descontar:</label>
+                                <input type="number" id="descCentimetros" class="form-input" min="0" max="99" value="0" required>
+                            </div>
+                        </div>
+                         <div id="camposDescuentoUnidades" class="mt-2 hidden">
+                             <div>
+                                <label for="descUnidades" class="form-label">Unidades a Descontar:</label>
+                                <input type="number" id="descUnidades" class="form-input" min="0" value="0" required>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="facValor" class="form-label">Valor Total:</label>
+                    <input type="number" id="facValor" class="form-input" min="0" step="0.01" required>
+                </div>
+
+                 <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="btn btn-primary">Crear Factura</button>
+                </div>
+            </form>
+
+            </div>
+
+        <div id="moduloBuscarProducto" class="modal">
+            <div class="modal-content">
+                 <span class="close-button" id="cerrarBuscarProducto">&times;</span>
+                <h3 class="text-lg font-medium mb-4">Buscar Producto en Inventario</h3>
+                <input type="text" id="inputBuscarProducto" class="form-input mb-4" placeholder="Escribe para buscar...">
+                <div id="resultadosBusqueda" class="border rounded max-h-40 overflow-y-auto">
+                    <p class="text-center py-2">Escribe para buscar...</p>
+                </div>
+            </div>
+        </div>
+
+         <div id="statusMessage" class="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded shadow-lg hidden">
+             Mensaje de estado
+         </div>
+
     </div>
 
-    <script>
-        // Configuración de Firebase
+    <script type="module">
+        // Importar las funciones necesarias de Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js"; // Opcional si no usas Analytics
+        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
             authDomain: "lazapateria-ce24f.firebaseapp.com",
             projectId: "lazapateria-ce24f",
-            storageBucket: "lazapateria-ce24f.appspot.com",
+            storageBucket: "lazapateria-ce24f.firebasestorage.app",
             messagingSenderId: "642571845821",
             appId: "1:642571845821:web:45858a0abc0df728fd77d4",
-            measurementId: "G-6JCF33H0K1"
+            measurementId: "G-6JCF33H0K1" // Opcional
         };
 
-        // Inicializar Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore(app);
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        // const analytics = getAnalytics(app); // Opcional
+        const db = getFirestore(app); // Usaremos Firestore
 
-        const inventarioSection = document.getElementById('modulo-inventario');
-        const facturacionSection = document.getElementById('modulo-facturacion');
-        const cancelarInventarioBtn = document.getElementById('cancelar-inventario');
-        const cancelarFacturaBtn = document.getElementById('cancelar-factura');
-        const verInventarioBtn = document.getElementById('ver-inventario-btn');
-        const moduloFacturacionBtn = document.getElementById('modulo-facturacion-btn');
-        const listaInventario = document.getElementById('lista-inventario');
+        // --- Elementos del DOM ---
+        const btnInventario = document.getElementById('btnInventario');
+        const btnFacturacion = document.getElementById('btnFacturacion');
+        const moduloInventario = document.getElementById('moduloInventario');
+        const moduloFacturacion = document.getElementById('moduloFacturacion');
+        const formInventario = document.getElementById('formInventario');
+        const formInventarioTitle = document.getElementById('formInventarioTitle');
+        const invProductId = document.getElementById('invProductId');
+        const radioMetros = document.getElementById('radioMetros');
+        const radioUnidades = document.getElementById('radioUnidades');
+        const camposMetros = document.getElementById('camposMetros');
+        const camposUnidades = document.getElementById('camposUnidades');
+        const invFechaHora = document.getElementById('invFechaHora');
+        const invReferencia = document.getElementById('invReferencia');
+        const invColor = document.getElementById('invColor');
+        const invMetros = document.getElementById('invMetros');
+        const invCentimetros = document.getElementById('invCentimetros');
+        const invUnidades = document.getElementById('invUnidades');
+        const invValor = document.getElementById('invValor');
+        const invProveedor = document.getElementById('invProveedor');
+        const btnCancelarEdicion = document.getElementById('btnCancelarEdicion');
+        const tablaInventario = document.getElementById('tablaInventario').querySelector('tbody');
+        const btnExportar = document.getElementById('btnExportar');
+        const formFacturacion = document.getElementById('formFacturacion');
+        const facFechaHora = document.getElementById('facFechaHora');
+        const facCliente = document.getElementById('facCliente');
+        const facProducto = document.getElementById('facProducto');
+        const btnBuscarProducto = document.getElementById('btnBuscarProducto');
+        const detalleProductoFactura = document.getElementById('detalleProductoFactura');
+        const prodNombreFac = document.getElementById('prodNombreFac');
+        const prodCantidadFac = document.getElementById('prodCantidadFac');
+        const camposDescuentoMetros = document.getElementById('camposDescuentoMetros');
+        const camposDescuentoUnidades = document.getElementById('camposDescuentoUnidades');
+        const descMetros = document.getElementById('descMetros');
+        const descCentimetros = document.getElementById('descCentimetros');
+        const descUnidades = document.getElementById('descUnidades');
+        const facValor = document.getElementById('facValor');
+        const facProductId = document.getElementById('facProductId');
+        const facProductUnit = document.getElementById('facProductUnit');
+        const facProductMetros = document.getElementById('facProductMetros');
+        const facProductCentimetros = document.getElementById('facProductCentimetros');
+        const facProductUnidades = document.getElementById('facProductUnidades');
+        const moduloBuscarProducto = document.getElementById('moduloBuscarProducto');
+        const cerrarBuscarProducto = document.getElementById('cerrarBuscarProducto');
+        const inputBuscarProducto = document.getElementById('inputBuscarProducto');
+        const resultadosBusqueda = document.getElementById('resultadosBusqueda');
+        const statusMessage = document.getElementById('statusMessage');
 
-        // Funcionalidad de los botones del menú
-        verInventarioBtn.addEventListener('click', () => {
-            inventarioSection.style.display = 'block';
-            facturacionSection.style.display = 'none';
-            cargarInventario();
-        });
 
-        moduloFacturacionBtn.addEventListener('click', () => {
-            inventarioSection.style.display = 'none';
-            facturacionSection.style.display = 'block';
-        });
+        // --- Funciones de Utilidad ---
 
-        // --- Módulo de Inventario ---
-        const formNuevoProducto = document.getElementById('form-nuevo-producto');
-        const fechaHoraInventarioInput = document.getElementById('fecha-hora-inventario');
-        const referenciaProductoInput = document.getElementById('referencia-producto');
-        const colorProductoInput = document.getElementById('color-producto');
-        const unidadMetrosRadio = document.getElementById('unidad-metros');
-        const unidadUnidadesRadio = document.getElementById('unidad-unidades');
-        const metrosCentimetrosInputs = document.getElementById('metros-centimetros-inputs');
-        const unidadesInput = document.getElementById('unidades-input');
-        const metrosInput = document.getElementById('metros');
-        const centimetrosInput = document.getElementById('centimetros');
-        const unidadesInputUnidades = document.getElementById('unidades');
-        const valorProductoInput = document.getElementById('valor-producto');
-        const proveedorProductoInput = document.getElementById('proveedor-producto');
-
-        // Función para obtener la fecha y hora actual
-        function obtenerFechaHoraLocal() {
-            const ahora = new Date();
-            return ahora.toLocaleString();
+        // Función para obtener fecha y hora actual
+        function getFechaHoraActual() {
+            const now = new Date();
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            return now.toLocaleString('es-ES', options);
         }
 
-        // Establecer la fecha y hora actual al cargar el formulario de inventario
-        fechaHoraInventarioInput.value = obtenerFechaHoraLocal();
+         // Función para mostrar mensajes de estado
+         function showStatusMessage(message, isError = false) {
+             statusMessage.textContent = message;
+             statusMessage.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
+             if (isError) {
+                 statusMessage.classList.add('bg-red-500');
+             } else {
+                 statusMessage.classList.add('bg-green-500');
+             }
+             setTimeout(() => {
+                 statusMessage.classList.add('hidden');
+             }, 3000); // Ocultar después de 3 segundos
+         }
 
-        // Eventos para mostrar/ocultar los campos de unidad de medida
-        unidadMetrosRadio.addEventListener('change', () => {
-            metrosCentimetrosInputs.style.display = 'flex';
-            unidadesInput.style.display = 'none';
-            unidadesInputUnidades.value = '';
-        });
 
-        unidadUnidadesRadio.addEventListener('change', () => {
-            metrosCentimetrosInputs.style.display = 'none';
-            unidadesInput.style.display = 'block';
-            metrosInput.value = '';
-            centimetrosInput.value = '';
-        });
+        // Función para mostrar un módulo y ocultar los otros
+        function mostrarModulo(moduloAMostrar) {
+            moduloInventario.style.display = 'none';
+            moduloFacturacion.style.display = 'none';
+            // Ocultar también el módulo de búsqueda de producto si está abierto
+            moduloBuscarProducto.style.display = 'none';
 
-        cancelarInventarioBtn.addEventListener('click', () => {
-            formNuevoProducto.reset();
-            fechaHoraInventarioInput.value = obtenerFechaHoraLocal();
-            metrosCentimetrosInputs.style.display = 'none';
-            unidadesInput.style.display = 'none';
-            resetValidationErrors(formNuevoProducto);
-        });
+            moduloAMostrar.style.display = 'block';
 
-        // Validación y envío del formulario de inventario
-        formNuevoProducto.addEventListener('submit', (event) => {
-            event.preventDefault();
-
-            let isValid = true;
-            resetValidationErrors(formNuevoProducto);
-
-            const referenciaProducto = referenciaProductoInput.value.trim();
-            const colorProducto = colorProductoInput.value.trim();
-            const nombreProducto = nombreProductoInput.value.trim();
-            const unidadMedida = document.querySelector('input[name="unidad-medida"]:checked');
-            const valorProducto = valorProductoInput.value.trim();
-            const proveedorProducto = proveedorProductoInput.value.trim();
-
-            if (!referenciaProducto) {
-                showError('referencia-producto-error', 'Por favor, ingrese la referencia del producto.');
-                isValid = false;
+            // Actualizar fecha y hora al mostrar el módulo
+            if (moduloAMostrar === moduloInventario) {
+                invFechaHora.value = getFechaHoraActual();
+                 resetFormInventario(); // Limpiar y resetear formulario al cambiar de módulo
+                 cargarInventario(); // Cargar inventario al mostrar el módulo
+            } else if (moduloAMostrar === moduloFacturacion) {
+                facFechaHora.value = getFechaHoraActual();
+                 resetFormFacturacion(); // Limpiar y resetear formulario de facturación
             }
+        }
 
-            if (!colorProducto) {
-                showError('color-producto-error', 'Por favor, ingrese el color del producto.');
-                isValid = false;
+        // Función para manejar la visibilidad de los campos de unidad de medida en inventario
+        function handleUnidadMedida() {
+            if (radioMetros.checked) {
+                camposMetros.classList.remove('hidden');
+                camposUnidades.classList.add('hidden');
+                 invMetros.setAttribute('required', 'required');
+                 invCentimetros.setAttribute('required', 'required');
+                 invUnidades.removeAttribute('required');
+                 // Resetear valores al cambiar
+                 invUnidades.value = 0;
+            } else if (radioUnidades.checked) {
+                camposMetros.classList.add('hidden');
+                camposUnidades.classList.remove('hidden');
+                 invUnidades.setAttribute('required', 'required');
+                 invMetros.removeAttribute('required');
+                 invCentimetros.removeAttribute('required');
+                 // Resetear valores al cambiar
+                 invMetros.value = 0;
+                 invCentimetros.value = 0;
             }
+             // Asegurarse de que al menos una opción esté seleccionada al inicio si no hay value
+             if (!radioMetros.checked && !radioUnidades.checked) {
+                 // Podrías seleccionar una por defecto o dejar que el 'required' de los radio buttons actúe
+             }
+        }
 
-            if (!nombreProducto) {
-                showError('nombre-producto-error', 'Por favor, ingrese el nombre del producto.');
-                isValid = false;
+         // Función para manejar la visibilidad de los campos de descuento en facturación
+         function handleCamposDescuento(unidad) {
+             camposDescuentoMetros.classList.add('hidden');
+             camposDescuentoUnidades.classList.add('hidden');
+
+             descMetros.removeAttribute('required');
+             descCentimetros.removeAttribute('required');
+             descUnidades.removeAttribute('required');
+
+             descMetros.value = 0;
+             descCentimetros.value = 0;
+             descUnidades.value = 0;
+
+
+             if (unidad === 'metros') {
+                 camposDescuentoMetros.classList.remove('hidden');
+                 descMetros.setAttribute('required', 'required');
+                 descCentimetros.setAttribute('required', 'required');
+             } else if (unidad === 'unidades') {
+                 camposDescuentoUnidades.classList.remove('hidden');
+                 descUnidades.setAttribute('required', 'required');
+             }
+         }
+
+         // Función para resetear el formulario de inventario
+         function resetFormInventario() {
+             formInventario.reset();
+             invProductId.value = ''; // Limpiar ID del producto
+             formInventarioTitle.textContent = 'Agregar Producto';
+             btnCancelarEdicion.classList.add('hidden');
+             // Asegurarse de que los campos condicionales se reseteen visualmente
+             camposMetros.classList.add('hidden');
+             camposUnidades.classList.add('hidden');
+             // Resetear estado de los radio buttons (ninguno seleccionado visualmente)
+             radioMetros.checked = false;
+             radioUnidades.checked = false;
+             handleUnidadMedida(); // Aplicar visibilidad inicial
+         }
+
+         // Función para resetear el formulario de facturación
+         function resetFormFacturacion() {
+             formFacturacion.reset();
+             facProductId.value = '';
+             facProductUnit.value = '';
+             facProductMetros.value = '';
+             facProductCentimetros.value = '';
+             facProductUnidades.value = '';
+             detalleProductoFactura.classList.add('hidden');
+             handleCamposDescuento(''); // Ocultar campos de descuento
+         }
+
+
+        // --- Lógica de Firebase ---
+
+        // Colección de inventario en Firestore
+        const inventarioCol = collection(db, "inventario");
+        // Colección de facturas en Firestore
+        const facturasCol = collection(db, "facturas");
+
+
+        // Función para cargar inventario desde Firebase en tiempo real
+        function cargarInventario() {
+            tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4">Cargando inventario...</td></tr>';
+
+            onSnapshot(inventarioCol, (snapshot) => {
+                tablaInventario.innerHTML = ''; // Limpiar tabla
+
+                if (snapshot.empty) {
+                    tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4">No hay productos en el inventario.</td></tr>';
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const producto = doc.data();
+                    const row = tablaInventario.insertRow();
+
+                    // Formatear la cantidad según la unidad de medida
+                    let cantidadDisplay = '';
+                    if (producto.unidadMedida === 'metros') {
+                         // Asegurarse de que metros y centimetros son números para mostrar .00 si es necesario
+                         const metros = producto.metros || 0;
+                         const centimetros = producto.centimetros || 0;
+                         cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                    } else if (producto.unidadMedida === 'unidades') {
+                        cantidadDisplay = `${producto.unidades || 0} Unidades`;
+                    }
+
+                    row.innerHTML = `
+                        <td class="px-4 py-2 border-b">${producto.fechaHora}</td>
+                        <td class="px-4 py-2 border-b">${producto.referencia}</td>
+                        <td class="px-4 py-2 border-b">${producto.color}</td>
+                        <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
+                        <td class="px-4 py-2 border-b">${producto.valor.toFixed(2)}</td>
+                        <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
+                        <td class="px-4 py-2 border-b">
+                            <button class="btn btn-primary btn-sm mr-2" data-id="${doc.id}" onclick="modificarProducto('${doc.id}')">Modificar</button>
+                            <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="eliminarProducto('${doc.id}')">Eliminar</button>
+                        </td>
+                    `;
+                });
+            }, (error) => {
+                console.error("Error cargando inventario:", error);
+                tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Error al cargar inventario.</td></tr>';
+                showStatusMessage("Error al cargar inventario.", true);
+            });
+        }
+
+
+        // Función para verificar si un producto ya existe por Referencia y Color
+        async function productoExiste(referencia, color, excludeId = null) {
+            const q = query(inventarioCol, where("referencia", "==", referencia), where("color", "==", color));
+            const snapshot = await getDocs(q);
+
+            if (excludeId) {
+                 // Si estamos modificando, ignorar el documento actual
+                 return snapshot.docs.some(doc => doc.id !== excludeId);
+            } else {
+                 // Si estamos agregando, cualquier resultado significa que existe
+                 return !snapshot.empty;
             }
+        }
 
-            if (!unidadMedida) {
-                alert('Por favor, seleccione una unidad de medida.');
-                isValid = false;
-            }
 
+        // Función para agregar/modificar producto en Firebase
+        async function guardarProducto(event) {
+            event.preventDefault(); // Prevenir recarga de la página
+
+            const id = invProductId.value; // Si hay un ID, estamos modificando
+            const referencia = invReferencia.value.trim();
+            const color = invColor.value.trim();
+            const valor = parseFloat(invValor.value);
+            const proveedor = invProveedor.value.trim();
+            const fechaHora = invFechaHora.value; // Fecha y hora ya está en el campo
+
+            let unidad = '';
             let metros = 0;
             let centimetros = 0;
             let unidades = 0;
 
-            if (unidadMedida?.value === 'metros') {
-                metros = metrosInput.value.trim();
-                centimetros = centimetrosInput.value.trim();
-                if (!metros || !centimetros) {
-                    showError('metros-centimetros-error', 'Por favor, ingrese metros y centímetros.');
-                    isValid = false;
-                } else if (isNaN(metros) || isNaN(centimetros) || Number(metros) < 0 || Number(centimetros) < 0) {
-                    showError('metros-centimetros-error', 'Por favor, ingrese valores numéricos positivos para metros y centímetros.');
-                    isValid = false;
-                }
-            } else if (unidadMedida?.value === 'unidades') {
-                unidades = unidadesInputUnidades.value.trim();
-                if (!unidades) {
-                    showError('unidades-error', 'Por favor, ingrese la cantidad de unidades.');
-                    isValid = false;
-                } else if (isNaN(unidades) || Number(unidades) < 0) {
-                    showError('unidades-error', 'Por favor, ingrese un valor numérico positivo para unidades.');
-                    isValid = false;
-                }
+            if (radioMetros.checked) {
+                unidad = 'metros';
+                metros = parseInt(invMetros.value) || 0;
+                centimetros = parseInt(invCentimetros.value) || 0;
+                 // Validar que al menos metros o centímetros sea > 0
+                 if (metros === 0 && centimetros === 0) {
+                     showStatusMessage("La cantidad en metros o centímetros debe ser mayor a 0.", true);
+                     return;
+                 }
+            } else if (radioUnidades.checked) {
+                unidad = 'unidades';
+                unidades = parseInt(invUnidades.value) || 0;
+                 // Validar que unidades sea > 0
+                 if (unidades === 0) {
+                     showStatusMessage("La cantidad en unidades debe ser mayor a 0.", true);
+                     return;
+                 }
+            } else {
+                 showStatusMessage("Debe seleccionar una unidad de medida.", true);
+                 return;
             }
 
-            if (!valorProducto) {
-                showError('valor-producto-error', 'Por favor, ingrese el valor del producto.');
-                isValid = false;
-            } else if (isNaN(valorProducto) || Number(valorProducto) < 0) {
-                showError('valor-producto-error', 'Por favor, ingrese un valor numérico positivo para el valor.');
-                isValid = false;
+            // Verificar si el producto ya existe (solo al agregar)
+            if (!id && await productoExiste(referencia, color)) {
+                showStatusMessage(`El producto con referencia "${referencia}" y color "${color}" ya existe.`, true);
+                return;
             }
 
-            if (!proveedorProducto) {
-                showError('proveedor-producto-error', 'Por favor,ingrese el proveedor del producto.');
-                isValid = false;
-            }
+             // Verificar si el producto existe con otro ID al modificar
+             if (id && await productoExiste(referencia, color, id)) {
+                 showStatusMessage(`Ya existe otro producto con referencia "${referencia}" y color "${color}".`, true);
+                 return;
+             }
 
-            if (isValid) {
-                // Verificar si el producto ya existe en el inventario
-                db.collection('inventario').where('referencia', '==', referenciaProducto).get()
-                    .then((snapshot) => {
-                        if (snapshot.empty) {
-                            // Agregar el producto al inventario
-                            let producto = {
-                                fechaHora: obtenerFechaHoraLocal(),
-                                referencia: referenciaProducto,
-                                color: colorProducto,
-                                nombre: nombreProducto,
-                                unidadMedida: unidadMedida.value,
-                                valor: Number(valorProducto),
-                                proveedor: proveedorProducto,
-                            };
 
-                            if (unidadMedida.value === 'metros') {
-                                producto.metros = Number(metros);
-                                producto.centimetros = Number(centimetros);
-                                producto.cantidadTotal = Number(metros) + (Number(centimetros) / 100);
-                            } else {
-                                producto.unidades = Number(unidades);
-                                producto.cantidadTotal = Number(unidades);
-                            }
+            const productoData = {
+                fechaHora: fechaHora,
+                referencia: referencia,
+                color: color,
+                unidadMedida: unidad,
+                metros: metros,
+                centimetros: centimetros,
+                unidades: unidades,
+                valor: valor,
+                proveedor: proveedor
+            };
 
-                            db.collection('inventario').add(producto)
-                                .then(() => {
-                                    alert('Producto agregado al inventario correctamente.');
-                                    formNuevoProducto.reset();
-                                    fechaHoraInventarioInput.value = obtenerFechaHoraLocal();
-                                    metrosCentimetrosInputs.style.display = 'none';
-                                    unidadesInput.style.display = 'none';
-                                    resetValidationErrors(formNuevoProducto);
-                                    cargarInventario();
-                                })
-                                .catch((error) => {
-                                    console.error('Error al agregar producto:', error);
-                                    alert('Error al agregar producto. Por favor, inténtelo de nuevo.');
-                                });
-                        } else {
-                            alert('El producto ya existe en el inventario.');
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Error al verificar producto:', error);
-                        alert('Error al verificar producto. Por favor, inténtelo de nuevo.');
-                    });
-            }
-        });
-
-        function cargarInventario() {
-            listaInventario.innerHTML = '<li>Cargando inventario...</li>';
-            db.collection('inventario').get()
-                .then(snapshot => {
-                    listaInventario.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const producto = doc.data();
-                        const listItem = document.createElement('li');
-                        listItem.innerHTML = `
-                            <span>Referencia: ${producto.referencia} | Nombre: ${producto.nombre} | Color: ${producto.color} | Unidad: ${producto.unidadMedida} | Cantidad: ${producto.cantidadTotal} | Valor: ${producto.valor} | Proveedor: ${producto.proveedor}</span>
-                            <div class="inventario-acciones">
-                                <button class="modificar" data-id="${doc.id}">Modificar</button>
-                                <button class="eliminar" data-id="${doc.id}">Eliminar</button>
-                                <button class="exportar">Exportar a Excel</button>
-                            </div>
-                        `;
-                        listaInventario.appendChild(listItem);
-                    });
-                })
-                .catch(error => {
-                    console.error("Error al cargar el inventario:", error);
-                    listaInventario.innerHTML = '<li>Error al cargar el inventario.</li>';
-                });
-        }
-
-        listaInventario.addEventListener('click', (event) => {
-            const target = event.target;
-            const productoId = target.dataset.id;
-
-            if (target.classList.contains('eliminar')) {
-                eliminarProducto(productoId);
-            } else if (target.classList.contains('modificar')) {
-                modificarProducto(productoId);
-            } else if (target.classList.contains('exportar')) {
-                exportarInventarioExcel();
-            }
-        });
-
-        function eliminarProducto(productoId) {
-            if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-                db.collection('inventario').doc(productoId).delete()
-                    .then(() => {
-                        alert('Producto eliminado correctamente.');
-                        cargarInventario();
-                    })
-                    .catch(error => {
-                        console.error("Error al eliminar producto:", error);
-                        alert('Error al eliminar el producto. Por favor, inténtelo de nuevo.');
-                    });
-            }
-        }
-
-        function modificarProducto(productoId) {
-            // Implementar la lógica para modificar el producto (abrir un formulario de edición, etc.)
-            // Puedes usar un modal similar al de buscar producto para editar los detalles.
-            alert('Función de modificar producto en desarrollo. ID del producto: ' + productoId);
-        }
-
-        function exportarInventarioExcel() {
-            db.collection('inventario').get()
-                .then(snapshot => {
-                    const data = [];
-                    snapshot.forEach(doc => {
-                        const producto = doc.data();
-                        data.push({
-                            FechaHora: producto.fechaHora,
-                            Referencia: producto.referencia,
-                            Nombre: producto.nombre,
-                            Color: producto.color,
-                            UnidadMedida: producto.unidadMedida,
-                            CantidadTotal: producto.cantidadTotal,
-                            Valor: producto.valor,
-                            Proveedor: producto.proveedor
-                        });
-                    });
-
-                    if (data.length > 0) {
-                        const worksheet = XLSX.utils.json_to_sheet(data);
-                        const workbook = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
-                        XLSX.writeFile(workbook, "inventario.xlsx");
-                    } else {
-                        alert('No hay datos para exportar.');
-                    }
-                })
-                .catch(error => {
-                    console.error("Error al exportar a Excel:", error);
-                    alert('Error al exportar el inventario a Excel. Por favor, inténtelo de nuevo.');
-                });
-        }
-
-        // --- Módulo de Facturación ---
-        const formNuevaFactura = document.getElementById('form-nueva-factura');
-        const fechaHoraFacturaInput = document.getElementById('fecha-hora-factura');
-        const clienteFacturaInput = document.getElementById('cliente-factura');
-        const buscarProductoBtn = document.getElementById('buscar-producto-btn');
-        const buscarProductoModal = document.getElementById('buscar-producto-modal');
-        const cerrarModalBtn = document.getElementById('cerrar-modal');
-        const listaProductosModal = document.getElementById('lista-productos-modal');
-        const productoIdFacturaInput = document.getElementById('producto-id-factura');
-        const cantidadFacturaInputs = document.getElementById('cantidad-factura-inputs');
-        const cantidadFacturaInput = document.getElementById('cantidad-factura');
-        const metrosCentimetrosFacturaInputs = document.getElementById('metros-centimetros-factura-inputs');
-        const metrosFacturaInput = document.getElementById('metros-factura');
-        const centimetrosFacturaInput = document.getElementById('centimetros-factura');
-        const valorFacturaInput = document.getElementById('valor-factura');
-        const selectedProductContainer = document.getElementById('selected-product-container');
-        const selectedProductNombreSpan = document.getElementById('selected-product-nombre');
-        const selectedProductUnidadSpan = document.getElementById('selected-product-unidad');
-        const selectedProductCantidadInventarioSpan = document.getElementById('selected-product-cantidad-inventario');
-        const quitarProductoBtn = document.getElementById('quitar-producto');
-
-        let productoSeleccionado = null;
-
-        // Establecer la fecha y hora actual al cargar el formulario de facturación
-        fechaHoraFacturaInput.value = obtenerFechaHoraLocal();
-
-        // Abrir el modal de búsqueda de productos
-        buscarProductoBtn.addEventListener('click', () => {
-            buscarProductoModal.style.display = 'flex';
-            cargarProductosEnModal();
-        });
-
-        // Cerrar el modal de búsqueda de productos
-        cerrarModalBtn.addEventListener('click', () => {
-            buscarProductoModal.style.display = 'none';
-            listaProductosModal.innerHTML = '';
-        });
-
-        // Quitar producto seleccionado
-        quitarProductoBtn.addEventListener('click', () => {
-            productoSeleccionado = null;
-            selectedProductContainer.style.display = 'none';
-            productoIdFacturaInput.value = '';
-            valorFacturaInput.value = '';
-            cantidadFacturaInputs.style.display = 'none';
-            metrosCentimetrosFacturaInputs.style.display = 'none';
-            resetValidationErrors(formNuevaFactura);
-        });
-
-        // Cargar productos en el modal
-        function cargarProductosEnModal() {
-            listaProductosModal.innerHTML = '<li>Cargando productos...</li>';
-            db.collection('inventario').get()
-                .then((snapshot) => {
-                    listaProductosModal.innerHTML = '';
-                    snapshot.forEach((doc) => {
-                        const producto = doc.data();
-                        const listItem = document.createElement('li');
-                        listItem.textContent = `${producto.nombre} - ${producto.unidadMedida} - Cantidad: ${producto.cantidadTotal} - Referencia: ${producto.referencia} - Color: ${producto.color}`;
-                        listItem.dataset.productoId = doc.id;
-                        listItem.dataset.productoNombre = producto.nombre;
-                        listItem.dataset.productoUnidad = producto.unidadMedida;
-                        listItem.dataset.productoValor = producto.valor;
-                        listItem.dataset.productoCantidadTotal = producto.cantidadTotal;
-                        listItem.dataset.productoReferencia = producto.referencia;
-                        listItem.dataset.productoColor = producto.color;
-                        listaProductosModal.appendChild(listItem);
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error al cargar productos:', error);
-                    listaProductosModal.innerHTML = '<li>Error al cargar productos.</li>';
-                });
-        }
-
-        // Seleccionar producto del modal
-        listaProductosModal.addEventListener('click', (event) => {
-            const listItem = event.target.closest('li');
-            if (listItem) {
-                productoSeleccionado = {
-                    id: listItem.dataset.productoId,
-                    nombre: listItem.dataset.productoNombre,
-                    unidadMedida: listItem.dataset.productoUnidad,
-                    valor: listItem.dataset.productoValor,
-                    cantidadTotal: listItem.dataset.productoCantidadTotal,
-                    referencia: listItem.dataset.productoReferencia,
-                    color: listItem.dataset.productoColor
-                };
-                productoIdFacturaInput.value = productoSeleccionado.id;
-                selectedProductNombreSpan.textContent = `Nombre: ${productoSeleccionado.nombre} | Ref: ${productoSeleccionado.referencia} | Color: ${productoSeleccionado.color}`;
-                selectedProductUnidadSpan.textContent = `Unidad: ${productoSeleccionado.unidadMedida}`;
-                selectedProductCantidadInventarioSpan.textContent = `Cantidad en Inventario: ${productoSeleccionado.cantidadTotal}`;
-                selectedProductContainer.style.display = 'flex';
-                valorFacturaInput.value = productoSeleccionado.valor;
-                buscarProductoModal.style.display = 'none';
-                listaProductosModal.innerHTML = '';
-
-                if (productoSeleccionado.unidadMedida === 'metros') {
-                    cantidadFacturaInputs.style.display = 'none';
-                    metrosCentimetrosFacturaInputs.style.display = 'flex';
+            try {
+                if (id) {
+                    // Modificar producto existente
+                    const productRef = doc(db, "inventario", id);
+                    await updateDoc(productRef, productoData);
+                    showStatusMessage("Producto actualizado con éxito!");
                 } else {
-                    cantidadFacturaInputs.style.display = 'block';
-                    metrosCentimetrosFacturaInputs.style.display = 'none';
+                    // Agregar nuevo producto
+                    await addDoc(inventarioCol, productoData);
+                    showStatusMessage("Producto guardado con éxito!");
+                }
+                resetFormInventario(); // Limpiar formulario
+                 // La tabla se actualizará automáticamente si usas onSnapshot
+            } catch (e) {
+                console.error("Error al guardar el producto: ", e);
+                showStatusMessage("Error al guardar el producto.", true);
+            }
+        }
+
+        // Función para eliminar producto en Firebase
+        async function eliminarProducto(idProducto) {
+            if (confirm("¿Estás seguro de eliminar este producto?")) {
+                try {
+                    await deleteDoc(doc(db, "inventario", idProducto));
+                    showStatusMessage("Producto eliminado con éxito.");
+                     // La tabla se actualizará automáticamente si usas onSnapshot
+                } catch (error) {
+                    console.error("Error al eliminar documento:", error);
+                    showStatusMessage("Error al eliminar el producto.", true);
                 }
             }
-        });
+        }
 
-        cancelarFacturaBtn.addEventListener('click', () => {
-            formNuevaFactura.reset();
-            fechaHoraFacturaInput.value = obtenerFechaHoraLocal();
-            productoSeleccionado = null;
-            selectedProductContainer.style.display = 'none';
-            cantidadFacturaInputs.style.display = 'none';
-            metrosCentimetrosFacturaInputs.style.display = 'none';
-            resetValidationErrors(formNuevaFactura);
-        });
+        // Función para modificar producto (cargar datos en formulario)
+        async function modificarProducto(idProducto) {
+             try {
+                 const productRef = doc(db, "inventario", idProducto);
+                 const productSnap = await getDoc(productRef);
 
-        // Validación y generación de la factura
-        formNuevaFactura.addEventListener('submit', (event) => {
-            event.preventDefault();
+                 if (productSnap.exists()) {
+                     const producto = productSnap.data();
+                     invProductId.value = idProducto;
+                     invFechaHora.value = producto.fechaHora;
+                     invReferencia.value = producto.referencia;
+                     invColor.value = producto.color;
+                     invValor.value = producto.valor;
+                     invProveedor.value = producto.proveedor || '';
 
-            let isValid = true;
-            resetValidationErrors(formNuevaFactura);
+                     // Seleccionar la unidad de medida correcta y llenar los campos
+                     if (producto.unidadMedida === 'metros') {
+                         radioMetros.checked = true;
+                         invMetros.value = producto.metros || 0;
+                         invCentimetros.value = producto.centimetros || 0;
+                     } else if (producto.unidadMedida === 'unidades') {
+                         radioUnidades.checked = true;
+                         invUnidades.value = producto.unidades || 0;
+                     }
+                     handleUnidadMedida(); // Asegurarse de que los campos correctos se muestren
 
-            const clienteFactura = clienteFacturaInput.value.trim();
-            const productoId = productoIdFacturaInput.value;
-            const cantidadFactura = cantidadFacturaInput.value.trim();
-            const metrosFactura = metrosFacturaInput.value.trim();
-            const centimetrosFactura = centimetrosFacturaInput.value.trim();
-            const valorFactura = valorFacturaInput.value.trim();
+                     formInventarioTitle.textContent = 'Modificar Producto';
+                     btnCancelarEdicion.classList.remove('hidden');
+                     // Desplazar al inicio del formulario si es necesario
+                     formInventario.scrollIntoView({ behavior: 'smooth' });
 
-            if (!clienteFactura) {
-                showError('cliente-factura-error', 'Por favor, ingrese el nombre del cliente.');
-                isValid = false;
+                 } else {
+                     showStatusMessage("Producto no encontrado para modificar.", true);
+                 }
+             } catch (error) {
+                 console.error("Error cargando datos para modificar:", error);
+                 showStatusMessage("Error cargando datos para modificar.", true);
+             }
+        }
+
+        // Función para exportar a Excel (Placeholder)
+        function exportarAExcel() {
+             showStatusMessage("Funcionalidad de Exportar a Excel pendiente.");
+             // Implementación real requeriría una librería como SheetJS (xlsx) o similar
+             // Ejemplo básico (solo texto):
+             /*
+             let csvContent = "data:text/csv;charset=utf-8,";
+             const rows = tablaInventario.querySelectorAll("tr");
+             rows.forEach(function(row) {
+                 let rowData = [];
+                 row.querySelectorAll("th, td").forEach(function(cell) {
+                     // Excluir la columna de acciones
+                     if (cell.cellIndex < rows[0].cells.length - 1) {
+                          rowData.push(cell.textContent.trim());
+                     }
+                 });
+                 csvContent += rowData.join(";") + "\r\n"; // Usar ; como separador
+             });
+
+             const encodedUri = encodeURI(csvContent);
+             const link = document.createElement("a");
+             link.setAttribute("href", encodedUri);
+             link.setAttribute("download", "inventario.csv");
+             document.body.appendChild(link); // Required for FF
+             link.click(); // This will download the data file named "inventario.csv".
+             document.body.removeChild(link);
+             */
+        }
+
+        // Función para buscar producto en Firebase para facturación
+        async function buscarProductoParaFacturacion() {
+            const searchTerm = inputBuscarProducto.value.toLowerCase().trim();
+            resultadosBusqueda.innerHTML = ''; // Limpiar resultados
+
+             if (searchTerm.length < 2) {
+                 resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe al menos 2 caracteres para buscar.</p>';
+                 return;
+             }
+
+             try {
+                 // Buscar por Referencia o Color (ejemplo simple, podrías necesitar índices compuestos)
+                 const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
+                 const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
+
+                 const [snapshotRef, snapshotColor] = await Promise.all([getDocs(qRef), getDocs(qColor)]);
+
+                 const resultados = new Map(); // Usar un mapa para evitar duplicados si coincide por ref y color
+
+                 snapshotRef.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
+                 snapshotColor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
+
+                 if (resultados.size === 0) {
+                     resultadosBusqueda.innerHTML = '<p class="text-center py-2">No se encontraron productos.</p>';
+                     return;
+                 }
+
+                 resultados.forEach(producto => {
+                     const resultadoDiv = document.createElement('div');
+                     resultadoDiv.classList.add('p-2', 'border-b', 'cursor-pointer', 'hover:bg-gray-100');
+
+                     let cantidadDisplay = '';
+                     if (producto.unidadMedida === 'metros') {
+                          const metros = producto.metros || 0;
+                          const centimetros = producto.centimetros || 0;
+                          cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                     } else if (producto.unidadMedida === 'unidades') {
+                         cantidadDisplay = `${producto.unidades || 0} Unidades`;
+                     }
+
+                     resultadoDiv.textContent = `${producto.referencia} - ${producto.color} (${cantidadDisplay})`;
+                     resultadoDiv.onclick = () => seleccionarProductoParaFactura(producto);
+                     resultadosBusqueda.appendChild(resultadoDiv);
+                 });
+
+             } catch (error) {
+                 console.error("Error buscando producto:", error);
+                 resultadosBusqueda.innerHTML = '<p class="text-center py-2 text-red-500">Error buscando productos.</p>';
+                 showStatusMessage("Error buscando productos.", true);
+             }
+        }
+
+        // Función para seleccionar producto y mostrar detalles en formulario de factura
+        function seleccionarProductoParaFactura(producto) {
+            console.log("Producto seleccionado para factura:", producto);
+            // Cerrar el módulo de búsqueda
+            moduloBuscarProducto.style.display = 'none';
+
+            // Llenar campos ocultos con datos del producto
+            facProductId.value = producto.id;
+            facProductUnit.value = producto.unidadMedida;
+            facProductMetros.value = producto.metros || 0;
+            facProductCentimetros.value = producto.centimetros || 0;
+            facProductUnidades.value = producto.unidades || 0;
+
+            // Mostrar el detalle del producto seleccionado
+            detalleProductoFactura.classList.remove('hidden');
+            prodNombreFac.textContent = `${producto.referencia} - ${producto.color}`;
+
+            let cantidadDisplay = '';
+            if (producto.unidadMedida === 'metros') {
+                 const metros = producto.metros || 0;
+                 const centimetros = producto.centimetros || 0;
+                 cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                 // Establecer límites máximos para los campos de descuento
+                 descMetros.max = metros;
+                 descCentimetros.max = 99; // Centímetros siempre hasta 99
+                 // Lógica adicional si se descuentan más cm de los disponibles en el último metro
+            } else if (producto.unidadMedida === 'unidades') {
+                cantidadDisplay = `${producto.unidades || 0} Unidades`;
+                 // Establecer límite máximo para las unidades a descontar
+                 descUnidades.max = producto.unidades || 0;
             }
+            prodCantidadFac.textContent = cantidadDisplay; // Mostrar la cantidad disponible
+
+            // Ocultar/mostrar campos de descuento según la unidad de medida
+            handleCamposDescuento(producto.unidadMedida);
+
+            // Poner el foco en el primer campo de descuento
+            if (producto.unidadMedida === 'metros') {
+                 descMetros.focus();
+            } else if (producto.unidadMedida === 'unidades') {
+                 descUnidades.focus();
+            }
+        }
+
+
+        // Función para crear factura y descontar inventario en Firebase
+        async function crearFactura(event) {
+            event.preventDefault(); // Prevenir recarga de la página
+
+            const cliente = facCliente.value.trim();
+            const valorTotal = parseFloat(facValor.value);
+            const fechaHora = facFechaHora.value;
+            const productoId = facProductId.value; // ID del producto seleccionado
 
             if (!productoId) {
-                showError('producto-factura-error', 'Por favor, seleccione un producto.');
-                isValid = false;
+                 showStatusMessage("Debe seleccionar un producto del inventario.", true);
+                 return;
             }
 
-            let cantidadSolicitada = 0;
-            if (productoSeleccionado.unidadMedida === 'metros') {
-                if (!metrosFactura || !centimetrosFactura) {
-                    showError('metros-centimetros-factura-error', 'Por favor, ingrese la cantidad en metros y centímetros.');
-                    isValid = false;
-                } else if (isNaN(metrosFactura) || isNaN(centimetrosFactura) || Number(metrosFactura) < 0 || Number(centimetrosFactura) < 0) {
-                    showError('metros-centimetros-factura-error', 'Por favor, ingrese valores numéricos positivos para metros y centímetros.');
-                    isValid = false;
-                }
-                cantidadSolicitada = Number(metrosFactura) + (Number(centimetrosFactura) / 100);
+            const unidadMedida = facProductUnit.value;
+            let cantidadADescontar = 0;
+            let metrosADescontar = 0;
+            let centimetrosADescontar = 0;
+            let unidadesADescontar = 0;
+            let cantidadDisponible = 0;
+
+            if (unidadMedida === 'metros') {
+                 metrosADescontar = parseInt(descMetros.value) || 0;
+                 centimetrosADescontar = parseInt(descCentimetros.value) || 0;
+                 cantidadADescontar = metrosADescontar + centimetrosADescontar / 100; // Convertir a un solo número para comparación
+                 cantidadDisponible = (parseInt(facProductMetros.value) || 0) + (parseInt(facProductCentimetros.value) || 0) / 100;
+
+                 if (cantidadADescontar <= 0) {
+                      showStatusMessage("La cantidad a descontar debe ser mayor a 0.", true);
+                      return;
+                 }
+
+                 if (cantidadADescontar > cantidadDisponible) {
+                     showStatusMessage(`Cantidad a descontar (${cantidadADescontar}m) supera la disponible (${cantidadDisponible}m).`, true);
+                     return;
+                 }
+
+            } else if (unidadMedida === 'unidades') {
+                unidadesADescontar = parseInt(descUnidades.value) || 0;
+                cantidadADescontar = unidadesADescontar; // Para comparación
+                cantidadDisponible = parseInt(facProductUnidades.value) || 0;
+
+                 if (cantidadADescontar <= 0) {
+                      showStatusMessage("La cantidad a descontar debe ser mayor a 0.", true);
+                      return;
+                 }
+
+                 if (cantidadADescontar > cantidadDisponible) {
+                     showStatusMessage(`Cantidad a descontar (${cantidadADescontar} unidades) supera la disponible (${cantidadDisponible} unidades).`, true);
+                     return;
+                 }
             } else {
-                if (!cantidadFactura) {
-                    showError('cantidad-factura-error', 'Por favor, ingrese la cantidad.');
-                    isValid = false;
-                } else if (isNaN(cantidadFactura) || Number(cantidadFactura) < 0) {
-                    showError('cantidad-factura-error', 'Por favor, ingrese un valor numérico positivo para la cantidad.');
-                    isValid = false;
+                 showStatusMessage("Error: Unidad de medida del producto no reconocida.", true);
+                 return;
+            }
+
+            // Obtener el producto actual para incluir sus detalles en la factura
+            const productRef = doc(db, "inventario", productoId);
+            const productSnap = await getDoc(productRef);
+            const productoFacturado = productSnap.exists() ? productSnap.data() : null;
+
+            if (!productoFacturado) {
+                 showStatusMessage("Error: No se pudo obtener la información del producto facturado.", true);
+                 return;
+            }
+
+
+            const nuevaFactura = {
+                fechaHora: fechaHora,
+                cliente: cliente,
+                producto: { // Guardar detalles del producto facturado
+                    id: productoId,
+                    referencia: productoFacturado.referencia,
+                    color: productoFacturado.color,
+                    unidadMedida: unidadMedida,
+                    cantidadFacturada: cantidadADescontar, // Cantidad total facturada (ej. 10.50 o 50)
+                    metrosFacturados: unidadMedida === 'metros' ? metrosADescontar : 0,
+                    centimetrosFacturados: unidadMedida === 'metros' ? centimetrosADescontar : 0,
+                    unidadesFacturadas: unidadMedida === 'unidades' ? unidadesADescontar : 0,
+                    valorUnitario: productoFacturado.valor // Valor por unidad/metro
+                },
+                valorTotal: valorTotal
+            };
+
+            try {
+                // 1. Guardar la factura
+                await addDoc(facturasCol, nuevaFactura);
+                console.log("Factura creada con éxito.");
+
+                // 2. Descontar la cantidad del inventario
+                let nuevaCantidadEnInventario;
+                if (unidadMedida === 'metros') {
+                     let totalCmDisponible = (parseInt(facProductMetros.value) || 0) * 100 + (parseInt(facProductCentimetros.value) || 0);
+                     let totalCmADescontar = metrosADescontar * 100 + centimetrosADescontar;
+                     let totalCmRestante = totalCmDisponible - totalCmADescontar;
+
+                     nuevaCantidadEnInventario = {
+                         metros: Math.floor(totalCmRestante / 100),
+                         centimetros: totalCmRestante % 100
+                     };
+                } else if (unidadMedida === 'unidades') {
+                    nuevaCantidadEnInventario = {
+                        unidades: (parseInt(facProductUnidades.value) || 0) - unidadesADescontar
+                    };
                 }
-                cantidadSolicitada = Number(cantidadFactura);
+
+                await updateDoc(productRef, nuevaCantidadEnInventario);
+                console.log("Inventario actualizado con éxito.");
+
+                showStatusMessage("Factura creada y inventario actualizado con éxito!");
+                resetFormFacturacion(); // Limpiar formulario de factura
+                 // El inventario se actualizará automáticamente en la tabla gracias a onSnapshot
+            } catch (e) {
+                console.error("Error al crear factura o actualizar inventario: ", e);
+                showStatusMessage("Error al crear la factura.", true);
             }
+        }
 
-            if (!valorFactura) {
-                showError('valor-factura-error', 'El valor de la factura debe ser mayor a 0.');
-                isValid = false;
-            }
 
-            if (isValid) {
-                // Verificar si hay suficiente cantidad en inventario
-                if (cantidadSolicitada > productoSeleccionado.cantidadTotal) {
-                    alert('No hay suficiente cantidad en inventario para el producto seleccionado.');
-                    return;
-                }
+        // --- Event Listeners ---
+        btnInventario.addEventListener('click', () => mostrarModulo(moduloInventario));
+        btnFacturacion.addEventListener('click', () => mostrarModulo(moduloFacturacion));
 
-                // Calcular el nuevo total de inventario
-                const nuevoTotalInventario = productoSeleccionado.cantidadTotal - cantidadSolicitada;
+        // Event listeners para los radio buttons de unidad de medida en inventario
+        radioMetros.addEventListener('change', handleUnidadMedida);
+        radioUnidades.addEventListener('change', handleUnidadMedida);
 
-                // Actualizar el inventario en Firebase
-                db.collection('inventario').doc(productoSeleccionado.id).update({
-                    cantidadTotal: nuevoTotalInventario
-                })
-                    .then(() => {
-                        // Crear la factura en Firebase
-                        const factura = {
-                            fechaHora: obtenerFechaHoraLocal(),
-                            cliente: clienteFactura,
-                            producto: {
-                                id: productoSeleccionado.id,
-                                nombre: productoSeleccionado.nombre,
-                                unidadMedida: productoSeleccionado.unidadMedida,
-                                cantidad: cantidadSolicitada,
-                                valorUnitario: productoSeleccionado.valor
-                            },
-                            valorTotal: valorFactura
-                        };
+        // Event listener para el formulario de inventario (para guardar)
+        formInventario.addEventListener('submit', guardarProducto);
 
-                        db.collection('facturas').add(factura)
-                            .then(() => {
-                                alert('Factura generada correctamente.');
-                                formNuevaFactura.reset();
-                                fechaHoraFacturaInput.value = obtenerFechaHoraLocal();
-                                productoSeleccionado = null;
-                                selectedProductContainer.style.display = 'none';
-                                cantidadFacturaInputs.style.display = 'none';
-                                metrosCentimetrosFacturaInputs.style.display = 'none';
-                                resetValidationErrors(formNuevaFactura);
-                                cargarProductosEnModal();
-                                cargarInventario();
-                            })
-                            .catch((error) => {
-                                console.error('Error al generar factura:', error);
-                                alert('Error al generar factura. Por favor, inténtelo de nuevo.');
-                            });
-                    })
-                    .catch((error) => {
-                        console.error('Error al actualizar inventario:', error);
-                        alert('Error al actualizar inventario. Por favor, inténtelo de nuevo.');
-                    });
-            }
+         // Event listener para cancelar edición en inventario
+         btnCancelarEdicion.addEventListener('click', resetFormInventario);
+
+
+        // Event listener para el botón de exportar (Placeholder)
+        btnExportar.addEventListener('click', exportarAExcel);
+
+        // Event listener para abrir el módulo de búsqueda de producto
+        btnBuscarProducto.addEventListener('click', () => {
+            moduloBuscarProducto.style.display = 'block';
+             inputBuscarProducto.value = ''; // Limpiar campo de búsqueda
+             resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe para buscar...</p>'; // Resetear resultados
+             inputBuscarProducto.focus(); // Poner el foco en el campo de búsqueda
         });
 
-        function showError(inputId, message) {
-            const errorDiv = document.getElementById(inputId);
-            errorDiv.textContent = message;
-            const inputElement = document.getElementById(inputId.replace('-error', ''));
-            if (inputElement) {
-                inputElement.style.borderColor = '#dc2626';
-            }
-        }
+        // Event listener para cerrar el módulo de búsqueda de producto
+        cerrarBuscarProducto.addEventListener('click', () => {
+            moduloBuscarProducto.style.display = 'none';
+        });
 
-        function resetValidationErrors(formElement) {
-            const errorMessages = formElement.querySelectorAll('.error-message');
-            errorMessages.forEach(error => error.textContent = '');
-            const inputElements = formElement.querySelectorAll('input, select');
-            inputElements.forEach(input => {
-                input.style.borderColor = '#d1d5db';
-            });
-        }
+         // Cerrar modal haciendo clic fuera del contenido
+         window.addEventListener('click', (event) => {
+             if (event.target === moduloBuscarProducto) {
+                 moduloBuscarProducto.style.display = 'none';
+             }
+         });
+
+
+        // Event listener para buscar mientras se escribe en el campo de búsqueda
+        inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
+
+        // Event listener para el formulario de facturación (para crear factura)
+        formFacturacion.addEventListener('submit', crearFactura);
+
+
+        // --- Inicialización ---
+        // Mostrar el módulo de inventario por defecto al cargar la página
+        mostrarModulo(moduloInventario);
+
+        // Asegurarse de que los campos condicionales estén ocultos al inicio
+        handleUnidadMedida(); // Para inventario
+        handleCamposDescuento(''); // Para facturación (ocultar todo al inicio)
+
+
     </script>
+
 </body>
 </html>
