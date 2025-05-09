@@ -6,6 +6,7 @@
     <title>Inventario y Facturación</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -204,12 +205,7 @@
         <div id="moduloFacturacion" class="module card">
             <h2 class="text-xl font-semibold mb-4">Crear Factura</h2>
 
-            <form id="formFacturacion" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <input type="hidden" id="facProductId">
-                 <input type="hidden" id="facProductUnit">
-                 <input type="hidden" id="facProductMetros">
-                 <input type="hidden" id="facProductCentimetros">
-                 <input type="hidden" id="facProductUnidades">
+            <form id="formFacturacion" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                  <div>
                     <label for="facFechaHora" class="form-label">Fecha:</label>
                      <input type="date" id="facFechaHora" class="form-input bg-gray-100" required>
@@ -218,41 +214,76 @@
                     <label for="facCliente" class="form-label">Cliente:</label>
                     <input type="text" id="facCliente" class="form-input" required>
                 </div>
-                <div class="md:col-span-2">
-                    <label for="facProducto" class="form-label">Producto:</label>
-                    <input type="text" id="facProducto" class="form-input" placeholder="Buscar producto en inventario..." readonly required>
-                    <button id="btnBuscarProducto" type="button" class="btn btn-primary mt-2">Buscar Producto</button>
-                    <div id="detalleProductoFactura" class="mt-3 p-3 border rounded hidden">
-                        <p><strong>Producto Seleccionado:</strong> <span id="prodNombreFac"></span></p>
-                        <p><strong>Cantidad Disponible:</strong> <span id="prodCantidadFac"></span></p>
-                        <div id="camposDescuentoMetros" class="grid grid-cols-2 gap-4 mt-2 hidden">
-                            <div>
-                                <label for="descMetros" class="form-label">Metros a Descontar:</label>
-                                <input type="number" id="descMetros" class="form-input" min="0" value="0" required>
-                            </div>
-                            <div>
-                                <label for="descCentimetros" class="form-label">Centímetros a Descontar:</label>
-                                <input type="number" id="descCentimetros" class="form-input" min="0" max="99" value="0" required>
-                            </div>
-                        </div>
-                         <div id="camposDescuentoUnidades" class="mt-2 hidden">
-                             <div>
-                                <label for="descUnidades" class="form-label">Unidades:</label>
-                                <input type="number" id="descUnidades" class="form-input" min="0" value="0" required>
-                             </div>
-                         </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label for="facValor" class="form-label">Valor Total:</label>
-                    <input type="number" id="facValor" class="form-input" min="0" step="0.01" required>
-                </div>
-
-                 <div class="md:col-span-2 flex justify-end">
-                    <button type="submit" class="btn btn-primary">Crear Factura</button>
-                </div>
             </form>
+
+            <div class="mb-6 p-4 border rounded-lg bg-gray-50">
+                 <h3 class="text-lg font-medium mb-3">Agregar Productos a la Factura</h3>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div class="md:col-span-2">
+                         <label for="facProducto" class="form-label">Producto:</label>
+                         <input type="text" id="facProducto" class="form-input" placeholder="Buscar producto en inventario..." readonly>
+                         <button id="btnBuscarProducto" type="button" class="btn btn-primary mt-2">Buscar Producto</button>
+                         <div id="detalleProductoFactura" class="mt-3 p-3 border rounded hidden bg-white">
+                             <p><strong>Producto Seleccionado:</strong> <span id="prodNombreFac"></span></p>
+                             <p><strong>Cantidad Disponible:</strong> <span id="prodCantidadFac"></span></p>
+                             <input type="hidden" id="facProductId">
+                             <input type="hidden" id="facProductUnit">
+                             <input type="hidden" id="facProductMetros">
+                             <input type="hidden" id="facProductCentimetros">
+                             <input type="hidden" id="facProductUnidades">
+                             <input type="hidden" id="facProductValorUnitario">
+
+                             <div id="camposDescuentoMetros" class="grid grid-cols-2 gap-4 mt-2 hidden">
+                                 <div>
+                                     <label for="descMetros" class="form-label">Metros a Descontar:</label>
+                                     <input type="number" id="descMetros" class="form-input" min="0" value="0">
+                                 </div>
+                                 <div>
+                                     <label for="descCentimetros" class="form-label">Centímetros a Descontar:</label>
+                                     <input type="number" id="descCentimetros" class="form-input" min="0" max="99" value="0">
+                                 </div>
+                             </div>
+                              <div id="camposDescuentoUnidades" class="mt-2 hidden">
+                                  <div>
+                                     <label for="descUnidades" class="form-label">Unidades a Descontar:</label>
+                                     <input type="number" id="descUnidades" class="form-input" min="0" value="0">
+                                  </div>
+                              </div>
+                             <button type="button" id="btnAgregarProductoFactura" class="btn btn-primary mt-3">Agregar a Factura</button>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+
+            <div class="mb-6">
+                 <h3 class="text-lg font-medium mb-3">Productos en Factura</h3>
+                 <div class="overflow-x-auto">
+                     <table id="tablaProductosFactura" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                         <thead>
+                             <tr>
+                                 <th class="px-4 py-2 border-b text-left">Referencia - Color</th>
+                                 <th class="px-4 py-2 border-b text-left">Cantidad</th>
+                                 <th class="px-4 py-2 border-b text-left">Valor Unitario</th>
+                                 <th class="px-4 py-2 border-b text-left">Subtotal</th>
+                                 <th class="px-4 py-2 border-b text-left">Acciones</th>
+                             </tr>
+                         </thead>
+                         <tbody>
+                             <tr>
+                                 <td colspan="5" class="text-center py-4">No hay productos agregados a la factura.</td>
+                             </tr>
+                         </tbody>
+                     </table>
+                 </div>
+            </div>
+
+             <div class="flex justify-end items-center mb-6">
+                 <strong class="text-xl mr-2">Valor Total:</strong>
+                 <span id="facValorTotalDisplay" class="text-xl">0</span> <input type="hidden" id="facValorTotal"> </div>
+
+
+             <div class="flex justify-end">
+                <button type="button" id="btnCrearFactura" class="btn btn-primary">Crear Factura</button> </div>
 
             </div>
 
@@ -261,20 +292,22 @@
 
             <div>
                 <h3 class="text-lg font-medium mb-3">Lista de Facturas</h3>
+                <div class="mb-4">
+                    <label for="inputBuscarFacturas" class="form-label">Buscar Factura:</label>
+                    <input type="text" id="inputBuscarFacturas" class="form-input" placeholder="Buscar por Cliente o Producto...">
+                </div>
                 <div class="overflow-x-auto">
                     <table id="tablaFacturas" class="min-w-full bg-white border border-gray-200 rounded-lg">
                         <thead>
                             <tr>
                                 <th class="px-4 py-2 border-b text-left">Fecha</th>
                                 <th class="px-4 py-2 border-b text-left">Cliente</th>
-                                <th class="px-4 py-2 border-b text-left">Producto</th>
-                                <th class="px-4 py-2 border-b text-left">Cantidad</th>
-                                <th class="px-4 py-2 border-b text-left">Valor Total</th>
+                                <th class="px-4 py-2 border-b text-left">Productos</th> <th class="px-4 py-2 border-b text-left">Valor Total</th>
                                 <th class="px-4 py-2 border-b text-left">Acciones</th> </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="text-center py-4">Cargando facturas...</td> </tr>
+                                <td colspan="5" class="text-center py-4">Cargando facturas...</td> </tr>
                         </tbody>
                     </table>
                 </div>
@@ -350,7 +383,7 @@
         const invProveedor = document.getElementById('invProveedor');
         const btnCancelarEdicion = document.getElementById('btnCancelarEdicion');
         const tablaInventario = document.getElementById('tablaInventario').querySelector('tbody');
-        const inputBuscarInventario = document.getElementById('inputBuscarInventario'); // Nuevo input de búsqueda de inventario
+        const inputBuscarInventario = document.getElementById('inputBuscarInventario');
         const btnExportarInventario = document.getElementById('btnExportarInventario');
         const formFacturacion = document.getElementById('formFacturacion');
         const facFechaHora = document.getElementById('facFechaHora');
@@ -365,18 +398,24 @@
         const descMetros = document.getElementById('descMetros');
         const descCentimetros = document.getElementById('descCentimetros');
         const descUnidades = document.getElementById('descUnidades');
-        const facValor = document.getElementById('facValor');
+        const facValorTotalDisplay = document.getElementById('facValorTotalDisplay'); // Elemento para mostrar el total
+        const facValorTotal = document.getElementById('facValorTotal'); // Campo oculto para el total
         const facProductId = document.getElementById('facProductId');
         const facProductUnit = document.getElementById('facProductUnit');
         const facProductMetros = document.getElementById('facProductMetros');
         const facProductCentimetros = document.getElementById('facProductCentimetros');
         const facProductUnidades = document.getElementById('facProductUnidades');
+        const facProductValorUnitario = document.getElementById('facProductValorUnitario'); // Valor unitario del producto seleccionado
+        const btnAgregarProductoFactura = document.getElementById('btnAgregarProductoFactura'); // Botón para agregar producto a la lista
+        const tablaProductosFactura = document.getElementById('tablaProductosFactura').querySelector('tbody'); // Tabla de productos en la factura
+        const btnCrearFactura = document.getElementById('btnCrearFactura'); // Botón para crear la factura final
         const moduloBuscarProducto = document.getElementById('moduloBuscarProducto');
         const cerrarBuscarProducto = document.getElementById('cerrarBuscarProducto');
         const inputBuscarProducto = document.getElementById('inputBuscarProducto');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
         const statusMessage = document.getElementById('statusMessage');
         const tablaFacturas = document.getElementById('tablaFacturas').querySelector('tbody');
+        const inputBuscarFacturas = document.getElementById('inputBuscarFacturas');
         const btnExportarFacturas = document.getElementById('btnExportarFacturas');
 
 
@@ -386,6 +425,17 @@
         console.log('DEBUG: moduloVerFacturas al obtener referencia:', moduloVerFacturas);
         console.log('DEBUG: btnExportarFacturas al obtener referencia:', btnExportarFacturas);
         console.log('DEBUG: inputBuscarInventario al obtener referencia:', inputBuscarInventario);
+        console.log('DEBUG: inputBuscarFacturas al obtener referencia:', inputBuscarFacturas);
+        console.log('DEBUG: facValorTotalDisplay al obtener referencia:', facValorTotalDisplay);
+        console.log('DEBUG: facValorTotal al obtener referencia:', facValorTotal);
+        console.log('DEBUG: facProductValorUnitario al obtener referencia:', facProductValorUnitario);
+        console.log('DEBUG: btnAgregarProductoFactura al obtener referencia:', btnAgregarProductoFactura);
+        console.log('DEBUG: tablaProductosFactura al obtener referencia:', tablaProductosFactura);
+        console.log('DEBUG: btnCrearFactura al obtener referencia:', btnCrearFactura);
+
+
+        // --- Variables de estado ---
+        let productosEnFactura = []; // Array para almacenar los productos de la factura actual
 
 
         // --- Funciones de Utilidad ---
@@ -419,9 +469,10 @@
                     cargarInventario();
                 } else if (moduloAMostrar === moduloFacturacion) {
                     console.log('DEBUG: Mostrando Módulo Facturación.');
-                    resetFormFacturacion();
+                    resetFormFacturacion(); // Resetear formulario y lista de productos de la factura
                 } else if (moduloAMostrar === moduloVerFacturas) {
                      console.log('DEBUG: Mostrando Módulo Ver Facturas.');
+                     resetBusquedaFacturas();
                      cargarFacturas();
                 }
              } catch (error) {
@@ -490,15 +541,31 @@
          }
 
          function resetFormFacturacion() {
-             formFacturacion.reset();
+             // Resetear campos de factura
+             facFechaHora.value = '';
+             facCliente.value = '';
+             facValorTotalDisplay.textContent = '0';
+             facValorTotal.value = 0;
+
+             // Resetear sección de agregar producto
+             facProducto.value = '';
+             detalleProductoFactura.classList.add('hidden');
              facProductId.value = '';
              facProductUnit.value = '';
              facProductMetros.value = '';
              facProductCentimetros.value = '';
              facProductUnidades.value = '';
-             detalleProductoFactura.classList.add('hidden');
+             facProductValorUnitario.value = '';
              handleCamposDescuento('');
-             if(facFechaHora) facFechaHora.value = '';
+
+             // Limpiar lista de productos en factura
+             productosEnFactura = [];
+             renderProductosEnFactura(); // Renderizar tabla vacía
+         }
+
+         function resetBusquedaFacturas() {
+             if(inputBuscarFacturas) inputBuscarFacturas.value = ''; // Limpiar búsqueda de facturas
+             // No llamamos a filtrarFacturas aquí, ya que cargarFacturas lo hará después de cargar los datos.
          }
 
 
@@ -582,13 +649,13 @@
 
         // Función para cargar facturas desde Firebase en tiempo real
         function cargarFacturas() {
-             tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
+             tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
 
              onSnapshot(facturasCol, (snapshot) => {
                  tablaFacturas.innerHTML = ''; // Limpiar tabla
 
                  if (snapshot.empty) {
-                     tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
+                     tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
                      return;
                  }
 
@@ -596,38 +663,70 @@
                      const factura = doc.data();
                      const row = tablaFacturas.insertRow();
 
-                     let cantidadFacturadaDisplay = '';
-                     if (factura.producto && factura.producto.unidadMedida === 'metros') {
-                          const metros = factura.producto.metrosFacturados || 0;
-                          const centimetros = factura.producto.centimetrosFacturados || 0;
-                          cantidadFacturadaDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
-                     } else if (factura.producto && factura.producto.unidadMedida === 'unidades') {
-                         cantidadFacturadaDisplay = `${factura.producto.unidadesFacturadas || 0} Unidades`;
+                     let productosFacturadosDisplay = '';
+                     if (factura.productos && factura.productos.length > 0) {
+                         productosFacturadosDisplay = factura.productos.map(p => {
+                             let cantidad = '';
+                             if (p.unidadMedida === 'metros') {
+                                 cantidad = `${p.metrosFacturados || 0}.${(p.centimetrosFacturados || 0).toString().padStart(2, '0')}m`;
+                             } else if (p.unidadMedida === 'unidades') {
+                                 cantidad = `${p.unidadesFacturadas || 0} und`;
+                             }
+                             return `${p.referenciaColor} (${cantidad})`; // Usar referenciaColor guardada
+                         }).join(', '); // Unir productos con coma y espacio
                      } else {
-                         cantidadFacturadaDisplay = 'N/A';
+                         productosFacturadosDisplay = 'Sin productos';
                      }
+
 
                      row.innerHTML = `
                          <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
                          <td class="px-4 py-2 border-b">${factura.cliente}</td>
-                         <td class="px-4 py-2 border-b">${factura.producto ? factura.producto.referencia + ' - ' + factura.producto.color : 'Producto Desconocido'}</td>
-                         <td class="px-4 py-2 border-b">${cantidadFacturadaDisplay}</td>
+                         <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
                          <td class="px-4 py-2 border-b">${parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td> <td class="px-4 py-2 border-b">
                              <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>
                          </td>
                      `;
                  });
+
+                 filtrarFacturas(); // Aplicar el filtro inicial después de cargar
              }, (error) => {
                  console.error("Error cargando facturas:", error);
-                 tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
+                 tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
                  showStatusMessage("Error al cargar facturas.", true);
              });
         }
+
+         // Función para filtrar la tabla de facturas
+        function filtrarFacturas() {
+            const searchTerm = inputBuscarFacturas.value.toLowerCase().trim();
+            const rows = tablaFacturas.querySelectorAll("tr");
+
+            rows.forEach(row => {
+                // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
+                if (row.querySelector('td[colspan="5"]')) { // Ajustar colspan
+                    return;
+                }
+
+                const cliente = row.cells[1].textContent.toLowerCase(); // Columna Cliente
+                const productos = row.cells[2].textContent.toLowerCase();      // Columna Productos (ahora contiene la lista)
+
+                if (cliente.includes(searchTerm) || productos.includes(searchTerm)) {
+                    row.style.display = ''; // Mostrar fila si coincide
+                } else {
+                    row.style.display = 'none'; // Ocultar fila si no coincide
+                }
+            });
+        }
+
 
         // Función para eliminar factura en Firebase
         async function eliminarFactura(idFactura) {
             if (confirm("¿Estás seguro de eliminar esta factura?")) {
                 try {
+                    // Opcional: Aquí podrías añadir lógica para "devolver" la cantidad al inventario
+                    // si es necesario al eliminar una factura. Esto haría el sistema más robusto.
+
                     await deleteDoc(doc(db, "facturas", idFactura));
                     showStatusMessage("Factura eliminada con éxito.");
                 } catch (error) {
@@ -641,21 +740,21 @@
         window.eliminarFactura = eliminarFactura;
 
 
-        // Función para exportar facturas a Excel (CSV)
+        // Función para exportar facturas a Excel (CSV) - Mantenemos CSV aquí ya que no se pidió XLSX para facturas
         function exportarFacturasAExcel() {
             console.log('DEBUG: Iniciando exportación de facturas a Excel.');
             let csvContent = "data:text/csv;charset=utf-8,";
 
             // Encabezados del CSV
-            const headers = ["Fecha", "Cliente", "Producto", "Cantidad", "Valor Total"];
+            const headers = ["Fecha", "Cliente", "Productos", "Valor Total"]; // Ajustar encabezados
             csvContent += headers.join(";") + "\r\n"; // Usar ; como separador
 
-            // Datos de la tabla
+            // Datos de la tabla (solo filas visibles después del filtro)
             const rows = tablaFacturas.querySelectorAll("tr");
 
             rows.forEach(function(row) {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
-                if (row.querySelector('td[colspan="6"]')) { // Ajustar colspan
+                if (row.style.display === 'none' || row.querySelector('td[colspan="5"]')) { // Ajustar colspan y añadir check de display
                     return;
                 }
 
@@ -681,6 +780,57 @@
 
             showStatusMessage("Facturas exportadas a facturas.csv");
             console.log('DEBUG: Exportación de facturas completada.');
+        }
+
+        // Función para exportar inventario a Excel (XLSX)
+        function exportarInventarioAExcel() {
+            console.log('DEBUG: Iniciando exportación de inventario a XLSX.');
+
+            // Datos para el libro de trabajo (workbook)
+            const data = [];
+
+            // Encabezados (coinciden con los th de la tabla)
+            const headers = [];
+            tablaInventario.closest('table').querySelectorAll('thead th').forEach(headerCell => {
+                // Excluir la columna de Acciones
+                if (headerCell.textContent.trim() !== 'Acciones') {
+                    headers.push(headerCell.textContent.trim());
+                }
+            });
+            data.push(headers); // Añadir encabezados a los datos
+
+            // Datos de las filas (solo filas visibles después del filtro)
+            const rows = tablaInventario.querySelectorAll("tr");
+
+            rows.forEach(function(row) {
+                 // Saltar filas no visibles (ocultas por el filtro) o filas de estado
+                 if (row.style.display === 'none' || row.querySelector('td[colspan="7"]')) {
+                    return;
+                 }
+
+                let rowData = [];
+                // Iterar sobre las celdas de datos (excluir la última celda de acciones)
+                row.querySelectorAll("td").forEach(function(cell, index) {
+                    // Asegurarse de que no estamos seleccionando la columna de acciones (última celda)
+                    if (index < row.cells.length - 1) {
+                         rowData.push(cell.textContent.trim());
+                    }
+                });
+                data.push(rowData); // Añadir datos de la fila
+            });
+
+            // Crear un nuevo libro de trabajo
+            const wb = XLSX.utils.book_new();
+            // Crear una hoja de cálculo a partir de los datos
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            // Añadir la hoja de cálculo al libro de trabajo
+            XLSX.utils.book_append_sheet(wb, ws, "Inventario");
+
+            // Escribir el archivo XLSX y descargarlo
+            XLSX.writeFile(wb, "inventario.xlsx");
+
+            showStatusMessage("Inventario exportado a inventario.xlsx");
+            console.log('DEBUG: Exportación de inventario completada.');
         }
 
 
@@ -828,12 +978,6 @@
         window.eliminarProducto = eliminarProducto;
 
 
-        function exportarInventarioAExcel() {
-             showStatusMessage("Funcionalidad de Exportar Inventario a Excel pendiente.");
-             // Implementación real requeriría una librería como SheetJS (xlsx) o similar
-        }
-
-
         // Función para buscar producto en Firebase para facturación
         async function buscarProductoParaFacturacion() {
             console.log('DEBUG: Iniciando búsqueda de producto para facturación...');
@@ -909,11 +1053,13 @@
             console.log("DEBUG: Producto seleccionado para factura:", producto);
             moduloBuscarProducto.style.display = 'none';
 
+            // Llenar campos ocultos y de visualización para el producto seleccionado
             facProductId.value = producto.id;
             facProductUnit.value = producto.unidadMedida;
             facProductMetros.value = producto.metros || 0;
             facProductCentimetros.value = producto.centimetros || 0;
             facProductUnidades.value = producto.unidades || 0;
+            facProductValorUnitario.value = producto.valor; // Guardar valor unitario
 
             detalleProductoFactura.classList.remove('hidden');
             prodNombreFac.textContent = `${producto.referencia} - ${producto.color}`;
@@ -925,14 +1071,18 @@
                  cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
                  descMetros.max = metros;
                  descCentimetros.max = 99;
+                 descMetros.value = 0; // Resetear campos de cantidad
+                 descCentimetros.value = 0;
             } else if (producto.unidadMedida === 'unidades') {
                 cantidadDisplay = `${producto.unidades || 0} Unidades`;
                  descUnidades.max = producto.unidades || 0;
+                 descUnidades.value = 0; // Resetear campo de cantidad
             }
             prodCantidadFac.textContent = cantidadDisplay;
 
             handleCamposDescuento(producto.unidadMedida);
 
+            // Enfocar el campo de cantidad a descontar
             if (producto.unidadMedida === 'metros') {
                  descMetros.focus();
             } else if (producto.unidadMedida === 'unidades') {
@@ -940,27 +1090,18 @@
             }
         }
 
-
-        async function crearFactura(event) {
-            event.preventDefault();
-
-            const cliente = facCliente.value.trim();
-            const valorTotal = parseFloat(facValor.value);
-            const fechaHora = facFechaHora.value.trim();
+        // Función para agregar el producto seleccionado a la lista temporal de la factura
+        async function agregarProductoAListaFactura() { // Ahora async
             const productoId = facProductId.value;
-
-             if (!fechaHora) {
-                 showStatusMessage("La fecha es obligatoria.", true);
-                 return;
-            }
-
-
-            if (!productoId) {
-                 showStatusMessage("Debe seleccionar un producto del inventario.", true);
-                 return;
-            }
-
             const unidadMedida = facProductUnit.value;
+            const valorUnitario = parseFloat(facProductValorUnitario.value);
+            const nombreProducto = prodNombreFac.textContent;
+
+            if (!productoId || !unidadMedida || isNaN(valorUnitario)) {
+                 showStatusMessage("Por favor, selecciona un producto válido del inventario.", true);
+                 return;
+            }
+
             let cantidadADescontar = 0;
             let metrosADescontar = 0;
             let centimetrosADescontar = 0;
@@ -998,64 +1139,245 @@
                      return;
                  }
             } else {
-                 showStatusMessage("Error: Unidad de medida del producto no reconocida.", true);
+                 showStatusMessage("Error interno: Unidad de medida del producto no reconocida.", true);
                  return;
             }
 
-            const productRef = doc(db, "inventario", productoId);
-            const productSnap = await getDoc(productRef);
-            const productoFacturado = productSnap.exists() ? productSnap.data() : null;
+            // Calcular subtotal para este producto
+            const subtotal = cantidadADescontar * valorUnitario;
 
-            if (!productoFacturado) {
-                 showStatusMessage("Error: No se pudo obtener la información del producto facturado.", true);
+            // Agregar producto a la lista temporal
+            productosEnFactura.push({
+                id: productoId,
+                referenciaColor: nombreProducto, // Usar la cadena Referencia - Color
+                unidadMedida: unidadMedida,
+                cantidadFacturada: cantidadADescontar,
+                metrosFacturados: metrosADescontar,
+                centimetrosFacturados: centimetrosADescontar,
+                unidadesFacturadas: unidadesADescontar,
+                valorUnitario: valorUnitario,
+                subtotal: subtotal // Subtotal calculado
+            });
+
+            // --- Actualizar inventario en Firebase (Descontar) ---
+            try {
+                 const productRef = doc(db, "inventario", productoId);
+                 const productSnap = await getDoc(productRef);
+
+                 if (productSnap.exists()) {
+                     const productoInventario = productSnap.data();
+                     let nuevaCantidadEnInventario;
+
+                     if (unidadMedida === 'metros') {
+                          let totalCmDisponible = (parseInt(productoInventario.metros) || 0) * 100 + (parseInt(productoInventario.centimetros) || 0);
+                          let totalCmADescontar = (metrosADescontar * 100) + centimetrosADescontar;
+                          let totalCmRestante = totalCmDisponible - totalCmADescontar;
+
+                          nuevaCantidadEnInventario = {
+                              metros: Math.floor(totalCmRestante / 100),
+                              centimetros: totalCmRestante % 100
+                          };
+                     } else if (unidadMedida === 'unidades') {
+                         nuevaCantidadEnInventario = {
+                             unidades: (parseInt(productoInventario.unidades) || 0) - unidadesADescontar
+                         };
+                     }
+
+                     if (nuevaCantidadEnInventario) {
+                         await updateDoc(productRef, nuevaCantidadEnInventario);
+                         console.log(`DEBUG: Inventario actualizado en Firebase (descontado) para producto ${nombreProducto}.`);
+                         showStatusMessage("Producto agregado a la factura y inventario actualizado.");
+                     } else {
+                          showStatusMessage("Error al calcular nueva cantidad de inventario.", true);
+                     }
+                 } else {
+                     console.warn(`DEBUG: Producto con ID ${productoId} no encontrado en inventario para actualizar.`);
+                     showStatusMessage("Error: Producto no encontrado en inventario.", true);
+                 }
+            } catch (error) {
+                 console.error("DEBUG: Error al actualizar inventario en Firebase:", error);
+                 showStatusMessage("Error al actualizar inventario.", true);
+                 // Considerar revertir la adición a productosEnFactura si falla la actualización de inventario
+                 productosEnFactura.pop(); // Eliminar el último producto agregado si la actualización falla
+            }
+            // --- Fin Actualización inventario en Firebase ---
+
+
+            renderProductosEnFactura(); // Actualizar la tabla de productos en factura
+            calcularTotalFactura(); // Recalcular el total
+
+            // Limpiar la sección de agregar producto para la próxima adición
+            facProducto.value = '';
+            detalleProductoFactura.classList.add('hidden');
+            facProductId.value = '';
+            facProductUnit.value = '';
+            facProductMetros.value = '';
+            facProductCentimetros.value = '';
+            facProductUnidades.value = '';
+            facProductValorUnitario.value = '';
+            handleCamposDescuento('');
+
+        }
+
+        // Función para renderizar la lista de productos en la tabla temporal de la factura
+        function renderProductosEnFactura() {
+            tablaProductosFactura.innerHTML = ''; // Limpiar tabla actual
+
+            if (productosEnFactura.length === 0) {
+                 tablaProductosFactura.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay productos agregados a la factura.</td></tr>';
                  return;
             }
 
+            productosEnFactura.forEach((producto, index) => {
+                 const row = tablaProductosFactura.insertRow();
+
+                 let cantidadDisplay = '';
+                 if (producto.unidadMedida === 'metros') {
+                      cantidadDisplay = `${producto.metrosFacturados}.${producto.centimetrosFacturados.toString().padStart(2, '0')}m`;
+                 } else if (producto.unidadMedida === 'unidades') {
+                     cantidadDisplay = `${producto.unidadesFacturadas} und`;
+                 }
+
+                 row.innerHTML = `
+                     <td class="px-4 py-2 border-b">${producto.referenciaColor}</td>
+                     <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
+                     <td class="px-4 py-2 border-b">${parseFloat(producto.valorUnitario).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                     <td class="px-4 py-2 border-b">${parseFloat(producto.subtotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                     <td class="px-4 py-2 border-b">
+                         <button class="btn btn-danger btn-sm" onclick="window.eliminarProductoDeListaFactura(${index})">Eliminar</button>
+                     </td>
+                 `;
+            });
+        }
+
+        // Función para eliminar un producto de la lista temporal de la factura
+        async function eliminarProductoDeListaFactura(index) { // Ahora async
+            console.log(`DEBUG: Intentando eliminar producto en índice: ${index}`);
+            if (index === undefined || index < 0 || index >= productosEnFactura.length) {
+                 console.error(`DEBUG: Índice inválido para eliminar: ${index}`);
+                 showStatusMessage("Error interno al eliminar producto.", true);
+                 return;
+            }
+
+            if (confirm("¿Estás seguro de eliminar este producto de la factura?")) {
+                const productoAEliminar = productosEnFactura[index];
+                const productoId = productoAEliminar.id;
+                const unidadMedida = productoAEliminar.unidadMedida;
+                const metrosADevolver = productoAEliminar.metrosFacturados;
+                const centimetrosADevolver = productoAEliminar.centimetrosFacturados;
+                const unidadesADevolver = productoAEliminar.unidadesFacturadas;
+
+
+                // --- Devolver cantidad al inventario en Firebase ---
+                try {
+                    const productRef = doc(db, "inventario", productoId);
+                    const productSnap = await getDoc(productRef);
+
+                    if (productSnap.exists()) {
+                        const productoInventario = productSnap.data();
+                        let nuevaCantidadEnInventario;
+
+                        if (unidadMedida === 'metros') {
+                            let totalCmDisponible = (parseInt(productoInventario.metros) || 0) * 100 + (parseInt(productoInventario.centimetros) || 0);
+                            let totalCmADevolver = (metrosADevolver * 100) + centimetrosADevolver;
+                            let totalCmRestante = totalCmDisponible + totalCmADevolver; // Sumar de nuevo
+
+                            nuevaCantidadEnInventario = {
+                                metros: Math.floor(totalCmRestante / 100),
+                                centimetros: totalCmRestante % 100
+                            };
+                        } else if (unidadMedida === 'unidades') {
+                            nuevaCantidadEnInventario = {
+                                unidades: (parseInt(productoInventario.unidades) || 0) + unidadesADevolver // Sumar de nuevo
+                            };
+                        }
+
+                        if (nuevaCantidadEnInventario) {
+                            await updateDoc(productRef, nuevaCantidadEnInventario);
+                            console.log(`DEBUG: Inventario actualizado en Firebase (devolución) para producto ${productoAEliminar.referenciaColor}.`);
+                             showStatusMessage("Producto eliminado de la lista y cantidad devuelta al inventario.");
+                        } else {
+                             showStatusMessage("Error al calcular nueva cantidad de inventario para devolución.", true);
+                        }
+                    } else {
+                        console.warn(`DEBUG: Producto con ID ${productoId} no encontrado en inventario para devolución.`);
+                        showStatusMessage("Error: Producto no encontrado en inventario para devolución.", true);
+                    }
+                } catch (error) {
+                    console.error("DEBUG: Error al actualizar inventario (devolución) en Firebase:", error);
+                    showStatusMessage("Error al devolver cantidad al inventario.", true);
+                    // Si falla la devolución, podrías considerar no eliminar de la lista temporal
+                    // o mostrar un error más crítico. Por ahora, permitimos eliminar de la lista.
+                }
+                // --- Fin Devolución cantidad al inventario en Firebase ---
+
+
+                productosEnFactura.splice(index, 1); // Eliminar el producto del array
+                renderProductosEnFactura(); // Volver a renderizar la tabla
+                calcularTotalFactura(); // Recalcular el total
+            }
+        }
+        // Exponer la función al ámbito global
+        window.eliminarProductoDeListaFactura = eliminarProductoDeListaFactura;
+
+
+        // Función para calcular el valor total de la factura
+        function calcularTotalFactura() {
+            let total = 0;
+            // Iterar sobre el array de productos en la factura
+            productosEnFactura.forEach(producto => {
+                 // Sumar el subtotal de cada producto al total
+                 total += producto.subtotal;
+            });
+            // Formatear y mostrar el total
+            facValorTotalDisplay.textContent = parseFloat(total).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            // Guardar el valor numérico sin formato en el campo oculto
+            facValorTotal.value = total;
+             console.log(`DEBUG: Total de factura calculado: ${total}`);
+        }
+
+
+        // Función para crear la factura final en Firebase
+        async function crearFactura() {
+            const cliente = facCliente.value.trim();
+            const fechaHora = facFechaHora.value.trim();
+
+            if (!fechaHora) {
+                 showStatusMessage("La fecha es obligatoria.", true);
+                 return;
+            }
+
+            if (!cliente) {
+                 showStatusMessage("El cliente es obligatorio.", true);
+                 return;
+            }
+
+            if (productosEnFactura.length === 0) {
+                 showStatusMessage("Debe agregar al menos un producto a la factura.", true);
+                 return;
+            }
+
+            const valorTotal = parseFloat(facValorTotal.value); // Obtener el valor total numérico del campo oculto
 
             const nuevaFactura = {
                 fechaHora: fechaHora,
                 cliente: cliente,
-                producto: {
-                    id: productoId,
-                    referencia: productoFacturado.referencia,
-                    color: productoFacturado.color,
-                    unidadMedida: unidadMedida,
-                    cantidadFacturada: cantidadADescontar,
-                    metrosFacturados: unidadMedida === 'metros' ? metrosADescontar : 0,
-                    centimetrosFacturados: unidadMedida === 'metros' ? centimetrosADescontar : 0,
-                    unidadesFacturadas: unidadMedida === 'unidades' ? unidadesADescontar : 0,
-                    valorUnitario: productoFacturado.valor
-                },
-                valorTotal: valorTotal // Guardar el valor numérico sin formato
+                productos: productosEnFactura, // Guardar el array de productos
+                valorTotal: valorTotal
             };
 
             try {
+                // Guardar la factura en la colección 'facturas'
                 await addDoc(facturasCol, nuevaFactura);
                 console.log("Factura creada con éxito.");
 
-                let nuevaCantidadEnInventario;
-                if (unidadMedida === 'metros') {
-                     let totalCmDisponible = (parseInt(facProductMetros.value) || 0) * 100 + (parseInt(facProductCentimetros.value) || 0);
-                     let totalCmADescontar = metrosADescontar * 100 + centimetrosADescontar;
-                     let totalCmRestante = totalCmDisponible - totalCmADescontar;
+                // La actualización del inventario ya se hizo al agregar/eliminar de la lista temporal.
+                // No necesitamos iterar y actualizar aquí de nuevo.
 
-                     nuevaCantidadEnInventario = {
-                         metros: Math.floor(totalCmRestante / 100),
-                         centimetros: totalCmRestante % 100
-                     };
-                } else if (unidadMedida === 'unidades') {
-                    nuevaCantidadEnInventario = {
-                        unidades: (parseInt(facProductUnidades.value) || 0) - unidadesADescontar
-                    };
-                }
-
-                await updateDoc(productRef, nuevaCantidadEnInventario);
-                console.log("Inventario actualizado con éxito.");
-
-                showStatusMessage("Factura creada y inventario actualizado con éxito!");
-                resetFormFacturacion();
+                showStatusMessage("Factura creada con éxito!");
+                resetFormFacturacion(); // Resetear todo el formulario de facturación
             } catch (e) {
-                console.error("Error al crear factura o actualizar inventario: ", e);
+                console.error("Error al crear factura: ", e);
                 showStatusMessage("Error al crear la factura.", true);
             }
         }
@@ -1095,10 +1417,11 @@
          });
 
         inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
-        inputBuscarInventario.addEventListener('input', filtrarInventario); // Event listener para filtrar inventario
+        inputBuscarInventario.addEventListener('input', filtrarInventario);
+        inputBuscarFacturas.addEventListener('input', filtrarFacturas);
 
-
-        formFacturacion.addEventListener('submit', crearFactura);
+        btnAgregarProductoFactura.addEventListener('click', agregarProductoAListaFactura); // Evento para agregar a la lista
+        btnCrearFactura.addEventListener('click', crearFactura); // Evento para crear la factura final
 
 
         // --- Inicialización ---
