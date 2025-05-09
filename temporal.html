@@ -237,7 +237,7 @@
                         </div>
                          <div id="camposDescuentoUnidades" class="mt-2 hidden">
                              <div>
-                                <label for="descUnidades" class="form-label">Unidades a Descontar:</label>
+                                <label for="descUnidades" class="form-label">Unidades:</label>
                                 <input type="number" id="descUnidades" class="form-input" min="0" value="0" required>
                              </div>
                          </div>
@@ -539,8 +539,7 @@
                         <td class="px-4 py-2 border-b">${producto.referencia}</td>
                         <td class="px-4 py-2 border-b">${producto.color}</td>
                         <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
-                        <td class="px-4 py-2 border-b">${producto.valor}</td>
-                        <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
+                        <td class="px-4 py-2 border-b">${parseFloat(producto.valor).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td> <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
                         <td class="px-4 py-2 border-b">
                             <button class="btn btn-primary btn-sm mr-2" data-id="${doc.id}" onclick="window.modificarProducto('${doc.id}')">Modificar</button>
                             <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarProducto('${doc.id}')">Eliminar</button>
@@ -613,8 +612,7 @@
                          <td class="px-4 py-2 border-b">${factura.cliente}</td>
                          <td class="px-4 py-2 border-b">${factura.producto ? factura.producto.referencia + ' - ' + factura.producto.color : 'Producto Desconocido'}</td>
                          <td class="px-4 py-2 border-b">${cantidadFacturadaDisplay}</td>
-                         <td class="px-4 py-2 border-b">${factura.valorTotal}</td>
-                         <td class="px-4 py-2 border-b">
+                         <td class="px-4 py-2 border-b">${parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td> <td class="px-4 py-2 border-b">
                              <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>
                          </td>
                      `;
@@ -757,7 +755,7 @@
                 metros: metros,
                 centimetros: centimetros,
                 unidades: unidades,
-                valor: valor,
+                valor: valor, // Guardar el valor numérico sin formato
                 proveedor: proveedor
             };
 
@@ -800,7 +798,7 @@
                      invFechaHora.value = producto.fechaHora;
                      invReferencia.value = producto.referencia;
                      invColor.value = producto.color;
-                     invValor.value = producto.valor;
+                     invValor.value = producto.valor; // Cargar el valor numérico
                      invProveedor.value = producto.proveedor || '';
 
                      if (producto.unidadMedida === 'metros') {
@@ -1028,7 +1026,7 @@
                     unidadesFacturadas: unidadMedida === 'unidades' ? unidadesADescontar : 0,
                     valorUnitario: productoFacturado.valor
                 },
-                valorTotal: valorTotal
+                valorTotal: valorTotal // Guardar el valor numérico sin formato
             };
 
             try {
