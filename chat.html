@@ -1118,21 +1118,31 @@
         // Listener para el evento resize de la ventana
         window.addEventListener('resize', () => {
             const currentViewportHeight = window.innerHeight;
+             let usableHeight = currentViewportHeight;
+
+             // Usar visualViewport si está disponible y parece más preciso
+             if (window.visualViewport) {
+                 usableHeight = window.visualViewport.height;
+             }
+
 
             // Detectar si el teclado virtual probablemente se ha abierto (la altura del viewport disminuye significativamente)
             // O si se ha cerrado (la altura del viewport vuelve a ser similar a la original)
             const keyboardOpenThreshold = initialViewportHeight * 0.8; // Umbral: si la altura es menos del 80% de la original
 
-            if (currentViewportHeight < keyboardOpenThreshold) {
+            if (usableHeight < keyboardOpenThreshold) {
                 // Teclado probablemente abierto
                 // Añadir padding inferior a chatBox para que la última parte sea visible
                 // La cantidad de padding puede necesitar ajuste, pero la diferencia de altura es un buen punto de partida
-                const keyboardHeight = initialViewportHeight - currentViewportHeight;
+                const keyboardHeight = initialViewportHeight - usableHeight;
                  // Asegurarse de que el padding sea al menos la altura de la barra de input
                  const minPadding = messageInput.parentElement.offsetHeight; // Altura del contenedor del input
+                 // Ajustar paddingBottom del chatBox
                  chatBox.style.paddingBottom = `${Math.max(keyboardHeight, minPadding) + 20}px`; // Añadir un poco extra
-                 chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
-                 console.log("Teclado abierto, ajustando padding:", chatBox.style.paddingBottom);
+                 // Intentar scrollear al final después de ajustar el padding
+                 chatBox.scrollTop = chatBox.scrollHeight;
+                 console.log("Teclado abierto, ajustando padding y scrolleando:", chatBox.style.paddingBottom);
+
 
             } else {
                 // Teclado probablemente cerrado o no estaba abierto
@@ -1146,8 +1156,11 @@
         messageInput.addEventListener('focus', () => {
             // Cuando el input recibe foco, intentar scrollear la caja de chat al final
             // Esto puede ayudar a que la barra de input quede visible sobre el teclado
-            chatBox.scrollTop = chatBox.scrollHeight;
-            console.log("Input enfocado, scrolleando chatBox al final.");
+            // Añadimos un pequeño retraso para dar tiempo al teclado a aparecer y al layout a ajustarse
+            setTimeout(() => {
+                chatBox.scrollTop = chatBox.scrollHeight;
+                console.log("Input enfocado, scrolleando chatBox al final con retraso.");
+            }, 100); // Retraso de 100ms
         });
 
 
