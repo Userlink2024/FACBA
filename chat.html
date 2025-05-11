@@ -9,7 +9,7 @@
         html, body {
             height: 100%;
             margin: 0;
-            padding: 0;
+            padding: 0; /* Eliminar padding del body aquí y añadirlo al contenedor si es necesario */
             overflow: hidden; /* Prevenir scroll del body */
         }
 
@@ -33,13 +33,11 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            /* Altura inicial al 100% del viewport */
-            height: 100vh; /* Usar 100vh inicialmente */
-            max-height: 100vh; /* Asegurar que no exceda 100vh */
+            /* Ajuste clave: max-height basado en el 100% de su padre (body) */
+            max-height: 100%;
+            height: 100%; /* Asegurar que ocupe la altura disponible */
             box-sizing: border-box;
              padding: 20px; /* Añadir padding aquí en lugar del body */
-             /* Eliminar transición de altura */
-             /* transition: height 0.1s ease-out; */
         }
 
         /* Estilos para la sección de ingreso de nombre */
@@ -110,8 +108,8 @@
             background-size: cover; /* Cubrir el área del contenedor */
             background-position: center; /* Centrar la imagen */
             background-repeat: no-repeat; /* No repetir la imagen */
-             /* Padding inferior dinámico ajustado por JS */
-            padding-bottom: 20px; /* Padding inicial, se ajustará con JS */
+             /* Padding inferior dinámico ajustado por JS para el teclado */
+            padding-bottom: 20px; /* Padding inicial */
         }
 
         /* Estilos para cada mensaje individual */
@@ -185,15 +183,7 @@
             align-items: center; /* Centrar horizontalmente */
             gap: 10px; /* Espacio entre elementos */
             flex-shrink: 0; /* Evita que el área de entrada se encoja */
-            position: fixed; /* Fijar en la parte inferior de la ventana */
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100%; /* Ocupar todo el ancho */
-            box-sizing: border-box; /* Incluir padding en el ancho */
-            max-width: 700px; /* Igual que el contenedor principal */
-            margin: 0 auto; /* Centrar horizontalmente */
-             z-index: 5; /* Asegurar que esté por encima de la caja de chat */
+            position: relative; /* Necesario para posicionar el selector de emojis */
         }
 
         /* Contenedor para el input y los botones */
@@ -321,7 +311,7 @@
             flex-grow: 1; /* Asegura que la interfaz de chat ocupe el espacio disponible */
              /* Ajuste clave: Darle una altura al contenedor flex para que los hijos flex-grow funcionen */
             height: 100%;
-            position: relative; /* Necesario para posicionar el selector de emojis */
+            position: relative; /* Necesario para posicionar el selector de emojis si se pone fuera del input-area */
         }
 
         /* Estilos para el selector de emojis */
