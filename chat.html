@@ -153,6 +153,17 @@
              word-break: break-word;
         }
 
+         /* Estilos para los enlaces dentro de los mensajes */
+        .message a {
+            color: #007aff; /* Color azul para enlaces */
+            text-decoration: none; /* Sin subrayado por defecto */
+        }
+
+        .message a:hover {
+            text-decoration: underline; /* Subrayado al pasar el ratón */
+        }
+
+
          /* Contenedor para texto, hora y checkmarks */
          .message-footer {
              display: flex;
@@ -213,20 +224,21 @@
              color: white !important; /* Checkmarks blancos en mensajes enviados, forzar */
          }
 
-        /* Estilos para el contenedor del video de YouTube */
-        .youtube-preview {
+        /* Estilos para el contenedor del video de YouTube y otros embeds */
+        .video-preview-container {
             margin-top: 8px; /* Espacio entre el texto y el video */
             margin-bottom: 4px; /* Espacio entre el video y el footer */
             width: 100%; /* Ocupar el ancho del mensaje */
             aspect-ratio: 16 / 9; /* Mantener relación de aspecto 16:9 */
-            overflow: hidden; /* Asegurar que el iframe no se salga */
+            overflow: hidden; /* Asegurar que el iframe o video no se salga */
             border-radius: 8px; /* Bordes redondeados para la previsualización */
         }
 
-        .youtube-preview iframe {
+        .video-preview-container iframe,
+        .video-preview-container video {
             width: 100%;
             height: 100%;
-            border: none; /* Eliminar borde del iframe */
+            border: none; /* Eliminar borde */
         }
 
 
@@ -687,7 +699,7 @@
         <div id="chat-interface">
             <div id="chat-header">
                  <div>
-                     <h2>FACBA</h2>
+                     <h2>Chat en Tiempo Real</h2>
                      <div id="online-users"></div> </div>
                  <button id="settings-button" title="Configuración">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -1199,32 +1211,80 @@
             }
             /* --- Fin de mostrar contenido de respuesta --- */
 
-            // --- Añadir texto del mensaje ---
-            if (msg.text) {
-                 messageElement.appendChild(textSpan); // Añadir el texto directamente al messageElement
-                 console.log(`[${userName}] textSpan appended to messageElement for message ${messageId}.`); // Log after appending textSpan
-            }
+            // --- Lógica para detectar y mostrar previsualización de videos o enlaces ---
+            let contentElement = null; // Elemento que contendrá la previsualización o el texto del enlace
 
-
-            // --- Lógica para detectar y mostrar previsualización de YouTube ---
+            // 1. Intentar detectar YouTube
             const youtubeUrlMatch = msg.text ? msg.text.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]+)/) : null;
             if (youtubeUrlMatch && youtubeUrlMatch[1]) {
                 const videoId = youtubeUrlMatch[1];
-                const youtubePreviewDiv = document.createElement('div');
-                youtubePreviewDiv.classList.add('youtube-preview');
-
                 const iframe = document.createElement('iframe');
-                iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                iframe.src = `https://www.youtube.com/embed/${videoId}`; // URL de incrustación estándar de YouTube
                 iframe.setAttribute('allowfullscreen', ''); // Permitir pantalla completa
-                iframe.setAttribute('loading', 'lazy'); // Carga diferida para mejor rendimiento
-                // Puedes añadir más atributos como 'autoplay=1' si quieres que se reproduzca al cargar,
-                // pero puede ser molesto para el usuario.
-
-                youtubePreviewDiv.appendChild(iframe);
-                messageElement.appendChild(youtubePreviewDiv); // Añadir la previsualización al messageElement
-                console.log(`[${userName}] YouTube preview added for message ${messageId} with video ID: ${videoId}`);
+                iframe.setAttribute('loading', 'lazy'); // Carga diferida
+                contentElement = iframe;
+                console.log(`[${userName}] YouTube video detected for message ${messageId}. Video ID: ${videoId}`);
+            } else {
+                // 2. Intentar detectar Facebook Video (regex mejorada, pero puede no ser exhaustiva)
+                const facebookUrlMatch = msg.text ? msg.text.match(/(?:https?:\/\/)?(?:www\.)?(?:facebook\.com)\/(?:watch\/)?(?:v=)?(?:videos\/)?([0-9]+)(?:\/)?/) : null;
+                 if (facebookUrlMatch && facebookUrlMatch[1]) {
+                     const videoId = facebookUrlMatch[1];
+                     const iframe = document.createElement('iframe');
+                     // URL de incrustación básica de Facebook (puede requerir ajustes dependiendo de la configuración)
+                     iframe.src = `https://www.facebook.com/plugins/video.php?href=https%3A%2F%2Fwww.facebook.com%2Fwatch%2F%3Fv%3D${videoId}&show_text=0&width=560`;
+                     iframe.setAttribute('allowfullscreen', '');
+                     iframe.setAttribute('loading', 'lazy');
+                     iframe.setAttribute('scrolling', 'no');
+                     iframe.setAttribute('frameborder', '0');
+                     iframe.setAttribute('allow', 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share');
+                     contentElement = iframe;
+                     console.log(`[${userName}] Facebook video detected for message ${messageId}. Video ID: ${videoId}`);
+                 } else {
+                     // 3. Intentar detectar enlaces directos a archivos de video
+                     const videoFileMatch = msg.text ? msg.text.match(/(https?:\/\/[^\s]+\.(mp4|webm|ogg))/) : null;
+                     if (videoFileMatch && videoFileMatch[1]) {
+                         const videoUrl = videoFileMatch[1];
+                         const videoElement = document.createElement('video');
+                         videoElement.src = videoUrl;
+                         videoElement.setAttribute('controls', ''); // Mostrar controles de video
+                         videoElement.setAttribute('preload', 'metadata'); // Cargar metadatos primero
+                         contentElement = videoElement;
+                         console.log(`[${userName}] Direct video file detected for message ${messageId}. URL: ${videoUrl}`);
+                     } else {
+                         // 4. Si no es un video soportado, mostrar el texto del mensaje con enlaces clicables
+                         // Detectar URLs generales en el texto y convertirlas en enlaces clicables
+                         const urlRegex = /(https?:\/\/[^\s]+)/g;
+                         const textWithLinks = msg.text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+                         textSpan.innerHTML = textWithLinks; // Usar innerHTML para renderizar el enlace
+                         contentElement = textSpan; // El texto con enlaces es el contenido principal
+                         console.log(`[${userName}] No supported video detected for message ${messageId}. Displaying text with links.`);
+                     }
+                 }
             }
-            /* --- Fin Lógica previsualización YouTube --- */
+
+            // Si se encontró una previsualización de video, crear un contenedor y añadirla
+            if (contentElement && (contentElement.tagName === 'IFRAME' || contentElement.tagName === 'VIDEO')) {
+                const videoPreviewContainer = document.createElement('div');
+                videoPreviewContainer.classList.add('video-preview-container');
+                videoPreviewContainer.appendChild(contentElement);
+                messageElement.appendChild(videoPreviewContainer); // Añadir el contenedor de previsualización al messageElement
+
+                // Después de añadir la previsualización, añadir el texto original si no es solo la URL
+                 if (msg.text && !youtubeUrlMatch && !facebookUrlMatch && !videoFileMatch) {
+                     // Si el mensaje contenía texto además de la URL, añadir el textSpan original (ahora con enlaces clicables)
+                     messageElement.appendChild(textSpan);
+                     console.log(`[${userName}] Adding original textSpan after video preview for message ${messageId}.`);
+                 } else if (msg.text && (youtubeUrlMatch || facebookUrlMatch || videoFileMatch)) {
+                     // Si el mensaje es solo la URL del video, no es necesario añadir el textSpan de nuevo
+                     console.log(`[${userName}] Message is only a video URL, not adding textSpan again for message ${messageId}.`);
+                 }
+
+
+            } else if (contentElement && contentElement.classList.contains('text')) {
+                 // Si el contenido principal es el textSpan (con enlaces clicables)
+                 messageElement.appendChild(contentElement); // Añadir el textSpan (que ya tiene el contenido)
+                 console.log(`[${userName}] Adding textSpan as main content for message ${messageId}.`);
+            }
 
 
             // --- Añadir hora y checkmarks al footer ---
@@ -1253,8 +1313,14 @@
             // Después de añadir el messageElement al DOM, podemos obtener los estilos computados del textSpan
             // Aumentar el retraso para dar más tiempo a la renderización
             setTimeout(() => {
-                 const computedStyle = window.getComputedStyle(textSpan);
-                 console.log(`[${userName}] textSpan for message ${messageId} computed style -> Color: ${computedStyle.color}, Visibility: ${computedStyle.visibility}, Display: ${computedStyle.display}`);
+                 // Verificar si textSpan existe antes de intentar obtener estilos computados
+                 if (textSpan && textSpan.parentElement) { // Asegurarse de que textSpan está en el DOM
+                     const computedStyle = window.getComputedStyle(textSpan);
+                     console.log(`[${userName}] textSpan for message ${messageId} computed style -> Color: ${computedStyle.color}, Visibility: ${computedStyle.visibility}, Display: ${computedStyle.display}`);
+                 } else {
+                     console.log(`[${userName}] textSpan not found in DOM for message ${messageId}. Skipping computed style log.`);
+                 }
+
 
                  // Verificar también el estilo computado del messageFooter
                  const computedFooterStyle = window.getComputedStyle(messageFooter);
