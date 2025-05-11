@@ -79,10 +79,20 @@
             background-color: #0056b3; /* Azul más oscuro */
         }
 
+        /* Estilos para el encabezado del chat */
+        #chat-header {
+            display: flex;
+            justify-content: flex-end; /* Alinear elementos a la derecha */
+            align-items: center;
+            padding: 0 20px 10px 20px; /* Padding superior, sin padding lateral extra */
+            flex-shrink: 0;
+            position: relative; /* Para posicionar el dropdown */
+        }
+
         /* Estilos para la caja de chat (mensajes) */
         #chat-box {
             flex-grow: 1; /* Permite que la caja de chat ocupe el espacio restante */
-            padding: 20px;
+            padding: 0 20px; /* Padding lateral */
             overflow-y: auto; /* Habilita el scroll vertical si los mensajes exceden la altura */
             border-bottom: 1px solid #eee;
             display: flex;
@@ -176,24 +186,23 @@
             position: relative; /* Necesario para posicionar el selector de emojis */
         }
 
-        /* Estilos para el TEXTAREA */
-        .message-input-area textarea {
+        /* Estilos para el INPUT TYPE="TEXT" */
+        .message-input-area input[type="text"] {
             flex-grow: 1;
-            padding: 12px 15px;
+            /* Ajuste de padding para hacerlo menos "gordo" */
+            padding: 8px 15px;
             border: 1px solid #d1d1d6;
             border-radius: 20px; /* Bordes muy redondeados */
             font-size: 1.1em;
             box-sizing: border-box;
             outline: none; /* Eliminar contorno al enfocar */
             transition: border-color 0.2s ease-in-out;
-            resize: none; /* Deshabilitar redimensionamiento manual */
-            overflow-y: hidden; /* Ocultar scrollbar por defecto, JS maneja la altura */
-            min-height: 45px; /* Altura mínima igual a la de los botones */
-            max-height: 150px; /* Altura máxima para evitar que ocupe toda la pantalla */
+            /* Altura ajustada para hacerlo más delgado */
+            height: 40px; /* Altura fija similar a los botones */
             line-height: 1.5; /* Igual que los mensajes para consistencia */
             width: 100%; /* Ocupar todo el ancho disponible */
         }
-         .message-input-area textarea:focus {
+         .message-input-area input[type="text"]:focus {
              border-color: #007aff; /* Borde azul al enfocar */
          }
 
@@ -214,8 +223,9 @@
             border: none;
             border-radius: 50%; /* Botones redondos */
             cursor: pointer;
-            width: 45px; /* Tamaño fijo para botones redondos */
-            height: 45px; /* Tamaño fijo para botones redondos */
+            /* Ajuste de tamaño fijo para botones redondos */
+            width: 40px;
+            height: 40px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -238,7 +248,7 @@
 
          /* Estilo específico para el botón de emoji */
          #emoji-button {
-             /* Ya tiene estilos base de .message-input-area button */
+             /* Ya tienen estilos base de .message-input-area button */
          }
 
          #emoji-button svg {
@@ -264,22 +274,25 @@
         }
 
         /* Estilos para el botón de limpiar chat */
-        #clear-chat-button {
-            padding: 8px 15px; /* Más padding */
-            background-color: #ff3b30; /* Rojo de Apple */
-            color: white;
+        /* Ahora dentro del dropdown */
+        #settings-dropdown #clear-chat-button {
+            padding: 10px 15px; /* Padding para elemento de menú */
+            background-color: transparent; /* Fondo transparente */
+            color: #1c1c1e; /* Color de texto oscuro */
             border: none;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 0; /* Sin bordes redondeados */
             cursor: pointer;
-            font-size: 0.9em; /* Tamaño de fuente */
-            margin: 10px 20px; /* Margen arriba/abajo y padding lateral */
-            align-self: flex-start; /* Alinear a la izquierda o puedes centrarlo si prefieres */
-            flex-shrink: 0; /* Evitar que se encoja */
-            transition: background-color 0.2s ease-in-out;
+            font-size: 1em; /* Tamaño de fuente estándar */
+            margin: 0; /* Sin margen */
+            width: 100%; /* Ocupar todo el ancho del dropdown */
+            text-align: left; /* Alinear texto a la izquierda */
+            transition: background-color 0.1s ease-in-out;
+            display: block; /* Asegurar que sea un bloque para ocupar el ancho */
         }
 
-        #clear-chat-button:hover {
-            background-color: #c62828; /* Rojo más oscuro */
+        #settings-dropdown #clear-chat-button:hover {
+            background-color: #e5e5ea; /* Fondo gris claro al pasar el ratón */
+            color: #ff3b30; /* Color rojo al pasar el ratón */
         }
 
 
@@ -417,6 +430,24 @@
          }
 
 
+        /* Estilos para el menú desplegable de configuración */
+        #settings-dropdown {
+            display: none; /* Oculto por defecto */
+            position: absolute;
+            /* bottom y right se ajustan dinámicamente en JS o se calculan */
+            background-color: #fff;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 10; /* Asegurar que esté por encima de otros elementos */
+            min-width: 150px; /* Ancho mínimo del menú */
+            padding: 5px 0; /* Padding interno */
+            flex-direction: column; /* Elementos apilados verticalmente */
+            top: 40px; /* Posicionar debajo del botón de settings */
+            right: 20px; /* Alinear a la derecha del chat-header */
+        }
+
+
         /* Media query para pantallas más pequeñas (Android) */
         @media (max-width: 768px) {
             body {
@@ -433,10 +464,7 @@
             }
 
             #name-prompt input,
-            #name-prompt button,
-            .message-input-area textarea, /* Ajustado para textarea */
-            .message-input-area button,
-            #send-button {
+            #name-prompt button {
                 font-size: 1em; /* Ajustar tamaño de fuente */
                 padding: 10px 12px; /* Ajustar padding */
             }
@@ -459,6 +487,17 @@
                  justify-content: flex-end; /* Alinear botones a la derecha */
              }
 
+             /* Ajuste para input[type="text"] en móviles */
+             .message-input-area input[type="text"] {
+                 font-size: 1em;
+                 padding: 8px 12px; /* Ajustar padding */
+                 height: 40px; /* Altura fija */
+                 min-height: 40px; /* Asegurar altura mínima */
+                 flex-grow: 1;
+                 width: 100%;
+                 box-sizing: border-box;
+             }
+
 
              #emoji-button, #send-button {
                  width: 40px;
@@ -472,24 +511,23 @@
                   padding: 10px 15px;
               }
 
-             /* Asegurar que el textarea ocupe el espacio restante en móviles */
-             .message-input-area textarea { /* Ajustado para textarea */
-                 flex-grow: 1;
-                 width: 100%; /* Asegurar que intente ocupar el 100% del espacio flexible */
-                 box-sizing: border-box; /* Incluir padding y border en el ancho */
-                 min-height: 40px; /* Ajustar altura mínima para móviles */
-             }
 
-
-              #emoji-button svg {
+              #emoji-button svg, #settings-button svg {
                  width: 20px;
                  height: 20px;
              }
 
-             #clear-chat-button {
-                 font-size: 0.8em;
-                 padding: 6px 12px;
-                 margin: 10px 15px;
+             #settings-button {
+                 /* Ajuste de tamaño y posición para móviles */
+                 width: 40px;
+                 height: 40px;
+                 padding: 0;
+                 align-self: center;
+             }
+
+             #settings-dropdown #clear-chat-button {
+                 font-size: 0.9em;
+                 padding: 8px 12px;
              }
 
              .message {
@@ -514,6 +552,13 @@
              #reply-preview {
                  padding: 8px 10px;
              }
+
+             /* Ajuste del dropdown de settings en móviles */
+             #settings-dropdown {
+                 top: 40px; /* Posicionar debajo del botón de settings */
+                 right: 10px; /* Alinear a la derecha en móviles */
+                 left: auto; /* Desactivar alineación izquierda */
+             }
         }
 
     </style>
@@ -533,6 +578,16 @@
         </div>
 
         <div id="chat-interface">
+            <div id="chat-header">
+                 <button id="settings-button" title="Configuración">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                          <path d="M24 13.616v-3.232c-1.651-.587-2.694-.758-3.281-2.042-.587-1.285-.185-2.178.419-3.742 1.809-4.642-1.489-8.396-5.072-8.396-1.464 0-2.856.543-3.807 1.499-.95.951-1.493 2.245-1.493 3.809 0 2.628-1.391 3.424-4.058 3.815-1.207.175-2.921.273-4.916.306v3.232c2.002.04 3.715.138 4.92.302 2.668.392 4.06 1.189 4.06 3.817 0 1.563.544 2.856 1.493 3.807.951.951 2.343 1.494 3.808 1.494 3.583 0 6.881-3.758 5.072-8.398-.606-1.56-.204-2.453.42-3.738 1.586-3.293 3.564-3.488 3.279-4.075zm-12 7.384c-2.757 0-5-2.243-5-5s2.243-5 5-5 5 2.243 5 5-2.243 5-5 5z"/>
+                      </svg>
+                 </button>
+                 <div id="settings-dropdown">
+                     <button id="clear-chat-button">Limpiar Chat</button>
+                 </div>
+            </div>
              <div id="chat-box">
                 </div>
             <div id="typing-indicator"></div>
@@ -544,7 +599,7 @@
                      <span class="reply-text"></span>
                      <button id="cancel-reply-button">×</button>
                  </div>
-                <textarea id="message-input" placeholder="Escribe un mensaje..."></textarea>
+                <input type="text" id="message-input" placeholder="Escribe un mensaje...">
                 <div class="input-buttons">
                      <button id="emoji-button" title="Insertar Emoji">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -555,8 +610,7 @@
                      <button id="send-button">Enviar</button>
                 </div>
             </div>
-             <button id="clear-chat-button">Limpiar Chat</button>
-        </div>
+             </div>
     </div>
 
     <audio id="notification-sound" src="sonido_mensaje.mp3" preload="auto"></audio>
@@ -597,17 +651,21 @@
         const startChatButton = document.getElementById('start-chat-button');
         const chatInterface = document.getElementById('chat-interface');
         const chatBox = document.getElementById('chat-box');
-        const messageInput = document.getElementById('message-input'); // Es un textarea ahora
+        // Cambiado de textarea a input type="text"
+        const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
         const notificationSound = document.getElementById('notification-sound'); // Elemento de audio
-        const clearChatButton = document.getElementById('clear-chat-button'); // Botón de limpiar chat
         const emojiButton = document.getElementById('emoji-button'); // Botón de emoji
         const emojiPicker = document.getElementById('emoji-picker'); // Selector de emojis
         const replyPreview = document.getElementById('reply-preview'); // Vista previa de respuesta
         const replyNameSpan = replyPreview.querySelector('.reply-name');
         const replyTextSpan = replyPreview.querySelector('.reply-text');
         const cancelReplyButton = document.getElementById('cancel-reply-button');
+        // Nuevos elementos para configuración
+        const settingsButton = document.getElementById('settings-button'); // Ahora en chat-header
+        const settingsDropdown = document.getElementById('settings-dropdown'); // Ahora en chat-header
+        const clearChatButton = document.getElementById('clear-chat-button'); // Ahora dentro del dropdown
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -702,8 +760,7 @@
                     .then(() => {
                         console.log("Mensaje enviado exitosamente a Realtime Database!");
                         messageInput.value = ''; // Limpiar el campo de entrada
-                        // Ajustar la altura del textarea después de limpiar
-                        adjustTextareaHeight();
+                        // No es necesario ajustar altura para input type="text"
                         setTypingStatus(false); // Limpiar estado de escritura
                         cancelReply(); // Cancelar el estado de respuesta después de enviar
                     })
@@ -721,41 +778,16 @@
 
         // Permitir presionar Enter en el campo de mensaje de texto
         messageInput.addEventListener('keypress', (event) => {
-            // Permitir saltos de línea con Shift + Enter
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault(); // Prevenir el salto de línea por defecto
+            // Solo enviar con Enter, no permitir saltos de línea en input type="text"
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevenir el envío por defecto del formulario (si existiera)
                 sendMessage(); // Enviar el mensaje
             }
-             // Si es solo Enter (sin Shift), permitir el salto de línea
         });
 
 
-         // --- Lógica de Ajuste de Altura del Textarea ---
-         function adjustTextareaHeight() {
-             const input = messageInput;
-             input.style.height = 'auto'; // Restablecer altura para calcular la scrollHeight
-             input.style.height = input.scrollHeight + 'px'; // Establecer altura basada en el contenido
-             // Asegurarse de que no exceda la altura máxima
-             if (input.scrollHeight > 150) { // 150px es la max-height en CSS
-                 input.style.overflowY = 'auto'; // Mostrar scrollbar si excede la altura máxima
-             } else {
-                 input.style.overflowY = 'hidden'; // Ocultar scrollbar si no excede
-             }
-
-             // Ajustar la posición del selector de emojis si está visible
-             if (emojiPicker.style.display === 'flex') {
-                 // Recalcular la posición bottom del selector de emojis
-                 const inputAreaRect = messageInput.parentElement.getBoundingClientRect();
-                 // bottom del selector = altura del área de input + padding/margen
-                 emojiPicker.style.bottom = `${inputAreaRect.height + 10}px`; // 10px de margen
-             }
-         }
-
-         // Listener para el evento 'input' en el textarea para ajustar la altura
-         messageInput.addEventListener('input', adjustTextareaHeight);
-
-         // Ajustar la altura inicial al cargar la página
-         window.addEventListener('load', adjustTextareaHeight);
+         // --- Lógica de Ajuste de Altura del Textarea (Eliminada) ---
+         // Eliminada función adjustTextareaHeight y sus listeners
 
 
          // --- Lógica del Indicador de Escribiendo (Realtime Database) ---
@@ -966,7 +998,11 @@
         }
 
         // --- Lógica para Limpiar Chat con Clave (Realtime Database) ---
+        // El listener ahora está asociado al botón dentro del dropdown
         clearChatButton.addEventListener('click', () => {
+            // Ocultar el dropdown antes de mostrar el prompt
+            settingsDropdown.style.display = 'none';
+
             // Usar prompt() para solicitar la clave
             const enteredPassword = prompt("Ingresa la clave para limpiar el chat:");
 
@@ -988,6 +1024,7 @@
                 // Mostrar mensaje de clave incorrecta al usuario
             }
         });
+
 
         // --- Lógica del Botón de Emoji y Selector ---
 
@@ -1022,7 +1059,7 @@
             input.selectionStart = input.selectionEnd = start + emoji.length;
 
             input.focus(); // Volver a enfocar el input
-            // Disparar el evento 'input' manualmente para actualizar el indicador de escribiendo y la altura del textarea
+            // Disparar el evento 'input' manualmente para actualizar el indicador de escribiendo
             input.dispatchEvent(new Event('input'));
         }
 
@@ -1031,24 +1068,30 @@
         emojiButton.addEventListener('click', (event) => {
             // Prevenir que el clic en el botón cierre el selector inmediatamente
             event.stopPropagation();
+             // Ocultar el dropdown de settings si está visible
+             settingsDropdown.style.display = 'none';
+
             if (emojiPicker.style.display === 'flex') {
                 emojiPicker.style.display = 'none';
             } else {
                 // Posicionar el selector justo encima de la barra de input
-                // Esto se maneja principalmente con CSS position: absolute y bottom
+                // bottom del selector = altura del área de input + padding/margen
+                const inputAreaHeight = messageInput.parentElement.offsetHeight; // Obtener la altura del contenedor del input
+                emojiPicker.style.bottom = `${inputAreaHeight + 10}px`; // 10px de margen
                 emojiPicker.style.display = 'flex';
-                // Ajustar la posición bottom del selector basada en la altura actual del área de input
-                const inputAreaRect = messageInput.parentElement.getBoundingClientRect();
-                emojiPicker.style.bottom = `${inputAreaRect.height + 10}px`; // 10px de margen
             }
         });
 
-        // Ocultar el selector de emojis si se hace clic fuera de él
+        // Ocultar el selector de emojis y el dropdown de settings si se hace clic fuera de ellos
         document.addEventListener('click', (event) => {
             // Si el clic no fue dentro del selector de emojis ni en el botón de emoji
             if (!emojiPicker.contains(event.target) && event.target !== emojiButton) {
                 emojiPicker.style.display = 'none';
             }
+             // Si el clic no fue dentro del dropdown de settings ni en el botón de settings
+             if (!settingsDropdown.contains(event.target) && event.target !== settingsButton) {
+                 settingsDropdown.style.display = 'none';
+             }
         });
 
 
@@ -1071,7 +1114,7 @@
                 // La cantidad de padding puede necesitar ajuste, pero la diferencia de altura es un buen punto de partida
                 const keyboardHeight = initialViewportHeight - currentViewportHeight;
                  // Asegurarse de que el padding sea al menos la altura de la barra de input
-                 const minPadding = messageInput.parentElement.offsetHeight;
+                 const minPadding = messageInput.parentElement.offsetHeight; // Altura del contenedor del input
                  chatBox.style.paddingBottom = `${Math.max(keyboardHeight, minPadding) + 20}px`; // Añadir un poco extra
                  chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
                  console.log("Teclado abierto, ajustando padding:", chatBox.style.paddingBottom);
@@ -1083,8 +1126,8 @@
                 console.log("Teclado cerrado, restaurando padding.");
             }
 
-             // Opcional: Reajustar la altura del textarea en caso de rotación de pantalla u otros redimensionamientos
-             adjustTextareaHeight();
+             // Ya no necesitamos ajustar la altura del textarea aquí
+             // adjustTextareaHeight();
         });
 
 
@@ -1098,7 +1141,8 @@
             replyTextSpan.textContent = messageData.text ? messageData.text.substring(0, 50) + (messageData.text.length > 50 ? '...' : '') : 'Archivo'; // Asumiendo solo texto por ahora
 
             replyPreview.style.display = 'flex'; // Mostrar la vista previa
-            adjustTextareaHeight(); // Reajustar la altura del textarea y posición del emoji picker
+            // No es necesario ajustar altura para input type="text"
+            // adjustTextareaHeight();
             messageInput.focus(); // Poner el foco en el campo de mensaje
         }
 
@@ -1108,11 +1152,35 @@
             replyPreview.style.display = 'none'; // Ocultar la vista previa
             replyNameSpan.textContent = '';
             replyTextSpan.textContent = '';
-            adjustTextareaHeight(); // Reajustar la altura del textarea y posición del emoji picker
+            // No es necesario ajustar altura para input type="text"
+            // adjustTextareaHeight();
         }
 
         // Listener para el botón de cancelar respuesta
         cancelReplyButton.addEventListener('click', cancelReply);
+
+
+        // --- Lógica del Botón de Configuración y Dropdown ---
+
+        // Listener para el botón de configuración para mostrar/ocultar el dropdown
+        settingsButton.addEventListener('click', (event) => {
+            // Prevenir que el clic en el botón cierre el dropdown inmediatamente
+            event.stopPropagation();
+            // Ocultar el selector de emojis si está visible
+            emojiPicker.style.display = 'none';
+
+            if (settingsDropdown.style.display === 'flex') {
+                settingsDropdown.style.display = 'none';
+            } else {
+                // Posicionar el dropdown justo debajo y a la derecha del botón de settings
+                // Esto se maneja principalmente con CSS position: absolute y top/right
+                settingsDropdown.style.display = 'flex';
+                // La posición top y right ya están definidas en CSS, pero podrías ajustarlas dinámicamente si fuera necesario
+                // const settingsButtonRect = settingsButton.getBoundingClientRect();
+                // settingsDropdown.style.top = `${settingsButtonRect.bottom + 5}px`; // 5px debajo del botón
+                // settingsDropdown.style.right = `${window.innerWidth - settingsButtonRect.right}px`; // Alinear a la derecha del botón
+            }
+        });
 
 
         // Comprobar si hay un nombre guardado en localStorage al cargar la página
