@@ -74,6 +74,7 @@
             display: flex;
             flex-direction: column; /* Apila los mensajes verticalmente */
             gap: 10px; /* Espacio entre mensajes */
+            height: 0; /* Añadido para ayudar a flexbox con overflow */
         }
 
         /* Estilos para cada mensaje individual */
@@ -364,7 +365,7 @@
         // Permitir presionar Enter en el campo de nombre
         nameInput.addEventListener('keypress', (event) => {
             if (event.key === 'Enter') {
-                startChatButton.click(); // Simular clic en el botón
+                sendMessage(); // Simular clic en el botón
             }
         });
 
