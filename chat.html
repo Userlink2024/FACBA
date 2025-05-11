@@ -242,6 +242,10 @@
             padding: 5px 20px;
             min-height: 1.2em; /* Reserva espacio */
             flex-shrink: 0; /* Evitar que se encoja */
+            /* Alineación a la derecha */
+            align-self: flex-end;
+            /* Ajuste de margen para pegarlo a la barra de input */
+            margin-bottom: 5px;
         }
 
         /* Estilos para el botón de limpiar chat */
@@ -349,6 +353,13 @@
              .message {
                  max-width: 90%; /* Permitir que los mensajes ocupen más ancho */
              }
+
+             /* Ajuste del indicador de escribiendo en móviles */
+             #typing-indicator {
+                 align-self: flex-end; /* Alinear a la derecha */
+                 margin-bottom: 5px; /* Espacio arriba del input */
+                 padding: 5px 15px; /* Ajustar padding lateral para móviles */
+             }
         }
 
     </style>
@@ -368,9 +379,9 @@
         </div>
 
         <div id="chat-interface">
-             <div id="typing-indicator"></div>
-            <div id="chat-box">
+             <div id="chat-box">
                 </div>
+            <div id="typing-indicator"></div>
             <div class="message-input-area">
                 <input type="text" id="message-input" placeholder="Escribe un mensaje...">
                 <div class="input-buttons">
