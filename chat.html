@@ -1,1 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Simple con Firebase</title>
+    <style>
+        /* Estilos básicos para el cuerpo y el contenedor principal */
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Asegura que el cuerpo ocupe al menos la altura de la ventana */
+        }
 
+        #chat-container {
+            width: 90%; /* Ancho relativo para adaptabilidad */
+            max-width: 600px; /* Ancho máximo para pantallas grandes */
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden; /* Oculta el contenido que se desborda */
+            display: flex;
+            flex-direction: column; /* Organiza los elementos verticalmente */
+            max-height: 90vh; /* Limita la altura del contenedor */
+            box-sizing: border-box; /* Incluye padding y border en el tamaño total */
+        }
+
+        /* Estilos para la sección de ingreso de nombre */
+        #name-prompt {
+            padding: 20px;
+            text-align: center;
+            background-color: #e0e0e0; /* Fondo para diferenciar */
+        }
+
+        #name-prompt h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        #name-prompt input {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        #name-prompt button {
+            padding: 10px 15px;
+            background-color: #4CAF50; /* Verde */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease; /* Transición suave al pasar el ratón */
+        }
+
+        #name-prompt button:hover {
+            background-color: #45a049; /* Verde más oscuro al pasar el ratón */
+        }
+
+        /* Estilos para la caja de chat (donde se muestran los mensajes) */
+        #chat-box {
+            flex-grow: 1; /* Permite que la caja de chat ocupe el espacio restante */
+            padding: 20px;
+            overflow-y: auto; /* Habilita el scroll vertical si los mensajes exceden la altura */
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-direction: column; /* Apila los mensajes verticalmente */
+            gap: 10px; /* Espacio entre mensajes */
+        }
+
+        /* Estilos para cada mensaje individual */
+        .message {
+            padding: 8px 12px;
+            border-radius: 15px;
+            max-width: 80%; /* Ancho máximo del mensaje */
+            word-wrap: break-word; /* Rompe palabras largas para evitar desbordamiento */
+            background-color: #e9e9eb; /* Color de fondo para mensajes recibidos (ejemplo) */
+            align-self: flex-start; /* Alinea los mensajes recibidos a la izquierda */
+        }
+
+        .message strong {
+            font-weight: bold;
+            margin-right: 5px;
+            color: #333; /* Color para el nombre */
+        }
+
+         .message .name {
+             font-size: 0.9em; /* Tamaño de fuente más pequeño para el nombre */
+             color: #555; /* Color ligeramente más tenue para el nombre */
+             margin-bottom: 3px; /* Espacio debajo del nombre */
+             display: block; /* Asegura que el nombre esté en su propia línea */
+        }
+
+        .message .text {
+            display: block; /* Asegura que el texto esté debajo del nombre */
+            color: #111; /* Color oscuro para el texto del mensaje */
+        }
+
+
+        /* Estilos para el área de entrada de mensajes */
+        .message-input-area {
+            display: flex; /* Usa flexbox para alinear input y botón */
+            padding: 15px;
+            background-color: #f9f9f9; /* Fondo para el área de entrada */
+            border-top: 1px solid #eee; /* Borde superior */
+        }
+
+        .message-input-area input {
+            flex-grow: 1; /* Permite que el input ocupe el espacio restante */
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        .message-input-area button {
+            padding: 10px 15px;
+            background-color: #128c7e; /* Verde de WhatsApp */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease; /* Transición suave al pasar el ratón */
+        }
+
+        .message-input-area button:hover {
+             background-color: #075e54; /* Verde más oscuro al pasar el ratón */
+        }
+
+        /* Oculta la interfaz de chat inicialmente */
+        #chat-interface {
+            display: none; /* Se mostrará con JavaScript */
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        /* Media query para pantallas más pequeñas */
+        @media (max-width: 768px) {
+            #chat-container {
+                width: 95%; /* Ocupa más ancho en pantallas pequeñas */
+                max-height: 95vh; /* Ocupa más altura en pantallas pequeñas */
+            }
+
+            #name-prompt input,
+            #name-prompt button,
+            .message-input-area input,
+            .message-input-area button {
+                font-size: 0.9em; /* Reduce el tamaño de fuente */
+                padding: 8px 12px; /* Reduce el padding */
+            }
+
+            #name-prompt {
+                flex-direction: column; /* Apila elementos en pantallas pequeñas */
+                gap: 10px; /* Espacio entre elementos */
+            }
+
+             #name-prompt input {
+                 margin-right: 0; /* Elimina margen derecho */
+                 width: 100%; /* Ocupa todo el ancho */
+                 box-sizing: border-box; /* Incluye padding en el ancho */
+             }
+        }
+
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-analytics-compat.js"></script>
+
+</head>
+<body>
+
+    <div id="chat-container">
+        <div id="name-prompt">
+            <h2>Ingresa tu nombre</h2>
+            <input type="text" id="name-input" placeholder="Tu nombre">
+            <button id="start-chat-button">Entrar al Chat</button>
+        </div>
+
+        <div id="chat-interface">
+            <div id="chat-box">
+                </div>
+            <div class="message-input-area">
+                <input type="text" id="message-input" placeholder="Escribe un mensaje...">
+                <button id="send-button">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Configuración de tu aplicación web de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vGxd4ISaRBQ5SVY",
+            authDomain: "facba-a160c.firebaseapp.com",
+            projectId: "facba-a160c",
+            storageBucket: "facba-a160c.firebasestorage.app",
+            messagingSenderId: "585530132394",
+            appId: "1:585530132394:web:a25cda63f883f786804dd3",
+            measurementId: "G-S29LSYM8TQ"
+        };
+
+        // Inicializar Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database(); // Obtener la instancia de Realtime Database
+        // const analytics = firebase.analytics(); // Descomentar si se usa Analytics
+
+        let userName = ''; // Variable para almacenar el nombre del usuario
+
+        // Obtener elementos del DOM
+        const namePrompt = document.getElementById('name-prompt');
+        const nameInput = document.getElementById('name-input');
+        const startChatButton = document.getElementById('start-chat-button');
+        const chatInterface = document.getElementById('chat-interface');
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        // --- Lógica de Ingreso de Nombre ---
+        startChatButton.addEventListener('click', () => {
+            const enteredName = nameInput.value.trim(); // Obtener el nombre y eliminar espacios en blanco
+            if (enteredName) {
+                userName = enteredName;
+                namePrompt.style.display = 'none'; // Ocultar la sección de nombre
+                chatInterface.style.display = 'flex'; // Mostrar la interfaz de chat
+                messageInput.focus(); // Poner el foco en el campo de mensaje
+                // Opcional: Guardar el nombre en localStorage para recordarlo
+                localStorage.setItem('chatName', userName);
+                loadMessages(); // Cargar los mensajes existentes una vez que se establece el nombre
+            } else {
+                // Usar un mensaje en el DOM en lugar de alert()
+                // Podrías añadir un elemento div para mostrar errores
+                 console.log('Por favor, ingresa un nombre.'); // Usar console.log como alternativa simple
+            }
+        });
+
+        // Permitir presionar Enter en el campo de nombre
+        nameInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                startChatButton.click(); // Simular clic en el botón
+            }
+        });
+
+
+        // --- Lógica del Chat ---
+
+        // Referencia al nodo 'messages' en la base de datos
+        const messagesRef = database.ref('messages'); // 'messages' es el nombre del nodo
+
+        // Función para enviar un mensaje
+        function sendMessage() {
+            const messageText = messageInput.value.trim(); // Obtener el texto del mensaje y limpiar
+            if (messageText && userName) { // Asegurarse de que haya texto y nombre de usuario
+                const newMessage = {
+                    name: userName,
+                    text: messageText,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP // Usar el timestamp del servidor de Firebase
+                };
+
+                // Enviar el nuevo mensaje a la base de datos
+                messagesRef.push(newMessage) // push() crea una clave única para cada mensaje
+                    .then(() => {
+                        console.log("Mensaje enviado exitosamente!");
+                        messageInput.value = ''; // Limpiar el campo de entrada
+                    })
+                    .catch((error) => {
+                        console.error("Error al enviar el mensaje:", error);
+                        // Podrías mostrar un mensaje de error al usuario aquí
+                    });
+            }
+        }
+
+        // Listener para el botón de enviar
+        sendButton.addEventListener('click', sendMessage);
+
+        // Permitir presionar Enter en el campo de mensaje
+        messageInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage(); // Simular clic en el botón de enviar
+            }
+        });
+
+        // Función para cargar y mostrar mensajes
+        function loadMessages() {
+             // Escuchar cambios en el nodo 'messages'
+            messagesRef.on('value', (snapshot) => {
+                chatBox.innerHTML = ''; // Limpiar los mensajes actuales en la interfaz
+
+                const messages = snapshot.val(); // Obtener los datos del snapshot
+
+                if (messages) {
+                    // Convertir el objeto de mensajes a un array para facilitar la iteración y ordenación
+                    const messageList = Object.values(messages);
+
+                    // Ordenar mensajes por timestamp (los más antiguos primero)
+                    messageList.sort((a, b) => a.timestamp - b.timestamp);
+
+                    // Mostrar cada mensaje en la interfaz
+                    messageList.forEach((msg) => {
+                        const messageElement = document.createElement('div');
+                        messageElement.classList.add('message');
+                        // Opcional: Añadir clases para diferenciar mensajes propios/recibidos si se implementa autenticación
+
+                        // Crear elementos para el nombre y el texto del mensaje
+                        const nameSpan = document.createElement('span');
+                        nameSpan.classList.add('name');
+                        nameSpan.textContent = msg.name + ': '; // Añadir dos puntos después del nombre
+
+                        const textSpan = document.createElement('span');
+                        textSpan.classList.add('text');
+                        textSpan.textContent = msg.text;
+
+                        // Añadir nombre y texto al elemento del mensaje
+                        messageElement.appendChild(nameSpan);
+                        messageElement.appendChild(textSpan);
+
+                        // Añadir el mensaje a la caja de chat
+                        chatBox.appendChild(messageElement);
+                    });
+
+                    // Desplazarse automáticamente al final de la caja de chat para ver el último mensaje
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            });
+        }
+
+
+        // Comprobar si hay un nombre guardado en localStorage al cargar la página
+        const savedName = localStorage.getItem('chatName');
+        if (savedName) {
+            nameInput.value = savedName; // Rellenar el campo de nombre
+            startChatButton.click(); // Simular clic en el botón para iniciar el chat automáticamente
+        }
+
+    </script>
+
+</body>
+</html>
