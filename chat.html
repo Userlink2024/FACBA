@@ -1302,7 +1302,7 @@
                  // Usar la altura del nuevo contenedor fijo
                  const bottomAreaHeight = bottomFixedArea.offsetHeight;
                  // Añadir un buffer más grande para asegurar espacio suficiente
-                 const newPaddingBottom = bottomAreaHeight + 10; // Ajustar buffer a 10px (ya incluido en la altura del contenedor fijo)
+                 const newPaddingBottom = bottomAreaHeight + 20; // Aumentar buffer a 20px
                  chatBox.style.paddingBottom = `${newPaddingBottom}px`;
                  console.log(`Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`);
                  console.log(`bottomFixedArea.offsetHeight: ${bottomAreaHeight}`);
