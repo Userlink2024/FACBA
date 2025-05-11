@@ -113,6 +113,7 @@
             font-size: 1.1em; /* Aumentar tamaño de fuente base del mensaje */
             /* Añadir un fondo semi-transparente para que el texto sea legible sobre la imagen */
             background-color: rgba(255, 255, 255, 0.9); /* Blanco con 90% de opacidad */
+            cursor: pointer; /* Indicar que se puede hacer clic para responder */
         }
 
         .message .name {
@@ -165,10 +166,11 @@
         /* Estilos para el área de entrada de mensajes */
         .message-input-area {
             display: flex;
+            flex-direction: column; /* Cambiar a columna para que el reply-preview esté arriba del textarea */
             padding: 15px 20px; /* Padding consistente */
             background-color: #f9f9f9;
             border-top: 1px solid #eee;
-            align-items: flex-end; /* Alinea los elementos a la parte inferior */
+            align-items: center; /* Centrar horizontalmente */
             gap: 10px; /* Espacio entre elementos */
             flex-shrink: 0; /* Evita que el área de entrada se encoja */
             position: relative; /* Necesario para posicionar el selector de emojis */
@@ -189,6 +191,7 @@
             min-height: 45px; /* Altura mínima igual a la de los botones */
             max-height: 150px; /* Altura máxima para evitar que ocupe toda la pantalla */
             line-height: 1.5; /* Igual que los mensajes para consistencia */
+            width: 100%; /* Ocupar todo el ancho disponible */
         }
          .message-input-area textarea:focus {
              border-color: #007aff; /* Borde azul al enfocar */
@@ -199,6 +202,8 @@
              display: flex;
              gap: 5px; /* Espacio entre los botones */
              align-items: center; /* Centrar verticalmente los botones */
+             width: 100%; /* Ocupar todo el ancho para alinear botones a la derecha */
+             justify-content: flex-end; /* Alinear botones a la derecha */
          }
 
          /* Estilo base para los botones de icono */
@@ -292,7 +297,7 @@
         #emoji-picker {
             display: none; /* Oculto por defecto */
             position: absolute;
-            bottom: 70px; /* Ajustar según la altura de la barra de input */
+            /* bottom se ajusta dinámicamente en JS */
             left: 20px; /* Alinear a la izquierda */
             background-color: #fff;
             border: 1px solid #d1d1d6;
@@ -319,6 +324,97 @@
         #emoji-picker span:hover {
             background-color: #e5e5ea;
         }
+
+        /* Estilos para la vista previa del mensaje al responder */
+        #reply-preview {
+            display: none; /* Oculto por defecto */
+            background-color: #e5e5ea; /* Fondo gris claro */
+            border-left: 4px solid #007aff; /* Barra azul a la izquierda */
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px; /* Espacio debajo de la vista previa */
+            width: 100%; /* Ocupar todo el ancho */
+            box-sizing: border-box;
+            position: relative; /* Para posicionar el botón de cerrar */
+        }
+
+        #reply-preview .reply-name {
+            font-size: 0.9em;
+            color: #3a3a3c;
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        #reply-preview .reply-text {
+            font-size: 1em;
+            color: #1c1c1e;
+            display: block;
+            /* Limitar el texto para que no sea demasiado largo */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #reply-preview #cancel-reply-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #8e8e93; /* Color gris */
+            font-size: 1.2em;
+        }
+
+        #reply-preview #cancel-reply-button:hover {
+            color: #3a3a3c; /* Gris más oscuro al pasar el ratón */
+        }
+
+        /* Estilos para mostrar el contenido de la respuesta dentro de un mensaje */
+        .message .reply-content {
+            background-color: rgba(0, 0, 0, 0.05); /* Fondo ligeramente oscuro */
+            border-left: 4px solid rgba(0, 122, 255, 0.5); /* Barra azul semi-transparente */
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px; /* Espacio debajo del contenido de respuesta */
+            font-size: 0.9em; /* Tamaño de fuente más pequeño */
+            word-wrap: break-word;
+        }
+
+        .message.sent .reply-content {
+             border-left-color: rgba(255, 255, 255, 0.5); /* Barra blanca semi-transparente en mensajes enviados */
+        }
+
+
+        .message .reply-content .reply-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: block;
+            color: #3a3a3c; /* Color de texto sutil */
+        }
+         .message.sent .reply-content .reply-name {
+             color: rgba(255, 255, 255, 0.8); /* Color de texto sutil en mensajes enviados */
+         }
+
+
+        .message .reply-content .reply-text {
+            display: block;
+            color: #1c1c1e; /* Texto oscuro */
+            /* Limitar el texto para que no sea demasiado largo */
+             white-space: nowrap;
+             overflow: hidden;
+             text-overflow: ellipsis;
+        }
+         .message.sent .reply-content .reply-text {
+             color: white; /* Texto blanco en mensajes enviados */
+         }
 
 
         /* Media query para pantallas más pequeñas (Android) */
@@ -351,15 +447,16 @@
              }
 
              .message-input-area {
-                 flex-direction: row; /* Mantener en fila */
+                 flex-direction: column; /* Mantener en columna */
                  padding: 10px 15px;
                  gap: 5px;
-                 align-items: flex-end; /* Alinea los elementos a la parte inferior en móviles */
+                 align-items: center; /* Centrar horizontalmente */
              }
 
              .message-input-area .input-buttons {
                  gap: 5px;
-                 align-items: flex-end; /* Alinea los botones a la parte inferior en móviles */
+                 align-items: center; /* Centrar verticalmente */
+                 justify-content: flex-end; /* Alinear botones a la derecha */
              }
 
 
@@ -368,7 +465,7 @@
                  height: 40px;
                  padding: 0; /* Eliminar padding extra */
                  flex-shrink: 0; /* Evitar que se reduzcan */
-                 align-self: flex-end; /* Centrar verticalmente */
+                 align-self: center; /* Centrar verticalmente */
              }
               #send-button {
                   width: auto; /* Permitir que el botón de enviar ajuste su ancho */
@@ -412,6 +509,11 @@
                  left: 10px;
                  width: calc(100% - 20px); /* Ajustar ancho para móviles */
              }
+
+             /* Ajuste de la vista previa de respuesta en móviles */
+             #reply-preview {
+                 padding: 8px 10px;
+             }
         }
 
     </style>
@@ -437,6 +539,11 @@
             <div class="message-input-area">
                  <div id="emoji-picker">
                      </div>
+                 <div id="reply-preview">
+                     <span class="reply-name"></span>
+                     <span class="reply-text"></span>
+                     <button id="cancel-reply-button">×</button>
+                 </div>
                 <textarea id="message-input" placeholder="Escribe un mensaje..."></textarea>
                 <div class="input-buttons">
                      <button id="emoji-button" title="Insertar Emoji">
@@ -472,8 +579,6 @@
         // Inicializar Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const database = firebase.database(); // Obtener la instancia de Realtime Database
-        // Eliminado Storage
-        // const storage = firebase.storage(); // Obtener la instancia de Storage
 
         let userName = ''; // Variable para almacenar el nombre del usuario
         let typingTimeout; // Para manejar el indicador de escribiendo
@@ -482,6 +587,9 @@
         // Guardar la altura original del viewport
         let originalViewportHeight = window.innerHeight;
 
+        // Variable para almacenar los datos del mensaje al que se está respondiendo
+        let replyingToMessage = null;
+
 
         // Obtener elementos del DOM
         const namePrompt = document.getElementById('name-prompt');
@@ -489,14 +597,17 @@
         const startChatButton = document.getElementById('start-chat-button');
         const chatInterface = document.getElementById('chat-interface');
         const chatBox = document.getElementById('chat-box');
-        // Cambiado de input a textarea
-        const messageInput = document.getElementById('message-input');
+        const messageInput = document.getElementById('message-input'); // Es un textarea ahora
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
         const notificationSound = document.getElementById('notification-sound'); // Elemento de audio
         const clearChatButton = document.getElementById('clear-chat-button'); // Botón de limpiar chat
         const emojiButton = document.getElementById('emoji-button'); // Botón de emoji
         const emojiPicker = document.getElementById('emoji-picker'); // Selector de emojis
+        const replyPreview = document.getElementById('reply-preview'); // Vista previa de respuesta
+        const replyNameSpan = replyPreview.querySelector('.reply-name');
+        const replyTextSpan = replyPreview.querySelector('.reply-text');
+        const cancelReplyButton = document.getElementById('cancel-reply-button');
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -520,7 +631,7 @@
                          notificationSound.pause(); // Pausar inmediatamente
                          notificationSound.volume = 1; // Restaurar volumen
                      }).catch(error => {
-                         console.error("Error al reproducir el sonido:", error);
+                         console.error("Audio unlock failed (user interaction needed):", error);
                      });
                  }
 
@@ -560,7 +671,7 @@
             return `${hours}:${minutes}`;
         }
 
-        // Función para enviar un mensaje de texto (Realtime Database)
+        // Función para enviar un mensaje (texto o respuesta)
         function sendMessage() {
             console.log("sendMessage function called."); // Debugging log
             const messageText = messageInput.value.trim(); // Obtener el texto del mensaje y limpiar
@@ -574,19 +685,30 @@
                     timestamp: firebase.database.ServerValue.TIMESTAMP // Usar el timestamp del servidor de Firebase
                 };
 
-                console.log("Attempting to send text message to Realtime Database:", newMessage); // Debugging log
+                // Si estamos respondiendo a un mensaje, añadir la referencia
+                if (replyingToMessage) {
+                    newMessage.replyTo = {
+                        id: replyingToMessage.id, // ID único del mensaje original
+                        name: replyingToMessage.name,
+                        content: replyingToMessage.text ? replyingToMessage.text.substring(0, 50) + (replyingToMessage.text.length > 50 ? '...' : '') : 'Archivo' // Fragmento del texto o indicar que es archivo
+                    };
+                    console.log("Sending as a reply to:", replyingToMessage.id); // Debugging log
+                }
 
-                // Enviar el nuevo mensaje de texto a la base de datos
+                console.log("Attempting to send message to Realtime Database:", newMessage); // Debugging log
+
+                // Enviar el nuevo mensaje a la base de datos
                 messagesRef.push(newMessage)
                     .then(() => {
-                        console.log("Mensaje de texto enviado exitosamente a Realtime Database!");
+                        console.log("Mensaje enviado exitosamente a Realtime Database!");
                         messageInput.value = ''; // Limpiar el campo de entrada
                         // Ajustar la altura del textarea después de limpiar
                         adjustTextareaHeight();
                         setTypingStatus(false); // Limpiar estado de escritura
+                        cancelReply(); // Cancelar el estado de respuesta después de enviar
                     })
                     .catch((error) => {
-                        console.error("Error al enviar mensaje de texto a Realtime Database:", error);
+                        console.error("Error al enviar mensaje a Realtime Database:", error);
                         // Mostrar mensaje de error al usuario
                     });
             } else {
@@ -705,8 +827,9 @@
              // Escuchar en tiempo real los mensajes desde Realtime Database
              messagesRef.on('child_added', (data) => {
                  const newMessage = data.val();
-                 console.log("New message received from Realtime Database:", newMessage); // Debugging log
-                 displayMessage(newMessage); // Mostrar el nuevo mensaje
+                 const messageId = data.key; // Obtener el ID único del mensaje
+                 console.log("New message received from Realtime Database:", newMessage, "ID:", messageId); // Debugging log
+                 displayMessage(newMessage, messageId); // Pasar el ID a displayMessage
 
                  // Reproducir sonido si el mensaje no es del usuario actual
                  if (initialLoadComplete && newMessage.name !== userName) {
@@ -728,17 +851,15 @@
                  console.log("Initial message load from Realtime Database complete.");
                  const messages = snapshot.val();
                  if (messages) {
-                     // Convertir objeto de mensajes a array y ordenar por timestamp si es necesario
-                     const messageList = Object.values(messages);
-                     // Nota: Realtime Database ya ordena por clave (que es el timestamp en push()),
-                     // pero ordenar explícitamente por la propiedad timestamp asegura el orden correcto.
+                     // Convertir objeto de mensajes a array y ordenar por timestamp
+                     const messageList = Object.keys(messages).map(key => ({ id: key, ...messages[key] }));
                      messageList.sort((a, b) => a.timestamp - b.timestamp);
 
                      // Limpiar el chatbox antes de cargar los mensajes existentes
                      chatBox.innerHTML = '';
 
                      messageList.forEach((msg) => {
-                         displayMessage(msg); // Mostrar cada mensaje
+                         displayMessage(msg, msg.id); // Pasar el ID a displayMessage
                      });
                  }
                  chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
@@ -749,9 +870,10 @@
         }
 
         // Función para mostrar un mensaje en el DOM
-        function displayMessage(msg) {
+        function displayMessage(msg, messageId) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
+            messageElement.dataset.messageId = messageId; // Almacenar el ID del mensaje en el elemento DOM
 
             // Añadir clase 'sent' o 'received'
             if (msg.name === userName) {
@@ -779,6 +901,26 @@
                  messageElement.appendChild(nameSpan);
             }
 
+            // --- Mostrar contenido de la respuesta si existe ---
+            if (msg.replyTo) {
+                const replyContentDiv = document.createElement('div');
+                replyContentDiv.classList.add('reply-content');
+
+                const replyName = document.createElement('span');
+                replyName.classList.add('reply-name');
+                replyName.textContent = msg.replyTo.name + ':';
+
+                const replyText = document.createElement('span');
+                replyText.classList.add('reply-text');
+                replyText.textContent = msg.replyTo.content;
+
+                replyContentDiv.appendChild(replyName);
+                replyContentDiv.appendChild(replyText);
+                messageElement.appendChild(replyContentDiv);
+            }
+            /* --- Fin de mostrar contenido de respuesta --- */
+
+
             // --- Mostrar contenido del mensaje (solo texto ahora) ---
             if (msg.text) {
                 // Es un mensaje de texto
@@ -798,6 +940,18 @@
              if (initialLoadComplete && msg.name !== userName) {
                  playNotificationSound();
              }
+
+             // Añadir listener de clic para responder
+             messageElement.addEventListener('click', () => {
+                 // Crear un objeto con los datos necesarios para la respuesta
+                 const messageDataForReply = {
+                     id: messageId,
+                     name: msg.name,
+                     text: msg.text || '', // Usar texto si existe, vacío si es archivo
+                     // Puedes añadir más propiedades si quieres referenciar archivos en el futuro
+                 };
+                 startReply(messageDataForReply);
+             });
         }
 
         // Función para reproducir el sonido de notificación
@@ -883,7 +1037,7 @@
                 // Posicionar el selector justo encima de la barra de input
                 // Esto se maneja principalmente con CSS position: absolute y bottom
                 emojiPicker.style.display = 'flex';
-                // Ajustar la posición bottom del selector basada en la altura actual del textarea
+                // Ajustar la posición bottom del selector basada en la altura actual del área de input
                 const inputAreaRect = messageInput.parentElement.getBoundingClientRect();
                 emojiPicker.style.bottom = `${inputAreaRect.height + 10}px`; // 10px de margen
             }
@@ -932,6 +1086,33 @@
              // Opcional: Reajustar la altura del textarea en caso de rotación de pantalla u otros redimensionamientos
              adjustTextareaHeight();
         });
+
+
+        // --- Lógica de Responder Mensajes ---
+
+        // Función para iniciar el modo de respuesta
+        function startReply(messageData) {
+            replyingToMessage = messageData; // Almacenar los datos del mensaje
+            replyNameSpan.textContent = messageData.name + ':';
+            // Mostrar un fragmento del texto o indicar que es un archivo
+            replyTextSpan.textContent = messageData.text ? messageData.text.substring(0, 50) + (messageData.text.length > 50 ? '...' : '') : 'Archivo'; // Asumiendo solo texto por ahora
+
+            replyPreview.style.display = 'flex'; // Mostrar la vista previa
+            adjustTextareaHeight(); // Reajustar la altura del textarea y posición del emoji picker
+            messageInput.focus(); // Poner el foco en el campo de mensaje
+        }
+
+        // Función para cancelar el modo de respuesta
+        function cancelReply() {
+            replyingToMessage = null; // Limpiar la referencia al mensaje
+            replyPreview.style.display = 'none'; // Ocultar la vista previa
+            replyNameSpan.textContent = '';
+            replyTextSpan.textContent = '';
+            adjustTextareaHeight(); // Reajustar la altura del textarea y posición del emoji picker
+        }
+
+        // Listener para el botón de cancelar respuesta
+        cancelReplyButton.addEventListener('click', cancelReply);
 
 
         // Comprobar si hay un nombre guardado en localStorage al cargar la página
