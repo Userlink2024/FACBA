@@ -12,10 +12,8 @@
             margin: 0;
             padding: 0;
             overflow: hidden; /* Prevenir scroll del body */
-            /* body ya no necesita ser flex column 100vh con la barra fija */
-            /* display: flex; */
-            /* flex-direction: column; */
-            /* height: 100vh; */
+            /* Establecer la fuente principal */
+            font-family: 'Roboto', sans-serif; /* Usar Roboto, con sans-serif como fallback moderno */
         }
 
         /* Estilos generales y de contenedor */
@@ -33,10 +31,6 @@
             max-height: 100vh; /* Asegurar que no exceda 100vh */
             box-sizing: border-box;
              padding: 20px; /* Añadir padding aquí en lugar del body */
-             /* Eliminar transición de altura */
-             /* transition: height 0.1s ease-out; */
-             /* flex-grow ya no es necesario en el contenedor principal */
-             /* flex-grow: 1; */
         }
 
         /* Estilos para la sección de ingreso de nombre */
@@ -111,7 +105,6 @@
             display: flex;
             flex-direction: column;
             gap: 12px; /* Más espacio entre mensajes */
-            /* height: 0; Eliminado, ya no es necesario con la barra fija */
 
             /* Estilos para la imagen de fondo */
             background-image: url('https://images.unsplash.com/photo-1518655048521-f130df041722?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* URL de imagen de fondo moderna y sobria */
@@ -194,7 +187,6 @@
          }
          .message.sent .checkmarks {
              color: white; /* Checkmarks blancos en mensajes enviados */
-              /* color: rgba(255, 255, 255, 0.8); */ /* O ligeramente transparentes */
          }
 
 
@@ -228,7 +220,6 @@
             min-height: 1.2em; /* Reserva espacio */
             align-self: flex-end; /* Alinear a la derecha dentro del contenedor flex (column) */
             margin-bottom: 5px; /* Espacio debajo del indicador */
-            /* Eliminado padding lateral extra */
         }
 
 
@@ -255,7 +246,6 @@
             /* Altura ajustada para hacerlo más delgado */
             height: 40px; /* Altura fija similar a los botones */
             line-height: 1.5; /* Igual que los mensajes para consistencia */
-            /* width: 100%; Eliminado, flex-grow lo maneja */
         }
          .message-input-area input[type="text"]:focus {
              border-color: #007aff; /* Borde azul al enfocar */
@@ -493,14 +483,11 @@
         @media (max-width: 768px) {
             body {
                 padding: 0; /* Eliminar padding del body en móviles */
-                /* body ya no es flex column 100vh */
             }
             #chat-container {
-                /* Ajuste de altura para móviles - JS se encargará de la altura dinámica */
                 max-width: 100vw; /* Ocupar todo el ancho del viewport */
                 border-radius: 0; /* Eliminar bordes redondeados en pantalla completa */
                  padding: 0; /* Eliminar padding del contenedor en móviles */
-                 /* Altura inicial para móviles - JS ajustará */
                  height: 100vh;
                  max-height: 100vh;
             }
@@ -525,7 +512,6 @@
                  padding: 10px 15px;
                  gap: 5px;
                  align-items: center; /* Centrar horizontalmente */
-                 /* Ajuste para móviles */
                  max-width: 100vw;
                  /* position: fixed, bottom, left, right ya están definidos arriba */
              }
@@ -533,7 +519,6 @@
              .message-input-area .input-buttons {
                  gap: 5px;
                  align-items: center; /* Centrar verticalmente */
-                 /* justify-content: flex-end; Eliminado */
                  flex-shrink: 0; /* Asegurar que no se encoja */
              }
 
@@ -544,7 +529,6 @@
                  height: 40px; /* Altura fija */
                  min-height: 40px; /* Asegurar altura mínima */
                  flex-grow: 1;
-                 /* width: 100%; Eliminado */
                  box-sizing: border-box;
              }
 
@@ -765,7 +749,7 @@
                  notificationSound.volume = 0; // Volumen a cero
                  notificationSound.play().then(() => {
                      notificationSound.pause(); // Pausar inmediatamente
-                     notificationSound.volume = 1; // Restaurar volumen
+                     notificationSound.volume = 1; // Restablecer volumen
                  }).catch(error => {
                      console.error("Audio unlock failed (user interaction needed):", error);
                  });
@@ -1225,14 +1209,14 @@
             // Usar un pequeño retraso para asegurar que el DOM esté renderizado y las alturas sean correctas
             setTimeout(() => {
                  const inputAreaHeight = messageInputArea.offsetHeight;
-                 // Añadir un buffer para asegurar espacio suficiente
-                 const newPaddingBottom = inputAreaHeight + 20; // Buffer de 20px
+                 // Añadir un buffer más grande para asegurar espacio suficiente
+                 const newPaddingBottom = inputAreaHeight + 40; // Aumentar buffer a 40px
                  chatBox.style.paddingBottom = `${newPaddingBottom}px`;
                  console.log(`Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`);
                  console.log(`messageInputArea.offsetHeight: ${inputAreaHeight}`);
                  // Intentar scrollear al final después de ajustar el padding
                  chatBox.scrollTop = chatBox.scrollHeight;
-            }, 100); // Retraso de 100ms
+            }, 200); // Aumentar el retraso a 200ms
         }
 
 
@@ -1246,7 +1230,7 @@
              setTimeout(() => {
                  chatBox.scrollTop = chatBox.scrollHeight;
                  console.log("Input enfocado, scrolleando chatBox al final con retraso.");
-             }, 100); // Retraso para dar tiempo al layout a ajustarse
+             }, 150); // Retraso para dar tiempo al layout a ajustarse
         });
 
 
