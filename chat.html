@@ -82,28 +82,41 @@
             border-radius: 15px;
             max-width: 80%; /* Ancho máximo del mensaje */
             word-wrap: break-word; /* Rompe palabras largas para evitar desbordamiento */
-            background-color: #e9e9eb; /* Color de fondo para mensajes recibidos (ejemplo) */
-            align-self: flex-start; /* Alinea los mensajes recibidos a la izquierda */
+            position: relative; /* Necesario para posicionar la hora */
         }
 
-        .message strong {
-            font-weight: bold;
-            margin-right: 5px;
-            color: #333; /* Color para el nombre */
-        }
-
-         .message .name {
+        .message .name {
              font-size: 0.9em; /* Tamaño de fuente más pequeño para el nombre */
              color: #555; /* Color ligeramente más tenue para el nombre */
              margin-bottom: 3px; /* Espacio debajo del nombre */
              display: block; /* Asegura que el nombre esté en su propia línea */
+             font-weight: bold;
         }
 
         .message .text {
             display: block; /* Asegura que el texto esté debajo del nombre */
             color: #111; /* Color oscuro para el texto del mensaje */
+            margin-bottom: 5px; /* Espacio entre texto y hora */
         }
 
+        .message .timestamp {
+            font-size: 0.7em; /* Tamaño de fuente más pequeño para la hora */
+            color: #888; /* Color tenue para la hora */
+            text-align: right; /* Alinea la hora a la derecha dentro del mensaje */
+            display: block; /* Asegura que la hora esté en su propia línea */
+        }
+
+        /* Estilos para mensajes recibidos */
+        .message.received {
+            background-color: #e9e9eb; /* Color de fondo para mensajes recibidos */
+            align-self: flex-start; /* Alinea a la izquierda */
+        }
+
+        /* Estilos para mensajes enviados */
+        .message.sent {
+            background-color: #dcf8c6; /* Color de fondo para mensajes enviados (verde claro) */
+            align-self: flex-end; /* Alinea a la derecha */
+        }
 
         /* Estilos para el área de entrada de mensajes */
         .message-input-area {
@@ -111,6 +124,7 @@
             padding: 15px;
             background-color: #f9f9f9; /* Fondo para el área de entrada */
             border-top: 1px solid #eee; /* Borde superior */
+            align-items: center; /* Centra verticalmente los elementos */
         }
 
         .message-input-area input {
@@ -136,6 +150,15 @@
         .message-input-area button:hover {
              background-color: #075e54; /* Verde más oscuro al pasar el ratón */
         }
+
+        /* Estilos para el indicador de escribiendo */
+        #typing-indicator {
+            font-size: 0.8em;
+            color: #888;
+            padding: 5px 20px;
+            min-height: 1em; /* Reserva espacio para evitar saltos */
+        }
+
 
         /* Oculta la interfaz de chat inicialmente */
         #chat-interface {
@@ -188,6 +211,7 @@
         </div>
 
         <div id="chat-interface">
+             <div id="typing-indicator"></div>
             <div id="chat-box">
                 </div>
             <div class="message-input-area">
@@ -207,7 +231,9 @@
             storageBucket: "facba-a160c.firebasestorage.app",
             messagingSenderId: "585530132394",
             appId: "1:585530132394:web:a25cda63f883f786804dd3",
-            measurementId: "G-S29LSYM8TQ"
+            measurementId: "G-S29LSYM8TQ",
+            // Añadir explícitamente la URL de la base de datos
+            databaseURL: "https://facba-a160c-default-rtdb.firebaseio.com/"
         };
 
         // Inicializar Firebase
@@ -216,6 +242,7 @@
         // const analytics = firebase.analytics(); // Descomentar si se usa Analytics
 
         let userName = ''; // Variable para almacenar el nombre del usuario
+        let typingTimeout; // Para manejar el indicador de escribiendo
 
         // Obtener elementos del DOM
         const namePrompt = document.getElementById('name-prompt');
@@ -225,6 +252,7 @@
         const chatBox = document.getElementById('chat-box');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
+        const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
 
         // --- Lógica de Ingreso de Nombre ---
         startChatButton.addEventListener('click', () => {
@@ -237,6 +265,7 @@
                 // Opcional: Guardar el nombre en localStorage para recordarlo
                 localStorage.setItem('chatName', userName);
                 loadMessages(); // Cargar los mensajes existentes una vez que se establece el nombre
+                setupTypingIndicator(); // Configurar el indicador de escribiendo
             } else {
                 // Usar un mensaje en el DOM en lugar de alert()
                 // Podrías añadir un elemento div para mostrar errores
@@ -256,10 +285,25 @@
 
         // Referencia al nodo 'messages' en la base de datos
         const messagesRef = database.ref('messages'); // 'messages' es el nombre del nodo
+        // Referencia al nodo para el estado de escritura
+        const typingRef = database.ref('typing');
+
+        // Función para formatear el timestamp a HH:MM
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return ''; // Manejar caso sin timestamp
+            const date = new Date(timestamp);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
 
         // Función para enviar un mensaje
         function sendMessage() {
+            console.log("sendMessage function called."); // Debugging log
             const messageText = messageInput.value.trim(); // Obtener el texto del mensaje y limpiar
+            console.log("Message text:", messageText); // Debugging log
+            console.log("User name:", userName); // Debugging log
+
             if (messageText && userName) { // Asegurarse de que haya texto y nombre de usuario
                 const newMessage = {
                     name: userName,
@@ -267,16 +311,22 @@
                     timestamp: firebase.database.ServerValue.TIMESTAMP // Usar el timestamp del servidor de Firebase
                 };
 
+                console.log("Attempting to send message:", newMessage); // Debugging log
+
                 // Enviar el nuevo mensaje a la base de datos
                 messagesRef.push(newMessage) // push() crea una clave única para cada mensaje
                     .then(() => {
                         console.log("Mensaje enviado exitosamente!");
                         messageInput.value = ''; // Limpiar el campo de entrada
+                        // Opcional: Limpiar el estado de escritura después de enviar
+                        setTypingStatus(false);
                     })
                     .catch((error) => {
                         console.error("Error al enviar el mensaje:", error);
                         // Podrías mostrar un mensaje de error al usuario aquí
                     });
+            } else {
+                 console.log("Message not sent: text or user name missing."); // Debugging log
             }
         }
 
@@ -290,13 +340,76 @@
             }
         });
 
+         // --- Lógica del Indicador de Escribiendo ---
+
+        // Función para establecer el estado de escritura en Firebase
+        function setTypingStatus(isTyping) {
+            if (!userName) return; // No hacer nada si el nombre de usuario no está establecido
+
+            const userTypingRef = typingRef.child(userName); // Referencia al estado del usuario actual
+
+            if (isTyping) {
+                userTypingRef.set(true); // Establecer el estado a true
+                // Limpiar el estado después de un tiempo si el usuario deja de escribir
+                if (typingTimeout) clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    userTypingRef.remove(); // Eliminar el estado después de 1.5 segundos
+                }, 1500);
+            } else {
+                 // Limpiar el timeout si existe
+                 if (typingTimeout) {
+                     clearTimeout(typingTimeout);
+                     typingTimeout = null;
+                 }
+                 userTypingRef.remove(); // Eliminar el estado si ya no está escribiendo
+            }
+        }
+
+        // Listener para el campo de entrada de mensaje para detectar escritura
+        messageInput.addEventListener('input', () => {
+            if (messageInput.value.trim().length > 0) {
+                setTypingStatus(true); // El usuario está escribiendo
+            } else {
+                setTypingStatus(false); // El usuario ha borrado el texto
+            }
+        });
+
+        // Configurar el listener para el estado de escritura de otros usuarios
+        function setupTypingIndicator() {
+            typingRef.on('value', (snapshot) => {
+                const typingUsers = snapshot.val();
+                const usersTyping = [];
+
+                if (typingUsers) {
+                    // Iterar sobre los usuarios que están escribiendo
+                    for (const name in typingUsers) {
+                        // Asegurarse de que no sea el usuario actual
+                        if (name !== userName) {
+                            usersTyping.push(name);
+                        }
+                    }
+                }
+
+                // Actualizar el texto del indicador
+                if (usersTyping.length > 0) {
+                    typingIndicator.textContent = `${usersTyping.join(', ')} está escribiendo...`;
+                } else {
+                    typingIndicator.textContent = ''; // Limpiar si nadie está escribiendo
+                }
+            });
+        }
+
+
         // Función para cargar y mostrar mensajes
         function loadMessages() {
+             console.log("loadMessages function called."); // Debugging log
              // Escuchar cambios en el nodo 'messages'
             messagesRef.on('value', (snapshot) => {
+                console.log("Firebase data updated."); // Debugging log
                 chatBox.innerHTML = ''; // Limpiar los mensajes actuales en la interfaz
 
                 const messages = snapshot.val(); // Obtener los datos del snapshot
+                console.log("Received data:", messages); // Debugging log
 
                 if (messages) {
                     // Convertir el objeto de mensajes a un array para facilitar la iteración y ordenación
@@ -309,27 +422,50 @@
                     messageList.forEach((msg) => {
                         const messageElement = document.createElement('div');
                         messageElement.classList.add('message');
-                        // Opcional: Añadir clases para diferenciar mensajes propios/recibidos si se implementa autenticación
 
-                        // Crear elementos para el nombre y el texto del mensaje
+                        // Añadir clase 'sent' o 'received'
+                        if (msg.name === userName) {
+                            messageElement.classList.add('sent');
+                        } else {
+                            messageElement.classList.add('received');
+                        }
+
+
+                        // Crear elementos para el nombre, texto y timestamp
                         const nameSpan = document.createElement('span');
                         nameSpan.classList.add('name');
-                        nameSpan.textContent = msg.name + ': '; // Añadir dos puntos después del nombre
+                        // Solo mostrar el nombre si no es el mensaje del usuario actual (opcional, estilo WhatsApp)
+                        if (msg.name !== userName) {
+                           nameSpan.textContent = msg.name + ': ';
+                        } else {
+                           nameSpan.textContent = ''; // No mostrar el nombre en mensajes propios
+                        }
+
 
                         const textSpan = document.createElement('span');
                         textSpan.classList.add('text');
                         textSpan.textContent = msg.text;
 
-                        // Añadir nombre y texto al elemento del mensaje
-                        messageElement.appendChild(nameSpan);
-                        messageElement.appendChild(textSpan);
+                        const timestampSpan = document.createElement('span');
+                        timestampSpan.classList.add('timestamp');
+                        timestampSpan.textContent = formatTimestamp(msg.timestamp); // Formatear y mostrar hora
 
-                        // Añadir el mensaje a la caja de chat
+
+                        // Añadir nombre, texto y timestamp al elemento del mensaje
+                        if (msg.name !== userName) { // Mostrar nombre solo para mensajes recibidos
+                             messageElement.appendChild(nameSpan);
+                        }
+                        messageElement.appendChild(textSpan);
+                        messageElement.appendChild(timestampSpan);
+
+
                         chatBox.appendChild(messageElement);
                     });
 
                     // Desplazarse automáticamente al final de la caja de chat para ver el último mensaje
                     chatBox.scrollTop = chatBox.scrollHeight;
+                } else {
+                    console.log("No messages found in database."); // Debugging log
                 }
             });
         }
