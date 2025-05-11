@@ -728,7 +728,7 @@
         <div id="chat-interface">
             <div id="chat-header">
                  <div>
-                     <h2>Chat en Tiempo Real</h2>
+                     <h2>FACBA</h2>
                      <div id="online-users"></div> </div>
                  <button id="settings-button" title="Configuración">
                       ⚙️
@@ -1133,7 +1133,7 @@
                         // Obtener el estado actual del mensaje de la base de datos para evitar escrituras innecesarias
                         messagesRef.child(messageId).once('value', (snapshot) => {
                             const messageData = snapshot.val();
-                            // Marcar como leído solo si el estado no es ya 'read'
+                            // Mark as read only if the status is not already 'read'
                             if (messageData && messageData.status !== 'read') {
                                 console.log(`[${userName}] Message ${messageId} is now visible. Marking as read.`);
                                 messagesRef.child(messageId).update({ status: 'read' })
@@ -1488,6 +1488,26 @@
                 // emojiPicker.style.display = 'none';
             });
         });
+
+        // Función para insertar emoji en el textarea en la posición del cursor
+        function insertEmoji(emoji) {
+            const textarea = messageInput;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const value = textarea.value;
+
+            textarea.value = value.substring(0, start) + emoji + value.substring(end);
+
+            // Mover el cursor después del emoji insertado
+            textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+
+            // Disparar un evento 'input' para que la lógica de auto-ajuste de altura y typing indicator se active
+            const event = new Event('input', { bubbles: true });
+            textarea.dispatchEvent(event);
+
+            textarea.focus(); // Mantener el foco en el textarea
+        }
+
 
         // Listener para el botón de emoji para mostrar/ocultar el selector
         emojiButton.addEventListener('click', (event) => {
