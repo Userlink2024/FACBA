@@ -11,10 +11,10 @@
             margin: 0;
             padding: 0;
             overflow: hidden; /* Prevenir scroll del body */
-            /* Añadir display flex y direction column al body para una base sólida */
-            display: flex;
-            flex-direction: column;
-            height: 100vh; /* Asegurar que el body ocupe toda la altura del viewport */
+            /* body ya no necesita ser flex column 100vh con la barra fija */
+            /* display: flex; */
+            /* flex-direction: column; */
+            /* height: 100vh; */
         }
 
         /* Estilos generales y de contenedor */
@@ -34,7 +34,8 @@
              padding: 20px; /* Añadir padding aquí en lugar del body */
              /* Eliminar transición de altura */
              /* transition: height 0.1s ease-out; */
-             flex-grow: 1; /* Permitir que el contenedor crezca dentro del body flex */
+             /* flex-grow ya no es necesario en el contenedor principal */
+             /* flex-grow: 1; */
         }
 
         /* Estilos para la sección de ingreso de nombre */
@@ -109,18 +110,15 @@
             display: flex;
             flex-direction: column;
             gap: 12px; /* Más espacio entre mensajes */
-            /* Usar height: 0 en un contenedor flex con flex-direction: column
-               permite que el elemento con flex-grow: 1 ocupe el espacio restante
-               y habilita el scroll cuando el contenido se desborda. */
-            height: 0; /* Crucial para que flex-grow funcione correctamente en columna */
+            /* height: 0; Eliminado, ya no es necesario con la barra fija */
 
             /* Estilos para la imagen de fondo */
             background-image: url('https://images.unsplash.com/photo-1518655048521-f130df041722?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* URL de imagen de fondo moderna y sobria */
             background-size: cover; /* Cubrir el área del contenedor */
             background-position: center; /* Centrar la imagen */
             background-repeat: no-repeat; /* No repetir la imagen */
-             /* Padding inferior fijo, ya no se ajusta dinámicamente con JS */
-            padding-bottom: 20px;
+             /* Padding inferior dinámico ajustado por JS */
+            padding-bottom: 20px; /* Padding inicial, se ajustará con JS */
         }
 
         /* Estilos para cada mensaje individual */
@@ -209,7 +207,11 @@
             align-items: center; /* Centrar horizontalmente */
             gap: 10px; /* Espacio entre elementos */
             flex-shrink: 0; /* Evita que el área de entrada se encoja */
-            /* Eliminadas propiedades de position: fixed */
+            /* Propiedades de position: fixed restauradas */
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
             width: 100%; /* Ocupar todo el ancho */
             max-width: 700px; /* Igual que el contenedor principal */
             box-sizing: border-box; /* Incluir padding en el ancho */
@@ -490,7 +492,7 @@
         @media (max-width: 768px) {
             body {
                 padding: 0; /* Eliminar padding del body en móviles */
-                /* body ya es flex column 100vh */
+                /* body ya no es flex column 100vh */
             }
             #chat-container {
                 /* Ajuste de altura para móviles - JS se encargará de la altura dinámica */
@@ -524,9 +526,7 @@
                  align-items: center; /* Centrar horizontalmente */
                  /* Ajuste para móviles */
                  max-width: 100vw;
-                 /* Eliminados left: 0, right: 0 */
-                 /* Añadir borde temporal para depuración */
-                 /* border: 1px solid red; */
+                 /* position: fixed, bottom, left, right ya están definidos arriba */
              }
 
              .message-input-area .input-buttons {
@@ -1220,18 +1220,23 @@
         // --- Lógica para Ajustar Layout con Teclado Virtual ---
 
         // Función para ajustar el padding inferior del chatBox
-        // Con el layout Flexbox, ya no necesitamos ajustar el padding dinámicamente
-        // en función de la altura del área de input. El Flexbox se encarga de esto.
-        // Mantengo la función pero vacía por si se necesita en el futuro,
-        // pero la remuevo de los listeners de resize y onload.
         function adjustChatBoxPadding() {
-             // console.log("adjustChatBoxPadding called - No dynamic padding needed with Flexbox layout.");
-             // No hacer nada aquí con el layout Flexbox
+            // Usar un pequeño retraso para asegurar que el DOM esté renderizado y las alturas sean correctas
+            setTimeout(() => {
+                 const inputAreaHeight = messageInputArea.offsetHeight;
+                 // Añadir un buffer para asegurar espacio suficiente
+                 const newPaddingBottom = inputAreaHeight + 20; // Buffer de 20px
+                 chatBox.style.paddingBottom = `${newPaddingBottom}px`;
+                 console.log(`Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`);
+                 console.log(`messageInputArea.offsetHeight: ${inputAreaHeight}`);
+                 // Intentar scrollear al final después de ajustar el padding
+                 chatBox.scrollTop = chatBox.scrollHeight;
+            }, 100); // Retraso de 100ms
         }
 
 
         // Listener para el evento resize de la ventana
-        // Eliminado: window.addEventListener('resize', adjustChatBoxPadding);
+        window.addEventListener('resize', adjustChatBoxPadding);
 
         // Listener para el evento 'focus' en el input de mensaje
         messageInput.addEventListener('focus', () => {
@@ -1346,8 +1351,8 @@
                  chatInterface.style.display = 'flex'; // Mostrar la interfaz de chat
                  initializeChat(); // Inicializar la carga de mensajes y listeners
              }
-             // Con el layout Flexbox, ya no necesitamos ajustar el padding inferior al cargar.
-             // adjustChatBoxPadding(); // Eliminado
+             // Ajustar el padding inferior del chatBox al cargar
+             adjustChatBoxPadding();
 
 
              // Intentar desbloquear el audio aquí también si es necesario
