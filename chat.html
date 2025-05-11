@@ -159,20 +159,6 @@
              color: rgba(255, 255, 255, 0.8); /* Hora ligeramente transparente en mensajes enviados */
          }
 
-        /* Estilos para contenido de archivo dentro de mensajes */
-        .message img {
-            max-width: 100%; /* Asegura que la imagen no se desborde */
-            height: auto;
-            border-radius: 8px; /* Bordes redondeados para imágenes */
-            margin-top: 5px; /* Espacio arriba de la imagen */
-        }
-
-         .message audio {
-             width: 100%; /* Reproductor de audio ocupa todo el ancho */
-             margin-top: 5px; /* Espacio arriba del reproductor */
-         }
-
-
         /* Estilos para el área de entrada de mensajes */
         .message-input-area {
             display: flex;
@@ -249,50 +235,6 @@
               background-color: #d1d1d6; /* Gris un poco más oscuro al pasar el ratón */
           }
 
-         /* Estilo para los botones de archivo */
-         .file-button {
-             /* Hereda estilos de .message-input-area button */
-         }
-          .file-button svg {
-              width: 22px;
-              height: 22px;
-              fill: #3a3a3c;
-          }
-           .file-button:hover {
-               background-color: #d1d1d6;
-           }
-
-         /* Estilo para el botón de grabar audio */
-         #record-audio-button {
-            background-color: #ff3b30; /* Rojo para grabar */
-         }
-         #record-audio-button.recording {
-             background-color: #c62828; /* Rojo más oscuro al grabar */
-             animation: pulse 1s infinite; /* Animación de pulso */
-         }
-
-         @keyframes pulse {
-             0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
-             70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
-             100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
-         }
-
-         #record-audio-button svg {
-             width: 22px;
-             height: 22px;
-             fill: white; /* Icono blanco al grabar */
-         }
-          #record-audio-button:hover {
-              background-color: #c62828;
-          }
-
-
-         /* Ocultar los input[type="file"] por defecto */
-         input[type="file"] {
-             display: none;
-         }
-
-
         /* Estilos para el indicador de escribiendo */
         #typing-indicator {
             font-size: 0.9em; /* Aumentar tamaño */
@@ -331,7 +273,7 @@
             height: 100%;
         }
 
-        /* Media query para pantallas más pequeñas */
+        /* Media query para pantallas más pequeñas (Android) */
         @media (max-width: 768px) {
             body {
                 padding: 10px; /* Menos padding en móviles */
@@ -373,7 +315,7 @@
              }
 
 
-             #emoji-button, .file-button, #record-audio-button, #send-button { /* Añadir .file-button y #record-audio-button */
+             #emoji-button, #send-button { /* Eliminados .file-button y #record-audio-button */
                  width: 40px;
                  height: 40px;
                  padding: 0; /* Eliminar padding extra */
@@ -385,8 +327,15 @@
                   padding: 10px 15px;
               }
 
+             /* Asegurar que el input de texto ocupe el espacio restante en móviles */
+             .message-input-area input[type="text"] {
+                 flex-grow: 1;
+                 width: 100%; /* Asegurar que intente ocupar el 100% del espacio flexible */
+                 box-sizing: border-box; /* Incluir padding y border en el ancho */
+             }
 
-              #emoji-button svg, .file-button svg, #record-audio-button svg { /* Añadir .file-button svg y #record-audio-button svg */
+
+              #emoji-button svg { /* Eliminados .file-button svg y #record-audio-button svg */
                  width: 20px;
                  height: 20px;
              }
@@ -406,7 +355,6 @@
 
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-analytics-compat.js"></script>
 
 </head>
@@ -432,19 +380,6 @@
                         </svg>
                     </button>
 
-                    <label for="image-upload" class="file-button" title="Enviar Imagen">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M22 5v14c0 1.654-1.346 3-3 3h-14c-1.654 0-3-1.346-3-3v-14c0-1.654 1.346-3 3-3h14c1.654 0 3 1.346 3 3zm-14 2c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm-2 14c0 .552.449 1 1 1h14c.551 0 1-.448 1-1v-1.723l-3.774-3.773c-.92-.92-2.419-.92-3.339 0l-3.774 3.774v1.722zm16-1.723v-10.277h-14v1.723l3.774 3.774c.92.92 2.419.92 3.339 0l3.774-3.774z"/>
-                        </svg>
-                    </label>
-                    <input type="file" id="image-upload" accept="image/*">
-
-                    <button id="record-audio-button" title="Grabar Audio">
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                             <path d="M12 2c1.1 0 2 .9 2 2v9c0 1.1-.9 2-2 2s-2-.9-2-2v-9c0-1.1.9-2 2-2zm0-2c-2.21 0-4 1.79-4 4v9c0 2.21 1.79 4 4 4s4-1.79 4-4v-9c0-2.21-1.79-4-4-4zm8 9h-2c0 4.42-3.58 8-8 8s-8-3.58-8-8h-2c0 5.52 4.47 10 10 10s10-4.48 10-10z"/>
-                         </svg>
-                     </button>
-
                      <button id="send-button">Enviar</button>
                 </div>
             </div>
@@ -458,30 +393,26 @@
     <script>
         // Configuración de tu aplicación web de Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vGxd4ISaRBQ5SVY",
-            authDomain: "facba-a160c.firebaseapp.com",
-            projectId: "facba-a160c",
-            storageBucket: "facba-a160c.firebasestorage.app",
-            messagingSenderId: "585530132394",
-            appId: "1:585530132394:web:a25cda63f883f786804dd3",
-            measurementId: "G-S29LSYM8TQ",
+            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vxd4ISaRBQ5SVY", // Reemplaza con tu apiKey
+            authDomain: "facba-a160c.firebaseapp.com", // Reemplaza con tu authDomain
+            projectId: "facba-a160c", // Reemplaza con tu projectId
+            storageBucket: "facba-a160c.firebasestorage.app", // Reemplaza con tu storageBucket (aunque no se use Storage)
+            messagingSenderId: "585530132394", // Reemplaza con tu messagingSenderId
+            appId: "1:585530132394:web:a25cda63f883f786804dd3", // Reemplaza con tu appId
+            measurementId: "G-S29LSYM8TQ", // Reemplaza con tu measurementId
             // Añadir explícitamente la URL de la base de datos
-            databaseURL: "https://facba-a160c-default-rtdb.firebaseio.com/"
+            databaseURL: "https://facba-a160c-default-rtdb.firebaseio.com/" // Reemplaza con tu databaseURL
         };
 
         // Inicializar Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const database = firebase.database(); // Obtener la instancia de Realtime Database
-        const storage = firebase.storage(); // Obtener la instancia de Storage
+        // Eliminado Storage
+        // const storage = firebase.storage(); // Obtener la instancia de Storage
 
         let userName = ''; // Variable para almacenar el nombre del usuario
         let typingTimeout; // Para manejar el indicador de escribiendo
         let initialLoadComplete = false; // Bandera para saber si la carga inicial de mensajes ha terminado
-
-        // Variables para grabación de audio
-        let mediaRecorder;
-        let audioChunks = [];
-        let audioStream; // Para mantener la referencia al stream del micrófono
 
 
         // Obtener elementos del DOM
@@ -496,9 +427,9 @@
         const notificationSound = document.getElementById('notification-sound'); // Elemento de audio
         const clearChatButton = document.getElementById('clear-chat-button'); // Botón de limpiar chat
         const emojiButton = document.getElementById('emoji-button'); // Botón de emoji
-        const imageUploadInput = document.getElementById('image-upload'); // Input de archivo de imagen
-        // const audioUploadInput = document.getElementById('audio-upload'); // Input de archivo de audio (si se mantiene adjuntar)
-        const recordAudioButton = document.getElementById('record-audio-button'); // Botón de grabar audio
+        // Eliminados inputs y botones de archivo/audio
+        // const imageUploadInput = document.getElementById('image-upload');
+        // const recordAudioButton = document.getElementById('record-audio-button');
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -541,14 +472,14 @@
         });
 
 
-        // --- Lógica del Chat ---
+        // --- Lógica del Chat (Realtime Database) ---
 
         // Referencia al nodo 'messages' en la base de datos
         const messagesRef = database.ref('messages'); // 'messages' es el nombre del nodo
         // Referencia al nodo para el estado de escritura
         const typingRef = database.ref('typing');
-         // Referencia a la raíz de Storage
-        const storageRef = storage.ref();
+        // Eliminado StorageRef
+        // const storageRef = storage.ref();
 
 
         // Clave para limpiar el chat (¡Mantén esto seguro en una aplicación real!)
@@ -564,7 +495,7 @@
             return `${hours}:${minutes}`;
         }
 
-        // Función para enviar un mensaje de texto
+        // Función para enviar un mensaje de texto (Realtime Database)
         function sendMessage() {
             console.log("sendMessage function called."); // Debugging log
             const messageText = messageInput.value.trim(); // Obtener el texto del mensaje y limpiar
@@ -578,17 +509,17 @@
                     timestamp: firebase.database.ServerValue.TIMESTAMP // Usar el timestamp del servidor de Firebase
                 };
 
-                console.log("Attempting to send text message:", newMessage); // Debugging log
+                console.log("Attempting to send text message to Realtime Database:", newMessage); // Debugging log
 
                 // Enviar el nuevo mensaje de texto a la base de datos
                 messagesRef.push(newMessage)
                     .then(() => {
-                        console.log("Mensaje de texto enviado exitosamente!");
+                        console.log("Mensaje de texto enviado exitosamente a Realtime Database!");
                         messageInput.value = ''; // Limpiar el campo de entrada
                         setTypingStatus(false); // Limpiar estado de escritura
                     })
                     .catch((error) => {
-                        console.error("Error al enviar mensaje de texto:", error);
+                        console.error("Error al enviar mensaje de texto a Realtime Database:", error);
                         // Mostrar mensaje de error al usuario
                     });
             } else {
@@ -596,69 +527,12 @@
             }
         }
 
-         // Función para enviar un mensaje de archivo (imagen o audio)
+         // Eliminada función sendFileMessage
+         /*
          function sendFileMessage(file, fileType) {
-             if (!userName) {
-                 console.log("Cannot send file: user name not set.");
-                 return;
-             }
-
-             // Crear una referencia única en Storage para el archivo
-             const uniqueFileName = `${Date.now()}-${file.name}`;
-             const fileRef = storageRef.child(`${fileType}s/${uniqueFileName}`); // e.g., images/12345-photo.jpg, audios/67890-voice.mp3
-
-             console.log(`Attempting to upload ${fileType} file:`, file.name);
-
-             // Subir el archivo
-             const uploadTask = fileRef.put(file);
-
-             // Monitorear el progreso de la subida (opcional)
-             uploadTask.on('state_changed',
-                 (snapshot) => {
-                     // Progreso...
-                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                     console.log(`Upload of ${fileType} is ${progress}% done`);
-                     // Podrías mostrar una barra de progreso en la UI
-                 },
-                 (error) => {
-                     // Manejar errores de subida
-                     console.error(`Error uploading ${fileType}:`, error);
-                     // Mostrar mensaje de error al usuario
-                 },
-                 () => {
-                     // Subida completada exitosamente
-                     console.log(`${fileType} uploaded successfully.`);
-                     // Obtener la URL de descarga del archivo
-                     uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                         console.log(`File available at: ${downloadURL}`);
-
-                         // Crear el objeto del mensaje con la URL y tipo de archivo
-                         const newMessage = {
-                             name: userName,
-                             fileUrl: downloadURL,
-                             fileType: fileType, // 'image' o 'audio'
-                             timestamp: firebase.database.ServerValue.TIMESTAMP
-                         };
-
-                         console.log(`Attempting to send ${fileType} message to DB:`, newMessage);
-
-                         // Enviar el mensaje a la base de datos
-                         messagesRef.push(newMessage)
-                             .then(() => {
-                                 console.log(`${fileType} message sent to DB successfully!`);
-                                 // Limpiar los inputs de archivo si se usaron (aunque el input de grabar es diferente)
-                                 imageUploadInput.value = '';
-                                 // audioUploadInput.value = ''; // Si se mantiene adjuntar audio
-                                 setTypingStatus(false); // Limpiar estado de escritura
-                             })
-                             .catch((error) => {
-                                 console.error(`Error sending ${fileType} message to DB:`, error);
-                                 // Mostrar mensaje de error al usuario
-                             });
-                     });
-                 }
-             );
+             // ... código de envío de archivo ...
          }
+         */
 
 
         // Listener para el botón de enviar texto
@@ -671,139 +545,28 @@
             }
         });
 
-         // Listener para el input de archivo de imagen
-         imageUploadInput.addEventListener('change', (event) => {
-             const file = event.target.files[0];
-             if (file) {
-                 sendFileMessage(file, 'image');
-             }
-         });
-
-         // Listener para el input de archivo de audio (si se mantiene adjuntar)
+         // Eliminados listeners de input de archivo/audio y botón de grabar
          /*
-         audioUploadInput.addEventListener('change', (event) => {
-             const file = event.target.files[0];
-             if (file) {
-                 sendFileMessage(file, 'audio');
-             }
-         });
+         imageUploadInput.addEventListener('change', (event) => { ... });
+         recordAudioButton.addEventListener('click', () => { ... });
          */
 
 
-         // --- Lógica de Grabación de Audio ---
-
-         // Función para iniciar la grabación
-         async function startRecording() {
-             if (!userName) {
-                 console.log("Cannot start recording: user name not set.");
-                 return;
-             }
-
-             try {
-                 // Solicitar acceso al micrófono
-                 audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                 audioChunks = []; // Limpiar fragmentos anteriores
-
-                 // Crear MediaRecorder
-                 /* Intentar formatos comunes, fallback a lo que el navegador soporte.
-                    audio/webm es común y generalmente graba en formato Opus.
-                    audio/mp4 podría usar AAC.
-                    audio/ogg podría usar Opus o Vorbis.
-                    Si ninguno es soportado, se usa el formato por defecto del navegador.
-                 */
-                 let options = { mimeType: 'audio/webm' };
-                 if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                     options = { mimeType: 'audio/mp4' };
-                     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                          options = { mimeType: 'audio/ogg' };
-                           if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                               console.warn('No common audio formats supported, trying default.');
-                               options = {}; // Usar formato por defecto del navegador
-                           }
-                     }
-                 }
-                 mediaRecorder = new MediaRecorder(audioStream, options);
+         // --- Lógica de Grabación de Audio (Eliminada) ---
+         // Eliminadas funciones startRecording y stopRecording
+         /*
+         async function startRecording() { ... }
+         function stopRecording() { ... }
+         */
 
 
-                 // Evento cuando hay datos de audio disponibles
-                 mediaRecorder.ondataavailable = (event) => {
-                     audioChunks.push(event.data);
-                 };
+         // --- Lógica del Indicador de Escribiendo (Realtime Database) ---
 
-                 // Evento cuando la grabación se detiene
-                 mediaRecorder.onstop = () => {
-                     // Combinar los fragmentos en un Blob
-                     const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                     console.log("Recording stopped, Blob created:", audioBlob);
-
-                     // Enviar el Blob de audio a Firebase Storage
-                     // Usar 'audio' como fileType para que se guarde en la carpeta 'audios'
-                     // Generar un nombre de archivo más descriptivo para audio grabado
-                     const audioFileName = `voice_message_${Date.now()}.${audioBlob.type.split('/')[1] || 'webm'}`;
-                     const audioFile = new File([audioBlob], audioFileName, { type: audioBlob.type });
-
-
-                     sendFileMessage(audioFile, 'audio');
-
-                     // Detener el stream del micrófono
-                     audioStream.getTracks().forEach(track => track.stop());
-                 };
-
-                 // Iniciar la grabación
-                 mediaRecorder.start();
-                 console.log("Recording started...");
-
-                 // Actualizar la UI para indicar que se está grabando
-                 recordAudioButton.classList.add('recording');
-                 messageInput.placeholder = 'Grabando audio...';
-                 messageInput.disabled = true; // Deshabilitar input de texto mientras se graba
-                 sendButton.disabled = true; // Deshabilitar botón de enviar texto
-                 emojiButton.disabled = true; // Deshabilitar botón de emoji
-                 imageUploadInput.disabled = true; // Deshabilitar input de imagen
-                 // audioUploadInput.disabled = true; // Si se mantiene adjuntar audio
-
-             } catch (error) {
-                 console.error("Error accessing microphone or starting recording:", error);
-                 // Mostrar un mensaje al usuario si no se pudo acceder al micrófono
-             }
-         }
-
-         // Función para detener la grabación
-         function stopRecording() {
-             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                 mediaRecorder.stop();
-                 console.log("Recording stopping...");
-
-                 // Restaurar la UI
-                 recordAudioButton.classList.remove('recording');
-                 messageInput.placeholder = 'Escribe un mensaje...';
-                 messageInput.disabled = false; // Habilitar input de texto
-                 sendButton.disabled = false; // Habilitar botón de enviar texto
-                 emojiButton.disabled = false; // Habilitar botón de emoji
-                 imageUploadInput.disabled = false; // Habilitar input de imagen
-                 // audioUploadInput.disabled = false; // Si se mantiene adjuntar audio
-             }
-         }
-
-         // Listener para el botón de grabar/detener
-         recordAudioButton.addEventListener('click', () => {
-             if (mediaRecorder && mediaRecorder.state === 'recording') {
-                 // Si está grabando, detener
-                 stopRecording();
-             } else {
-                 // Si no está grabando, iniciar
-                 startRecording();
-             }
-         });
-
-
-         // --- Lógica del Indicador de Escribiendo ---
-
-        // Función para establecer el estado de escritura en Firebase
+        // Función para establecer el estado de escritura en Realtime Database
         function setTypingStatus(isTyping) {
             if (!userName) return; // No hacer nada si el nombre del usuario no está establecido
 
-            const userTypingRef = typingRef.child(userName); // Referencia al estado del usuario actual
+            const userTypingRef = typingRef.child(userName); // Referencia al estado del usuario actual en RTDB
 
             if (isTyping) {
                 userTypingRef.set(true); // Establecer el estado a true
@@ -824,21 +587,17 @@
 
         // Listener para el campo de entrada de mensaje para detectar escritura
         messageInput.addEventListener('input', () => {
-            // Solo actualizar estado de escritura si no estamos grabando audio
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                 // No hacer nada si estamos grabando
+            // Solo actualizar estado de escritura si no estamos grabando audio (funcionalidad eliminada)
+            if (messageInput.value.trim().length > 0) {
+                setTypingStatus(true); // El usuario está escribiendo
             } else {
-                if (messageInput.value.trim().length > 0) {
-                    setTypingStatus(true); // El usuario está escribiendo
-                } else {
-                    setTypingStatus(false); // El usuario ha borrado el texto
-                }
+                setTypingStatus(false); // El usuario ha borrado el texto
             }
         });
 
         // Configurar el listener para el estado de escritura de otros usuarios
         function setupTypingIndicator() {
-            typingRef.on('value', (snapshot) => {
+            typingRef.on('value', (snapshot) => { // Listener en RTDB
                 const typingUsers = snapshot.val();
                 const usersTyping = [];
 
@@ -862,50 +621,54 @@
         }
 
 
-        // Función para cargar y mostrar mensajes
+        // Función para cargar y mostrar mensajes (Realtime Database)
         function loadMessages() {
              console.log("loadMessages function called."); // Debugging log
 
-             // Primero, cargar mensajes existentes (uso 'once' para no recargar todo cada vez)
+             // Escuchar en tiempo real los mensajes desde Realtime Database
+             messagesRef.on('child_added', (data) => {
+                 const newMessage = data.val();
+                 console.log("New message received from Realtime Database:", newMessage); // Debugging log
+                 displayMessage(newMessage); // Mostrar el nuevo mensaje
+
+                 // Reproducir sonido si el mensaje no es del usuario actual
+                 if (initialLoadComplete && newMessage.name !== userName) {
+                     playNotificationSound();
+                 }
+
+                 chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+
+                 // Marcar la carga inicial como completa después del primer mensaje (o ajustar la lógica si es necesario)
+                 if (!initialLoadComplete) {
+                     initialLoadComplete = true;
+                 }
+             }, (error) => {
+                 console.error("Error loading messages from Realtime Database:", error);
+             });
+
+             // Cargar mensajes existentes una vez al inicio
              messagesRef.once('value', (snapshot) => {
-                 console.log("Initial message load complete.");
+                 console.log("Initial message load from Realtime Database complete.");
                  const messages = snapshot.val();
                  if (messages) {
+                     // Convertir objeto de mensajes a array y ordenar por timestamp si es necesario
                      const messageList = Object.values(messages);
+                     // Nota: Realtime Database ya ordena por clave (que es el timestamp en push()),
+                     // pero ordenar explícitamente por la propiedad timestamp asegura el orden correcto.
                      messageList.sort((a, b) => a.timestamp - b.timestamp);
+
+                     // Limpiar el chatbox antes de cargar los mensajes existentes
+                     chatBox.innerHTML = '';
+
                      messageList.forEach((msg) => {
                          displayMessage(msg); // Mostrar cada mensaje
                      });
                  }
                  chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
                  initialLoadComplete = true; // Marcar la carga inicial como completa
-
-                 // Luego, escuchar solo los nuevos mensajes ('child_added')
-                 messagesRef.on('child_added', (data) => {
-                     const newMessage = data.val();
-                     // Solo procesar mensajes nuevos después de la carga inicial
-                     // También se procesan mensajes durante la carga inicial con displayMessage
-                     // pero el sonido solo se activa si initialLoadComplete es true
-                     if (initialLoadComplete) {
-                         displayMessage(newMessage); // Mostrar el nuevo mensaje
-
-                         // Reproducir sonido si el mensaje no es del usuario actual y no es un archivo
-                         // (Opcional: podrías querer sonidos diferentes para archivos)
-                         if (newMessage.name !== userName && !newMessage.fileType) {
-                             playNotificationSound();
-                         }
-
-                         chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
-                     } else {
-                         // Durante la carga inicial, solo mostramos el mensaje sin sonido
-                         displayMessage(newMessage);
-                     }
-                 });
+             }, (error) => {
+                 console.error("Error fetching initial messages from Realtime Database:", error);
              });
-
-             // Limpiar listener 'value' anterior si existiera (para evitar duplicados)
-             // Esto es importante si loadMessages pudiera llamarse múltiples veces
-             // messagesRef.off('value'); // Descomentar si es necesario
         }
 
         // Función para mostrar un mensaje en el DOM
@@ -939,25 +702,13 @@
                  messageElement.appendChild(nameSpan);
             }
 
-            // --- Mostrar contenido del mensaje (texto, imagen, audio) ---
+            // --- Mostrar contenido del mensaje (solo texto ahora) ---
             if (msg.text) {
                 // Es un mensaje de texto
                 const textSpan = document.createElement('span');
                 textSpan.classList.add('text');
                 textSpan.textContent = msg.text;
                 messageElement.appendChild(textSpan);
-            } else if (msg.fileType === 'image' && msg.fileUrl) {
-                // Es un mensaje de imagen
-                const imgElement = document.createElement('img');
-                imgElement.src = msg.fileUrl;
-                imgElement.alt = "Imagen enviada"; // Texto alternativo accesible
-                messageElement.appendChild(imgElement);
-            } else if (msg.fileType === 'audio' && msg.fileUrl) {
-                // Es un mensaje de audio (grabado o adjunto)
-                const audioElement = document.createElement('audio');
-                audioElement.controls = true; // Mostrar controles de reproducción
-                audioElement.src = msg.fileUrl;
-                messageElement.appendChild(audioElement);
             }
             /* --- Fin de mostrar contenido --- */
 
@@ -965,6 +716,11 @@
             messageElement.appendChild(timestampSpan); // Añadir la hora al final
 
             chatBox.appendChild(messageElement);
+
+             // Reproducir sonido solo para mensajes entrantes que no sean del usuario actual
+             if (initialLoadComplete && msg.name !== userName) {
+                 playNotificationSound();
+             }
         }
 
         // Función para reproducir el sonido de notificación
@@ -978,22 +734,21 @@
              }
         }
 
-        // --- Lógica para Limpiar Chat con Clave ---
+        // --- Lógica para Limpiar Chat con Clave (Realtime Database) ---
         clearChatButton.addEventListener('click', () => {
             // Usar prompt() para solicitar la clave
             const enteredPassword = prompt("Ingresa la clave para limpiar el chat:");
 
             // Verificar la clave
             if (enteredPassword === CLEAR_CHAT_PASSWORD) {
-                // Si la clave es correcta, eliminar el nodo 'messages' de Firebase
+                // Si la clave es correcta, eliminar el nodo 'messages' de Realtime Database
                 messagesRef.remove()
                     .then(() => {
-                        console.log("Chat limpiado exitosamente!");
-                        // Opcional: Mostrar un mensaje al usuario en el DOM
-                        // chatBox.innerHTML = '<div>Chat limpiado.</div>';
+                        console.log("Chat limpiado exitosamente en Realtime Database!");
+                        // La UI se actualizará automáticamente gracias al listener on 'child_added'
                     })
                     .catch((error) => {
-                        console.error("Error al limpiar el chat:", error);
+                        console.error("Error al limpiar el chat en Realtime Database:", error);
                         // Mostrar mensaje de error al usuario
                     });
             } else {
