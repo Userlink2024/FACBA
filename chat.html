@@ -176,7 +176,7 @@
         /* Estilos para el área de entrada de mensajes */
         .message-input-area {
             display: flex;
-            flex-direction: column; /* Cambiar a columna para que el reply-preview esté arriba del textarea */
+            flex-direction: column; /* Mantener como columna principal */
             padding: 15px 20px; /* Padding consistente */
             background-color: #f9f9f9;
             border-top: 1px solid #eee;
@@ -186,9 +186,18 @@
             position: relative; /* Necesario para posicionar el selector de emojis */
         }
 
+        /* Contenedor para el input y los botones */
+        .input-container {
+            display: flex; /* Alinear elementos horizontalmente */
+            align-items: center; /* Centrar verticalmente */
+            gap: 10px; /* Espacio entre input y botones */
+            width: 100%; /* Ocupar todo el ancho disponible */
+        }
+
+
         /* Estilos para el INPUT TYPE="TEXT" */
         .message-input-area input[type="text"] {
-            flex-grow: 1;
+            flex-grow: 1; /* Permite que el input ocupe el espacio restante */
             /* Ajuste de padding para hacerlo menos "gordo" */
             padding: 8px 15px;
             border: 1px solid #d1d1d6;
@@ -200,7 +209,7 @@
             /* Altura ajustada para hacerlo más delgado */
             height: 40px; /* Altura fija similar a los botones */
             line-height: 1.5; /* Igual que los mensajes para consistencia */
-            width: 100%; /* Ocupar todo el ancho disponible */
+            /* width: 100%; Eliminado, flex-grow lo maneja */
         }
          .message-input-area input[type="text"]:focus {
              border-color: #007aff; /* Borde azul al enfocar */
@@ -208,11 +217,10 @@
 
 
          .message-input-area .input-buttons {
-             display: flex;
+             display: flex; /* Alinear botones horizontalmente */
              gap: 5px; /* Espacio entre los botones */
              align-items: center; /* Centrar verticalmente los botones */
-             width: 100%; /* Ocupar todo el ancho para alinear botones a la derecha */
-             justify-content: flex-end; /* Alinear botones a la derecha */
+             flex-shrink: 0; /* Evitar que los botones se encojan */
          }
 
          /* Estilo base para los botones de icono */
@@ -484,7 +492,8 @@
              .message-input-area .input-buttons {
                  gap: 5px;
                  align-items: center; /* Centrar verticalmente */
-                 justify-content: flex-end; /* Alinear botones a la derecha */
+                 /* justify-content: flex-end; Eliminado */
+                 flex-shrink: 0; /* Asegurar que no se encoja */
              }
 
              /* Ajuste para input[type="text"] en móviles */
@@ -494,8 +503,14 @@
                  height: 40px; /* Altura fija */
                  min-height: 40px; /* Asegurar altura mínima */
                  flex-grow: 1;
-                 width: 100%;
+                 /* width: 100%; Eliminado */
                  box-sizing: border-box;
+             }
+
+             .input-container {
+                 flex-direction: row; /* Alinear horizontalmente en móviles */
+                 align-items: center;
+                 gap: 5px;
              }
 
 
@@ -599,16 +614,17 @@
                      <span class="reply-text"></span>
                      <button id="cancel-reply-button">×</button>
                  </div>
-                <input type="text" id="message-input" placeholder="Escribe un mensaje...">
-                <div class="input-buttons">
-                     <button id="emoji-button" title="Insertar Emoji">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22c-5.514 0-10-4.486-10-10s4.486-10 10-10 10 4.486 10 10-4.486 10-10 10zm-3-8c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm6 0c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm-3 4c-2.04 0-3.831-1.242-4.588-3h9.176c-.757 1.758-2.548 3-4.588 3z"/>
-                        </svg>
-                    </button>
-
-                     <button id="send-button">Enviar</button>
-                </div>
+                 <div class="input-container">
+                    <input type="text" id="message-input" placeholder="Escribe un mensaje...">
+                    <div class="input-buttons">
+                         <button id="emoji-button" title="Insertar Emoji">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22c-5.514 0-10-4.486-10-10s4.486-10 10-10 10 4.486 10 10-4.486 10-10 10zm-3-8c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm6 0c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm-3 4c-2.04 0-3.831-1.242-4.588-3h9.176c-.757 1.758-2.548 3-4.588 3z"/>
+                            </svg>
+                        </button>
+                         <button id="send-button">Enviar</button>
+                    </div>
+                 </div>
             </div>
              </div>
     </div>
@@ -760,7 +776,6 @@
                     .then(() => {
                         console.log("Mensaje enviado exitosamente a Realtime Database!");
                         messageInput.value = ''; // Limpiar el campo de entrada
-                        // No es necesario ajustar altura para input type="text"
                         setTypingStatus(false); // Limpiar estado de escritura
                         cancelReply(); // Cancelar el estado de respuesta después de enviar
                     })
@@ -1125,9 +1140,14 @@
                 chatBox.style.paddingBottom = '20px'; // Restaurar al padding inicial definido en CSS
                 console.log("Teclado cerrado, restaurando padding.");
             }
+        });
 
-             // Ya no necesitamos ajustar la altura del textarea aquí
-             // adjustTextareaHeight();
+        // Listener para el evento 'focus' en el input de mensaje
+        messageInput.addEventListener('focus', () => {
+            // Cuando el input recibe foco, intentar scrollear la caja de chat al final
+            // Esto puede ayudar a que la barra de input quede visible sobre el teclado
+            chatBox.scrollTop = chatBox.scrollHeight;
+            console.log("Input enfocado, scrolleando chatBox al final.");
         });
 
 
@@ -1141,8 +1161,6 @@
             replyTextSpan.textContent = messageData.text ? messageData.text.substring(0, 50) + (messageData.text.length > 50 ? '...' : '') : 'Archivo'; // Asumiendo solo texto por ahora
 
             replyPreview.style.display = 'flex'; // Mostrar la vista previa
-            // No es necesario ajustar altura para input type="text"
-            // adjustTextareaHeight();
             messageInput.focus(); // Poner el foco en el campo de mensaje
         }
 
@@ -1152,8 +1170,6 @@
             replyPreview.style.display = 'none'; // Ocultar la vista previa
             replyNameSpan.textContent = '';
             replyTextSpan.textContent = '';
-            // No es necesario ajustar altura para input type="text"
-            // adjustTextareaHeight();
         }
 
         // Listener para el botón de cancelar respuesta
