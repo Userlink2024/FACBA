@@ -151,10 +151,6 @@
              /* Asegurar que el texto se envuelva correctamente */
              overflow-wrap: break-word;
              word-break: break-word;
-             /* --- Debugging Styles for text --- */
-             /* border: 1px solid red; /* Borde temporal para ver el área del elemento */ */
-             /* background-color: yellow; /* Fondo temporal para ver el área del elemento */ */
-             /* --- End Debugging Styles --- */
         }
 
          /* Contenedor para texto, hora y checkmarks */
@@ -216,6 +212,22 @@
          .message.sent .checkmarks {
              color: white !important; /* Checkmarks blancos en mensajes enviados, forzar */
          }
+
+        /* Estilos para el contenedor del video de YouTube */
+        .youtube-preview {
+            margin-top: 8px; /* Espacio entre el texto y el video */
+            margin-bottom: 4px; /* Espacio entre el video y el footer */
+            width: 100%; /* Ocupar el ancho del mensaje */
+            aspect-ratio: 16 / 9; /* Mantener relación de aspecto 16:9 */
+            overflow: hidden; /* Asegurar que el iframe no se salga */
+            border-radius: 8px; /* Bordes redondeados para la previsualización */
+        }
+
+        .youtube-preview iframe {
+            width: 100%;
+            height: 100%;
+            border: none; /* Eliminar borde del iframe */
+        }
 
 
         /* Contenedor fijo para el área de input y el indicador de escribiendo */
@@ -1187,12 +1199,35 @@
             }
             /* --- Fin de mostrar contenido de respuesta --- */
 
-
-            // --- Añadir texto, hora y checkmarks al footer ---
+            // --- Añadir texto del mensaje ---
             if (msg.text) {
-                messageFooter.appendChild(textSpan);
-                console.log(`[${userName}] textSpan appended to messageFooter for message ${messageId}.`); // Log after appending textSpan
+                 messageElement.appendChild(textSpan); // Añadir el texto directamente al messageElement
+                 console.log(`[${userName}] textSpan appended to messageElement for message ${messageId}.`); // Log after appending textSpan
             }
+
+
+            // --- Lógica para detectar y mostrar previsualización de YouTube ---
+            const youtubeUrlMatch = msg.text ? msg.text.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]+)/) : null;
+            if (youtubeUrlMatch && youtubeUrlMatch[1]) {
+                const videoId = youtubeUrlMatch[1];
+                const youtubePreviewDiv = document.createElement('div');
+                youtubePreviewDiv.classList.add('youtube-preview');
+
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                iframe.setAttribute('allowfullscreen', ''); // Permitir pantalla completa
+                iframe.setAttribute('loading', 'lazy'); // Carga diferida para mejor rendimiento
+                // Puedes añadir más atributos como 'autoplay=1' si quieres que se reproduzca al cargar,
+                // pero puede ser molesto para el usuario.
+
+                youtubePreviewDiv.appendChild(iframe);
+                messageElement.appendChild(youtubePreviewDiv); // Añadir la previsualización al messageElement
+                console.log(`[${userName}] YouTube preview added for message ${messageId} with video ID: ${videoId}`);
+            }
+            /* --- Fin Lógica previsualización YouTube --- */
+
+
+            // --- Añadir hora y checkmarks al footer ---
             messageFooter.appendChild(timestampSpan); // Añadir la hora
 
             // Añadir checkmarks si es un mensaje enviado por el usuario actual
