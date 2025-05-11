@@ -306,7 +306,7 @@
 
         /* Estilos para el botón de limpiar chat */
         /* Ahora dentro del dropdown */
-        #settings-dropdown #clear-chat-button {
+        #settings-dropdown button { /* Aplicar a todos los botones dentro del dropdown */
             padding: 10px 15px; /* Padding para elemento de menú */
             background-color: transparent; /* Fondo transparente */
             color: #1c1c1e; /* Color de texto oscuro */
@@ -321,9 +321,13 @@
             display: block; /* Asegurar que sea un bloque para ocupar el ancho */
         }
 
-        #settings-dropdown #clear-chat-button:hover {
+        #settings-dropdown button:hover { /* Aplicar a todos los botones al pasar el ratón */
             background-color: #e5e5ea; /* Fondo gris claro al pasar el ratón */
-            color: #ff3b30; /* Color rojo al pasar el ratón */
+        }
+
+        /* Estilo específico para el botón de limpiar chat al pasar el ratón */
+        #settings-dropdown #clear-chat-button:hover {
+             color: #ff3b30; /* Color rojo al pasar el ratón */
         }
 
 
@@ -565,7 +569,7 @@
                  align-self: center;
              }
 
-             #settings-dropdown #clear-chat-button {
+             #settings-dropdown button { /* Aplicar a todos los botones dentro del dropdown */
                  font-size: 0.9em;
                  padding: 8px 12px;
              }
@@ -629,6 +633,7 @@
                  </button>
                  <div id="settings-dropdown">
                      <button id="clear-chat-button">Limpiar Chat</button>
+                     <button id="change-name-button">Cambiar Nombre</button>
                  </div>
             </div>
              <div id="chat-box">
@@ -707,6 +712,7 @@
         const settingsButton = document.getElementById('settings-button'); // Ahora en chat-header
         const settingsDropdown = document.getElementById('settings-dropdown'); // Ahora en chat-header
         const clearChatButton = document.getElementById('clear-chat-button'); // Ahora dentro del dropdown
+        const changeNameButton = document.getElementById('change-name-button'); // Nuevo botón para cambiar nombre
         const chatContainer = document.getElementById('chat-container'); // Referencia al contenedor principal
         const messageInputArea = document.querySelector('.message-input-area'); // Referencia al área de input
         const onlineUsersDiv = document.getElementById('online-users'); // Elemento para usuarios en línea
@@ -1132,6 +1138,25 @@
             }
         });
 
+        // --- Lógica para Cambiar Nombre ---
+        changeNameButton.addEventListener('click', () => {
+            // Ocultar el dropdown antes de mostrar el prompt
+            settingsDropdown.style.display = 'none';
+
+            const newName = prompt("Ingresa tu nuevo nombre:");
+            if (newName && newName.trim() !== '' && newName.trim() !== userName) {
+                userName = newName.trim();
+                localStorage.setItem('chatName', userName);
+                console.log(`Nombre cambiado a: ${userName}`);
+                // Recargar la página para actualizar la interfaz y la presencia
+                location.reload();
+            } else if (newName && newName.trim() === userName) {
+                console.log("El nuevo nombre es el mismo que el actual.");
+            } else {
+                console.log("Cambio de nombre cancelado o nombre inválido.");
+            }
+        });
+
 
         // --- Lógica del Botón de Emoji y Selector ---
 
@@ -1210,7 +1235,7 @@
             setTimeout(() => {
                  const inputAreaHeight = messageInputArea.offsetHeight;
                  // Añadir un buffer más grande para asegurar espacio suficiente
-                 const newPaddingBottom = inputAreaHeight + 40; // Aumentar buffer a 40px
+                 const newPaddingBottom = inputAreaHeight + 50; // Aumentar buffer a 50px
                  chatBox.style.paddingBottom = `${newPaddingBottom}px`;
                  console.log(`Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`);
                  console.log(`messageInputArea.offsetHeight: ${inputAreaHeight}`);
