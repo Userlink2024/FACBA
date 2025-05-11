@@ -224,7 +224,7 @@
             z-index: 5; /* Asegurar que esté por encima de la caja de chat */
             display: flex; /* Usar flexbox */
             flex-direction: column; /* Apilar elementos verticalmente */
-            background-color: #f9f9f9; /* Fondo para el área fija */
+             /* background-color: #f9f9f9; Eliminado el color de fondo */
              border-top: 1px solid #eee; /* Borde superior */
              padding: 10px 20px; /* Padding interno */
         }
@@ -237,7 +237,7 @@
             padding: 0 5px; /* Padding interno */
             min-height: 1.2em; /* Reserva espacio */
             text-align: right; /* Alinear a la derecha */
-            /* margin-bottom: 5px; Eliminado, el padding está en el contenedor fijo */
+            margin-bottom: 5px; /* Añadir margen debajo del indicador */
         }
 
 
@@ -626,6 +626,7 @@
                  /* margin-bottom: 5px; Eliminado */
                  padding: 0 5px; /* Ajustar padding lateral para móviles */
                  text-align: right; /* Asegurar alineación derecha */
+                 margin-bottom: 5px; /* Añadir margen debajo del indicador */
              }
 
              /* Ajuste del selector de emojis en móviles */
