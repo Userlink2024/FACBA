@@ -1015,10 +1015,13 @@
                     // Reproducir sonido si el mensaje no es del usuario actual
                      if (newMessage.name !== userName) {
                          playNotificationSound();
-                         // Marcar el mensaje como leído si no es del usuario actual
+                         // !!! CORRECCIÓN: Eliminar la línea que marcaba el mensaje como 'read' aquí.
+                         // La lógica de marcar como 'read' debe estar en el cliente que recibe el mensaje.
+                         /*
                          messagesRef.child(messageId).update({ status: 'read' })
                              .then(() => console.log(`Message ${messageId} marked as read.`))
                              .catch(error => console.error(`Error marking message ${messageId} as read:`, error));
+                         */
                      }
                     chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
                  } else {
@@ -1076,6 +1079,14 @@
                 messageElement.classList.add('sent');
             } else {
                 messageElement.classList.add('received');
+                // !!! LÓGICA PARA MARCAR MENSAJES RECIBIDOS COMO 'read' !!!
+                // Si el mensaje es recibido por este cliente y no es del propio cliente,
+                // y si el estado actual no es ya 'read', marcarlo como 'read' en la base de datos.
+                if (msg.status !== 'read') {
+                     messagesRef.child(messageId).update({ status: 'read' })
+                         .then(() => console.log(`Message ${messageId} marked as read by receiver.`))
+                         .catch(error => console.error(`Error marking message ${messageId} as read by receiver:`, error));
+                }
             }
 
             // Crear elementos para el nombre y contenido
@@ -1303,7 +1314,7 @@
                  // Usar la altura del nuevo contenedor fijo
                  const bottomAreaHeight = bottomFixedArea.offsetHeight;
                  // Añadir un buffer más grande para asegurar espacio suficiente
-                 // Puedes ajustar este valor (60) para aumentar o disminuir el espacio inferior
+                 // Puedes ajustar este valor (80) para aumentar o disminuir el espacio inferior
                  const newPaddingBottom = bottomAreaHeight + 80; // <--- Aquí puedes modificar el valor del buffer
                  chatBox.style.paddingBottom = `${newPaddingBottom}px`;
                  console.log(`Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`);
