@@ -142,7 +142,6 @@
 
         .message .text {
             display: block;
-            color: #1c1c1e !important; /* Texto oscuro principal, forzar color */
             font-size: 1em; /* Tamaño de fuente del texto (relativo al 1.1em del mensaje) */
             /* margin-bottom: 4px; Eliminado, el margen ahora está en el footer */
              flex-grow: 1; /* Permitir que el texto ocupe espacio */
@@ -152,7 +151,6 @@
              /* Asegurar que el texto se envuelva correctamente */
              overflow-wrap: break-word;
              word-break: break-word;
-             visibility: visible !important; /* Forzar visibilidad */
         }
 
          /* Contenedor para texto, hora y checkmarks */
@@ -206,10 +204,10 @@
         .message.sent .name,
         .message.sent .text,
         .message.sent .timestamp {
-            color: white !important; /* Asegurar que el texto interno sea blanco, forzar */
+            /* color: white !important; Removido para probar inline style */
         }
          .message.sent .timestamp {
-             color: rgba(255, 255, 255, 0.8) !important; /* Hora ligeramente transparente en mensajes enviados, forzar */
+             /* color: rgba(255, 255, 255, 0.8) !important; Removido para probar inline style */
          }
          .message.sent .checkmarks {
              color: white !important; /* Checkmarks blancos en mensajes enviados, forzar */
@@ -1117,8 +1115,16 @@
             textSpan.classList.add('text');
             textSpan.textContent = msg.text;
             console.log(`[${userName}] textSpan created for message ${messageId}. Content: "${textSpan.textContent}"`); // Debugging log: contenido del texto
-            // Usar getComputedStyle después de añadir el elemento al DOM (o al menos al messageElement)
-            // para obtener el color y visibilidad efectivos. Lo haremos después de añadirlo.
+
+            // --- Aplicar estilos inline para asegurar visibilidad y color ---
+            textSpan.style.visibility = 'visible';
+            textSpan.style.display = 'block'; // O 'inline-block' si prefieres
+            if (msg.name === userName) {
+                textSpan.style.color = 'white'; // Color blanco para mensajes enviados
+            } else {
+                textSpan.style.color = '#1c1c1e'; // Color oscuro para mensajes recibidos
+            }
+            console.log(`[${userName}] textSpan for message ${messageId} inline styles applied -> Color: ${textSpan.style.color}, Visibility: ${textSpan.style.visibility}, Display: ${textSpan.style.display}`); // Log inline styles
 
 
             const timestampSpan = document.createElement('span');
@@ -1172,10 +1178,11 @@
             chatBox.appendChild(messageElement);
 
             // Después de añadir el messageElement al DOM, podemos obtener los estilos computados del textSpan
-            setTimeout(() => { // Pequeño retraso para asegurar que el elemento esté en el DOM y los estilos aplicados
+            // Aumentar el retraso para dar más tiempo a la renderización
+            setTimeout(() => {
                  const computedStyle = window.getComputedStyle(textSpan);
                  console.log(`[${userName}] textSpan for message ${messageId} computed style -> Color: ${computedStyle.color}, Visibility: ${computedStyle.visibility}, Display: ${computedStyle.display}`);
-            }, 50); // Retraso corto
+            }, 500); // Retraso aumentado a 500ms
 
 
              // Reproducir sonido solo para mensajes entrantes que no sean del usuario actual
