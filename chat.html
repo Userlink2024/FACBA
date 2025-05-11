@@ -3,139 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Simple con Firebase</title>
+    <title>Chat Moderno</title>
     <style>
-        /* Estilos básicos para el cuerpo y el contenedor principal */
-        body {
-            font-family: sans-serif;
+        /* Asegurar que html y body ocupen toda la altura de la ventana */
+        html, body {
+            height: 100%;
             margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
+            padding: 0; /* Eliminar padding del body aquí y añadirlo al contenedor si es necesario */
+        }
+
+        /* Estilos generales y de contenedor */
+        body {
+            font-family: 'SF Pro Text', 'SF Pro Icons', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif; /* Intentar fuente similar a Apple */
+            background-color: #f2f2f7; /* Fondo gris claro */
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* Asegura que el cuerpo ocupe al menos la altura de la ventana */
+            min-height: 100vh; /* Usar min-height para asegurar altura mínima */
+            box-sizing: border-box;
         }
 
         #chat-container {
-            width: 90%; /* Ancho relativo para adaptabilidad */
-            max-width: 600px; /* Ancho máximo para pantallas grandes */
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            overflow: hidden; /* Oculta el contenido que se desborda */
+            width: 100%; /* Ocupar todo el ancho disponible hasta el max-width */
+            max-width: 700px; /* Aumentar el ancho máximo */
+            background-color: #ffffff; /* Fondo blanco limpio */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Sombra más suave */
+            border-radius: 15px; /* Bordes más redondeados */
+            overflow: hidden;
             display: flex;
-            flex-direction: column; /* Organiza los elementos verticalmente */
-            max-height: 90vh; /* Limita la altura del contenedor */
-            box-sizing: border-box; /* Incluye padding y border en el tamaño total */
+            flex-direction: column;
+            /* Ajuste clave: max-height basado en el 100% de su padre (body) */
+            max-height: 100%;
+            height: 100%; /* Asegurar que ocupe la altura disponible */
+            box-sizing: border-box;
+             padding: 20px; /* Añadir padding aquí en lugar del body */
         }
 
         /* Estilos para la sección de ingreso de nombre */
         #name-prompt {
-            padding: 20px;
+            padding: 30px 20px; /* Más padding */
             text-align: center;
-            background-color: #e0e0e0; /* Fondo para diferenciar */
+            background-color: #e5e5ea; /* Gris claro */
+            border-bottom: 1px solid #d1d1d6; /* Borde sutil */
+            flex-shrink: 0; /* Evitar que se encoja */
         }
 
         #name-prompt h2 {
             margin-top: 0;
-            color: #333;
+            color: #1c1c1e; /* Texto oscuro */
+            font-size: 1.5em; /* Aumentar tamaño del título */
         }
 
         #name-prompt input {
-            padding: 10px;
+            padding: 12px 15px; /* Más padding */
             margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 1em;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px; /* Bordes redondeados */
+            font-size: 1.1em; /* Aumentar tamaño de fuente */
+            box-sizing: border-box; /* Incluir padding y border */
         }
 
         #name-prompt button {
-            padding: 10px 15px;
-            background-color: #4CAF50; /* Verde */
+            padding: 12px 20px; /* Más padding */
+            background-color: #007aff; /* Azul de Apple */
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px; /* Bordes redondeados */
             cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s ease; /* Transición suave al pasar el ratón */
+            font-size: 1.1em; /* Aumentar tamaño de fuente */
+            transition: background-color 0.2s ease-in-out;
         }
 
         #name-prompt button:hover {
-            background-color: #45a049; /* Verde más oscuro al pasar el ratón */
+            background-color: #0056b3; /* Azul más oscuro */
         }
 
-        /* Estilos para la caja de chat (donde se muestran los mensajes) */
+        /* Estilos para la caja de chat (mensajes) */
         #chat-box {
             flex-grow: 1; /* Permite que la caja de chat ocupe el espacio restante */
             padding: 20px;
             overflow-y: auto; /* Habilita el scroll vertical si los mensajes exceden la altura */
             border-bottom: 1px solid #eee;
             display: flex;
-            flex-direction: column; /* Apila los mensajes verticalmente */
-            gap: 10px; /* Espacio entre mensajes */
-            height: 0; /* Añadido para ayudar a flexbox con overflow */
+            flex-direction: column;
+            gap: 12px; /* Más espacio entre mensajes */
+            /* Ajuste clave: Usar height: 0 para que flex-grow funcione correctamente en columna */
+            height: 0;
+             /* Temporal para depuración */
+            /* background-color: yellow; */
         }
 
         /* Estilos para cada mensaje individual */
         .message {
-            padding: 8px 12px;
-            border-radius: 15px;
-            max-width: 80%; /* Ancho máximo del mensaje */
-            word-wrap: break-word; /* Rompe palabras largas para evitar desbordamiento */
-            position: relative; /* Necesario para posicionar la hora */
+            padding: 12px 18px; /* Aumentar padding del mensaje */
+            border-radius: 18px; /* Bordes más redondeados */
+            max-width: 85%; /* Aumentar ancho máximo */
+            word-wrap: break-word;
+            position: relative;
+            line-height: 1.5; /* Mejorar espaciado entre líneas */
+            font-size: 1.1em; /* Aumentar tamaño de fuente base del mensaje */
         }
 
         .message .name {
-             font-size: 0.9em; /* Tamaño de fuente más pequeño para el nombre */
-             color: #555; /* Color ligeramente más tenue para el nombre */
-             margin-bottom: 3px; /* Espacio debajo del nombre */
-             display: block; /* Asegura que el nombre esté en su propia línea */
-             font-weight: bold;
+             font-size: 0.9em; /* Tamaño de fuente del nombre (relativo al 1.1em del mensaje) */
+             color: #3a3a3c; /* Color de texto sutil */
+             margin-bottom: 2px; /* Espacio debajo del nombre */
+             display: block;
+             font-weight: 600; /* Semi-negrita */
         }
 
         .message .text {
-            display: block; /* Asegura que el texto esté debajo del nombre */
-            color: #111; /* Color oscuro para el texto del mensaje */
-            margin-bottom: 5px; /* Espacio entre texto y hora */
+            display: block;
+            color: #1c1c1e; /* Texto oscuro principal */
+            font-size: 1em; /* Tamaño de fuente del texto (relativo al 1.1em del mensaje) */
+            margin-bottom: 4px; /* Espacio entre texto y hora */
         }
 
         .message .timestamp {
-            font-size: 0.7em; /* Tamaño de fuente más pequeño para la hora */
-            color: #888; /* Color tenue para la hora */
-            text-align: right; /* Alinea la hora a la derecha dentro del mensaje */
-            display: block; /* Asegura que la hora esté en su propia línea */
+            font-size: 0.7em; /* Tamaño de fuente de la hora (relativo al 1.1em del mensaje) */
+            color: #8e8e93; /* Gris tenue */
+            text-align: right;
+            display: block;
         }
 
         /* Estilos para mensajes recibidos */
         .message.received {
-            background-color: #e9e9eb; /* Color de fondo para mensajes recibidos */
-            align-self: flex-start; /* Alinea a la izquierda */
+            background-color: #e5e5ea; /* Fondo gris claro */
+            align-self: flex-start;
+            border-bottom-left-radius: 5px; /* Esquina inferior izquierda menos redondeada */
         }
 
         /* Estilos para mensajes enviados */
         .message.sent {
-            background-color: #dcf8c6; /* Color de fondo para mensajes enviados (verde claro) */
-            align-self: flex-end; /* Alinea a la derecha */
+            background-color: #007aff; /* Fondo azul */
+            color: white; /* Texto blanco */
+            align-self: flex-end;
+            border-bottom-right-radius: 5px; /* Esquina inferior derecha menos redondeada */
         }
+
+         /* Estilos para mensajes enviados - elementos internos */
+        .message.sent .name,
+        .message.sent .text,
+        .message.sent .timestamp {
+            color: white; /* Asegurar que el texto interno sea blanco */
+        }
+         .message.sent .timestamp {
+             color: rgba(255, 255, 255, 0.8); /* Hora ligeramente transparente en mensajes enviados */
+         }
+
 
         /* Estilos para el área de entrada de mensajes */
         .message-input-area {
-            display: flex; /* Usa flexbox para alinear input y botón */
-            padding: 15px;
-            background-color: #f9f9f9; /* Fondo para el área de entrada */
-            border-top: 1px solid #eee; /* Borde superior */
-            align-items: center; /* Centra verticalmente los elementos */
+            display: flex;
+            padding: 15px 20px; /* Padding consistente */
+            background-color: #f9f9f9;
+            border-top: 1px solid #eee;
+            align-items: center;
+            gap: 10px; /* Espacio entre elementos */
+            flex-shrink: 0; /* Evita que el área de entrada se encoja */
         }
 
         .message-input-area input {
-            flex-grow: 1; /* Permite que el input ocupe el espacio restante */
-            padding: 10px;
-            margin-right: 10px; /* Espacio entre input y botones */
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 1em;
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 1px solid #d1d1d6;
+            border-radius: 20px; /* Bordes muy redondeados */
+            font-size: 1.1em;
+            box-sizing: border-box;
+            outline: none; /* Eliminar contorno al enfocar */
+            transition: border-color 0.2s ease-in-out;
         }
+         .message-input-area input:focus {
+             border-color: #007aff; /* Borde azul al enfocar */
+         }
+
 
          .message-input-area .input-buttons {
              display: flex;
@@ -143,115 +184,161 @@
          }
 
         .message-input-area button {
-            padding: 10px 15px;
-            background-color: #128c7e; /* Verde de WhatsApp */
-            color: white;
+            padding: 10px; /* Padding uniforme para botones de icono */
+            background-color: #e5e5ea; /* Fondo gris claro para botones de icono */
+            color: #007aff; /* Color azul para iconos */
             border: none;
-            border-radius: 4px;
+            border-radius: 50%; /* Botones redondos */
             cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s ease; /* Transición suave al pasar el ratón */
+            width: 45px; /* Tamaño fijo para botones redondos */
+            height: 45px; /* Tamaño fijo para botones redondos */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s ease-in-out;
         }
+
+         /* Estilo específico para el botón de enviar */
+         #send-button {
+             background-color: #007aff; /* Fondo azul para enviar */
+             color: white; /* Texto blanco */
+             border-radius: 20px; /* Bordes redondeados */
+             padding: 10px 20px; /* Padding horizontal */
+             width: auto; /* Ancho automático */
+             height: auto; /* Altura automática */
+         }
+
+         #send-button:hover {
+             background-color: #0056b3;
+         }
 
          /* Estilo específico para el botón de emoji */
          #emoji-button {
-             background-color: #ccc; /* Color gris */
-             padding: 10px; /* Padding igual al de otros botones */
-             width: 40px; /* Ancho fijo para el icono */
-             height: 40px; /* Altura fija para el icono */
-             display: flex;
-             justify-content: center;
-             align-items: center;
+             /* Ya tiene estilos base de .message-input-area button */
          }
 
          #emoji-button svg {
-             width: 20px; /* Tamaño del icono SVG */
-             height: 20px; /* Tamaño del icono SVG */
-             fill: #555; /* Color del icono */
+             width: 22px; /* Tamaño del icono SVG */
+             height: 22px; /* Tamaño del icono SVG */
+             fill: #3a3a3c; /* Color del icono oscuro */
          }
+          #emoji-button:hover {
+              background-color: #d1d1d6; /* Gris un poco más oscuro al pasar el ratón */
+          }
 
-        .message-input-area button:hover {
-             background-color: #075e54; /* Verde más oscuro al pasar el ratón */
-        }
 
         /* Estilos para el indicador de escribiendo */
         #typing-indicator {
-            font-size: 0.8em;
-            color: #888;
+            font-size: 0.9em; /* Aumentar tamaño */
+            color: #8e8e93; /* Gris tenue */
             padding: 5px 20px;
-            min-height: 1em; /* Reserva espacio para evitar saltos */
+            min-height: 1.2em; /* Reserva espacio */
+            flex-shrink: 0; /* Evitar que se encoja */
         }
 
         /* Estilos para el botón de limpiar chat */
         #clear-chat-button {
-            padding: 5px 10px; /* Padding más pequeño */
-            background-color: #f44336; /* Rojo */
+            padding: 8px 15px; /* Más padding */
+            background-color: #ff3b30; /* Rojo de Apple */
             color: white;
             border: none;
-            border-radius: 4ph;
+            border-radius: 8px; /* Bordes redondeados */
             cursor: pointer;
-            font-size: 0.8em; /* Tamaño de fuente más pequeño */
-            margin-top: 10px; /* Espacio arriba */
-            align-self: center; /* Centrar el botón */
-            transition: background-color 0.3s ease;
+            font-size: 0.9em; /* Tamaño de fuente */
+            margin: 10px 20px; /* Margen arriba/abajo y padding lateral */
+            align-self: flex-start; /* Alinear a la izquierda o puedes centrarlo si prefieres */
+            flex-shrink: 0; /* Evitar que se encoja */
+            transition: background-color 0.2s ease-in-out;
         }
 
         #clear-chat-button:hover {
-            background-color: #d32f2f; /* Rojo más oscuro */
+            background-color: #c62828; /* Rojo más oscuro */
         }
 
 
         /* Oculta la interfaz de chat inicialmente */
         #chat-interface {
-            display: none; /* Se mostrará con JavaScript */
+            display: none;
             flex-direction: column;
-            flex-grow: 1;
+            flex-grow: 1; /* Asegura que la interfaz de chat ocupe el espacio disponible */
+             /* Ajuste clave: Darle una altura al contenedor flex para que los hijos flex-grow funcionen */
+            height: 100%;
         }
 
         /* Media query para pantallas más pequeñas */
         @media (max-width: 768px) {
+            body {
+                padding: 10px; /* Menos padding en móviles */
+            }
             #chat-container {
-                width: 95%; /* Ocupa más ancho en pantallas pequeñas */
-                max-height: 95vh; /* Ocupa más altura en pantallas pequeñas */
+                max-height: calc(100vh - 20px); /* Ajustar altura máxima */
+                border-radius: 10px;
+                 padding: 10px; /* Menos padding en móviles */
+            }
+
+            #name-prompt {
+                padding: 20px 15px;
             }
 
             #name-prompt input,
             #name-prompt button,
             .message-input-area input,
-            .message-input-area button {
-                font-size: 0.9em; /* Reduce el tamaño de fuente */
-                padding: 8px 12px; /* Reduce el padding */
-            }
-
-            #name-prompt {
-                flex-direction: column; /* Apila elementos en pantallas pequeñas */
-                gap: 10px; /* Espacio entre elementos */
+            .message-input-area button,
+            #send-button {
+                font-size: 1em; /* Ajustar tamaño de fuente */
+                padding: 10px 12px; /* Ajustar padding */
             }
 
              #name-prompt input {
-                 margin-right: 0; /* Elimina margen derecho */
-                 width: 100%; /* Ocupa todo el ancho */
-                 box-sizing: border-box; /* Incluye padding en el ancho */
+                 margin-right: 0;
+                 width: 100%;
+                 margin-bottom: 10px; /* Espacio debajo del input en móviles */
+             }
+             #name-prompt button {
+                 width: 100%; /* Botón ocupa todo el ancho */
              }
 
-             #clear-chat-button {
-                 font-size: 0.7em; /* Reduce el tamaño de fuente en móviles */
-                 padding: 4px 8px;
+
+             .message-input-area {
+                 flex-direction: row; /* Mantener en fila */
+                 padding: 10px 15px;
+                 gap: 5px;
+             }
+
+             .message-input-area input {
+                 margin-right: 5px;
              }
 
              .message-input-area .input-buttons {
-                 gap: 3px; /* Reduce el espacio entre botones en móviles */
+                 gap: 5px;
              }
 
-             #emoji-button {
-                 width: 35px;
-                 height: 35px;
-                 padding: 8px;
+
+             #emoji-button, #send-button {
+                 width: 40px;
+                 height: 40px;
+                 padding: 0; /* Eliminar padding extra */
+                 flex-shrink: 0; /* Evitar que se reduzcan */
              }
+              #send-button {
+                  width: auto; /* Permitir que el botón de enviar ajuste su ancho */
+                  padding: 10px 15px;
+              }
+
 
               #emoji-button svg {
-                 width: 18px;
-                 height: 18px;
+                 width: 20px;
+                 height: 20px;
+             }
+
+             #clear-chat-button {
+                 font-size: 0.8em;
+                 padding: 6px 12px;
+                 margin: 10px 15px;
+             }
+
+             .message {
+                 max-width: 90%; /* Permitir que los mensajes ocupen más ancho */
              }
         }
 
