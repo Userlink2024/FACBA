@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Moderno</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         /* Asegurar que html y body ocupen toda la altura de la ventana */
         html, body {
@@ -1360,7 +1361,7 @@
                  notificationSound.volume = 0; // Volumen a cero
                  notificationSound.play().then(() => {
                      notificationSound.pause(); // Pausar inmediatamente
-                     notificationSound.volume = 1; // Restaurar volumen
+                     notificationSound.volume = 1; // Restablecer volumen
                  }).catch(error => {
                      console.error("Audio unlock failed (user interaction needed):", error);
                  });
