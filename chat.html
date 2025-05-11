@@ -640,6 +640,10 @@
                  height: 40px;
                  padding: 0;
                  align-self: center;
+                 font-size: 1.5em; /* Tamaño para el emoji */
+                 /* Añadido para intentar centrar el emoji */
+                 line-height: 1;
+                 vertical-align: middle;
              }
 
              #settings-dropdown button { /* Aplicar a todos los botones dentro del dropdown */
@@ -680,6 +684,31 @@
              }
         }
 
+         /* Estilos para el botón de configuración en general */
+         #settings-button {
+             /* Ajuste de tamaño y posición */
+             width: 40px;
+             height: 40px;
+             padding: 0;
+             display: flex;
+             justify-content: center;
+             align-items: center;
+             background-color: transparent; /* Fondo transparente */
+             border: none;
+             border-radius: 50%; /* Botón redondo */
+             cursor: pointer;
+             font-size: 1.5em; /* Tamaño para el emoji */
+             color: #1c1c1e; /* Color oscuro para el emoji */
+             /* Añadido para intentar centrar el emoji */
+             line-height: 1;
+             vertical-align: middle;
+         }
+
+         #settings-button:hover {
+             background-color: #e5e5ea; /* Fondo gris claro al pasar el ratón */
+         }
+
+
     </style>
 
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
@@ -701,12 +730,8 @@
                  <div>
                      <h2>Chat en Tiempo Real</h2>
                      <div id="online-users"></div> </div>
-<button id="settings-button" title="Configuración">
-⚙️
-</button>
-                      <svgxmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                          <path d="M24 13.616v-3.232c-1.651-.587-2.694-.758-3.281-2.042-.587-1.285-.185-2.178.419-3.742 1.809-4.642-1.489-8.396-5.072-8.396-1.464 0-2.856.543-3.807 1.499-.95.951-1.493 2.245-1.493 3.809 0 2.628-1.391 3.424-4.058 3.815-1.207.175-2.921.273-4.916.306v3.232c2.002.04 3.715.138 4.92.302 2.668.392 4.06 1.189 4.06 3.817 0 1.563.544 2.856 1.493 3.807.951.951 2.343 1.494 3.808 1.494 3.583 0 6.881-3.758 5.072-8.398-.606-1.56-.204-2.453.42-3.738 1.586-3.293 3.564-3.488 3.279-4.075zm-12 7.384c-2.757 0-5-2.243-5-5s2.243-5 5-5 5 2.243 5 5-2.243 5-5 5z"/>
-                      </svg>
+                 <button id="settings-button" title="Configuración">
+                      ⚙️
                  </button>
                  <div id="settings-dropdown">
                      <button id="clear-chat-button">Limpiar Chat</button>
@@ -763,6 +788,8 @@
         let userName = ''; // Variable para almacenar el nombre del usuario
         let typingTimeout; // Para manejar el indicador de escribiendo
         let initialLoadComplete = false; // Bandera para saber si la carga inicial de mensajes ha terminado
+        let audioUnlocked = false; // Bandera para rastrear si el audio se ha desbloqueado
+
 
         // Variable para almacenar los datos del mensaje al que se está respondiendo
         let replyingToMessage = null;
@@ -832,16 +859,7 @@
              setupRealtimeListeners(); // Configurar listeners en tiempo real una vez
              setupTypingIndicator(); // Configurar el indicador de escribiendo
              setupPresence(); // Configurar la presencia del usuario
-             // Intentar "desbloquear" el audio
-             if (notificationSound) {
-                 notificationSound.volume = 0; // Volumen a cero
-                 notificationSound.play().then(() => {
-                     notificationSound.pause(); // Pausar inmediatamente
-                     notificationSound.volume = 1; // Restablecer volumen
-                 }).catch(error => {
-                     console.error("Audio unlock failed (user interaction needed):", error);
-                 });
-             }
+             // El desbloqueo de audio ahora se maneja en la primera interacción del usuario (enviar mensaje)
         }
 
 
@@ -1358,14 +1376,51 @@
 
         // Función para reproducir el sonido de notificación
         function playNotificationSound() {
-             if (notificationSound) {
+             if (notificationSound && audioUnlocked) { // Solo reproducir si el audio está desbloqueado
                  notificationSound.currentTime = 0; // Reiniciar el sonido si ya se está reproduciendo
                  notificationSound.play().catch(error => {
                      console.error("Error al reproducir el sonido:", error);
                      // Esto a menudo ocurre si el navegador bloquea el autoplay
                  });
+             } else if (!audioUnlocked) {
+                 console.log("Audio not unlocked yet. Cannot play sound.");
              }
         }
+
+        // Función para intentar desbloquear el audio con una interacción del usuario
+        function unlockAudio() {
+            if (notificationSound && notificationSound.readyState >= 2 && !audioUnlocked) { // readyState 2 means enough data is available
+                notificationSound.volume = 0; // Set volume to 0
+                const playPromise = notificationSound.play();
+
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // Playback started successfully
+                        notificationSound.pause(); // Pause immediately
+                        notificationSound.volume = 1; // Restore volume
+                        audioUnlocked = true; // Mark audio as unlocked
+                        console.log("Audio unlocked successfully.");
+                        // Remove this listener after first interaction
+                        document.removeEventListener('click', unlockAudio);
+                        document.removeEventListener('touchstart', unlockAudio);
+                        sendButton.removeEventListener('click', unlockAudio); // Remove from send button too
+                    }).catch(error => {
+                        // Playback failed, likely due to user interaction requirement
+                        console.error("Audio unlock failed:", error);
+                        audioUnlocked = false; // Keep audio locked
+                    });
+                }
+            } else if (audioUnlocked) {
+                 console.log("Audio already unlocked.");
+                 // Remove listeners if already unlocked
+                 document.removeEventListener('click', unlockAudio);
+                 document.removeEventListener('touchstart', unlockAudio);
+                 sendButton.removeEventListener('click', unlockAudio); // Remove from send button too
+            } else {
+                 console.log("Notification sound not ready or not found.");
+            }
+        }
+
 
         // --- Lógica para Limpiar Chat con Clave (Realtime Database) ---
         // El listener ahora está asociado al botón dentro del dropdown
@@ -1625,17 +1680,12 @@
              // Ajustar el padding inferior del chatBox al cargar
              adjustChatBoxPadding();
 
+             // Add initial click/touch listeners to unlock audio
+             document.addEventListener('click', unlockAudio, { once: true });
+             document.addEventListener('touchstart', unlockAudio, { once: true });
+             sendButton.addEventListener('click', unlockAudio, { once: true }); // Also try on send button click
 
-             // Intentar desbloquear el audio aquí también si es necesario
-             if (notificationSound) {
-                 notificationSound.volume = 0; // Volumen a cero
-                 notificationSound.play().then(() => {
-                     notificationSound.pause(); // Pausar inmediatamente
-                     notificationSound.volume = 1; // Restablecer volumen
-                 }).catch(error => {
-                     console.error("Audio unlock failed (user interaction needed):", error);
-                 });
-             }
+
         };
 
 
