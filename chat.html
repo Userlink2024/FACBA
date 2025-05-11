@@ -1452,14 +1452,29 @@
         function setupPresence() {
              if (!userName) return;
 
-             // Crear una referencia a la presencia del usuario actual
              const userPresenceRef = presenceRef.child(userName);
 
              // Establecer la presencia a true cuando el usuario se conecta
              userPresenceRef.set(true);
+             console.log(`[${userName}] Presence set to true.`);
 
-             // Eliminar la presencia cuando el usuario se desconecta
-             userPresenceRef.onDisconnect().remove();
+             // Eliminar la presencia cuando el usuario se desconecta inesperadamente
+             userPresenceRef.onDisconnect().remove()
+                 .then(() => console.log(`[${userName}] onDisconnect configured to remove presence.`))
+                 .catch(error => console.error(`[${userName}] Error configuring onDisconnect:`, error));
+
+
+             // Establecer la presencia a false cuando el usuario abandona la página (cierra pestaña, navega)
+             window.addEventListener('beforeunload', () => {
+                 console.log(`[${userName}] beforeunload event detected. Setting presence to false.`);
+                 userPresenceRef.set(false); // Establecer a false explícitamente
+             });
+
+             window.addEventListener('unload', () => {
+                 console.log(`[${userName}] unload event detected. Setting presence to false.`);
+                 userPresenceRef.set(false); // Establecer a false explícitamente
+             });
+
 
              // Escuchar cambios en el nodo de presencia para actualizar la lista de usuarios en línea
              presenceRef.on('value', (snapshot) => {
@@ -1468,6 +1483,7 @@
 
                  if (onlineUsers) {
                      for (const name in onlineUsers) {
+                         // Solo considerar usuarios cuya presencia es explícitamente true y no el usuario actual
                          if (onlineUsers[name] === true && name !== userName) {
                              usersOnline.push(name);
                          }
@@ -1480,8 +1496,9 @@
                  } else {
                      onlineUsersDiv.textContent = 'Nadie más en línea';
                  }
+                 console.log(`[${userName}] Online users updated: ${onlineUsersDiv.textContent}. Raw data:`, onlineUsers);
              }, (error) => {
-                 console.error("Error in presence listener:", error);
+                 console.error(`[${userName}] Error in presence listener:`, error);
              });
         }
 
