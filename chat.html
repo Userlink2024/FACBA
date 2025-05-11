@@ -129,6 +129,7 @@
             cursor: pointer; /* Indicar que se puede hacer clic para responder */
             display: flex; /* Usar flexbox para organizar el contenido interno */
             flex-direction: column; /* Apilar nombre, respuesta, y footer */
+            z-index: 1; /* Asegurar que los mensajes estén por encima */
         }
 
         .message .name {
@@ -141,13 +142,17 @@
 
         .message .text {
             display: block;
-            color: #1c1c1e; /* Texto oscuro principal */
+            color: #1c1c1e !important; /* Texto oscuro principal, forzar color */
             font-size: 1em; /* Tamaño de fuente del texto (relativo al 1.1em del mensaje) */
             /* margin-bottom: 4px; Eliminado, el margen ahora está en el footer */
              flex-grow: 1; /* Permitir que el texto ocupe espacio */
              min-width: 0; /* Permitir que el texto se encoja y envuelva */
              margin-right: auto; /* Empujar la hora/checks a la derecha */
              padding-right: 8px; /* Espacio entre texto y hora/checks */
+             /* Asegurar que el texto se envuelva correctamente */
+             overflow-wrap: break-word;
+             word-break: break-word;
+             visibility: visible !important; /* Forzar visibilidad */
         }
 
          /* Contenedor para texto, hora y checkmarks */
@@ -201,13 +206,13 @@
         .message.sent .name,
         .message.sent .text,
         .message.sent .timestamp {
-            color: white; /* Asegurar que el texto interno sea blanco */
+            color: white !important; /* Asegurar que el texto interno sea blanco, forzar */
         }
          .message.sent .timestamp {
-             color: rgba(255, 255, 255, 0.8); /* Hora ligeramente transparente en mensajes enviados */
+             color: rgba(255, 255, 255, 0.8) !important; /* Hora ligeramente transparente en mensajes enviados, forzar */
          }
          .message.sent .checkmarks {
-             color: white; /* Checkmarks blancos en mensajes enviados */
+             color: white !important; /* Checkmarks blancos en mensajes enviados, forzar */
          }
 
 
@@ -1006,7 +1011,7 @@
              messagesRef.on('child_added', (data) => {
                  const newMessage = data.val();
                  const messageId = data.key; // Obtener el ID único del mensaje
-                 console.log("New message received from Realtime Database (realtime listener):", newMessage, "ID:", messageId); // Debugging log
+                 console.log(`[${userName}] child_added event:`, newMessage, "ID:", messageId); // Debugging log con nombre de usuario
 
                  // Solo mostrar el mensaje si no es parte de la carga inicial
                  // La bandera initialLoadComplete ayuda a diferenciar
@@ -1015,30 +1020,23 @@
                     // Reproducir sonido si el mensaje no es del usuario actual
                      if (newMessage.name !== userName) {
                          playNotificationSound();
-                         // !!! CORRECCIÓN: Eliminar la línea que marcaba el mensaje como 'read' aquí.
-                         // La lógica de marcar como 'read' debe estar en el cliente que recibe el mensaje.
-                         /*
-                         messagesRef.child(messageId).update({ status: 'read' })
-                             .then(() => console.log(`Message ${messageId} marked as read.`))
-                             .catch(error => console.error(`Error marking message ${messageId} as read:`, error));
-                         */
                      }
                     chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
                  } else {
                      // Si aún no ha terminado la carga inicial, no hacemos nada con este evento
                      // porque ya se mostrará en loadInitialMessages
-                     console.log("Ignoring child_added event during initial load.");
+                     console.log(`[${userName}] Ignoring child_added event during initial load.`); // Debugging log con nombre de usuario
                  }
 
              }, (error) => {
-                 console.error("Error in realtime listener for messages:", error);
+                 console.error(`[${userName}] Error in realtime listener for messages (child_added):`, error); // Debugging log con nombre de usuario
              });
 
              // Listener para actualizar el estado de los mensajes (para doble check)
              messagesRef.on('child_changed', (data) => {
                  const changedMessage = data.val();
                  const messageId = data.key;
-                 console.log("Message changed in Realtime Database:", changedMessage, "ID:", messageId);
+                 console.log(`[${userName}] child_changed event: Message ${messageId} changed to:`, changedMessage); // Debugging log con nombre de usuario
 
                  // Si el mensaje cambiado es del usuario actual y su estado es 'read', actualizar la UI
                  if (changedMessage.name === userName && changedMessage.status === 'read') {
@@ -1058,18 +1056,20 @@
                              checkmarksSpan.textContent = '✓✓'; // Doble checkmark Unicode
                              // Añadir los checkmarks al final del message-footer
                              messageFooter.appendChild(checkmarksSpan);
-                             console.log(`Updated message ${messageId} to double check.`);
+                             console.log(`[${userName}] Updated message ${messageId} to double check.`); // Debugging log con nombre de usuario
                          }
                      }
                  }
              }, (error) => {
-                 console.error("Error in realtime listener for message changes:", error);
+                 console.error(`[${userName}] Error in realtime listener for message changes (child_changed):`, error); // Debugging log con nombre de usuario
              });
         }
 
 
         // Función para mostrar un mensaje en el DOM
         function displayMessage(msg, messageId) {
+            console.log(`[${userName}] Displaying message:`, msg, "ID:", messageId); // Debugging log con nombre de usuario
+
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             messageElement.dataset.messageId = messageId; // Almacenar el ID del mensaje en el elemento DOM
@@ -1077,15 +1077,24 @@
             // Añadir clase 'sent' o 'received'
             if (msg.name === userName) {
                 messageElement.classList.add('sent');
+                 console.log(`[${userName}] Message ${messageId} is SENT. Initial status: ${msg.status}`); // Log initial status for sent message
             } else {
                 messageElement.classList.add('received');
+                 console.log(`[${userName}] Message ${messageId} is RECEIVED from ${msg.name}.`); // Debugging log con nombre de usuario
                 // !!! LÓGICA PARA MARCAR MENSAJES RECIBIDOS COMO 'read' !!!
                 // Si el mensaje es recibido por este cliente y no es del propio cliente,
                 // y si el estado actual no es ya 'read', marcarlo como 'read' en la base de datos.
-                if (msg.status !== 'read') {
+                // También verificamos si initialLoadComplete es true para no marcar como leídos
+                // los mensajes antiguos al cargar.
+                if (initialLoadComplete && msg.status !== 'read') {
+                     console.log(`[${userName}] Marking message ${messageId} as read.`); // Debugging log con nombre de usuario
                      messagesRef.child(messageId).update({ status: 'read' })
-                         .then(() => console.log(`Message ${messageId} marked as read by receiver.`))
-                         .catch(error => console.error(`Error marking message ${messageId} as read by receiver:`, error));
+                         .then(() => console.log(`[${userName}] Message ${messageId} marked as read by receiver successfully.`)) // Debugging log con nombre de usuario
+                         .catch(error => console.error(`[${userName}] Error marking message ${messageId} as read by receiver:`, error)); // Debugging log con nombre de usuario
+                } else if (!initialLoadComplete) {
+                     console.log(`[${userName}] Ignoring marking message ${messageId} as read during initial load.`); // Debugging log con nombre de usuario
+                } else {
+                     console.log(`[${userName}] Message ${messageId} is already read.`); // Debugging log con nombre de usuario
                 }
             }
 
@@ -1107,6 +1116,10 @@
             const textSpan = document.createElement('span');
             textSpan.classList.add('text');
             textSpan.textContent = msg.text;
+            console.log(`[${userName}] textSpan created for message ${messageId}. Content: "${textSpan.textContent}"`); // Debugging log: contenido del texto
+            // Usar getComputedStyle después de añadir el elemento al DOM (o al menos al messageElement)
+            // para obtener el color y visibilidad efectivos. Lo haremos después de añadirlo.
+
 
             const timestampSpan = document.createElement('span');
             timestampSpan.classList.add('timestamp');
@@ -1151,13 +1164,19 @@
                  // Mostrar un check simple si el estado es 'sent', doble si es 'read'
                  checkmarksSpan.textContent = msg.status === 'read' ? '✓✓' : '✓'; // Unicode checkmarks
                  messageFooter.appendChild(checkmarksSpan); // Añadir los checkmarks al footer
+                 console.log(`[${userName}] Displaying checkmarks for SENT message ${messageId}: ${checkmarksSpan.textContent}, based on status "${msg.status}"`); // Debugging log con nombre de usuario
+            } else {
+                 console.log(`[${userName}] Not displaying checkmarks for RECEIVED message ${messageId}.`); // Debugging log con nombre de usuario
             }
 
-            // Añadir el footer al elemento del mensaje
-            messageElement.appendChild(messageFooter);
-
-
             chatBox.appendChild(messageElement);
+
+            // Después de añadir el messageElement al DOM, podemos obtener los estilos computados del textSpan
+            setTimeout(() => { // Pequeño retraso para asegurar que el elemento esté en el DOM y los estilos aplicados
+                 const computedStyle = window.getComputedStyle(textSpan);
+                 console.log(`[${userName}] textSpan for message ${messageId} computed style -> Color: ${computedStyle.color}, Visibility: ${computedStyle.visibility}, Display: ${computedStyle.display}`);
+            }, 50); // Retraso corto
+
 
              // Reproducir sonido solo para mensajes entrantes que no sean del usuario actual
              if (initialLoadComplete && msg.name !== userName) {
@@ -1255,25 +1274,6 @@
             });
         });
 
-        // Función para insertar emoji en el campo de input
-        function insertEmoji(emoji) {
-            const input = messageInput;
-            const start = input.selectionStart;
-            const end = input.selectionEnd;
-            const value = input.value;
-
-            // Insertar el emoji en la posición del cursor
-            input.value = value.substring(0, start) + emoji + value.substring(end);
-
-            // Mover el cursor al final del emoji insertado
-            input.selectionStart = input.selectionEnd = start + emoji.length;
-
-            input.focus(); // Volver a enfocar el input
-            // Disparar el evento 'input' manualmente para actualizar el indicador de escribiendo y la altura del textarea
-            input.dispatchEvent(new Event('input'));
-        }
-
-
         // Listener para el botón de emoji para mostrar/ocultar el selector
         emojiButton.addEventListener('click', (event) => {
             // Prevenir que el clic en el botón cierre el selector inmediatamente
@@ -1317,11 +1317,11 @@
                  // Puedes ajustar este valor (80) para aumentar o disminuir el espacio inferior
                  const newPaddingBottom = bottomAreaHeight + 80; // <--- Aquí puedes modificar el valor del buffer
                  chatBox.style.paddingBottom = `${newPaddingBottom}px`;
-                 console.log(`Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`);
-                 console.log(`bottomFixedArea.offsetHeight: ${bottomAreaHeight}`);
+                 console.log(`[${userName}] Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`); // Debugging log con nombre de usuario
+                 console.log(`[${userName}] bottomFixedArea.offsetHeight: ${bottomAreaHeight}`); // Debugging log con nombre de usuario
                  // Intentar scrollear al final después de ajustar el padding
                  chatBox.scrollTop = chatBox.scrollHeight;
-            }, 200); // Aumentar el retraso a 200ms
+            }, 300); // Aumentar el retraso a 300ms
         }
 
 
@@ -1334,7 +1334,7 @@
              // Esto ayuda a asegurar que la barra de input sea visible
              setTimeout(() => {
                  chatBox.scrollTop = chatBox.scrollHeight;
-                 console.log("Input enfocado, scrolleando chatBox al final con retraso.");
+                 console.log(`[${userName}] Input enfocado, scrolleando chatBox al final con retraso.`); // Debugging log con nombre de usuario
              }, 150); // Retraso para dar tiempo al layout a ajustarse
         });
 
@@ -1374,8 +1374,8 @@
         settingsButton.addEventListener('click', (event) => {
             // Prevenir que el clic en el botón cierre el dropdown inmediatamente
             event.stopPropagation();
-            // Ocultar el selector de emojis si está visible
-            emojiPicker.style.display = 'none';
+             // Ocultar el selector de emojis si está visible
+             emojiPicker.style.display = 'none';
 
             if (settingsDropdown.style.display === 'flex') {
                 settingsDropdown.style.display = 'none';
