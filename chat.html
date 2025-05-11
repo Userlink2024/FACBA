@@ -130,11 +130,16 @@
         .message-input-area input {
             flex-grow: 1; /* Permite que el input ocupe el espacio restante */
             padding: 10px;
-            margin-right: 10px;
+            margin-right: 10px; /* Espacio entre input y botones */
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 1em;
         }
+
+         .message-input-area .input-buttons {
+             display: flex;
+             gap: 5px; /* Espacio entre los botones */
+         }
 
         .message-input-area button {
             padding: 10px 15px;
@@ -146,6 +151,23 @@
             font-size: 1em;
             transition: background-color 0.3s ease; /* Transición suave al pasar el ratón */
         }
+
+         /* Estilo específico para el botón de emoji */
+         #emoji-button {
+             background-color: #ccc; /* Color gris */
+             padding: 10px; /* Padding igual al de otros botones */
+             width: 40px; /* Ancho fijo para el icono */
+             height: 40px; /* Altura fija para el icono */
+             display: flex;
+             justify-content: center;
+             align-items: center;
+         }
+
+         #emoji-button svg {
+             width: 20px; /* Tamaño del icono SVG */
+             height: 20px; /* Tamaño del icono SVG */
+             fill: #555; /* Color del icono */
+         }
 
         .message-input-area button:hover {
              background-color: #075e54; /* Verde más oscuro al pasar el ratón */
@@ -165,7 +187,7 @@
             background-color: #f44336; /* Rojo */
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 4ph;
             cursor: pointer;
             font-size: 0.8em; /* Tamaño de fuente más pequeño */
             margin-top: 10px; /* Espacio arriba */
@@ -215,6 +237,21 @@
                  font-size: 0.7em; /* Reduce el tamaño de fuente en móviles */
                  padding: 4px 8px;
              }
+
+             .message-input-area .input-buttons {
+                 gap: 3px; /* Reduce el espacio entre botones en móviles */
+             }
+
+             #emoji-button {
+                 width: 35px;
+                 height: 35px;
+                 padding: 8px;
+             }
+
+              #emoji-button svg {
+                 width: 18px;
+                 height: 18px;
+             }
         }
 
     </style>
@@ -239,7 +276,14 @@
                 </div>
             <div class="message-input-area">
                 <input type="text" id="message-input" placeholder="Escribe un mensaje...">
-                <button id="send-button">Enviar</button>
+                <div class="input-buttons">
+                     <button id="emoji-button" title="Insertar Emoji">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22c-5.514 0-10-4.486-10-10s4.486-10 10-10 10 4.486 10 10-4.486 10-10 10zm-3-8c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm6 0c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm-3 4c-2.04 0-3.831-1.242-4.588-3h9.176c-.757 1.758-2.548 3-4.588 3z"/>
+                        </svg>
+                    </button>
+                    <button id="send-button">Enviar</button>
+                </div>
             </div>
              <button id="clear-chat-button">Limpiar Chat</button>
         </div>
@@ -282,6 +326,7 @@
         const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
         const notificationSound = document.getElementById('notification-sound'); // Elemento de audio
         const clearChatButton = document.getElementById('clear-chat-button'); // Botón de limpiar chat
+        const emojiButton = document.getElementById('emoji-button'); // Botón de emoji
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -296,6 +341,19 @@
                 localStorage.setItem('chatName', userName);
                 loadMessages(); // Cargar los mensajes existentes una vez que se establece el nombre
                 setupTypingIndicator(); // Configurar el indicador de escribiendo
+
+                // Intentar "desbloquear" el audio con una reproducción silenciosa al iniciar el chat
+                // Esto ayuda a que las notificaciones futuras puedan sonar
+                 if (notificationSound) {
+                     notificationSound.volume = 0; // Volumen a cero
+                     notificationSound.play().then(() => {
+                         notificationSound.pause(); // Pausar inmediatamente
+                         notificationSound.volume = 1; // Restaurar volumen
+                     }).catch(error => {
+                         console.warn("Audio unlock failed (user interaction needed):", error);
+                     });
+                 }
+
             } else {
                 // Usar un mensaje en el DOM en lugar de alert()
                 // Podrías añadir un elemento div para mostrar errores
@@ -454,9 +512,11 @@
 
                  // Luego, escuchar solo los nuevos mensajes ('child_added')
                  messagesRef.on('child_added', (data) => {
+                     const newMessage = data.val();
                      // Solo procesar mensajes nuevos después de la carga inicial
+                     // También se procesan mensajes durante la carga inicial con displayMessage
+                     // pero el sonido solo se activa si initialLoadComplete es true
                      if (initialLoadComplete) {
-                         const newMessage = data.val();
                          displayMessage(newMessage); // Mostrar el nuevo mensaje
 
                          // Reproducir sonido si el mensaje no es del usuario actual
@@ -465,6 +525,9 @@
                          }
 
                          chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+                     } else {
+                         // Durante la carga inicial, solo mostramos el mensaje sin sonido
+                         displayMessage(newMessage);
                      }
                  });
              });
@@ -548,6 +611,18 @@
                 console.log("Clave incorrecta. El chat no fue limpiado.");
                 // Mostrar mensaje de clave incorrecta al usuario
             }
+        });
+
+        // --- Lógica del Botón de Emoji ---
+        emojiButton.addEventListener('click', () => {
+            // Al hacer clic en el botón de emoji, simplemente enfocamos el campo de texto.
+            // La mayoría de los navegadores modernos y sistemas operativos permiten
+            // abrir el selector de emojis del sistema usando atajos de teclado
+            // (Ej: Win + . en Windows, Ctrl + Cmd + Espacio en macOS)
+            // o a veces haciendo clic derecho en el campo de texto.
+            // Implementar un selector de emojis integrado es más complejo.
+            messageInput.focus();
+            console.log("Botón de emoji clickeado. Usa el selector de emojis de tu sistema operativo.");
         });
 
 
