@@ -9,7 +9,7 @@
         html, body {
             height: 100%;
             margin: 0;
-            padding: 0; /* Eliminar padding del body aquí y añadirlo al contenedor si es necesario */
+            padding: 0;
             overflow: hidden; /* Prevenir scroll del body */
         }
 
@@ -33,13 +33,13 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            /* Ajuste clave: Altura inicial al 100% del viewport */
+            /* Altura inicial al 100% del viewport */
             height: 100vh; /* Usar 100vh inicialmente */
             max-height: 100vh; /* Asegurar que no exceda 100vh */
             box-sizing: border-box;
              padding: 20px; /* Añadir padding aquí en lugar del body */
-             /* Permitir que la altura sea ajustada por JS */
-             transition: height 0.1s ease-out; /* Transición suave para el ajuste de altura */
+             /* Eliminar transición de altura */
+             /* transition: height 0.1s ease-out; */
         }
 
         /* Estilos para la sección de ingreso de nombre */
@@ -110,8 +110,8 @@
             background-size: cover; /* Cubrir el área del contenedor */
             background-position: center; /* Centrar la imagen */
             background-repeat: no-repeat; /* No repetir la imagen */
-             /* Padding inferior dinámico ajustado por JS para el teclado */
-            padding-bottom: 20px; /* Padding inicial */
+             /* Padding inferior dinámico ajustado por JS */
+            padding-bottom: 20px; /* Padding inicial, se ajustará con JS */
         }
 
         /* Estilos para cada mensaje individual */
@@ -185,7 +185,15 @@
             align-items: center; /* Centrar horizontalmente */
             gap: 10px; /* Espacio entre elementos */
             flex-shrink: 0; /* Evita que el área de entrada se encoja */
-            position: relative; /* Necesario para posicionar el selector de emojis */
+            position: fixed; /* Fijar en la parte inferior de la ventana */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%; /* Ocupar todo el ancho */
+            box-sizing: border-box; /* Incluir padding en el ancho */
+            max-width: 700px; /* Igual que el contenedor principal */
+            margin: 0 auto; /* Centrar horizontalmente */
+             z-index: 5; /* Asegurar que esté por encima de la caja de chat */
         }
 
         /* Contenedor para el input y los botones */
@@ -313,7 +321,7 @@
             flex-grow: 1; /* Asegura que la interfaz de chat ocupe el espacio disponible */
              /* Ajuste clave: Darle una altura al contenedor flex para que los hijos flex-grow funcionen */
             height: 100%;
-            position: relative; /* Necesario para posicionar el selector de emojis si se pone fuera del input-area */
+            position: relative; /* Necesario para posicionar el selector de emojis */
         }
 
         /* Estilos para el selector de emojis */
@@ -461,13 +469,13 @@
         /* Media query para pantallas más pequeñas (Android) */
         @media (max-width: 768px) {
             body {
-                padding: 10px; /* Menos padding en móviles */
+                padding: 0; /* Eliminar padding del body en móviles */
             }
             #chat-container {
                 /* Ajuste de altura para móviles - JS se encargará de la altura dinámica */
-                max-width: calc(100vw - 20px); /* Ajustar ancho máximo */
-                border-radius: 10px;
-                 padding: 10px; /* Menos padding en móviles */
+                max-width: 100vw; /* Ocupar todo el ancho del viewport */
+                border-radius: 0; /* Eliminar bordes redondeados en pantalla completa */
+                 padding: 0; /* Eliminar padding del contenedor en móviles */
                  /* Altura inicial para móviles - JS ajustará */
                  height: 100vh;
                  max-height: 100vh;
@@ -493,6 +501,10 @@
                  padding: 10px 15px;
                  gap: 5px;
                  align-items: center; /* Centrar horizontalmente */
+                 /* Ajuste para móviles */
+                 max-width: 100vw;
+                 left: 0;
+                 right: 0;
              }
 
              .message-input-area .input-buttons {
@@ -564,7 +576,7 @@
 
              /* Ajuste del selector de emojis en móviles */
              #emoji-picker {
-                 bottom: 60px; /* Ajustar posición para móviles */
+                 /* bottom se ajustará dinámicamente en JS */
                  left: 10px;
                  width: calc(100% - 20px); /* Ajustar ancho para móviles */
              }
@@ -641,7 +653,7 @@
     <script>
         // Configuración de tu aplicación web de Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vxd4ISaRBQ5SVY", // Reemplaza con tu apiKey
+            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vxd4ISRBRB5SVY", // Reemplaza con tu apiKey
             authDomain: "facba-a160c.firebaseapp.com", // Reemplaza con tu authDomain
             projectId: "facba-a160c", // Reemplaza con tu projectId
             storageBucket: "facba-a160c.firebasestorage.app", // Reemplaza con tu storageBucket (aunque no se use Storage)
@@ -659,12 +671,6 @@
         let userName = ''; // Variable para almacenar el nombre del usuario
         let typingTimeout; // Para manejar el indicador de escribiendo
         let initialLoadComplete = false; // Bandera para saber si la carga inicial de mensajes ha terminado
-
-        // Guardar la altura original del viewport
-        let originalViewportHeight = window.innerHeight;
-        // Guardar la altura original del contenedor del chat
-        let originalChatContainerHeight = document.getElementById('chat-container').offsetHeight;
-
 
         // Variable para almacenar los datos del mensaje al que se está respondiendo
         let replyingToMessage = null;
@@ -692,6 +698,7 @@
         const settingsDropdown = document.getElementById('settings-dropdown'); // Ahora en chat-header
         const clearChatButton = document.getElementById('clear-chat-button'); // Ahora dentro del dropdown
         const chatContainer = document.getElementById('chat-container'); // Referencia al contenedor principal
+        const messageInputArea = document.querySelector('.message-input-area'); // Referencia al área de input
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -1101,7 +1108,7 @@
             } else {
                 // Posicionar el selector justo encima de la barra de input
                 // bottom del selector = altura del área de input + padding/margen
-                const inputAreaHeight = messageInput.parentElement.offsetHeight; // Obtener la altura del contenedor del input
+                const inputAreaHeight = messageInputArea.offsetHeight; // Obtener la altura del área de input fija
                 emojiPicker.style.bottom = `${inputAreaHeight + 10}px`; // 10px de margen
                 emojiPicker.style.display = 'flex';
             }
@@ -1124,20 +1131,12 @@
 
         // Listener para el evento resize de la ventana
         window.addEventListener('resize', () => {
-            const currentViewportHeight = window.innerHeight;
-            let usableHeight = currentViewportHeight;
+            // Ajustar el padding inferior de la caja de chat para dejar espacio para la barra de input fija
+            // Esto se hace en cada resize porque la altura del área de input podría cambiar ligeramente
+            const inputAreaHeight = messageInputArea.offsetHeight;
+            chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
 
-            // Usar visualViewport si está disponible y parece más preciso
-            if (window.visualViewport) {
-                usableHeight = window.visualViewport.height;
-            }
-
-            // Ajustar la altura del contenedor principal del chat
-            // Esto hará que toda la interfaz se redimensione para caber en el espacio visible
-            chatContainer.style.height = `${usableHeight}px`;
-
-             console.log(`Resize: currentViewportHeight=${currentViewportHeight}, usableHeight=${usableHeight}, chatContainer.style.height=${chatContainer.style.height}`);
-
+            console.log(`Resize: Ajustando paddingBottom del chatBox a ${chatBox.style.paddingBottom}`);
         });
 
         // Listener para el evento 'focus' en el input de mensaje
@@ -1206,12 +1205,14 @@
             startChatButton.click(); // Simular clic en el botón para iniciar el chat automáticamente
         }
 
-        // Ajustar la altura del chat al cargar la página inicialmente
+        // Ajustes iniciales al cargar la página
         window.onload = function() {
-             const initialUsableHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-             chatContainer.style.height = `${initialUsableHeight}px`;
-             loadMessages(); // Asegurarse de que los mensajes se carguen después del ajuste inicial
+             loadMessages(); // Asegurarse de que los mensajes se carguen
              setupTypingIndicator(); // Configurar el indicador de escribiendo
+             // Ajustar el padding inferior del chatBox al cargar
+             const inputAreaHeight = messageInputArea.offsetHeight;
+             chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
+
              // Intentar desbloquear el audio aquí también si es necesario
              if (notificationSound) {
                  notificationSound.volume = 0; // Volumen a cero
