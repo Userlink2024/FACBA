@@ -84,12 +84,26 @@
         /* Estilos para el encabezado del chat */
         #chat-header {
             display: flex;
-            justify-content: flex-end; /* Alinear elementos a la derecha */
+            justify-content: space-between; /* Espacio entre título/online y botón de settings */
             align-items: center;
             padding: 0 20px 10px 20px; /* Padding superior, sin padding lateral extra */
             flex-shrink: 0;
             position: relative; /* Para posicionar el dropdown */
         }
+
+         #chat-header h2 {
+             margin: 0;
+             font-size: 1.3em;
+             color: #1c1c1e;
+         }
+
+         #online-users {
+             font-size: 0.9em;
+             color: #8e8e93;
+             margin-top: 5px;
+             min-height: 1.2em; /* Reserva espacio */
+         }
+
 
         /* Estilos para la caja de chat (mensajes) */
         #chat-box {
@@ -148,7 +162,17 @@
             color: #8e8e93; /* Gris tenue */
             text-align: right;
             display: block;
+             margin-top: 4px; /* Espacio arriba de la hora */
         }
+
+         /* Estilos para los checkmarks */
+         .message .checkmarks {
+             font-size: 0.8em; /* Tamaño de los checkmarks */
+             color: #007aff; /* Color azul para checkmarks */
+             margin-left: 4px; /* Espacio a la izquierda */
+             vertical-align: middle; /* Alinear verticalmente */
+         }
+
 
         /* Estilos para mensajes recibidos */
         .message.received {
@@ -174,6 +198,11 @@
          .message.sent .timestamp {
              color: rgba(255, 255, 255, 0.8); /* Hora ligeramente transparente en mensajes enviados */
          }
+         .message.sent .checkmarks {
+             color: white; /* Checkmarks blancos en mensajes enviados */
+              /* color: rgba(255, 255, 255, 0.8); */ /* O ligeramente transparentes */
+         }
+
 
         /* Estilos para el área de entrada de mensajes */
         .message-input-area {
@@ -612,6 +641,9 @@
 
         <div id="chat-interface">
             <div id="chat-header">
+                 <div>
+                     <h2>Chat en Tiempo Real</h2>
+                     <div id="online-users"></div> </div>
                  <button id="settings-button" title="Configuración">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                           <path d="M24 13.616v-3.232c-1.651-.587-2.694-.758-3.281-2.042-.587-1.285-.185-2.178.419-3.742 1.809-4.642-1.489-8.396-5.072-8.396-1.464 0-2.856.543-3.807 1.499-.95.951-1.493 2.245-1.493 3.809 0 2.628-1.391 3.424-4.058 3.815-1.207.175-2.921.273-4.916.306v3.232c2.002.04 3.715.138 4.92.302 2.668.392 4.06 1.189 4.06 3.817 0 1.563.544 2.856 1.493 3.807.951.951 2.343 1.494 3.808 1.494 3.583 0 6.881-3.758 5.072-8.398-.606-1.56-.204-2.453.42-3.738 1.586-3.293 3.564-3.488 3.279-4.075zm-12 7.384c-2.757 0-5-2.243-5-5s2.243-5 5-5 5 2.243 5 5-2.243 5-5 5z"/>
@@ -633,7 +665,7 @@
                      <button id="cancel-reply-button">×</button>
                  </div>
                  <div class="input-container">
-                    <input type="text" id="message-input" placeholder="Escribe un mensaje...">
+                    <input type="text" id="message-input" placeholder="Escribe un mensaje..." autocomplete="off" autocorrect="off">
                     <div class="input-buttons">
                          <button id="emoji-button" title="Insertar Emoji">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -699,6 +731,7 @@
         const clearChatButton = document.getElementById('clear-chat-button'); // Ahora dentro del dropdown
         const chatContainer = document.getElementById('chat-container'); // Referencia al contenedor principal
         const messageInputArea = document.querySelector('.message-input-area'); // Referencia al área de input
+        const onlineUsersDiv = document.getElementById('online-users'); // Elemento para usuarios en línea
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -732,6 +765,7 @@
              loadInitialMessages(); // Cargar mensajes existentes una vez
              setupRealtimeListeners(); // Configurar listeners en tiempo real una vez
              setupTypingIndicator(); // Configurar el indicador de escribiendo
+             setupPresence(); // Configurar la presencia del usuario
              // Intentar "desbloquear" el audio
              if (notificationSound) {
                  notificationSound.volume = 0; // Volumen a cero
@@ -751,6 +785,8 @@
         const messagesRef = database.ref('messages'); // 'messages' es el nombre del nodo
         // Referencia al nodo para el estado de escritura
         const typingRef = database.ref('typing');
+        // Referencia al nodo para la presencia de usuarios
+        const presenceRef = database.ref('presence');
 
 
         // Clave para limpiar el chat (¡Mantén esto seguro en una aplicación real!)
@@ -777,7 +813,8 @@
                 const newMessage = {
                     name: userName,
                     text: messageText,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP // Usar el timestamp del servidor de Firebase
+                    timestamp: firebase.database.ServerValue.TIMESTAMP, // Usar el timestamp del servidor de Firebase
+                    status: 'sent' // Estado inicial: enviado
                 };
 
                 // Si estamos respondiendo a un mensaje, añadir la referencia
@@ -931,6 +968,10 @@
                     // Reproducir sonido si el mensaje no es del usuario actual
                      if (newMessage.name !== userName) {
                          playNotificationSound();
+                         // Marcar el mensaje como leído si no es del usuario actual
+                         messagesRef.child(messageId).update({ status: 'read' })
+                             .then(() => console.log(`Message ${messageId} marked as read.`))
+                             .catch(error => console.error(`Error marking message ${messageId} as read:`, error));
                      }
                     chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
                  } else {
@@ -941,6 +982,40 @@
 
              }, (error) => {
                  console.error("Error in realtime listener for messages:", error);
+             });
+
+             // Listener para actualizar el estado de los mensajes (para doble check)
+             messagesRef.on('child_changed', (data) => {
+                 const changedMessage = data.val();
+                 const messageId = data.key;
+                 console.log("Message changed in Realtime Database:", changedMessage, "ID:", messageId);
+
+                 // Si el mensaje cambiado es del usuario actual y su estado es 'read', actualizar la UI
+                 if (changedMessage.name === userName && changedMessage.status === 'read') {
+                     const messageElement = chatBox.querySelector(`[data-message-id="${messageId}"]`);
+                     if (messageElement) {
+                         // Eliminar checkmarks existentes y añadir el doble check
+                         const existingCheckmarks = messageElement.querySelector('.checkmarks');
+                         if (existingCheckmarks) {
+                             existingCheckmarks.remove();
+                         }
+                         const checkmarksSpan = document.createElement('span');
+                         checkmarksSpan.classList.add('checkmarks');
+                         checkmarksSpan.textContent = '✓✓'; // Doble checkmark Unicode
+                         // Encontrar el elemento de timestamp y añadir los checkmarks después
+                         const timestampSpan = messageElement.querySelector('.timestamp');
+                         if (timestampSpan) {
+                              // Insertar antes del timestamp si existe, o al final si no
+                             timestampSpan.parentNode.insertBefore(checkmarksSpan, timestampSpan.nextSibling);
+                         } else {
+                             // Si por alguna razón no hay timestamp, añadir al final del mensaje
+                             messageElement.appendChild(checkmarksSpan);
+                         }
+                         console.log(`Updated message ${messageId} to double check.`);
+                     }
+                 }
+             }, (error) => {
+                 console.error("Error in realtime listener for message changes:", error);
              });
         }
 
@@ -1007,8 +1082,18 @@
             }
             /* --- Fin de mostrar contenido --- */
 
-
+            // Añadir el timestamp
             messageElement.appendChild(timestampSpan); // Añadir la hora al final
+
+            // Añadir checkmarks si es un mensaje enviado por el usuario actual
+            if (msg.name === userName) {
+                 const checkmarksSpan = document.createElement('span');
+                 checkmarksSpan.classList.add('checkmarks');
+                 // Mostrar un check simple si el estado es 'sent', doble si es 'read'
+                 checkmarksSpan.textContent = msg.status === 'read' ? '✓✓' : '✓'; // Unicode checkmarks
+                 messageElement.appendChild(checkmarksSpan);
+            }
+
 
             chatBox.appendChild(messageElement);
 
@@ -1212,6 +1297,44 @@
         });
 
 
+        // --- Lógica de Presencia (Usuarios en Línea) ---
+        function setupPresence() {
+             if (!userName) return;
+
+             // Crear una referencia a la presencia del usuario actual
+             const userPresenceRef = presenceRef.child(userName);
+
+             // Establecer la presencia a true cuando el usuario se conecta
+             userPresenceRef.set(true);
+
+             // Eliminar la presencia cuando el usuario se desconecta
+             userPresenceRef.onDisconnect().remove();
+
+             // Escuchar cambios en el nodo de presencia para actualizar la lista de usuarios en línea
+             presenceRef.on('value', (snapshot) => {
+                 const onlineUsers = snapshot.val();
+                 const usersOnline = [];
+
+                 if (onlineUsers) {
+                     for (const name in onlineUsers) {
+                         if (onlineUsers[name] === true && name !== userName) {
+                             usersOnline.push(name);
+                         }
+                     }
+                 }
+
+                 // Actualizar el elemento en la interfaz
+                 if (usersOnline.length > 0) {
+                     onlineUsersDiv.textContent = `En línea: ${usersOnline.join(', ')}`;
+                 } else {
+                     onlineUsersDiv.textContent = 'Nadie más en línea';
+                 }
+             }, (error) => {
+                 console.error("Error in presence listener:", error);
+             });
+        }
+
+
         // Comprobar si hay un nombre guardado en localStorage al cargar la página
         const savedName = localStorage.getItem('chatName');
         if (savedName) {
@@ -1229,8 +1352,13 @@
                  initializeChat(); // Inicializar la carga de mensajes y listeners
              }
              // Ajustar el padding inferior del chatBox al cargar
-             const inputAreaHeight = messageInputArea.offsetHeight;
-             chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
+             // Usar un pequeño retraso para asegurar que el DOM esté renderizado
+             setTimeout(() => {
+                 const inputAreaHeight = messageInputArea.offsetHeight;
+                 chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
+                 console.log(`Initial load: Ajustando paddingBottom del chatBox a ${chatBox.style.paddingBottom}`);
+             }, 50); // Retraso de 50ms
+
 
              // Intentar desbloquear el audio aquí también si es necesario
              if (notificationSound) {
