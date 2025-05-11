@@ -87,9 +87,12 @@
             display: flex;
             flex-direction: column;
             gap: 12px; /* Más espacio entre mensajes */
-            height: 0; /* Usar height: 0 para que flex-grow funcione correctamente en columna */
+            /* Usar height: 0 en un contenedor flex con flex-direction: column
+               permite que el elemento con flex-grow: 1 ocupe el espacio restante
+               y habilita el scroll cuando el contenido se desborda. */
+            height: 0;
 
-            /* Estilos para la imagen de fondo - ACTUALIZADO */
+            /* Estilos para la imagen de fondo */
             background-image: url('https://images.unsplash.com/photo-1518655048521-f130df041722?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* URL de imagen de fondo moderna y sobria */
             background-size: cover; /* Cubrir el área del contenedor */
             background-position: center; /* Centrar la imagen */
@@ -352,28 +355,21 @@
                 padding: 10px 12px; /* Ajustar padding */
             }
 
-             #name-prompt input {
-                 margin-right: 0;
-                 width: 100%;
-                 margin-bottom: 10px; /* Espacio debajo del input en móviles */
+             #name-prompt input[type="text"] { /* Especificar input de texto */
+                 margin-right: 5px;
+                 align-self: center; /* Centrar verticalmente */
              }
-             #name-prompt button {
-                 width: 100%; /* Botón ocupa todo el ancho */
-             }
-
 
              .message-input-area {
                  flex-direction: row; /* Mantener en fila */
                  padding: 10px 15px;
                  gap: 5px;
-             }
-
-             .message-input-area input[type="text"] { /* Especificar input de texto */
-                 margin-right: 5px;
+                 align-items: center; /* Asegurar alineación vertical */
              }
 
              .message-input-area .input-buttons {
                  gap: 5px;
+                 align-items: center; /* Asegurar alineación vertical */
              }
 
 
@@ -382,6 +378,7 @@
                  height: 40px;
                  padding: 0; /* Eliminar padding extra */
                  flex-shrink: 0; /* Evitar que se reduzcan */
+                 align-self: center; /* Centrar verticalmente */
              }
               #send-button {
                   width: auto; /* Permitir que el botón de enviar ajuste su ancho */
@@ -708,7 +705,12 @@
                  audioChunks = []; // Limpiar fragmentos anteriores
 
                  // Crear MediaRecorder
-                 // Intentar formatos comunes, fallback a lo que el navegador soporte
+                 /* Intentar formatos comunes, fallback a lo que el navegador soporte.
+                    audio/webm es común y generalmente graba en formato Opus.
+                    audio/mp4 podría usar AAC.
+                    audio/ogg podría usar Opus o Vorbis.
+                    Si ninguno es soportado, se usa el formato por defecto del navegador.
+                 */
                  let options = { mimeType: 'audio/webm' };
                  if (!MediaRecorder.isTypeSupported(options.mimeType)) {
                      options = { mimeType: 'audio/mp4' };
@@ -921,7 +923,7 @@
             // Crear elementos para el nombre, texto y timestamp
             const nameSpan = document.createElement('span');
             nameSpan.classList.add('name');
-            // Solo mostrar el nombre si no es el mensaje del usuario actual (opcional, estilo WhatsApp)
+            /* Solo mostrar el nombre si no es el mensaje del usuario actual (opcional, estilo WhatsApp) */
             if (msg.name !== userName) {
                nameSpan.textContent = msg.name + ': ';
             } else {
@@ -957,7 +959,7 @@
                 audioElement.src = msg.fileUrl;
                 messageElement.appendChild(audioElement);
             }
-            // --- Fin de mostrar contenido ---
+            /* --- Fin de mostrar contenido --- */
 
 
             messageElement.appendChild(timestampSpan); // Añadir la hora al final
