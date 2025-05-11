@@ -159,6 +159,24 @@
             min-height: 1em; /* Reserva espacio para evitar saltos */
         }
 
+        /* Estilos para el botón de limpiar chat */
+        #clear-chat-button {
+            padding: 5px 10px; /* Padding más pequeño */
+            background-color: #f44336; /* Rojo */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em; /* Tamaño de fuente más pequeño */
+            margin-top: 10px; /* Espacio arriba */
+            align-self: center; /* Centrar el botón */
+            transition: background-color 0.3s ease;
+        }
+
+        #clear-chat-button:hover {
+            background-color: #d32f2f; /* Rojo más oscuro */
+        }
+
 
         /* Oculta la interfaz de chat inicialmente */
         #chat-interface {
@@ -192,6 +210,11 @@
                  width: 100%; /* Ocupa todo el ancho */
                  box-sizing: border-box; /* Incluye padding en el ancho */
              }
+
+             #clear-chat-button {
+                 font-size: 0.7em; /* Reduce el tamaño de fuente en móviles */
+                 padding: 4px 8px;
+             }
         }
 
     </style>
@@ -218,8 +241,11 @@
                 <input type="text" id="message-input" placeholder="Escribe un mensaje...">
                 <button id="send-button">Enviar</button>
             </div>
+             <button id="clear-chat-button">Limpiar Chat</button>
         </div>
     </div>
+
+    <audio id="notification-sound" src="sonido_mensaje.mp3" preload="auto"></audio>
 
 
     <script>
@@ -243,6 +269,7 @@
 
         let userName = ''; // Variable para almacenar el nombre del usuario
         let typingTimeout; // Para manejar el indicador de escribiendo
+        let initialLoadComplete = false; // Bandera para saber si la carga inicial de mensajes ha terminado
 
         // Obtener elementos del DOM
         const namePrompt = document.getElementById('name-prompt');
@@ -253,6 +280,9 @@
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
+        const notificationSound = document.getElementById('notification-sound'); // Elemento de audio
+        const clearChatButton = document.getElementById('clear-chat-button'); // Botón de limpiar chat
+
 
         // --- Lógica de Ingreso de Nombre ---
         startChatButton.addEventListener('click', () => {
@@ -287,6 +317,10 @@
         const messagesRef = database.ref('messages'); // 'messages' es el nombre del nodo
         // Referencia al nodo para el estado de escritura
         const typingRef = database.ref('typing');
+
+        // Clave para limpiar el chat (¡Mantén esto seguro en una aplicación real!)
+        const CLEAR_CHAT_PASSWORD = '170518';
+
 
         // Función para formatear el timestamp a HH:MM
         function formatTimestamp(timestamp) {
@@ -403,72 +437,118 @@
         // Función para cargar y mostrar mensajes
         function loadMessages() {
              console.log("loadMessages function called."); // Debugging log
-             // Escuchar cambios en el nodo 'messages'
-            messagesRef.on('value', (snapshot) => {
-                console.log("Firebase data updated."); // Debugging log
-                chatBox.innerHTML = ''; // Limpiar los mensajes actuales en la interfaz
 
-                const messages = snapshot.val(); // Obtener los datos del snapshot
-                console.log("Received data:", messages); // Debugging log
+             // Primero, cargar mensajes existentes (uso 'once' para no recargar todo cada vez)
+             messagesRef.once('value', (snapshot) => {
+                 console.log("Initial message load complete.");
+                 const messages = snapshot.val();
+                 if (messages) {
+                     const messageList = Object.values(messages);
+                     messageList.sort((a, b) => a.timestamp - b.timestamp);
+                     messageList.forEach((msg) => {
+                         displayMessage(msg); // Mostrar cada mensaje
+                     });
+                 }
+                 chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+                 initialLoadComplete = true; // Marcar la carga inicial como completa
 
-                if (messages) {
-                    // Convertir el objeto de mensajes a un array para facilitar la iteración y ordenación
-                    const messageList = Object.values(messages);
+                 // Luego, escuchar solo los nuevos mensajes ('child_added')
+                 messagesRef.on('child_added', (data) => {
+                     // Solo procesar mensajes nuevos después de la carga inicial
+                     if (initialLoadComplete) {
+                         const newMessage = data.val();
+                         displayMessage(newMessage); // Mostrar el nuevo mensaje
 
-                    // Ordenar mensajes por timestamp (los más antiguos primero)
-                    messageList.sort((a, b) => a.timestamp - b.timestamp);
+                         // Reproducir sonido si el mensaje no es del usuario actual
+                         if (newMessage.name !== userName) {
+                             playNotificationSound();
+                         }
 
-                    // Mostrar cada mensaje en la interfaz
-                    messageList.forEach((msg) => {
-                        const messageElement = document.createElement('div');
-                        messageElement.classList.add('message');
+                         chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+                     }
+                 });
+             });
 
-                        // Añadir clase 'sent' o 'received'
-                        if (msg.name === userName) {
-                            messageElement.classList.add('sent');
-                        } else {
-                            messageElement.classList.add('received');
-                        }
-
-
-                        // Crear elementos para el nombre, texto y timestamp
-                        const nameSpan = document.createElement('span');
-                        nameSpan.classList.add('name');
-                        // Solo mostrar el nombre si no es el mensaje del usuario actual (opcional, estilo WhatsApp)
-                        if (msg.name !== userName) {
-                           nameSpan.textContent = msg.name + ': ';
-                        } else {
-                           nameSpan.textContent = ''; // No mostrar el nombre en mensajes propios
-                        }
-
-
-                        const textSpan = document.createElement('span');
-                        textSpan.classList.add('text');
-                        textSpan.textContent = msg.text;
-
-                        const timestampSpan = document.createElement('span');
-                        timestampSpan.classList.add('timestamp');
-                        timestampSpan.textContent = formatTimestamp(msg.timestamp); // Formatear y mostrar hora
-
-
-                        // Añadir nombre, texto y timestamp al elemento del mensaje
-                        if (msg.name !== userName) { // Mostrar nombre solo para mensajes recibidos
-                             messageElement.appendChild(nameSpan);
-                        }
-                        messageElement.appendChild(textSpan);
-                        messageElement.appendChild(timestampSpan);
-
-
-                        chatBox.appendChild(messageElement);
-                    });
-
-                    // Desplazarse automáticamente al final de la caja de chat para ver el último mensaje
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                } else {
-                    console.log("No messages found in database."); // Debugging log
-                }
-            });
+             // Limpiar listener 'value' anterior si existiera (para evitar duplicados)
+             // Esto es importante si loadMessages pudiera llamarse múltiples veces
+             // messagesRef.off('value'); // Descomentar si es necesario
         }
+
+        // Función para mostrar un mensaje en el DOM
+        function displayMessage(msg) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+
+            // Añadir clase 'sent' o 'received'
+            if (msg.name === userName) {
+                messageElement.classList.add('sent');
+            } else {
+                messageElement.classList.add('received');
+            }
+
+            // Crear elementos para el nombre, texto y timestamp
+            const nameSpan = document.createElement('span');
+            nameSpan.classList.add('name');
+            // Solo mostrar el nombre si no es el mensaje del usuario actual (opcional, estilo WhatsApp)
+            if (msg.name !== userName) {
+               nameSpan.textContent = msg.name + ': ';
+            } else {
+               nameSpan.textContent = ''; // No mostrar el nombre en mensajes propios
+            }
+
+            const textSpan = document.createElement('span');
+            textSpan.classList.add('text');
+            textSpan.textContent = msg.text;
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.classList.add('timestamp');
+            timestampSpan.textContent = formatTimestamp(msg.timestamp); // Formatear y mostrar hora
+
+            // Añadir nombre, texto y timestamp al elemento del mensaje
+            if (msg.name !== userName) { // Mostrar nombre solo para mensajes recibidos
+                 messageElement.appendChild(nameSpan);
+            }
+            messageElement.appendChild(textSpan);
+            messageElement.appendChild(timestampSpan);
+
+            chatBox.appendChild(messageElement);
+        }
+
+        // Función para reproducir el sonido de notificación
+        function playNotificationSound() {
+             if (notificationSound) {
+                 notificationSound.currentTime = 0; // Reiniciar el sonido si ya se está reproduciendo
+                 notificationSound.play().catch(error => {
+                     console.error("Error al reproducir el sonido:", error);
+                     // Esto a menudo ocurre si el navegador bloquea el autoplay
+                 });
+             }
+        }
+
+        // --- Lógica para Limpiar Chat con Clave ---
+        clearChatButton.addEventListener('click', () => {
+            // Usar prompt() para solicitar la clave
+            const enteredPassword = prompt("Ingresa la clave para limpiar el chat:");
+
+            // Verificar la clave
+            if (enteredPassword === CLEAR_CHAT_PASSWORD) {
+                // Si la clave es correcta, eliminar el nodo 'messages' de Firebase
+                messagesRef.remove()
+                    .then(() => {
+                        console.log("Chat limpiado exitosamente!");
+                        // Opcional: Mostrar un mensaje al usuario en el DOM
+                        // chatBox.innerHTML = '<div>Chat limpiado.</div>';
+                    })
+                    .catch((error) => {
+                        console.error("Error al limpiar el chat:", error);
+                        // Mostrar mensaje de error al usuario
+                    });
+            } else {
+                // Si la clave es incorrecta
+                console.log("Clave incorrecta. El chat no fue limpiado.");
+                // Mostrar mensaje de clave incorrecta al usuario
+            }
+        });
 
 
         // Comprobar si hay un nombre guardado en localStorage al cargar la página
