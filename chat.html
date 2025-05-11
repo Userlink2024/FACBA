@@ -247,15 +247,15 @@
         /* Contenedor para el input y los botones */
         .input-container {
             display: flex; /* Alinear elementos horizontalmente */
-            align-items: center; /* Centrar verticalmente */
+            align-items: flex-end; /* Alinear verticalmente los elementos al final (bottom) */
             gap: 10px; /* Espacio entre input y botones */
             width: 100%; /* Ocupar todo el ancho disponible */
         }
 
 
-        /* Estilos para el INPUT TYPE="TEXT" */
-        .message-input-area input[type="text"] {
-            flex-grow: 1; /* Permite que el input ocupe el espacio restante */
+        /* Estilos para el TEXTAREA */
+        .message-input-area textarea {
+            flex-grow: 1; /* Permite que el textarea ocupe el espacio restante */
             /* Ajuste de padding para hacerlo menos "gordo" */
             padding: 8px 15px;
             border: 1px solid #d1d1d6;
@@ -264,11 +264,13 @@
             box-sizing: border-box;
             outline: none; /* Eliminar contorno al enfocar */
             transition: border-color 0.2s ease-in-out;
-            /* Altura ajustada para hacerlo más delgado */
-            height: 40px; /* Altura fija similar a los botones */
             line-height: 1.5; /* Igual que los mensajes para consistencia */
+            resize: none; /* Deshabilitar el redimensionamiento manual por el usuario */
+            min-height: 40px; /* Altura mínima similar a la del input original */
+            max-height: 120px; /* Altura máxima para evitar que crezca demasiado */
+            overflow-y: auto; /* Mostrar scrollbar si el contenido excede max-height */
         }
-         .message-input-area input[type="text"]:focus {
+         .message-input-area textarea:focus {
              border-color: #007aff; /* Borde azul al enfocar */
          }
 
@@ -547,19 +549,19 @@
                  flex-shrink: 0; /* Asegurar que no se encoja */
              }
 
-             /* Ajuste para input[type="text"] en móviles */
-             .message-input-area input[type="text"] {
+             /* Ajuste para textarea en móviles */
+             .message-input-area textarea {
                  font-size: 1em;
                  padding: 8px 12px; /* Ajustar padding */
-                 height: 40px; /* Altura fija */
                  min-height: 40px; /* Asegurar altura mínima */
+                 max-height: 100px; /* Ajustar altura máxima para móviles */
                  flex-grow: 1;
                  box-sizing: border-box;
              }
 
              .input-container {
                  flex-direction: row; /* Alinear horizontalmente en móviles */
-                 align-items: center;
+                 align-items: flex-end; /* Alinear verticalmente los elementos al final (bottom) */
                  gap: 5px;
              }
 
@@ -669,7 +671,7 @@
                      <button id="cancel-reply-button">×</button>
                  </div>
                  <div class="input-container">
-                    <input type="text" id="message-input" placeholder="Escribe un mensaje..." autocomplete="off" autocorrect="off">
+                    <textarea id="message-input" placeholder="Escribe un mensaje..." autocomplete="off" autocorrect="off" rows="1"></textarea>
                     <div class="input-buttons">
                          <button id="emoji-button" title="Insertar Emoji">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -718,7 +720,7 @@
         const startChatButton = document.getElementById('start-chat-button');
         const chatInterface = document.getElementById('chat-interface');
         const chatBox = document.getElementById('chat-box');
-        // Cambiado de textarea a input type="text"
+        // Cambiado de input type="text" a textarea
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
@@ -841,6 +843,8 @@
                         messageInput.value = ''; // Limpiar el campo de entrada
                         setTypingStatus(false); // Limpiar estado de escritura
                         cancelReply(); // Cancelar el estado de respuesta después de enviar
+                        // Después de enviar, ajustar la altura del textarea a la mínima
+                        messageInput.style.height = 'auto';
                     })
                     .catch((error) => {
                         console.error("Error al enviar mensaje a Realtime Database:", error);
@@ -854,18 +858,32 @@
         // Listener para el botón de enviar texto
         sendButton.addEventListener('click', sendMessage);
 
-        // Permitir presionar Enter en el campo de mensaje de texto
+        // Permitir presionar Enter en el campo de mensaje de texto (solo si no hay Shift)
         messageInput.addEventListener('keypress', (event) => {
-            // Solo enviar con Enter, no permitir saltos de línea en input type="text"
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevenir el envío por defecto del formulario (si existiera)
+            // Si es Enter y no Shift+Enter
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Prevenir el salto de línea por defecto
                 sendMessage(); // Enviar el mensaje
             }
+            // Si es Shift+Enter, permitir el salto de línea
         });
 
 
-         // --- Lógica de Ajuste de Altura del Textarea (Eliminada) ---
-         // Eliminada función adjustTextareaHeight y sus listeners
+         // --- Lógica de Ajuste de Altura del Textarea ---
+
+        // Función para ajustar la altura del textarea automáticamente
+        function adjustTextareaHeight() {
+             // Restablecer la altura a 'auto' para que se recalcule correctamente
+            messageInput.style.height = 'auto';
+            // Establecer la altura al scrollHeight (altura necesaria para mostrar todo el contenido)
+            // Limitar por max-height definido en CSS
+            messageInput.style.height = messageInput.scrollHeight + 'px';
+            // Después de ajustar la altura del textarea, ajustar el padding inferior del chatBox
+            adjustChatBoxPadding();
+        }
+
+        // Listener para el evento 'input' en el textarea para ajustar la altura
+        messageInput.addEventListener('input', adjustTextareaHeight);
 
 
          // --- Lógica del Indicador de Escribiendo (Realtime Database) ---
@@ -999,24 +1017,22 @@
                  if (changedMessage.name === userName && changedMessage.status === 'read') {
                      const messageElement = chatBox.querySelector(`[data-message-id="${messageId}"]`);
                      if (messageElement) {
-                         // Eliminar checkmarks existentes y añadir el doble check
-                         const existingCheckmarks = messageElement.querySelector('.checkmarks');
-                         if (existingCheckmarks) {
-                             existingCheckmarks.remove();
+                         // Encontrar el message-footer dentro del mensaje
+                         const messageFooter = messageElement.querySelector('.message-footer');
+                         if (messageFooter) {
+                             // Eliminar checkmarks existentes si los hay
+                             const existingCheckmarks = messageFooter.querySelector('.checkmarks');
+                             if (existingCheckmarks) {
+                                 existingCheckmarks.remove();
+                             }
+
+                             const checkmarksSpan = document.createElement('span');
+                             checkmarksSpan.classList.add('checkmarks');
+                             checkmarksSpan.textContent = '✓✓'; // Doble checkmark Unicode
+                             // Añadir los checkmarks al final del message-footer
+                             messageFooter.appendChild(checkmarksSpan);
+                             console.log(`Updated message ${messageId} to double check.`);
                          }
-                         const checkmarksSpan = document.createElement('span');
-                         checkmarksSpan.classList.add('checkmarks');
-                         checkmarksSpan.textContent = '✓✓'; // Doble checkmark Unicode
-                         // Encontrar el elemento de timestamp y añadir los checkmarks después
-                         const timestampSpan = messageElement.querySelector('.timestamp');
-                         if (timestampSpan) {
-                              // Insertar antes del timestamp si existe, o al final si no
-                             timestampSpan.parentNode.insertBefore(checkmarksSpan, timestampSpan.nextSibling);
-                         } else {
-                             // Si por alguna razón no hay timestamp, añadir al final del mensaje
-                             messageElement.appendChild(checkmarksSpan);
-                         }
-                         console.log(`Updated message ${messageId} to double check.`);
                      }
                  }
              }, (error) => {
@@ -1218,7 +1234,7 @@
             input.selectionStart = input.selectionEnd = start + emoji.length;
 
             input.focus(); // Volver a enfocar el input
-            // Disparar el evento 'input' manualmente para actualizar el indicador de escribiendo
+            // Disparar el evento 'input' manualmente para actualizar el indicador de escribiendo y la altura del textarea
             input.dispatchEvent(new Event('input'));
         }
 
