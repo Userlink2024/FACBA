@@ -151,6 +151,10 @@
              /* Asegurar que el texto se envuelva correctamente */
              overflow-wrap: break-word;
              word-break: break-word;
+             /* --- Debugging Styles --- */
+             border: 1px solid red; /* Borde temporal para ver el área del elemento */
+             background-color: yellow; /* Fondo temporal para ver el área del elemento */
+             /* --- End Debugging Styles --- */
         }
 
          /* Contenedor para texto, hora y checkmarks */
@@ -1117,6 +1121,7 @@
             console.log(`[${userName}] textSpan created for message ${messageId}. Content: "${textSpan.textContent}"`); // Debugging log: contenido del texto
 
             // --- Aplicar estilos inline para asegurar visibilidad y color ---
+            // Estos estilos inline tienen alta prioridad y deberían forzar la visibilidad y color.
             textSpan.style.visibility = 'visible';
             textSpan.style.display = 'block'; // O 'inline-block' si prefieres
             if (msg.name === userName) {
@@ -1160,6 +1165,7 @@
             // --- Añadir texto, hora y checkmarks al footer ---
             if (msg.text) {
                 messageFooter.appendChild(textSpan);
+                console.log(`[${userName}] textSpan appended to messageFooter for message ${messageId}.`); // Log after appending textSpan
             }
             messageFooter.appendChild(timestampSpan); // Añadir la hora
 
@@ -1175,13 +1181,23 @@
                  console.log(`[${userName}] Not displaying checkmarks for RECEIVED message ${messageId}.`); // Debugging log con nombre de usuario
             }
 
+            messageElement.appendChild(messageFooter); // Asegurarse de que el footer se añade al messageElement
+            console.log(`[${userName}] messageFooter appended to messageElement for message ${messageId}.`); // Log after appending messageFooter
+
             chatBox.appendChild(messageElement);
+            console.log(`[${userName}] messageElement appended to chatBox for message ${messageId}.`); // Log after appending messageElement
+
 
             // Después de añadir el messageElement al DOM, podemos obtener los estilos computados del textSpan
             // Aumentar el retraso para dar más tiempo a la renderización
             setTimeout(() => {
                  const computedStyle = window.getComputedStyle(textSpan);
                  console.log(`[${userName}] textSpan for message ${messageId} computed style -> Color: ${computedStyle.color}, Visibility: ${computedStyle.visibility}, Display: ${computedStyle.display}`);
+
+                 // Verificar también el estilo computado del messageFooter
+                 const computedFooterStyle = window.getComputedStyle(messageFooter);
+                 console.log(`[${userName}] messageFooter for message ${messageId} computed style -> Display: ${computedFooterStyle.display}, Visibility: ${computedFooterStyle.visibility}, Opacity: ${computedFooterStyle.opacity}`);
+
             }, 500); // Retraso aumentado a 500ms
 
 
