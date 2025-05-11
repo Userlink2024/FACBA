@@ -9,7 +9,7 @@
         html, body {
             height: 100%;
             margin: 0;
-            padding: 0; /* Eliminar padding del body aquí y añadirlo al contenedor si es necesario */
+            padding: 0;
             overflow: hidden; /* Prevenir scroll del body */
         }
 
@@ -33,11 +33,13 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            /* Ajuste clave: max-height basado en el 100% de su padre (body) */
-            max-height: 100%;
-            height: 100%; /* Asegurar que ocupe la altura disponible */
+            /* Altura inicial al 100% del viewport */
+            height: 100vh; /* Usar 100vh inicialmente */
+            max-height: 100vh; /* Asegurar que no exceda 100vh */
             box-sizing: border-box;
              padding: 20px; /* Añadir padding aquí en lugar del body */
+             /* Eliminar transición de altura */
+             /* transition: height 0.1s ease-out; */
         }
 
         /* Estilos para la sección de ingreso de nombre */
@@ -108,8 +110,8 @@
             background-size: cover; /* Cubrir el área del contenedor */
             background-position: center; /* Centrar la imagen */
             background-repeat: no-repeat; /* No repetir la imagen */
-             /* Padding inferior dinámico ajustado por JS para el teclado */
-            padding-bottom: 20px; /* Padding inicial */
+             /* Padding inferior dinámico ajustado por JS */
+            padding-bottom: 20px; /* Padding inicial, se ajustará con JS */
         }
 
         /* Estilos para cada mensaje individual */
@@ -183,7 +185,15 @@
             align-items: center; /* Centrar horizontalmente */
             gap: 10px; /* Espacio entre elementos */
             flex-shrink: 0; /* Evita que el área de entrada se encoja */
-            position: relative; /* Necesario para posicionar el selector de emojis */
+            position: fixed; /* Fijar en la parte inferior de la ventana */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%; /* Ocupar todo el ancho */
+            box-sizing: border-box; /* Incluir padding en el ancho */
+            max-width: 700px; /* Igual que el contenedor principal */
+            margin: 0 auto; /* Centrar horizontalmente */
+             z-index: 5; /* Asegurar que esté por encima de la caja de chat */
         }
 
         /* Contenedor para el input y los botones */
@@ -701,21 +711,7 @@
                 messageInput.focus(); // Poner el foco en el campo de mensaje
                 // Opcional: Guardar el nombre en localStorage para recordarlo
                 localStorage.setItem('chatName', userName);
-                loadMessages(); // Cargar los mensajes existentes una vez que se establece el nombre
-                setupTypingIndicator(); // Configurar el indicador de escribiendo
-
-                // Intentar "desbloquear" el audio con una reproducción silenciosa al iniciar el chat
-                // Esto ayuda a que las notificaciones futuras puedan sonar
-                 if (notificationSound) {
-                     notificationSound.volume = 0; // Volumen a cero
-                     notificationSound.play().then(() => {
-                         notificationSound.pause(); // Pausar inmediatamente
-                         notificationSound.volume = 1; // Restaurar volumen
-                     }).catch(error => {
-                         console.error("Audio unlock failed (user interaction needed):", error);
-                     });
-                 }
-
+                initializeChat(); // Inicializar la carga de mensajes y listeners
             } else {
                 // Usar un mensaje en el DOM en lugar de alert()
                 // Podrías añadir un elemento div para mostrar errores
@@ -729,6 +725,24 @@
                 startChatButton.click(); // Simular clic en el botón
             }
         });
+
+        // --- Función para inicializar la carga y los listeners del chat ---
+        function initializeChat() {
+             console.log("initializeChat function called.");
+             loadInitialMessages(); // Cargar mensajes existentes una vez
+             setupRealtimeListeners(); // Configurar listeners en tiempo real una vez
+             setupTypingIndicator(); // Configurar el indicador de escribiendo
+             // Intentar "desbloquear" el audio
+             if (notificationSound) {
+                 notificationSound.volume = 0; // Volumen a cero
+                 notificationSound.play().then(() => {
+                     notificationSound.pause(); // Pausar inmediatamente
+                     notificationSound.volume = 1; // Restaurar volumen
+                 }).catch(error => {
+                     console.error("Audio unlock failed (user interaction needed):", error);
+                 });
+             }
+        }
 
 
         // --- Lógica del Chat (Realtime Database) ---
@@ -872,33 +886,9 @@
         }
 
 
-        // --- Lógica para Cargar y Mostrar Mensajes (Realtime Database) ---
-
-        // Función para cargar y mostrar mensajes (Realtime Database)
-        function loadMessages() {
-             console.log("loadMessages function called."); // Debugging log
-
-             // Escuchar en tiempo real los mensajes desde Realtime Database
-             messagesRef.on('child_added', (data) => {
-                 const newMessage = data.val();
-                 const messageId = data.key; // Obtener el ID único del mensaje
-                 console.log("New message received from Realtime Database:", newMessage, "ID:", messageId); // Debugging log
-                 displayMessage(newMessage, messageId); // Pasar el ID a displayMessage
-
-                 // Reproducir sonido si el mensaje no es del usuario actual
-                 if (initialLoadComplete && newMessage.name !== userName) {
-                     playNotificationSound();
-                 }
-
-                 chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
-
-                 // Marcar la carga inicial como completa después del primer mensaje (o ajustar la lógica si es necesario)
-                 if (!initialLoadComplete) {
-                     initialLoadComplete = true;
-                 }
-             }, (error) => {
-                 console.error("Error loading messages from Realtime Database:", error);
-             });
+        // --- Lógica para Cargar Mensajes Iniciales (Realtime Database) ---
+        function loadInitialMessages() {
+             console.log("loadInitialMessages function called."); // Debugging log
 
              // Cargar mensajes existentes una vez al inicio
              messagesRef.once('value', (snapshot) => {
@@ -922,6 +912,38 @@
                  console.error("Error fetching initial messages from Realtime Database:", error);
              });
         }
+
+        // --- Lógica para Configurar Listeners en Tiempo Real (Realtime Database) ---
+        function setupRealtimeListeners() {
+            console.log("setupRealtimeListeners function called.");
+
+             // Escuchar en tiempo real los mensajes nuevos desde Realtime Database
+             // Este listener solo se adjunta UNA VEZ
+             messagesRef.on('child_added', (data) => {
+                 const newMessage = data.val();
+                 const messageId = data.key; // Obtener el ID único del mensaje
+                 console.log("New message received from Realtime Database (realtime listener):", newMessage, "ID:", messageId); // Debugging log
+
+                 // Solo mostrar el mensaje si no es parte de la carga inicial
+                 // La bandera initialLoadComplete ayuda a diferenciar
+                 if (initialLoadComplete) {
+                    displayMessage(newMessage, messageId); // Mostrar el nuevo mensaje
+                    // Reproducir sonido si el mensaje no es del usuario actual
+                     if (newMessage.name !== userName) {
+                         playNotificationSound();
+                     }
+                    chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+                 } else {
+                     // Si aún no ha terminado la carga inicial, no hacemos nada con este evento
+                     // porque ya se mostrará en loadInitialMessages
+                     console.log("Ignoring child_added event during initial load.");
+                 }
+
+             }, (error) => {
+                 console.error("Error in realtime listener for messages:", error);
+             });
+        }
+
 
         // Función para mostrar un mensaje en el DOM
         function displayMessage(msg, messageId) {
@@ -1127,6 +1149,8 @@
             chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
 
             console.log(`Resize: Ajustando paddingBottom del chatBox a ${chatBox.style.paddingBottom}`);
+             // Intentar scrollear al final en resize también
+             chatBox.scrollTop = chatBox.scrollHeight;
         });
 
         // Listener para el evento 'focus' en el input de mensaje
@@ -1192,13 +1216,18 @@
         const savedName = localStorage.getItem('chatName');
         if (savedName) {
             nameInput.value = savedName; // Rellenar el campo de nombre
-            startChatButton.click(); // Simular clic en el botón para iniciar el chat automáticamente
+            // No llamar a startChatButton.click() aquí, initializeChat se llama en window.onload
         }
 
         // Ajustes iniciales al cargar la página
         window.onload = function() {
-             loadMessages(); // Asegurarse de que los mensajes se carguen
-             setupTypingIndicator(); // Configurar el indicador de escribiendo
+             // Si hay un nombre guardado, inicializar el chat
+             if (localStorage.getItem('chatName')) {
+                 userName = localStorage.getItem('chatName');
+                 namePrompt.style.display = 'none'; // Ocultar la sección de nombre
+                 chatInterface.style.display = 'flex'; // Mostrar la interfaz de chat
+                 initializeChat(); // Inicializar la carga de mensajes y listeners
+             }
              // Ajustar el padding inferior del chatBox al cargar
              const inputAreaHeight = messageInputArea.offsetHeight;
              chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
