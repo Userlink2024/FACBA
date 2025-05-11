@@ -211,17 +211,8 @@
          }
 
 
-        /* Estilos para el área de entrada de mensajes */
-        .message-input-area {
-            display: flex;
-            flex-direction: column; /* Mantener como columna principal */
-            padding: 15px 20px; /* Padding consistente */
-            background-color: #f9f9f9;
-            border-top: 1px solid #eee;
-            align-items: center; /* Centrar horizontalmente */
-            gap: 10px; /* Espacio entre elementos */
-            flex-shrink: 0; /* Evita que el área de entrada se encoja */
-            /* Propiedades de position: fixed restauradas */
+        /* Contenedor fijo para el área de input y el indicador de escribiendo */
+        #bottom-fixed-area {
             position: fixed;
             bottom: 0;
             left: 0;
@@ -230,17 +221,38 @@
             max-width: 700px; /* Igual que el contenedor principal */
             box-sizing: border-box; /* Incluir padding en el ancho */
             margin: 0 auto; /* Centrar horizontalmente */
-             z-index: 5; /* Asegurar que esté por encima de la caja de chat */
+            z-index: 5; /* Asegurar que esté por encima de la caja de chat */
+            display: flex; /* Usar flexbox */
+            flex-direction: column; /* Apilar elementos verticalmente */
+            background-color: #f9f9f9; /* Fondo para el área fija */
+             border-top: 1px solid #eee; /* Borde superior */
+             padding: 10px 20px; /* Padding interno */
         }
 
-        /* Estilos para el indicador de escribiendo (dentro del área de input) */
+
+        /* Estilos para el indicador de escribiendo (ahora dentro del contenedor fijo) */
         #typing-indicator {
             font-size: 0.9em; /* Aumentar tamaño */
             color: #8e8e93; /* Gris tenue */
             padding: 0 5px; /* Padding interno */
             min-height: 1.2em; /* Reserva espacio */
-            align-self: flex-end; /* Alinear a la derecha dentro del contenedor flex (column) */
-            margin-bottom: 5px; /* Espacio debajo del indicador */
+            text-align: right; /* Alinear a la derecha */
+            /* margin-bottom: 5px; Eliminado, el padding está en el contenedor fijo */
+        }
+
+
+        /* Estilos para el área de entrada de mensajes (ahora dentro del contenedor fijo) */
+        .message-input-area {
+            display: flex;
+            /* flex-direction: column; Eliminado, el contenedor padre ya es flex-direction: column */
+            /* padding: 15px 20px; Eliminado, el padding está en el contenedor fijo */
+            /* background-color: #f9f9f9; Eliminado, el fondo está en el contenedor fijo */
+            /* border-top: 1px solid #eee; Eliminado, el borde está en el contenedor fijo */
+            align-items: center; /* Centrar horizontalmente */
+            gap: 10px; /* Espacio entre elementos */
+            flex-shrink: 0; /* Evita que el área de entrada se encoja */
+            /* Propiedades de position: fixed restauradas */
+            /* Eliminado: position, bottom, left, right, width, max-width, box-sizing, margin, z-index */
         }
 
 
@@ -534,12 +546,19 @@
                  align-self: center; /* Centrar verticalmente */
              }
 
+             /* Contenedor fijo para el área de input y el indicador de escribiendo en móviles */
+             #bottom-fixed-area {
+                 max-width: 100vw;
+                 padding: 10px 15px; /* Ajustar padding para móviles */
+             }
+
+
              .message-input-area {
-                 flex-direction: column; /* Mantener en columna */
-                 padding: 10px 15px;
+                 /* flex-direction: column; Eliminado */
+                 /* padding: 10px 15px; Eliminado */
                  gap: 5px;
                  align-items: center; /* Centrar horizontalmente */
-                 max-width: 100vw;
+                 /* max-width: 100vw; Eliminado */
                  /* position: fixed, bottom, left, right ya están definidos arriba */
              }
 
@@ -603,9 +622,10 @@
 
              /* Ajuste del indicador de escribiendo en móviles */
              #typing-indicator {
-                 align-self: flex-end; /* Alinear a la derecha */
-                 margin-bottom: 5px; /* Espacio arriba del input */
-                 padding: 5px 15px; /* Ajustar padding lateral para móviles */
+                 /* align-self: flex-end; Eliminado */
+                 /* margin-bottom: 5px; Eliminado */
+                 padding: 0 5px; /* Ajustar padding lateral para móviles */
+                 text-align: right; /* Asegurar alineación derecha */
              }
 
              /* Ajuste del selector de emojis en móviles */
@@ -661,8 +681,8 @@
             </div>
              <div id="chat-box">
                 </div>
-            <div class="message-input-area">
-                 <div id="typing-indicator"></div>
+            <div id="bottom-fixed-area">
+                <div id="typing-indicator"></div>
                  <div id="emoji-picker">
                      </div>
                  <div id="reply-preview">
@@ -670,7 +690,7 @@
                      <span class="reply-text"></span>
                      <button id="cancel-reply-button">×</button>
                  </div>
-                 <div class="input-container">
+                <div class="message-input-area">
                     <textarea id="message-input" placeholder="Escribe un mensaje..." autocomplete="off" autocorrect="off" rows="1"></textarea>
                     <div class="input-buttons">
                          <button id="emoji-button" title="Insertar Emoji">
@@ -739,6 +759,7 @@
         const chatContainer = document.getElementById('chat-container'); // Referencia al contenedor principal
         const messageInputArea = document.querySelector('.message-input-area'); // Referencia al área de input
         const onlineUsersDiv = document.getElementById('online-users'); // Elemento para usuarios en línea
+        const bottomFixedArea = document.getElementById('bottom-fixed-area'); // Nuevo contenedor fijo
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -942,6 +963,8 @@
                 } else {
                     typingIndicator.textContent = ''; // Limpiar si nadie está escribiendo
                 }
+                // Después de actualizar el indicador, ajustar el padding del chatBox
+                adjustChatBoxPadding();
             });
         }
 
@@ -1251,7 +1274,7 @@
             } else {
                 // Posicionar el selector justo encima de la barra de input
                 // bottom del selector = altura del área de input + padding/margen
-                const inputAreaHeight = messageInputArea.offsetHeight; // Obtener la altura del área de input fija
+                const inputAreaHeight = bottomFixedArea.offsetHeight; // Usar la altura del contenedor fijo
                 emojiPicker.style.bottom = `${inputAreaHeight + 10}px`; // 10px de margen
                 emojiPicker.style.display = 'flex';
             }
@@ -1276,12 +1299,13 @@
         function adjustChatBoxPadding() {
             // Usar un pequeño retraso para asegurar que el DOM esté renderizado y las alturas sean correctas
             setTimeout(() => {
-                 const inputAreaHeight = messageInputArea.offsetHeight;
+                 // Usar la altura del nuevo contenedor fijo
+                 const bottomAreaHeight = bottomFixedArea.offsetHeight;
                  // Añadir un buffer más grande para asegurar espacio suficiente
-                 const newPaddingBottom = inputAreaHeight + 60; // Aumentar buffer a 60px
+                 const newPaddingBottom = bottomAreaHeight + 10; // Ajustar buffer a 10px (ya incluido en la altura del contenedor fijo)
                  chatBox.style.paddingBottom = `${newPaddingBottom}px`;
                  console.log(`Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`);
-                 console.log(`messageInputArea.offsetHeight: ${inputAreaHeight}`);
+                 console.log(`bottomFixedArea.offsetHeight: ${bottomAreaHeight}`);
                  // Intentar scrollear al final después de ajustar el padding
                  chatBox.scrollTop = chatBox.scrollHeight;
             }, 200); // Aumentar el retraso a 200ms
@@ -1313,6 +1337,8 @@
 
             replyPreview.style.display = 'flex'; // Mostrar la vista previa
             messageInput.focus(); // Poner el foco en el campo de mensaje
+            // Ajustar padding después de mostrar la vista previa
+            adjustChatBoxPadding();
         }
 
         // Función para cancelar el modo de respuesta
@@ -1321,6 +1347,8 @@
             replyPreview.style.display = 'none'; // Ocultar la vista previa
             replyNameSpan.textContent = '';
             replyTextSpan.textContent = '';
+            // Ajustar padding después de ocultar la vista previa
+            adjustChatBoxPadding();
         }
 
         // Listener para el botón de cancelar respuesta
