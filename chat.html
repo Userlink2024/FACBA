@@ -125,7 +125,7 @@
             background-position: center; /* Centrar la imagen */
             background-repeat: no-repeat; /* No repetir la imagen */
              /* Padding inferior dinámico ajustado por JS */
-            padding-bottom: 20px; /* Padding inicial, se ajustará con JS */
+            padding-bottom: 20px; /* Padding inicial, ya no se ajusta dinámicamente con JS */
         }
 
         /* Estilos para cada mensaje individual */
@@ -214,13 +214,10 @@
             align-items: center; /* Centrar horizontalmente */
             gap: 10px; /* Espacio entre elementos */
             flex-shrink: 0; /* Evita que el área de entrada se encoja */
-            position: fixed; /* Fijar en la parte inferior de la ventana */
-            bottom: 0;
-            left: 0;
-            right: 0;
+            /* Eliminadas propiedades de position: fixed */
             width: 100%; /* Ocupar todo el ancho */
-            box-sizing: border-box; /* Incluir padding en el ancho */
             max-width: 700px; /* Igual que el contenedor principal */
+            box-sizing: border-box; /* Incluir padding en el ancho */
             margin: 0 auto; /* Centrar horizontalmente */
              z-index: 5; /* Asegurar que esté por encima de la caja de chat */
         }
@@ -233,8 +230,7 @@
             min-height: 1.2em; /* Reserva espacio */
             align-self: flex-end; /* Alinear a la derecha dentro del contenedor flex (column) */
             margin-bottom: 5px; /* Espacio debajo del indicador */
-            /* Eliminar padding lateral extra que tenía antes */
-            /* padding: 5px 20px; */
+            /* Eliminado padding lateral extra */
         }
 
 
@@ -1226,17 +1222,19 @@
 
         // --- Lógica para Ajustar Layout con Teclado Virtual ---
 
-        // Listener para el evento resize de la ventana
-        window.addEventListener('resize', () => {
-            // Ajustar el padding inferior de la caja de chat para dejar espacio para la barra de input fija
-            // Esto se hace en cada resize porque la altura del área de input podría cambiar ligeramente
-            const inputAreaHeight = messageInputArea.offsetHeight;
-            chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
+        // Función para ajustar el padding inferior del chatBox
+        // Con el layout Flexbox, ya no necesitamos ajustar el padding dinámicamente
+        // en función de la altura del área de input. El Flexbox se encarga de esto.
+        // Mantengo la función pero vacía por si se necesita en el futuro,
+        // pero la remuevo de los listeners de resize y onload.
+        function adjustChatBoxPadding() {
+             // console.log("adjustChatBoxPadding called - No dynamic padding needed with Flexbox layout.");
+             // No hacer nada aquí con el layout Flexbox
+        }
 
-            console.log(`Resize: Ajustando paddingBottom del chatBox a ${chatBox.style.paddingBottom}`);
-             // Intentar scrollear al final en resize también
-             chatBox.scrollTop = chatBox.scrollHeight;
-        });
+
+        // Listener para el evento resize de la ventana
+        // Eliminado: window.addEventListener('resize', adjustChatBoxPadding);
 
         // Listener para el evento 'focus' en el input de mensaje
         messageInput.addEventListener('focus', () => {
@@ -1351,13 +1349,8 @@
                  chatInterface.style.display = 'flex'; // Mostrar la interfaz de chat
                  initializeChat(); // Inicializar la carga de mensajes y listeners
              }
-             // Ajustar el padding inferior del chatBox al cargar
-             // Usar un pequeño retraso para asegurar que el DOM esté renderizado
-             setTimeout(() => {
-                 const inputAreaHeight = messageInputArea.offsetHeight;
-                 chatBox.style.paddingBottom = `${inputAreaHeight + 20}px`; // Añadir un poco extra
-                 console.log(`Initial load: Ajustando paddingBottom del chatBox a ${chatBox.style.paddingBottom}`);
-             }, 50); // Retraso de 50ms
+             // Con el layout Flexbox, ya no necesitamos ajustar el padding inferior al cargar.
+             // adjustChatBoxPadding(); // Eliminado
 
 
              // Intentar desbloquear el audio aquí también si es necesario
