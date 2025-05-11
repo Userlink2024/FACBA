@@ -127,6 +127,8 @@
             /* Añadir un fondo semi-transparente para que el texto sea legible sobre la imagen */
             background-color: rgba(255, 255, 255, 0.9); /* Blanco con 90% de opacidad */
             cursor: pointer; /* Indicar que se puede hacer clic para responder */
+            display: flex; /* Usar flexbox para organizar el contenido interno */
+            flex-direction: column; /* Apilar nombre, respuesta, y footer */
         }
 
         .message .name {
@@ -141,16 +143,32 @@
             display: block;
             color: #1c1c1e; /* Texto oscuro principal */
             font-size: 1em; /* Tamaño de fuente del texto (relativo al 1.1em del mensaje) */
-            margin-bottom: 4px; /* Espacio entre texto y hora */
+            /* margin-bottom: 4px; Eliminado, el margen ahora está en el footer */
+             flex-grow: 1; /* Permitir que el texto ocupe espacio */
+             min-width: 0; /* Permitir que el texto se encoja y envuelva */
+             margin-right: auto; /* Empujar la hora/checks a la derecha */
+             padding-right: 8px; /* Espacio entre texto y hora/checks */
         }
+
+         /* Contenedor para texto, hora y checkmarks */
+         .message-footer {
+             display: flex;
+             align-items: center; /* Alinear verticalmente */
+             justify-content: flex-end; /* Alinear a la derecha */
+             flex-wrap: wrap; /* Permitir que los elementos se envuelvan si no hay espacio */
+             /* gap: 5px; */ /* Espacio entre elementos del footer */
+             margin-top: 4px; /* Espacio arriba del footer */
+         }
+
 
         .message .timestamp {
             font-size: 0.7em; /* Tamaño de fuente de la hora (relativo al 1.1em del mensaje) */
             color: #8e8e93; /* Gris tenue */
-            text-align: right;
-            /* Cambiado de block a inline-block para que los checkmarks estén al lado */
-            display: inline-block;
-             margin-top: 4px; /* Espacio arriba de la hora */
+            /* text-align: right; Eliminado, manejado por flexbox */
+            display: inline-block; /* O inline, ambos funcionan con flexbox */
+             /* margin-top: 4px; Eliminado, el margen está en el footer */
+             flex-shrink: 0; /* Evitar que se encoja */
+             margin-left: 4px; /* Espacio a la izquierda del timestamp */
         }
 
          /* Estilos para los checkmarks */
@@ -159,8 +177,8 @@
              color: #007aff; /* Color azul para checkmarks */
              margin-left: 4px; /* Espacio a la izquierda */
              vertical-align: middle; /* Alinear verticalmente */
-             /* Asegurar que sean inline por defecto */
-             display: inline;
+             display: inline; /* O inline-block */
+             flex-shrink: 0; /* Evitar que se encoja */
          }
 
 
@@ -1020,7 +1038,7 @@
                 messageElement.classList.add('received');
             }
 
-            // Crear elementos para el nombre, texto y timestamp
+            // Crear elementos para el nombre y contenido
             const nameSpan = document.createElement('span');
             nameSpan.classList.add('name');
             /* Solo mostrar el nombre si no es el mensaje del usuario actual (opcional, estilo WhatsApp) */
@@ -1030,9 +1048,19 @@
                nameSpan.textContent = ''; // No mostrar el nombre en mensajes propios
             }
 
+            // Crear el contenedor para el texto, hora y checkmarks
+            const messageFooter = document.createElement('div');
+            messageFooter.classList.add('message-footer');
+
+            // Crear elementos para el texto y timestamp
+            const textSpan = document.createElement('span');
+            textSpan.classList.add('text');
+            textSpan.textContent = msg.text;
+
             const timestampSpan = document.createElement('span');
             timestampSpan.classList.add('timestamp');
             timestampSpan.textContent = formatTimestamp(msg.timestamp); // Formatear y mostrar hora
+
 
             // Añadir nombre al elemento del mensaje si no es el usuario actual
             if (msg.name !== userName) {
@@ -1059,18 +1087,11 @@
             /* --- Fin de mostrar contenido de respuesta --- */
 
 
-            // --- Mostrar contenido del mensaje (solo texto ahora) ---
+            // --- Añadir texto, hora y checkmarks al footer ---
             if (msg.text) {
-                // Es un mensaje de texto
-                const textSpan = document.createElement('span');
-                textSpan.classList.add('text');
-                textSpan.textContent = msg.text;
-                messageElement.appendChild(textSpan);
+                messageFooter.appendChild(textSpan);
             }
-            /* --- Fin de mostrar contenido --- */
-
-            // Añadir el timestamp
-            messageElement.appendChild(timestampSpan); // Añadir la hora al final
+            messageFooter.appendChild(timestampSpan); // Añadir la hora
 
             // Añadir checkmarks si es un mensaje enviado por el usuario actual
             if (msg.name === userName) {
@@ -1078,9 +1099,11 @@
                  checkmarksSpan.classList.add('checkmarks');
                  // Mostrar un check simple si el estado es 'sent', doble si es 'read'
                  checkmarksSpan.textContent = msg.status === 'read' ? '✓✓' : '✓'; // Unicode checkmarks
-                 // Insertar los checkmarks después del timestamp
-                 timestampSpan.parentNode.insertBefore(checkmarksSpan, timestampSpan.nextSibling);
+                 messageFooter.appendChild(checkmarksSpan); // Añadir los checkmarks al footer
             }
+
+            // Añadir el footer al elemento del mensaje
+            messageElement.appendChild(messageFooter);
 
 
             chatBox.appendChild(messageElement);
