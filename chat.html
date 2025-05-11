@@ -10,6 +10,7 @@
             height: 100%;
             margin: 0;
             padding: 0; /* Eliminar padding del body aquí y añadirlo al contenedor si es necesario */
+            overflow: hidden; /* Prevenir scroll del body */
         }
 
         /* Estilos generales y de contenedor */
@@ -97,6 +98,8 @@
             background-size: cover; /* Cubrir el área del contenedor */
             background-position: center; /* Centrar la imagen */
             background-repeat: no-repeat; /* No repetir la imagen */
+             /* Padding inferior dinámico ajustado por JS para el teclado */
+            padding-bottom: 20px; /* Padding inicial */
         }
 
         /* Estilos para cada mensaje individual */
@@ -165,13 +168,14 @@
             padding: 15px 20px; /* Padding consistente */
             background-color: #f9f9f9;
             border-top: 1px solid #eee;
-            align-items: center;
+            align-items: flex-end; /* Alinea los elementos a la parte inferior */
             gap: 10px; /* Espacio entre elementos */
             flex-shrink: 0; /* Evita que el área de entrada se encoja */
             position: relative; /* Necesario para posicionar el selector de emojis */
         }
 
-        .message-input-area input[type="text"] {
+        /* Estilos para el TEXTAREA */
+        .message-input-area textarea {
             flex-grow: 1;
             padding: 12px 15px;
             border: 1px solid #d1d1d6;
@@ -180,8 +184,13 @@
             box-sizing: border-box;
             outline: none; /* Eliminar contorno al enfocar */
             transition: border-color 0.2s ease-in-out;
+            resize: none; /* Deshabilitar redimensionamiento manual */
+            overflow-y: hidden; /* Ocultar scrollbar por defecto, JS maneja la altura */
+            min-height: 45px; /* Altura mínima igual a la de los botones */
+            max-height: 150px; /* Altura máxima para evitar que ocupe toda la pantalla */
+            line-height: 1.5; /* Igual que los mensajes para consistencia */
         }
-         .message-input-area input[type="text"]:focus {
+         .message-input-area textarea:focus {
              border-color: #007aff; /* Borde azul al enfocar */
          }
 
@@ -329,7 +338,7 @@
 
             #name-prompt input,
             #name-prompt button,
-            .message-input-area input,
+            .message-input-area textarea, /* Ajustado para textarea */
             .message-input-area button,
             #send-button {
                 font-size: 1em; /* Ajustar tamaño de fuente */
@@ -345,36 +354,37 @@
                  flex-direction: row; /* Mantener en fila */
                  padding: 10px 15px;
                  gap: 5px;
-                 align-items: center; /* Asegurar alineación vertical */
+                 align-items: flex-end; /* Alinea los elementos a la parte inferior en móviles */
              }
 
              .message-input-area .input-buttons {
                  gap: 5px;
-                 align-items: center; /* Asegurar alineación vertical */
+                 align-items: flex-end; /* Alinea los botones a la parte inferior en móviles */
              }
 
 
-             #emoji-button, #send-button { /* Eliminados .file-button y #record-audio-button */
+             #emoji-button, #send-button {
                  width: 40px;
                  height: 40px;
                  padding: 0; /* Eliminar padding extra */
                  flex-shrink: 0; /* Evitar que se reduzcan */
-                 align-self: center; /* Centrar verticalmente */
+                 align-self: flex-end; /* Centrar verticalmente */
              }
               #send-button {
                   width: auto; /* Permitir que el botón de enviar ajuste su ancho */
                   padding: 10px 15px;
               }
 
-             /* Asegurar que el input de texto ocupe el espacio restante en móviles */
-             .message-input-area input[type="text"] {
+             /* Asegurar que el textarea ocupe el espacio restante en móviles */
+             .message-input-area textarea { /* Ajustado para textarea */
                  flex-grow: 1;
                  width: 100%; /* Asegurar que intente ocupar el 100% del espacio flexible */
                  box-sizing: border-box; /* Incluir padding y border en el ancho */
+                 min-height: 40px; /* Ajustar altura mínima para móviles */
              }
 
 
-              #emoji-button svg { /* Eliminados .file-button svg y #record-audio-button svg */
+              #emoji-button svg {
                  width: 20px;
                  height: 20px;
              }
@@ -427,7 +437,7 @@
             <div class="message-input-area">
                  <div id="emoji-picker">
                      </div>
-                <input type="text" id="message-input" placeholder="Escribe un mensaje...">
+                <textarea id="message-input" placeholder="Escribe un mensaje..."></textarea>
                 <div class="input-buttons">
                      <button id="emoji-button" title="Insertar Emoji">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -469,6 +479,9 @@
         let typingTimeout; // Para manejar el indicador de escribiendo
         let initialLoadComplete = false; // Bandera para saber si la carga inicial de mensajes ha terminado
 
+        // Guardar la altura original del viewport
+        let originalViewportHeight = window.innerHeight;
+
 
         // Obtener elementos del DOM
         const namePrompt = document.getElementById('name-prompt');
@@ -476,6 +489,7 @@
         const startChatButton = document.getElementById('start-chat-button');
         const chatInterface = document.getElementById('chat-interface');
         const chatBox = document.getElementById('chat-box');
+        // Cambiado de input a textarea
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
@@ -483,9 +497,6 @@
         const clearChatButton = document.getElementById('clear-chat-button'); // Botón de limpiar chat
         const emojiButton = document.getElementById('emoji-button'); // Botón de emoji
         const emojiPicker = document.getElementById('emoji-picker'); // Selector de emojis
-        // Eliminados inputs y botones de archivo/audio
-        // const imageUploadInput = document.getElementById('image-upload');
-        // const recordAudioButton = document.getElementById('record-audio-button');
 
 
         // --- Lógica de Ingreso de Nombre ---
@@ -534,8 +545,6 @@
         const messagesRef = database.ref('messages'); // 'messages' es el nombre del nodo
         // Referencia al nodo para el estado de escritura
         const typingRef = database.ref('typing');
-        // Eliminado StorageRef
-        // const storageRef = storage.ref();
 
 
         // Clave para limpiar el chat (¡Mantén esto seguro en una aplicación real!)
@@ -572,6 +581,8 @@
                     .then(() => {
                         console.log("Mensaje de texto enviado exitosamente a Realtime Database!");
                         messageInput.value = ''; // Limpiar el campo de entrada
+                        // Ajustar la altura del textarea después de limpiar
+                        adjustTextareaHeight();
                         setTypingStatus(false); // Limpiar estado de escritura
                     })
                     .catch((error) => {
@@ -583,37 +594,46 @@
             }
         }
 
-         // Eliminada función sendFileMessage
-         /*
-         function sendFileMessage(file, fileType) {
-             // ... código de envío de archivo ...
-         }
-         */
-
-
         // Listener para el botón de enviar texto
         sendButton.addEventListener('click', sendMessage);
 
         // Permitir presionar Enter en el campo de mensaje de texto
         messageInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                sendMessage(); // Simular clic en el botón
+            // Permitir saltos de línea con Shift + Enter
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Prevenir el salto de línea por defecto
+                sendMessage(); // Enviar el mensaje
             }
+             // Si es solo Enter (sin Shift), permitir el salto de línea
         });
 
-         // Eliminados listeners de input de archivo/audio y botón de grabar
-         /*
-         imageUploadInput.addEventListener('change', (event) => { ... });
-         recordAudioButton.addEventListener('click', () => { ... });
-         */
 
+         // --- Lógica de Ajuste de Altura del Textarea ---
+         function adjustTextareaHeight() {
+             const input = messageInput;
+             input.style.height = 'auto'; // Restablecer altura para calcular la scrollHeight
+             input.style.height = input.scrollHeight + 'px'; // Establecer altura basada en el contenido
+             // Asegurarse de que no exceda la altura máxima
+             if (input.scrollHeight > 150) { // 150px es la max-height en CSS
+                 input.style.overflowY = 'auto'; // Mostrar scrollbar si excede la altura máxima
+             } else {
+                 input.style.overflowY = 'hidden'; // Ocultar scrollbar si no excede
+             }
 
-         // --- Lógica de Grabación de Audio (Eliminada) ---
-         // Eliminadas funciones startRecording y stopRecording
-         /*
-         async function startRecording() { ... }
-         function stopRecording() { ... }
-         */
+             // Ajustar la posición del selector de emojis si está visible
+             if (emojiPicker.style.display === 'flex') {
+                 // Recalcular la posición bottom del selector de emojis
+                 const inputAreaRect = messageInput.parentElement.getBoundingClientRect();
+                 // bottom del selector = altura del área de input + padding/margen
+                 emojiPicker.style.bottom = `${inputAreaRect.height + 10}px`; // 10px de margen
+             }
+         }
+
+         // Listener para el evento 'input' en el textarea para ajustar la altura
+         messageInput.addEventListener('input', adjustTextareaHeight);
+
+         // Ajustar la altura inicial al cargar la página
+         window.addEventListener('load', adjustTextareaHeight);
 
 
          // --- Lógica del Indicador de Escribiendo (Realtime Database) ---
@@ -643,7 +663,6 @@
 
         // Listener para el campo de entrada de mensaje para detectar escritura
         messageInput.addEventListener('input', () => {
-            // Solo actualizar estado de escritura si no estamos grabando audio (funcionalidad eliminada)
             if (messageInput.value.trim().length > 0) {
                 setTypingStatus(true); // El usuario está escribiendo
             } else {
@@ -676,6 +695,8 @@
             });
         }
 
+
+        // --- Lógica para Cargar y Mostrar Mensajes (Realtime Database) ---
 
         // Función para cargar y mostrar mensajes (Realtime Database)
         function loadMessages() {
@@ -817,7 +838,7 @@
         // --- Lógica del Botón de Emoji y Selector ---
 
         // Lista de emojis para el selector
-        const emojis = ['😊', '😂', '❤️', '👍', '🙏', '😢', '😍', '🥳', '😎', '🤩', '😭', '🥰', '😘']; // Eliminados ' saludos ' y ' gracias '
+        const emojis = ['😊', '😂', '❤️', '👍', '🙏', '😢', '😍', '🥳', '😎', '🤩', '😭', '🥰', '😘'];
 
         // Llenar el selector de emojis
         emojis.forEach(emoji => {
@@ -847,7 +868,7 @@
             input.selectionStart = input.selectionEnd = start + emoji.length;
 
             input.focus(); // Volver a enfocar el input
-            // Disparar el evento 'input' manualmente para actualizar el indicador de escribiendo
+            // Disparar el evento 'input' manualmente para actualizar el indicador de escribiendo y la altura del textarea
             input.dispatchEvent(new Event('input'));
         }
 
@@ -862,11 +883,9 @@
                 // Posicionar el selector justo encima de la barra de input
                 // Esto se maneja principalmente con CSS position: absolute y bottom
                 emojiPicker.style.display = 'flex';
-                // Opcional: Ajustar la posición si es necesario (menos probable con absolute/bottom)
-                // const inputAreaRect = messageInput.parentElement.getBoundingClientRect();
-                // emojiPicker.style.bottom = `${inputAreaRect.height + 10}px`; // 10px de margen
-                // emojiPicker.style.left = `${inputAreaRect.left}px`;
-                // emojiPicker.style.width = `${inputAreaRect.width}px`;
+                // Ajustar la posición bottom del selector basada en la altura actual del textarea
+                const inputAreaRect = messageInput.parentElement.getBoundingClientRect();
+                emojiPicker.style.bottom = `${inputAreaRect.height + 10}px`; // 10px de margen
             }
         });
 
@@ -876,6 +895,42 @@
             if (!emojiPicker.contains(event.target) && event.target !== emojiButton) {
                 emojiPicker.style.display = 'none';
             }
+        });
+
+
+        // --- Lógica para Ajustar Layout con Teclado Virtual ---
+
+        // Altura inicial del viewport
+        let initialViewportHeight = window.innerHeight;
+
+        // Listener para el evento resize de la ventana
+        window.addEventListener('resize', () => {
+            const currentViewportHeight = window.innerHeight;
+
+            // Detectar si el teclado virtual probablemente se ha abierto (la altura del viewport disminuye significativamente)
+            // O si se ha cerrado (la altura del viewport vuelve a ser similar a la original)
+            const keyboardOpenThreshold = initialViewportHeight * 0.8; // Umbral: si la altura es menos del 80% de la original
+
+            if (currentViewportHeight < keyboardOpenThreshold) {
+                // Teclado probablemente abierto
+                // Añadir padding inferior a chatBox para que la última parte sea visible
+                // La cantidad de padding puede necesitar ajuste, pero la diferencia de altura es un buen punto de partida
+                const keyboardHeight = initialViewportHeight - currentViewportHeight;
+                 // Asegurarse de que el padding sea al menos la altura de la barra de input
+                 const minPadding = messageInput.parentElement.offsetHeight;
+                 chatBox.style.paddingBottom = `${Math.max(keyboardHeight, minPadding) + 20}px`; // Añadir un poco extra
+                 chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+                 console.log("Teclado abierto, ajustando padding:", chatBox.style.paddingBottom);
+
+            } else {
+                // Teclado probablemente cerrado o no estaba abierto
+                // Restaurar el padding inferior original de chatBox
+                chatBox.style.paddingBottom = '20px'; // Restaurar al padding inicial definido en CSS
+                console.log("Teclado cerrado, restaurando padding.");
+            }
+
+             // Opcional: Reajustar la altura del textarea en caso de rotación de pantalla u otros redimensionamientos
+             adjustTextareaHeight();
         });
 
 
