@@ -148,7 +148,8 @@
             font-size: 0.7em; /* Tamaño de fuente de la hora (relativo al 1.1em del mensaje) */
             color: #8e8e93; /* Gris tenue */
             text-align: right;
-            display: block;
+            /* Cambiado de block a inline-block para que los checkmarks estén al lado */
+            display: inline-block;
              margin-top: 4px; /* Espacio arriba de la hora */
         }
 
@@ -158,6 +159,8 @@
              color: #007aff; /* Color azul para checkmarks */
              margin-left: 4px; /* Espacio a la izquierda */
              vertical-align: middle; /* Alinear verticalmente */
+             /* Asegurar que sean inline por defecto */
+             display: inline;
          }
 
 
@@ -1075,7 +1078,8 @@
                  checkmarksSpan.classList.add('checkmarks');
                  // Mostrar un check simple si el estado es 'sent', doble si es 'read'
                  checkmarksSpan.textContent = msg.status === 'read' ? '✓✓' : '✓'; // Unicode checkmarks
-                 messageElement.appendChild(checkmarksSpan);
+                 // Insertar los checkmarks después del timestamp
+                 timestampSpan.parentNode.insertBefore(checkmarksSpan, timestampSpan.nextSibling);
             }
 
 
