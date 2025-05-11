@@ -225,6 +225,19 @@
              z-index: 5; /* Asegurar que esté por encima de la caja de chat */
         }
 
+        /* Estilos para el indicador de escribiendo (dentro del área de input) */
+        #typing-indicator {
+            font-size: 0.9em; /* Aumentar tamaño */
+            color: #8e8e93; /* Gris tenue */
+            padding: 0 5px; /* Padding interno */
+            min-height: 1.2em; /* Reserva espacio */
+            align-self: flex-end; /* Alinear a la derecha dentro del contenedor flex (column) */
+            margin-bottom: 5px; /* Espacio debajo del indicador */
+            /* Eliminar padding lateral extra que tenía antes */
+            /* padding: 5px 20px; */
+        }
+
+
         /* Contenedor para el input y los botones */
         .input-container {
             display: flex; /* Alinear elementos horizontalmente */
@@ -306,19 +319,6 @@
           #emoji-button:hover {
               background-color: #d1d1d6; /* Gris un poco más oscuro al pasar el ratón */
           }
-
-        /* Estilos para el indicador de escribiendo */
-        #typing-indicator {
-            font-size: 0.9em; /* Aumentar tamaño */
-            color: #8e8e93; /* Gris tenue */
-            padding: 5px 20px;
-            min-height: 1.2em; /* Reserva espacio */
-            flex-shrink: 0; /* Evitar que se encoja */
-            /* Alineación a la derecha */
-            align-self: flex-end;
-            /* Ajuste de margen para pegarlo a la barra de input */
-            margin-bottom: 5px;
-        }
 
         /* Estilos para el botón de limpiar chat */
         /* Ahora dentro del dropdown */
@@ -655,8 +655,8 @@
             </div>
              <div id="chat-box">
                 </div>
-            <div id="typing-indicator"></div>
             <div class="message-input-area">
+                 <div id="typing-indicator"></div>
                  <div id="emoji-picker">
                      </div>
                  <div id="reply-preview">
