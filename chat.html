@@ -151,9 +151,9 @@
              /* Asegurar que el texto se envuelva correctamente */
              overflow-wrap: break-word;
              word-break: break-word;
-             /* --- Debugging Styles --- */
-             border: 1px solid red; /* Borde temporal para ver el área del elemento */
-             background-color: yellow; /* Fondo temporal para ver el área del elemento */
+             /* --- Debugging Styles for text --- */
+             /* border: 1px solid red; /* Borde temporal para ver el área del elemento */ */
+             /* background-color: yellow; /* Fondo temporal para ver el área del elemento */ */
              /* --- End Debugging Styles --- */
         }
 
@@ -236,8 +236,7 @@
              padding: 10px 20px; /* Padding interno */
         }
 
-
-        /* Estilos para el indicador de escribiendo (ahora dentro del contenedor fijo) */
+        /* --- Debugging Styles for typing indicator --- */
         #typing-indicator {
             font-size: 0.9em; /* Aumentar tamaño */
             color: #8e8e93; /* Gris tenue */
@@ -245,7 +244,10 @@
             min-height: 1.2em; /* Reserva espacio */
             text-align: right; /* Alinear a la derecha */
             margin-bottom: 5px; /* Añadir margen debajo del indicador */
+            /* border: 1px dashed blue; /* Debugging border */ */
+            /* background-color: rgba(0, 0, 255, 0.1); /* Debugging background */ */
         }
+        /* --- End Debugging Styles --- */
 
 
         /* Estilos para el área de entrada de mensajes (ahora dentro del contenedor fijo) */
@@ -561,12 +563,10 @@
 
 
              .message-input-area {
-                 /* flex-direction: column; Eliminado */
-                 /* padding: 10px 15px; Eliminado */
+                 display: flex;
                  gap: 5px;
                  align-items: center; /* Centrar horizontalmente */
-                 /* max-width: 100vw; Eliminado */
-                 /* position: fixed, bottom, left, right ya están definidos arriba */
+                 flex-shrink: 0; /* Evita que el área de entrada se encoja */
              }
 
              .message-input-area .input-buttons {
@@ -741,6 +741,9 @@
         // Variable para almacenar los datos del mensaje al que se está respondiendo
         let replyingToMessage = null;
 
+        // Intersection Observer para detectar cuando los mensajes son visibles
+        let messageObserver;
+
 
         // Obtener elementos del DOM
         const namePrompt = document.getElementById('name-prompt');
@@ -798,6 +801,7 @@
         // --- Función para inicializar la carga y los listeners del chat ---
         function initializeChat() {
              console.log("initializeChat function called.");
+             setupMessageObserver(); // Configurar el Intersection Observer
              loadInitialMessages(); // Cargar mensajes existentes una vez
              setupRealtimeListeners(); // Configurar listeners en tiempo real una vez
              setupTypingIndicator(); // Configurar el indicador de escribiendo
@@ -1068,6 +1072,42 @@
         }
 
 
+        // --- Configurar Intersection Observer ---
+        function setupMessageObserver() {
+            const options = {
+                root: chatBox, // Observar dentro del chatBox
+                rootMargin: '0px',
+                threshold: 0.5 // El mensaje se considera visible si al menos el 50% está en el viewport
+            };
+
+            messageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    // Si el mensaje es visible (intersecting) y es un mensaje recibido por este usuario
+                    if (entry.isIntersecting && entry.target.classList.contains('received')) {
+                        const messageElement = entry.target;
+                        const messageId = messageElement.dataset.messageId;
+                        // Obtener el estado actual del mensaje de la base de datos para evitar escrituras innecesarias
+                        messagesRef.child(messageId).once('value', (snapshot) => {
+                            const messageData = snapshot.val();
+                            // Marcar como leído solo si el estado no es ya 'read'
+                            if (messageData && messageData.status !== 'read') {
+                                console.log(`[${userName}] Message ${messageId} is now visible. Marking as read.`);
+                                messagesRef.child(messageId).update({ status: 'read' })
+                                    .then(() => console.log(`[${userName}] Message ${messageId} marked as read successfully via Observer.`))
+                                    .catch(error => console.error(`[${userName}] Error marking message ${messageId} as read via Observer:`, error));
+                            } else {
+                                console.log(`[${userName}] Message ${messageId} is visible but already read or not found.`);
+                            }
+                        });
+                        // Dejar de observar este mensaje una vez que se marca como leído
+                        observer.unobserve(messageElement);
+                    }
+                });
+            }, options);
+             console.log(`[${userName}] Intersection Observer configured.`);
+        }
+
+
         // Función para mostrar un mensaje en el DOM
         function displayMessage(msg, messageId) {
             console.log(`[${userName}] Displaying message:`, msg, "ID:", messageId); // Debugging log con nombre de usuario
@@ -1083,21 +1123,7 @@
             } else {
                 messageElement.classList.add('received');
                  console.log(`[${userName}] Message ${messageId} is RECEIVED from ${msg.name}.`); // Debugging log con nombre de usuario
-                // !!! LÓGICA PARA MARCAR MENSAJES RECIBIDOS COMO 'read' !!!
-                // Si el mensaje es recibido por este cliente y no es del propio cliente,
-                // y si el estado actual no es ya 'read', marcarlo como 'read' en la base de datos.
-                // También verificamos si initialLoadComplete es true para no marcar como leídos
-                // los mensajes antiguos al cargar.
-                if (initialLoadComplete && msg.status !== 'read') {
-                     console.log(`[${userName}] Marking message ${messageId} as read.`); // Debugging log con nombre de usuario
-                     messagesRef.child(messageId).update({ status: 'read' })
-                         .then(() => console.log(`[${userName}] Message ${messageId} marked as read by receiver successfully.`)) // Debugging log con nombre de usuario
-                         .catch(error => console.error(`[${userName}] Error marking message ${messageId} as read by receiver:`, error)); // Debugging log con nombre de usuario
-                } else if (!initialLoadComplete) {
-                     console.log(`[${userName}] Ignoring marking message ${messageId} as read during initial load.`); // Debugging log con nombre de usuario
-                } else {
-                     console.log(`[${userName}] Message ${messageId} is already read.`); // Debugging log con nombre de usuario
-                }
+                // La lógica para marcar como leído ahora está en el Intersection Observer
             }
 
             // Crear elementos para el nombre y contenido
@@ -1186,6 +1212,7 @@
 
             chatBox.appendChild(messageElement);
             console.log(`[${userName}] messageElement appended to chatBox for message ${messageId}.`); // Log after appending messageElement
+            console.log(`[${userName}] chatBox after appending message ${messageId}:`, chatBox.innerHTML); // Log chatBox content
 
 
             // Después de añadir el messageElement al DOM, podemos obtener los estilos computados del textSpan
@@ -1197,6 +1224,13 @@
                  // Verificar también el estilo computado del messageFooter
                  const computedFooterStyle = window.getComputedStyle(messageFooter);
                  console.log(`[${userName}] messageFooter for message ${messageId} computed style -> Display: ${computedFooterStyle.display}, Visibility: ${computedFooterStyle.visibility}, Opacity: ${computedFooterStyle.opacity}`);
+
+                 // Observar el mensaje si es un mensaje recibido
+                 if (messageElement.classList.contains('received')) {
+                     messageObserver.observe(messageElement);
+                     console.log(`[${userName}] Observing received message ${messageId} with Intersection Observer.`);
+                 }
+
 
             }, 500); // Retraso aumentado a 500ms
 
