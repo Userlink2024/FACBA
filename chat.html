@@ -87,10 +87,13 @@
             display: flex;
             flex-direction: column;
             gap: 12px; /* Más espacio entre mensajes */
-            /* Ajuste clave: Usar height: 0 para que flex-grow funcione correctamente en columna */
-            height: 0;
-             /* Temporal para depuración */
-            /* background-color: yellow; */
+            height: 0; /* Usar height: 0 para que flex-grow funcione correctamente en columna */
+
+            /* Estilos para la imagen de fondo */
+            background-image: url('https://placehold.co/700x1000/cccccc/999999/png?text=Fondo+Moderno'); /* URL de imagen de fondo */
+            background-size: cover; /* Cubrir el área del contenedor */
+            background-position: center; /* Centrar la imagen */
+            background-repeat: no-repeat; /* No repetir la imagen */
         }
 
         /* Estilos para cada mensaje individual */
@@ -102,6 +105,8 @@
             position: relative;
             line-height: 1.5; /* Mejorar espaciado entre líneas */
             font-size: 1.1em; /* Aumentar tamaño de fuente base del mensaje */
+            /* Añadir un fondo semi-transparente para que el texto sea legible sobre la imagen */
+            background-color: rgba(255, 255, 255, 0.9); /* Blanco con 90% de opacidad */
         }
 
         .message .name {
@@ -128,14 +133,14 @@
 
         /* Estilos para mensajes recibidos */
         .message.received {
-            background-color: #e5e5ea; /* Fondo gris claro */
+            background-color: rgba(229, 229, 234, 0.9); /* Gris claro con 90% de opacidad */
             align-self: flex-start;
             border-bottom-left-radius: 5px; /* Esquina inferior izquierda menos redondeada */
         }
 
         /* Estilos para mensajes enviados */
         .message.sent {
-            background-color: #007aff; /* Fondo azul */
+            background-color: rgba(0, 122, 255, 0.9); /* Azul con 90% de opacidad */
             color: white; /* Texto blanco */
             align-self: flex-end;
             border-bottom-right-radius: 5px; /* Esquina inferior derecha menos redondeada */
@@ -363,7 +368,7 @@
                  gap: 5px;
              }
 
-             .message-input-area input {
+             .message-input-area input[type="text"] { /* Especificar input de texto */
                  margin-right: 5px;
              }
 
@@ -703,7 +708,20 @@
                  audioChunks = []; // Limpiar fragmentos anteriores
 
                  // Crear MediaRecorder
-                 mediaRecorder = new MediaRecorder(audioStream);
+                 // Intentar formatos comunes, fallback a lo que el navegador soporte
+                 let options = { mimeType: 'audio/webm' };
+                 if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                     options = { mimeType: 'audio/mp4' };
+                     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                          options = { mimeType: 'audio/ogg' };
+                           if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                               console.warn('No common audio formats supported, trying default.');
+                               options = {}; // Usar formato por defecto del navegador
+                           }
+                     }
+                 }
+                 mediaRecorder = new MediaRecorder(audioStream, options);
+
 
                  // Evento cuando hay datos de audio disponibles
                  mediaRecorder.ondataavailable = (event) => {
@@ -718,7 +736,12 @@
 
                      // Enviar el Blob de audio a Firebase Storage
                      // Usar 'audio' como fileType para que se guarde en la carpeta 'audios'
-                     sendFileMessage(audioBlob, 'audio');
+                     // Generar un nombre de archivo más descriptivo para audio grabado
+                     const audioFileName = `voice_message_${Date.now()}.${audioBlob.type.split('/')[1] || 'webm'}`;
+                     const audioFile = new File([audioBlob], audioFileName, { type: audioBlob.type });
+
+
+                     sendFileMessage(audioFile, 'audio');
 
                      // Detener el stream del micrófono
                      audioStream.getTracks().forEach(track => track.stop());
@@ -776,7 +799,7 @@
 
         // Función para establecer el estado de escritura en Firebase
         function setTypingStatus(isTyping) {
-            if (!userName) return; // No hacer nada si el nombre de usuario no está establecido
+            if (!userName) return; // No hacer nada si el nombre del usuario no está establecido
 
             const userTypingRef = typingRef.child(userName); // Referencia al estado del usuario actual
 
