@@ -225,7 +225,7 @@
                         </label>
                         <label>
                             <input type="radio" name="tipoPago" value="credito" id="radioCredito" class="mr-1" required>
-                            Crédito
+                            Credito
                         </label>
                     </div>
                 </div>
@@ -709,7 +709,7 @@
                      }
 
                      // Determinar el texto a mostrar para el tipo de pago
-                     const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Crédito' : 'Contado';
+                     const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
 
 
                      row.innerHTML = `
@@ -1389,7 +1389,7 @@
             }
 
              if (!tipoPago) {
-                 showStatusMessage("Debe seleccionar un tipo de pago (Contado o Crédito).", true);
+                 showStatusMessage("Debe seleccionar un tipo de pago (Contado o Credito).", true);
                  return;
             }
 
