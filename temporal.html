@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* Estilos personalizados */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6; /* Fondo gris claro */
@@ -101,7 +102,8 @@
         <div class="flex justify-center space-x-4 mb-8">
             <button id="btnInventario" class="btn btn-primary">Ver Inventarios</button>
             <button id="btnFacturacion" class="btn btn-primary">Abrir Módulo Facturación</button>
-            <button id="btnVerFacturas" class="btn btn-primary">Ver Facturas</button> </div>
+            <button id="btnVerFacturas" class="btn btn-primary">Ver Facturas</button>
+        </div>
 
         <div id="moduloInventario" class="module card">
             <h2 class="text-xl font-semibold mb-4">Gestión de Inventario</h2>
@@ -214,7 +216,20 @@
                     <label for="facCliente" class="form-label">Cliente:</label>
                     <input type="text" id="facCliente" class="form-input" required>
                 </div>
-            </form>
+                <div class="md:col-span-2">
+                    <label class="form-label mb-2">Tipo de Pago:</label>
+                    <div class="flex items-center space-x-4">
+                        <label>
+                            <input type="radio" name="tipoPago" value="contado" id="radioContado" class="mr-1" required>
+                            Contado
+                        </label>
+                        <label>
+                            <input type="radio" name="tipoPago" value="credito" id="radioCredito" class="mr-1" required>
+                            Crédito
+                        </label>
+                    </div>
+                </div>
+                </form>
 
             <div class="mb-6 p-4 border rounded-lg bg-gray-50">
                  <h3 class="text-lg font-medium mb-3">Agregar Productos a la Factura</h3>
@@ -279,11 +294,13 @@
 
              <div class="flex justify-end items-center mb-6">
                  <strong class="text-xl mr-2">Valor Total:</strong>
-                 <span id="facValorTotalDisplay" class="text-xl">0</span> <input type="hidden" id="facValorTotal"> </div>
+                 <span id="facValorTotalDisplay" class="text-xl">0</span> <input type="hidden" id="facValorTotal">
+             </div>
 
 
              <div class="flex justify-end">
-                <button type="button" id="btnCrearFactura" class="btn btn-primary">Crear Factura</button> </div>
+                <button type="button" id="btnCrearFactura" class="btn btn-primary">Crear Factura</button>
+             </div>
 
             </div>
 
@@ -302,17 +319,20 @@
                             <tr>
                                 <th class="px-4 py-2 border-b text-left">Fecha</th>
                                 <th class="px-4 py-2 border-b text-left">Cliente</th>
-                                <th class="px-4 py-2 border-b text-left">Productos</th> <th class="px-4 py-2 border-b text-left">Valor Total</th>
-                                <th class="px-4 py-2 border-b text-left">Acciones</th> </tr>
+                                <th class="px-4 py-2 border-b text-left">Tipo Pago</th> <th class="px-4 py-2 border-b text-left">Productos</th>
+                                <th class="px-4 py-2 border-b text-left">Valor Total</th>
+                                <th class="px-4 py-2 border-b text-left">Acciones</th>
+                            </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="5" class="text-center py-4">Cargando facturas...</td> </tr>
+                                <td colspan="6" class="text-center py-4">Cargando facturas...</td> </tr>
                         </tbody>
                     </table>
                 </div>
                  <div class="mt-4 flex justify-end space-x-2">
-                    <button id="btnExportarFacturas" class="btn btn-primary">Exportar Facturas</button> </div>
+                    <button id="btnExportarFacturas" class="btn btn-primary">Exportar Facturas</button>
+                 </div>
             </div>
         </div>
 
@@ -388,6 +408,10 @@
         const formFacturacion = document.getElementById('formFacturacion');
         const facFechaHora = document.getElementById('facFechaHora');
         const facCliente = document.getElementById('facCliente');
+        // Nuevas referencias para Tipo de Pago
+        const radioContado = document.getElementById('radioContado');
+        const radioCredito = document.getElementById('radioCredito');
+        // Fin Nuevas referencias
         const facProducto = document.getElementById('facProducto');
         const btnBuscarProducto = document.getElementById('btnBuscarProducto');
         const detalleProductoFactura = document.getElementById('detalleProductoFactura');
@@ -432,6 +456,8 @@
         console.log('DEBUG: btnAgregarProductoFactura al obtener referencia:', btnAgregarProductoFactura);
         console.log('DEBUG: tablaProductosFactura al obtener referencia:', tablaProductosFactura);
         console.log('DEBUG: btnCrearFactura al obtener referencia:', btnCrearFactura);
+        console.log('DEBUG: radioContado al obtener referencia:', radioContado); // DEBUG
+        console.log('DEBUG: radioCredito al obtener referencia:', radioCredito); // DEBUG
 
 
         // --- Variables de estado ---
@@ -544,6 +570,10 @@
              // Resetear campos de factura
              facFechaHora.value = '';
              facCliente.value = '';
+             // Resetear radios de tipo de pago
+             radioContado.checked = false;
+             radioCredito.checked = false;
+
              facValorTotalDisplay.textContent = '0';
              facValorTotal.value = 0;
 
@@ -649,13 +679,13 @@
 
         // Función para cargar facturas desde Firebase en tiempo real
         function cargarFacturas() {
-             tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
+             tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
 
              onSnapshot(facturasCol, (snapshot) => {
                  tablaFacturas.innerHTML = ''; // Limpiar tabla
 
                  if (snapshot.empty) {
-                     tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
+                     tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
                      return;
                  }
 
@@ -678,12 +708,16 @@
                          productosFacturadosDisplay = 'Sin productos';
                      }
 
+                     // Determinar el texto a mostrar para el tipo de pago
+                     const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Crédito' : 'Contado';
+
 
                      row.innerHTML = `
                          <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
                          <td class="px-4 py-2 border-b">${factura.cliente}</td>
-                         <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
-                         <td class="px-4 py-2 border-b">${parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td> <td class="px-4 py-2 border-b">
+                         <td class="px-4 py-2 border-b">${tipoPagoDisplay}</td> <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
+                         <td class="px-4 py-2 border-b">${parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                         <td class="px-4 py-2 border-b">
                              <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>
                          </td>
                      `;
@@ -692,7 +726,7 @@
                  filtrarFacturas(); // Aplicar el filtro inicial después de cargar
              }, (error) => {
                  console.error("Error cargando facturas:", error);
-                 tablaFacturas.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
+                 tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
                  showStatusMessage("Error al cargar facturas.", true);
              });
         }
@@ -704,14 +738,15 @@
 
             rows.forEach(row => {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
-                if (row.querySelector('td[colspan="5"]')) { // Ajustar colspan
+                if (row.style.display === 'none' || row.querySelector('td[colspan="6"]')) { // Ajustar colspan y añadir check de display
                     return;
                 }
 
                 const cliente = row.cells[1].textContent.toLowerCase(); // Columna Cliente
-                const productos = row.cells[2].textContent.toLowerCase();      // Columna Productos (ahora contiene la lista)
+                const tipoPago = row.cells[2].textContent.toLowerCase(); // Columna Tipo Pago
+                const productos = row.cells[3].textContent.toLowerCase();      // Columna Productos (ahora contiene la lista)
 
-                if (cliente.includes(searchTerm) || productos.includes(searchTerm)) {
+                if (cliente.includes(searchTerm) || tipoPago.includes(searchTerm) || productos.includes(searchTerm)) {
                     row.style.display = ''; // Mostrar fila si coincide
                 } else {
                     row.style.display = 'none'; // Ocultar fila si no coincide
@@ -730,7 +765,7 @@
                     await deleteDoc(doc(db, "facturas", idFactura));
                     showStatusMessage("Factura eliminada con éxito.");
                 } catch (error) {
-                    console.error("Error al eliminar factura:", error);
+                    console.error("Error al eliminar documento:", error);
                     showStatusMessage("Error al eliminar la factura.", true);
                 }
             }
@@ -746,7 +781,7 @@
             let csvContent = "data:text/csv;charset=utf-8,";
 
             // Encabezados del CSV
-            const headers = ["Fecha", "Cliente", "Productos", "Valor Total"]; // Ajustar encabezados
+            const headers = ["Fecha", "Cliente", "Tipo Pago", "Productos", "Valor Total"]; // Ajustar encabezados
             csvContent += headers.join(";") + "\r\n"; // Usar ; como separador
 
             // Datos de la tabla (solo filas visibles después del filtro)
@@ -754,7 +789,7 @@
 
             rows.forEach(function(row) {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
-                if (row.style.display === 'none' || row.querySelector('td[colspan="5"]')) { // Ajustar colspan y añadir check de display
+                if (row.style.display === 'none' || row.querySelector('td[colspan="6"]')) { // Ajustar colspan y añadir check de display
                     return;
                 }
 
@@ -1151,10 +1186,10 @@
                 id: productoId,
                 referenciaColor: nombreProducto, // Usar la cadena Referencia - Color
                 unidadMedida: unidadMedida,
-                cantidadFacturada: cantidadADescontar,
-                metrosFacturados: metrosADescontar,
-                centimetrosFacturados: centimetrosADescontar,
-                unidadesFacturadas: unidadesADescontar,
+                cantidadFacturada: cantidadADescontar, // Cantidad total (ej: 1.50 para metros, 5 para unidades)
+                metrosFacturados: metrosADescontar, // Solo para metros
+                centimetrosFacturados: centimetrosADescontar, // Solo para metros
+                unidadesFacturadas: unidadesADescontar, // Solo para unidades
                 valorUnitario: valorUnitario,
                 subtotal: subtotal // Subtotal calculado
             });
@@ -1191,7 +1226,7 @@
                           showStatusMessage("Error al calcular nueva cantidad de inventario.", true);
                      }
                  } else {
-                     console.warn(`DEBUG: Producto con ID ${productoId} no encontrado en inventario para actualizar.`);
+                     console.warn(`DEBUG: Producto con ID ${productoId} no encontrado en inventario al descontar.`);
                      showStatusMessage("Error: Producto no encontrado en inventario.", true);
                  }
             } catch (error) {
@@ -1341,6 +1376,7 @@
         async function crearFactura() {
             const cliente = facCliente.value.trim();
             const fechaHora = facFechaHora.value.trim();
+            const tipoPago = document.querySelector('input[name="tipoPago"]:checked')?.value; // Obtener el tipo de pago seleccionado
 
             if (!fechaHora) {
                  showStatusMessage("La fecha es obligatoria.", true);
@@ -1352,6 +1388,12 @@
                  return;
             }
 
+             if (!tipoPago) {
+                 showStatusMessage("Debe seleccionar un tipo de pago (Contado o Crédito).", true);
+                 return;
+            }
+
+
             if (productosEnFactura.length === 0) {
                  showStatusMessage("Debe agregar al menos un producto a la factura.", true);
                  return;
@@ -1362,8 +1404,10 @@
             const nuevaFactura = {
                 fechaHora: fechaHora,
                 cliente: cliente,
+                tipoPago: tipoPago, // Añadir el tipo de pago a los datos de la factura
                 productos: productosEnFactura, // Guardar el array de productos
-                valorTotal: valorTotal
+                valorTotal: valorTotal,
+                createdAt: new Date() // Opcional: añadir timestamp de creación
             };
 
             try {
@@ -1437,6 +1481,12 @@
              mostrarModulo(moduloInventario);
              handleUnidadMedida();
              handleCamposDescuento('');
+
+             // Establecer la fecha actual en los campos de fecha al cargar
+             const today = new Date().toISOString().split('T')[0];
+             if(invFechaHora) invFechaHora.value = today;
+             if(facFechaHora) facFechaHora.value = today;
+
 
              console.log('DEBUG: Inicialización completada.');
         });
