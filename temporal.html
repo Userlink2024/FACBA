@@ -304,14 +304,13 @@
                          <div id="detalleProductoFactura" class="mt-3 p-3 border rounded hidden bg-white">
                              <p><strong>Producto Seleccionado:</strong> <span id="prodNombreFac"></span></p>
                              <p><strong>Cantidad Disponible:</strong> <span id="prodCantidadFac"></span></p>
-                             <input type="hidden" id="facProductId">
+                             <p><strong>Proveedor:</strong> <span id="prodProveedorFac"></span></p> <input type="hidden" id="facProductId">
                              <input type="hidden" id="facProductUnit">
                              <input type="hidden" id="facProductMetros">
                              <input type="hidden" id="facProductCentimetros">
                              <input type="hidden" id="facProductUnidades">
                              <input type="hidden" id="facProductValorUnitario">
-
-                             <div id="camposDescuentoMetros" class="grid grid-cols-2 gap-4 mt-2 hidden">
+                             <input type="hidden" id="facProductProveedor"> <div id="camposDescuentoMetros" class="grid grid-cols-2 gap-4 mt-2 hidden">
                                  <div>
                                      <label for="descMetros" class="form-label">Metros a Descontar:</label>
                                      <input type="number" id="descMetros" class="form-input" min="0" value="0">
@@ -339,8 +338,7 @@
                      <table id="tablaProductosFactura" class="min-w-full bg-white border border-gray-200 rounded-lg">
                          <thead>
                              <tr>
-                                 <th class="px-4 py-2 border-b text-left">Referencia - Color</th>
-                                 <th class="px-4 py-2 border-b text-left">Cantidad</th>
+                                 <th class="px-4 py-2 border-b text-left">Referencia - Color (Proveedor)</th> <th class="px-4 py-2 border-b text-left">Cantidad</th>
                                  <th class="px-4 py-2 border-b text-left">Valor Unitario</th>
                                  <th class="px-4 py-2 border-b text-left">Subtotal</th>
                                  <th class="px-4 py-2 border-b text-left">Acciones</th>
@@ -531,6 +529,7 @@
         const detalleProductoFactura = document.getElementById('detalleProductoFactura');
         const prodNombreFac = document.getElementById('prodNombreFac');
         const prodCantidadFac = document.getElementById('prodCantidadFac');
+        const prodProveedorFac = document.getElementById('prodProveedorFac'); // Nueva referencia para mostrar proveedor
         const camposDescuentoMetros = document.getElementById('camposDescuentoMetros');
         const camposDescuentoUnidades = document.getElementById('camposDescuentoUnidades');
         const descMetros = document.getElementById('descMetros');
@@ -544,6 +543,7 @@
         const facProductCentimetros = document.getElementById('facProductCentimetros');
         const facProductUnidades = document.getElementById('facProductUnidades');
         const facProductValorUnitario = document.getElementById('facProductValorUnitario'); // Valor unitario del producto seleccionado
+        const facProductProveedor = document.getElementById('facProductProveedor'); // Nuevo campo oculto para Proveedor
         const btnAgregarProductoFactura = document.getElementById('btnAgregarProductoFactura'); // Botón para agregar producto a la lista
         const tablaProductosFactura = document.getElementById('tablaProductosFactura').querySelector('tbody'); // Tabla de productos en la factura
         const btnCrearFactura = document.getElementById('btnCrearFactura'); // Botón para crear la factura final
@@ -606,6 +606,8 @@
         console.log('DEBUG: totalFacturadoDisplay al obtener referencia:', totalFacturadoDisplay); // DEBUG
         console.log('DEBUG: creditoPendienteDisplay al obtener referencia:', creditoPendienteDisplay); // DEBUG
         console.log('DEBUG: totalAbonadoDisplay al obtener referencia:', totalAbonadoDisplay); // DEBUG
+        console.log('DEBUG: prodProveedorFac al obtener referencia:', prodProveedorFac); // DEBUG
+        console.log('DEBUG: facProductProveedor al obtener referencia:', facProductProveedor); // DEBUG
 
 
         // --- Variables de estado ---
@@ -736,6 +738,11 @@
              facProductCentimetros.value = '';
              facProductUnidades.value = '';
              facProductValorUnitario.value = '';
+             facProductProveedor.value = ''; // Resetear campo oculto de proveedor
+             prodNombreFac.textContent = ''; // Limpiar display de nombre
+             prodCantidadFac.textContent = ''; // Limpiar display de cantidad
+             prodProveedorFac.textContent = ''; // Limpiar display de proveedor
+
              handleCamposDescuento('');
 
              // Limpiar lista de productos en factura
@@ -827,8 +834,9 @@
 
                 const referencia = row.cells[1].textContent.toLowerCase(); // Columna Referencia
                 const color = row.cells[2].textContent.toLowerCase();      // Columna Color
+                const proveedor = row.cells[5].textContent.toLowerCase(); // Columna Proveedor
 
-                if (referencia.includes(searchTerm) || color.includes(searchTerm)) {
+                if (referencia.includes(searchTerm) || color.includes(searchTerm) || proveedor.includes(searchTerm)) {
                     row.style.display = ''; // Mostrar fila si coincide
                 } else {
                     row.style.display = 'none'; // Ocultar fila si no coincide
@@ -888,7 +896,9 @@
                              } else if (p.unidadMedida === 'unidades') {
                                  cantidad = `${p.unidadesFacturadas || 0} und`;
                              }
-                             return `${p.referenciaColor} (${cantidad})`; // Usar referenciaColor guardada
+                             // Incluir proveedor en la visualización de productos
+                             const proveedorDisplay = p.proveedor ? ` [${p.proveedor}]` : '';
+                             return `${p.referenciaColor} (${cantidad})${proveedorDisplay}`;
                          }).join(', '); // Unir productos con coma y espacio
                      } else {
                          productosFacturadosDisplay = 'Sin productos';
@@ -973,8 +983,9 @@
                 const cliente = row.cells[2].textContent.toLowerCase(); // Columna Cliente (índice ajustado)
                 const tipoPago = row.cells[3].textContent.toLowerCase(); // Columna Tipo Pago (índice ajustado)
                 const productos = row.cells[4].textContent.toLowerCase();      // Columna Productos (índice ajustado)
+                 const saldoPendiente = row.cells[6].textContent.toLowerCase(); // Columna Saldo Pendiente
 
-                if (codigoRegistro.includes(searchTerm) || cliente.includes(searchTerm) || tipoPago.includes(searchTerm) || productos.includes(searchTerm)) {
+                if (codigoRegistro.includes(searchTerm) || cliente.includes(searchTerm) || tipoPago.includes(searchTerm) || productos.includes(searchTerm) || saldoPendiente.includes(searchTerm)) {
                     row.style.display = ''; // Mostrar fila si coincide
                 } else {
                     row.style.display = 'none'; // Ocultar fila si no coincide
@@ -1260,23 +1271,27 @@
              try {
                  const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
                  const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
+                 const qProveedor = query(inventarioCol, where("proveedor", ">=", searchTerm), where("proveedor", "<=", searchTerm + '\uf8ff')); // Buscar por proveedor también
 
                  console.log('DEBUG: Ejecutando consultas a Firestore...');
                  console.log('DEBUG: Consulta Referencia:', qRef);
                  console.log('DEBUG: Consulta Color:', qColor);
+                 console.log('DEBUG: Consulta Proveedor:', qProveedor);
 
 
-                 const [snapshotRef, snapshotColor] = await Promise.all([getDocs(qRef), getDocs(qColor)]);
+                 const [snapshotRef, snapshotColor, snapshotProveedor] = await Promise.all([getDocs(qRef), getDocs(qColor), getDocs(qProveedor)]); // Ejecutar las 3 consultas
 
-                 console.log('DEBUG: Consultas ejecutadas. snapshotRef:', snapshotRef.docs.length, 'resultados. snapshotColor:', snapshotColor.docs.length, 'resultados.');
+                 console.log('DEBUG: Consultas ejecutadas. snapshotRef:', snapshotRef.docs.length, 'resultados. snapshotColor:', snapshotColor.docs.length, 'resultados. snapshotProveedor:', snapshotProveedor.docs.length, 'resultados.');
                  console.log('DEBUG: Documentos de snapshotRef:', snapshotRef.docs.map(doc => doc.data()));
                  console.log('DEBUG: Documentos de snapshotColor:', snapshotColor.docs.map(doc => doc.data()));
+                 console.log('DEBUG: Documentos de snapshotProveedor:', snapshotProveedor.docs.map(doc => doc.data()));
 
 
                  const resultados = new Map();
 
                  snapshotRef.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
                  snapshotColor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
+                 snapshotProveedor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() })); // Añadir resultados de proveedor
 
                  console.log('DEBUG: Total de resultados únicos encontrados:', resultados.size);
                  console.log('DEBUG: Resultados combinados:', Array.from(resultados.values()));
@@ -1301,7 +1316,9 @@
                          cantidadDisplay = `${producto.unidades || 0} Unidades`;
                      }
 
-                     resultadoDiv.textContent = `${producto.referencia} - ${producto.color} (${cantidadDisplay})`;
+                     const proveedorDisplay = producto.proveedor ? ` [${producto.proveedor}]` : ''; // Mostrar proveedor si existe
+
+                     resultadoDiv.textContent = `${producto.referencia} - ${producto.color} (${cantidadDisplay})${proveedorDisplay}`; // Incluir proveedor en el texto
                      resultadoDiv.onclick = () => seleccionarProductoParaFactura(producto);
                      resultadosBusqueda.appendChild(resultadoDiv);
                  });
@@ -1325,9 +1342,11 @@
             facProductCentimetros.value = producto.centimetros || 0;
             facProductUnidades.value = producto.unidades || 0;
             facProductValorUnitario.value = producto.valor; // Guardar valor unitario
+            facProductProveedor.value = producto.proveedor || ''; // Guardar proveedor en campo oculto
 
             detalleProductoFactura.classList.remove('hidden');
             prodNombreFac.textContent = `${producto.referencia} - ${producto.color}`;
+            prodProveedorFac.textContent = producto.proveedor || 'N/A'; // Mostrar proveedor
 
             let cantidadDisplay = '';
             if (producto.unidadMedida === 'metros') {
@@ -1361,6 +1380,8 @@
             const unidadMedida = facProductUnit.value;
             const valorUnitario = parseFloat(facProductValorUnitario.value);
             const nombreProducto = prodNombreFac.textContent;
+            const proveedorProducto = facProductProveedor.value; // Obtener proveedor del campo oculto
+
 
             if (!productoId || !unidadMedida || isNaN(valorUnitario)) {
                  showStatusMessage("Por favor, selecciona un producto válido del inventario.", true);
@@ -1421,7 +1442,8 @@
                 centimetrosFacturados: centimetrosADescontar, // Solo para metros
                 unidadesFacturadas: unidadesADescontar, // Solo para unidades
                 valorUnitario: valorUnitario,
-                subtotal: subtotal // Subtotal calculado
+                subtotal: subtotal, // Subtotal calculado
+                proveedor: proveedorProducto // Incluir proveedor
             });
 
             // --- Actualizar inventario en Firebase (Descontar) ---
@@ -1480,6 +1502,11 @@
             facProductCentimetros.value = '';
             facProductUnidades.value = '';
             facProductValorUnitario.value = '';
+            facProductProveedor.value = ''; // Limpiar campo oculto de proveedor
+            prodNombreFac.textContent = ''; // Limpiar display de nombre
+            prodCantidadFac.textContent = ''; // Limpiar display de cantidad
+            prodProveedorFac.textContent = ''; // Limpiar display de proveedor
+
             handleCamposDescuento('');
 
         }
@@ -1503,8 +1530,11 @@
                      cantidadDisplay = `${producto.unidadesFacturadas} und`;
                  }
 
+                 // Mostrar Referencia - Color (Proveedor)
+                 const nombreProveedorDisplay = producto.proveedor ? ` (${producto.proveedor})` : '';
+
                  row.innerHTML = `
-                     <td class="px-4 py-2 border-b">${producto.referenciaColor}</td>
+                     <td class="px-4 py-2 border-b">${producto.referenciaColor}${nombreProveedorDisplay}</td>
                      <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
                      <td class="px-4 py-2 border-b">${parseFloat(producto.valorUnitario).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                      <td class="px-4 py-2 border-b">${parseFloat(producto.subtotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
@@ -1643,7 +1673,7 @@
                 fechaHora: fechaHora,
                 cliente: cliente,
                 tipoPago: tipoPago, // Añadir el tipo de pago a los datos de la factura
-                productos: productosEnFactura, // Guardar el array de productos
+                productos: productosEnFactura, // Guardar el array de productos (ahora incluye proveedor)
                 valorTotal: valorTotal,
                  saldoPendiente: valorTotal, // Inicializar saldo pendiente con el valor total (se ajusta al mostrar si es contado)
                 abonos: [], // Inicializar array de abonos
