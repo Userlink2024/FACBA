@@ -132,6 +132,29 @@
              font-size: 0.9em;
              color: #6b7280; /* Gray text for date */
          }
+         .summary-box {
+             background-color: #e0f2f7; /* Light blue */
+             padding: 15px;
+             border-radius: 8px;
+             margin-bottom: 20px;
+             display: flex;
+             justify-content: space-around;
+             flex-wrap: wrap; /* Allow wrapping on small screens */
+         }
+         .summary-item {
+             text-align: center;
+             margin: 5px 15px;
+         }
+         .summary-item strong {
+             display: block; /* Stack label and value */
+             font-size: 1.1em;
+             margin-bottom: 4px;
+         }
+         .summary-value {
+             font-size: 1.3em;
+             font-weight: 700;
+             color: #0284c7; /* Deeper blue */
+         }
     </style>
 </head>
 <body class="p-4">
@@ -347,6 +370,16 @@
         <div id="moduloVerFacturas" class="module card">
             <h2 class="text-xl font-semibold mb-4">Facturas Emitidas</h2>
 
+            <div class="summary-box">
+                <div class="summary-item">
+                    <strong>Total Facturado:</strong>
+                    <span id="totalFacturadoDisplay" class="summary-value">0</span>
+                </div>
+                <div class="summary-item">
+                    <strong>Crédito Pendiente:</strong>
+                    <span id="creditoPendienteDisplay" class="summary-value">0</span>
+                </div>
+            </div>
             <div>
                 <h3 class="text-lg font-medium mb-3">Lista de Facturas</h3>
                 <div class="mb-4">
@@ -534,6 +567,10 @@
         const cerrarHistorialAbonos = document.getElementById('cerrarHistorialAbonos');
         const historialAbonosContent = document.getElementById('historialAbonosContent');
 
+        // Referencias para los nuevos elementos de resumen
+        const totalFacturadoDisplay = document.getElementById('totalFacturadoDisplay');
+        const creditoPendienteDisplay = document.getElementById('creditoPendienteDisplay');
+
 
         console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
         console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
@@ -561,6 +598,8 @@
         console.log('DEBUG: modalHistorialAbonos al obtener referencia:', modalHistorialAbonos); // DEBUG
         console.log('DEBUG: cerrarHistorialAbonos al obtener referencia:', cerrarHistorialAbonos); // DEBUG
         console.log('DEBUG: historialAbonosContent al obtener referencia:', historialAbonosContent); // DEBUG
+        console.log('DEBUG: totalFacturadoDisplay al obtener referencia:', totalFacturadoDisplay); // DEBUG
+        console.log('DEBUG: creditoPendienteDisplay al obtener referencia:', creditoPendienteDisplay); // DEBUG
 
 
         // --- Variables de estado ---
@@ -604,7 +643,7 @@
                 } else if (moduloAMostrar === moduloVerFacturas) {
                      console.log('DEBUG: Mostrando Módulo Ver Facturas.');
                      resetBusquedaFacturas();
-                     cargarFacturas();
+                     cargarFacturas(); // Cargar facturas y calcular totales al mostrar este módulo
                 }
              } catch (error) {
                  console.error("Error en mostrarModulo:", error);
@@ -796,11 +835,20 @@
         function cargarFacturas() {
              tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
 
+             let totalFacturado = 0;
+             let totalCreditoPendiente = 0;
+
              onSnapshot(facturasCol, (snapshot) => {
                  tablaFacturas.innerHTML = ''; // Limpiar tabla
 
+                 totalFacturado = 0; // Resetear totales antes de procesar el nuevo snapshot
+                 totalCreditoPendiente = 0;
+
                  if (snapshot.empty) {
                      tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
+                      // Actualizar los displays de totales a 0 si no hay facturas
+                     totalFacturadoDisplay.textContent = '0';
+                     creditoPendienteDisplay.textContent = '0';
                      return;
                  }
 
@@ -810,6 +858,9 @@
                      row.dataset.id = doc.id; // Guardar ID de la factura
                      // Guardar abonos en el dataset como string JSON
                      row.dataset.abonos = JSON.stringify(factura.abonos || []);
+
+                     // Sumar al total facturado
+                     totalFacturado += parseFloat(factura.valorTotal) || 0;
 
 
                      let productosFacturadosDisplay = '';
@@ -830,21 +881,25 @@
                      // Determinar el texto a mostrar para el tipo de pago
                      const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
 
-                     // --- Corrección aquí: Mostrar 0 saldo pendiente si es Contado o si saldoPendiente es 0 ---
-                     const saldoPendienteDisplay = factura.tipoPago === 'contado'
-                         ? '0'
-                         : (factura.saldoPendiente !== undefined && factura.saldoPendiente !== null
-                             ? parseFloat(factura.saldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                             : parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
-                     // --- Fin Corrección ---
+                     // Calcular y mostrar el saldo pendiente
+                     const saldoPendiente = factura.saldoPendiente !== undefined && factura.saldoPendiente !== null
+                         ? parseFloat(factura.saldoPendiente)
+                         : parseFloat(factura.valorTotal); // Usar valorTotal si saldoPendiente no existe
+
+                     const saldoPendienteDisplay = parseFloat(saldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+                     // Sumar al total de crédito pendiente solo si es factura de crédito
+                     if (factura.tipoPago === 'credito') {
+                         totalCreditoPendiente += saldoPendiente;
+                     }
 
 
                      // Botones de acción
                      let accionesHtml = `<button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>`;
 
                      // Añadir botón Abonar para facturas de crédito con saldo pendiente > 0
-                     if (factura.tipoPago === 'credito' && (factura.saldoPendiente > 0 || typeof factura.saldoPendiente === 'undefined')) {
-                         accionesHtml = `<button class="btn btn-success btn-sm mr-2 btn-abonar" data-id="${doc.id}" data-saldo="${factura.saldoPendiente !== undefined ? factura.saldoPendiente : factura.valorTotal}" data-cliente="${factura.cliente}" data-valortotal="${factura.valorTotal}">Abonar</button>` + accionesHtml;
+                     if (factura.tipoPago === 'credito' && saldoPendiente > 0) {
+                         accionesHtml = `<button class="btn btn-success btn-sm mr-2 btn-abonar" data-id="${doc.id}" data-saldo="${saldoPendiente}" data-cliente="${factura.cliente}" data-valortotal="${factura.valorTotal}">Abonar</button>` + accionesHtml;
                      }
 
                       // Añadir botón Ver Abonos si hay abonos registrados
@@ -865,11 +920,19 @@
                      `;
                  });
 
+                 // Actualizar los displays de totales después de procesar todas las facturas
+                 totalFacturadoDisplay.textContent = parseFloat(totalFacturado).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                 creditoPendienteDisplay.textContent = parseFloat(totalCreditoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+
                  filtrarFacturas(); // Aplicar el filtro inicial después de cargar
              }, (error) => {
                  console.error("Error cargando facturas:", error);
                  tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
                  showStatusMessage("Error al cargar facturas.", true);
+                  // Asegurarse de mostrar 0 en los totales en caso de error de carga
+                 totalFacturadoDisplay.textContent = '0';
+                 creditoPendienteDisplay.textContent = '0';
              });
         }
 
@@ -1628,6 +1691,15 @@
             try {
                 const facturaRef = doc(db, "facturas", facturaId);
 
+                // Obtener la factura actual para actualizar el array de abonos localmente
+                const facturaSnap = await getDoc(facturaRef);
+                let abonosActuales = [];
+                if (facturaSnap.exists()) {
+                    abonosActuales = facturaSnap.data().abonos || [];
+                }
+                 const nuevosAbonos = [...abonosActuales, abonoData];
+
+
                 // Actualizar el documento de la factura: añadir el abono al array 'abonos' y actualizar 'saldoPendiente'
                 await updateDoc(facturaRef, {
                     abonos: arrayUnion(abonoData), // Añadir el abono al array existente
@@ -1659,14 +1731,21 @@
                           const verAbonosButton = facturaRow.querySelector('.btn-ver-abonos');
                            if(verAbonosButton) {
                                verAbonosButton.dataset.saldo = nuevoSaldoPendiente;
+                               // Actualizar el contador de abonos en el botón "Ver Abonos"
+                               verAbonosButton.textContent = `Ver Abonos (${nuevosAbonos.length})`;
+                               // Actualizar el dataset de abonos en la fila para el modal de historial
+                               facturaRow.dataset.abonos = JSON.stringify(nuevosAbonos);
+                           } else {
+                                // Si no existía el botón "Ver Abonos", crearlo
+                                const accionesCell = facturaRow.cells[7]; // Columna de acciones
+                                const verAbonosBtn = document.createElement('button');
+                                verAbonosBtn.classList.add('btn', 'btn-info', 'btn-sm', 'mr-2', 'btn-ver-abonos');
+                                verAbonosBtn.dataset.id = facturaId;
+                                verAbonosBtn.dataset.saldo = nuevoSaldoPendiente;
+                                verAbonosBtn.textContent = `Ver Abonos (${nuevosAbonos.length})`;
+                                facturaRow.dataset.abonos = JSON.stringify(nuevosAbonos);
+                                accionesCell.insertBefore(verAbonosBtn, accionesCell.firstChild); // Insertar al principio
                            }
-                           // Actualizar el data-abonos en la fila para el modal de historial
-                           // Necesitamos obtener los abonos actualizados. El onSnapshot lo hará,
-                           // pero para una actualización inmediata del modal historial, podríamos
-                           // necesitar re-fetch o actualizar el dataset aquí.
-                           // Por ahora, confiamos en el onSnapshot para la tabla principal y el modal historial.
-                           // Si el modal historial estuviera abierto, necesitaría re-renderizarse.
-                           // Para simplificar, asumimos que el modal historial no está abierto al abonar.
                      } else {
                           console.warn(`DEBUG: No se encontró la celda de Saldo Pendiente en la fila de la factura ${facturaId}.`);
                      }
