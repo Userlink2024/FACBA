@@ -123,6 +123,10 @@
          .abono-item:last-child {
              border-bottom: none;
          }
+         /* Asegurar que las celdas de la fila de abonos no tengan borde inferior */
+         .abonos-row td {
+             border-bottom: none !important;
+         }
     </style>
 </head>
 <body class="p-4">
@@ -342,13 +346,13 @@
                 <h3 class="text-lg font-medium mb-3">Lista de Facturas</h3>
                 <div class="mb-4">
                     <label for="inputBuscarFacturas" class="form-label">Buscar Factura:</label>
-                    <input type="text" id="inputBuscarFacturas" class="form-input" placeholder="Buscar por Cliente o Producto...">
+                    <input type="text" id="inputBuscarFacturas" class="form-input" placeholder="Buscar por Código, Cliente o Producto...">
                 </div>
                 <div class="overflow-x-auto">
                     <table id="tablaFacturas" class="min-w-full bg-white border border-gray-200 rounded-lg">
                         <thead>
                             <tr>
-                                <th class="px-4 py-2 border-b text-left">Fecha</th>
+                                <th class="px-4 py-2 border-b text-left">Código Registro</th> <th class="px-4 py-2 border-b text-left">Fecha</th>
                                 <th class="px-4 py-2 border-b text-left">Cliente</th>
                                 <th class="px-4 py-2 border-b text-left">Tipo Pago</th>
                                 <th class="px-4 py-2 border-b text-left">Productos</th>
@@ -359,8 +363,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="7" class="text-center py-4">Cargando facturas...</td>
-                            </tr>
+                                <td colspan="8" class="text-center py-4">Cargando facturas...</td> </tr>
                         </tbody>
                     </table>
                 </div>
@@ -766,13 +769,13 @@
 
         // Función para cargar facturas desde Firebase en tiempo real
         function cargarFacturas() {
-             tablaFacturas.innerHTML = '<tr><td colspan="7" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
+             tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
 
              onSnapshot(facturasCol, (snapshot) => {
                  tablaFacturas.innerHTML = ''; // Limpiar tabla
 
                  if (snapshot.empty) {
-                     tablaFacturas.innerHTML = '<tr><td colspan="7" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
+                     tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
                      return;
                  }
 
@@ -780,7 +783,9 @@
                      const factura = doc.data();
                      const row = tablaFacturas.insertRow();
                      row.dataset.id = doc.id; // Guardar ID de la factura
-                     row.dataset.abonos = JSON.stringify(factura.abonos || []); // Guardar abonos en el dataset
+                     // Guardar abonos en el dataset como string JSON
+                     row.dataset.abonos = JSON.stringify(factura.abonos || []);
+
 
                      let productosFacturadosDisplay = '';
                      if (factura.productos && factura.productos.length > 0) {
@@ -800,8 +805,11 @@
                      // Determinar el texto a mostrar para el tipo de pago
                      const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
 
-                     // Formatear el saldo pendiente
-                     const saldoPendienteDisplay = parseFloat(factura.saldoPendiente || factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                     // Mostrar 0 saldo pendiente si es Contado
+                     const saldoPendienteDisplay = factura.tipoPago === 'contado'
+                         ? '0'
+                         : parseFloat(factura.saldoPendiente || factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
 
                      // Botones de acción
                      let accionesHtml = `<button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>`;
@@ -818,7 +826,7 @@
 
 
                      row.innerHTML = `
-                         <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
+                         <td class="px-4 py-2 border-b">${factura.codigoRegistro || 'N/A'}</td> <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
                          <td class="px-4 py-2 border-b">${factura.cliente}</td>
                          <td class="px-4 py-2 border-b">${tipoPagoDisplay}</td>
                          <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
@@ -831,7 +839,7 @@
                  filtrarFacturas(); // Aplicar el filtro inicial después de cargar
              }, (error) => {
                  console.error("Error cargando facturas:", error);
-                 tablaFacturas.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
+                 tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
                  showStatusMessage("Error al cargar facturas.", true);
              });
         }
@@ -839,21 +847,22 @@
          // Función para filtrar la tabla de facturas
         function filtrarFacturas() {
             const searchTerm = inputBuscarFacturas.value.toLowerCase().trim();
-            const rows = tablaFacturas.querySelectorAll("tr");
+            const rows = tablaFacturas.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
 
             rows.forEach(row => {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
                 // También saltar las filas de detalle de abonos
-                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="7"]')) {
+                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="8"]')) { // Ajustar colspan
                     row.style.display = 'none'; // Asegurarse de ocultar las filas de abono también
                     return;
                 }
 
-                const cliente = row.cells[1].textContent.toLowerCase(); // Columna Cliente
-                const tipoPago = row.cells[2].textContent.toLowerCase(); // Columna Tipo Pago
-                const productos = row.cells[3].textContent.toLowerCase();      // Columna Productos (ahora contiene la lista)
+                const codigoRegistro = row.cells[0].textContent.toLowerCase(); // Nueva columna Código Registro
+                const cliente = row.cells[2].textContent.toLowerCase(); // Columna Cliente (índice ajustado)
+                const tipoPago = row.cells[3].textContent.toLowerCase(); // Columna Tipo Pago (índice ajustado)
+                const productos = row.cells[4].textContent.toLowerCase();      // Columna Productos (índice ajustado)
 
-                if (cliente.includes(searchTerm) || tipoPago.includes(searchTerm) || productos.includes(searchTerm)) {
+                if (codigoRegistro.includes(searchTerm) || cliente.includes(searchTerm) || tipoPago.includes(searchTerm) || productos.includes(searchTerm)) {
                     row.style.display = ''; // Mostrar fila si coincide
                 } else {
                     row.style.display = 'none'; // Ocultar fila si no coincide
@@ -892,24 +901,24 @@
             console.log('DEBUG: Iniciando exportación de facturas a Excel.');
             let csvContent = "data:text/csv;charset=utf-8,";
 
-            // Encabezados del CSV (Añadir Saldo Pendiente)
-            const headers = ["Fecha", "Cliente", "Tipo Pago", "Productos", "Valor Total", "Saldo Pendiente"]; // Ajustar encabezados
+            // Encabezados del CSV (Añadir Código Registro y Saldo Pendiente)
+            const headers = ["Código Registro", "Fecha", "Cliente", "Tipo Pago", "Productos", "Valor Total", "Saldo Pendiente"]; // Ajustar encabezados
             csvContent += headers.join(";") + "\r\n"; // Usar ; como separador
 
             // Datos de la tabla (solo filas visibles después del filtro)
-            const rows = tablaFacturas.querySelectorAll("tr");
+            const rows = tablaFacturas.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
 
             rows.forEach(function(row) {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
                 // También saltar las filas de detalle de abonos
-                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="7"]')) {
+                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="8"]')) { // Ajustar colspan
                     return;
                 }
 
                 let rowData = [];
-                // Seleccionar solo las celdas de datos (excluir encabezados si se ejecuta después de cargar)
+                // Iterar sobre las celdas de datos (excluir la última celda de acciones)
                 row.querySelectorAll("td").forEach(function(cell, index) {
-                     // Excluir la última celda que contiene los botones de acción
+                     // Asegurarse de que no estamos seleccionando la columna de acciones (última celda)
                      if (index < row.cells.length - 1) {
                         rowData.push(cell.textContent.trim());
                      }
@@ -948,7 +957,7 @@
             data.push(headers); // Añadir encabezados a los datos
 
             // Datos de las filas (solo filas visibles después del filtro)
-            const rows = tablaInventario.querySelectorAll("tr");
+            const rows = tablaInventario.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
 
             rows.forEach(function(row) {
                  // Saltar filas no visibles (ocultas por el filtro) o filas de estado
@@ -1514,13 +1523,21 @@
 
             const valorTotal = parseFloat(facValorTotal.value); // Obtener el valor total numérico del campo oculto
 
+            // --- Generar Código de Registro Único ---
+            const now = new Date();
+            const codigoRegistro = `${now.getFullYear()}${('0' + (now.getMonth() + 1)).slice(-2)}${('0' + now.getDate()).slice(-2)}${('0' + now.getHours()).slice(-2)}${('0' + now.getMinutes()).slice(-2)}${('0' + now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
+            console.log('DEBUG: Código de Registro Generado:', codigoRegistro);
+            // --- Fin Generar Código de Registro Único ---
+
+
             const nuevaFactura = {
+                codigoRegistro: codigoRegistro, // Añadir el código de registro
                 fechaHora: fechaHora,
                 cliente: cliente,
                 tipoPago: tipoPago, // Añadir el tipo de pago a los datos de la factura
                 productos: productosEnFactura, // Guardar el array de productos
                 valorTotal: valorTotal,
-                 saldoPendiente: valorTotal, // Inicializar saldo pendiente con el valor total
+                 saldoPendiente: valorTotal, // Inicializar saldo pendiente con el valor total (se ajusta al mostrar si es contado)
                 abonos: [], // Inicializar array de abonos
                 createdAt: new Date() // Opcional: añadir timestamp de creación
             };
@@ -1606,33 +1623,65 @@
 
         // Función para mostrar/ocultar los abonos de una factura
         function toggleAbonos(button) {
+            console.log('DEBUG: toggleAbonos called.');
             const row = button.closest('tr'); // Obtener la fila principal de la factura
             const facturaId = row.dataset.id;
-            const abonosData = JSON.parse(row.dataset.abonos || '[]'); // Obtener abonos del dataset
+            console.log('DEBUG: Factura ID:', facturaId);
+
+            const abonosJson = row.dataset.abonos;
+            console.log('DEBUG: Abonos data from dataset (JSON string):', abonosJson);
+
+            let abonosData = [];
+            try {
+                 abonosData = JSON.parse(abonosJson || '[]'); // Obtener abonos del dataset
+                 console.log('DEBUG: Parsed abonosData:', abonosData);
+            } catch (error) {
+                 console.error('DEBUG: Error parsing abonos JSON:', error);
+                 showStatusMessage("Error al leer datos de abonos.", true);
+                 return; // Salir si hay error de parsing
+            }
+
 
             // Buscar si ya existe una fila de abonos debajo de esta factura
-            const existingAbonosRow = row.nextElementSibling;
-            const isAbonosRowVisible = existingAbonosRow && existingAbonosRow.classList.contains('abonos-row') && existingAbonosRow.style.display !== 'none';
+            // Iterar sobre los hermanos siguientes hasta encontrar la fila de abonos o el final de la tabla
+            let existingAbonosRow = null;
+            let nextSibling = row.nextElementSibling;
+            while(nextSibling) {
+                if (nextSibling.classList.contains('abonos-row')) {
+                    existingAbonosRow = nextSibling;
+                    break;
+                }
+                nextSibling = nextSibling.nextElementSibling;
+            }
+
+            const isAbonosRowVisible = existingAbonosRow && existingAbonosRow.style.display !== 'none';
+            console.log('DEBUG: existingAbonosRow:', existingAbonosRow);
+            console.log('DEBUG: isAbonosRowVisible:', isAbonosRowVisible);
 
 
             if (isAbonosRowVisible) {
                 // Si la fila de abonos ya existe y está visible, ocultarla y cambiar el texto del botón
+                console.log('DEBUG: Ocultando fila de abonos existente.');
                 existingAbonosRow.remove(); // Eliminar la fila de abonos
                 button.textContent = `Ver Abonos (${abonosData.length})`;
                 button.classList.remove('btn-danger'); // Cambiar color del botón
                 button.classList.add('btn-info');
             } else {
                 // Si la fila de abonos no existe o está oculta, crearla y mostrarla
+                console.log('DEBUG: Creando y mostrando fila de abonos.');
                 const newRow = tablaFacturas.insertRow(row.rowIndex + 1); // Insertar nueva fila debajo de la fila actual
                 newRow.classList.add('abonos-row'); // Añadir clase para identificarla
 
                 const cell = newRow.insertCell(0);
-                cell.colSpan = 7; // Cubrir todas las columnas de la tabla principal
+                cell.colSpan = 8; // Cubrir todas las columnas de la tabla principal (ajustado a 8)
                 cell.classList.add('px-4', 'py-2'); // Añadir padding
 
                 let abonosHtml = '<div class="abonos-list">';
                 if (abonosData.length > 0) {
                     abonosHtml += '<p class="font-semibold mb-2">Historial de Abonos:</p>';
+                    // Ordenar abonos por fecha (opcional, pero útil)
+                    abonosData.sort((a, b) => new Date(a.fechaAbono) - new Date(b.fechaAbono));
+
                     abonosData.forEach(abono => {
                          const montoFormateado = parseFloat(abono.montoAbono).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
                         abonosHtml += `<div class="abono-item">Fecha: ${abono.fechaAbono} - Monto: ${montoFormateado}</div>`;
@@ -1642,6 +1691,7 @@
                 }
                 abonosHtml += '</div>';
 
+                console.log('DEBUG: Generated abonosHtml:', abonosHtml);
                 cell.innerHTML = abonosHtml;
 
                 button.textContent = 'Ocultar Abonos'; // Cambiar texto del botón
