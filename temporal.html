@@ -37,9 +37,23 @@
         .btn-danger:hover {
             background-color: #dc2626; /* Rojo más oscuro al pasar el ratón */
         }
+         .btn-success { /* Nuevo estilo para botón Abonar */
+            background-color: #22c55e; /* Verde */
+            color: white;
+        }
+         .btn-success:hover {
+            background-color: #16a34a; /* Verde más oscuro */
+        }
          .btn-sm {
              padding: 5px 10px; /* Padding más pequeño para botones en tabla */
              font-size: 0.875rem; /* Tamaño de fuente más pequeño */
+         }
+         .btn-info { /* Nuevo estilo para botón Ver Abonos */
+             background-color: #0ea5e9; /* Azul claro */
+             color: white;
+         }
+         .btn-info:hover {
+             background-color: #0284c7; /* Azul claro más oscuro */
          }
         .form-input {
             padding: 8px;
@@ -92,6 +106,23 @@
             text-decoration: none;
             cursor: pointer;
         }
+        /* Estilo para la fila de abonos */
+        .abonos-row {
+            background-color: #f9fafb; /* Gris muy claro */
+            font-size: 0.9em;
+        }
+        .abonos-list {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+        .abono-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px dotted #ccc;
+        }
+         .abono-item:last-child {
+             border-bottom: none;
+         }
     </style>
 </head>
 <body class="p-4">
@@ -319,14 +350,17 @@
                             <tr>
                                 <th class="px-4 py-2 border-b text-left">Fecha</th>
                                 <th class="px-4 py-2 border-b text-left">Cliente</th>
-                                <th class="px-4 py-2 border-b text-left">Tipo Pago</th> <th class="px-4 py-2 border-b text-left">Productos</th>
+                                <th class="px-4 py-2 border-b text-left">Tipo Pago</th>
+                                <th class="px-4 py-2 border-b text-left">Productos</th>
                                 <th class="px-4 py-2 border-b text-left">Valor Total</th>
+                                <th class="px-4 py-2 border-b text-left">Saldo Pendiente</th>
                                 <th class="px-4 py-2 border-b text-left">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="text-center py-4">Cargando facturas...</td> </tr>
+                                <td colspan="7" class="text-center py-4">Cargando facturas...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -348,6 +382,30 @@
             </div>
         </div>
 
+         <div id="moduloAbonar" class="modal">
+             <div class="modal-content">
+                 <span class="close-button" id="cerrarAbonar">&times;</span>
+                 <h3 class="text-lg font-medium mb-4">Registrar Abono</h3>
+                 <form id="formAbonar">
+                     <input type="hidden" id="abonoFacturaId">
+                     <div class="mb-4">
+                         <p><strong>Factura:</strong> <span id="abonoFacturaInfo"></span></p>
+                         <p><strong>Saldo Pendiente:</strong> <span id="abonoSaldoPendiente"></span></p>
+                     </div>
+                     <div class="mb-4">
+                         <label for="abonoFecha" class="form-label">Fecha del Abono:</label>
+                         <input type="date" id="abonoFecha" class="form-input" required>
+                     </div>
+                     <div class="mb-4">
+                         <label for="abonoMonto" class="form-label">Monto del Abono:</label>
+                         <input type="number" id="abonoMonto" class="form-input" min="0.01" step="0.01" required>
+                     </div>
+                     <div class="flex justify-end">
+                         <button type="submit" class="btn btn-primary">Guardar Abono</button>
+                     </div>
+                 </form>
+             </div>
+         </div>
          <div id="statusMessage" class="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded shadow-lg hidden">
              Mensaje de estado
          </div>
@@ -360,7 +418,7 @@
         // Importar las funciones necesarias de Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         // import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js"; // Opcional si no usas Analytics
-        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, onSnapshot, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -442,6 +500,16 @@
         const inputBuscarFacturas = document.getElementById('inputBuscarFacturas');
         const btnExportarFacturas = document.getElementById('btnExportarFacturas');
 
+        // Nuevas referencias para el módulo de Abonos
+        const moduloAbonar = document.getElementById('moduloAbonar');
+        const cerrarAbonar = document.getElementById('cerrarAbonar');
+        const formAbonar = document.getElementById('formAbonar');
+        const abonoFacturaId = document.getElementById('abonoFacturaId');
+        const abonoFacturaInfo = document.getElementById('abonoFacturaInfo');
+        const abonoSaldoPendiente = document.getElementById('abonoSaldoPendiente');
+        const abonoFecha = document.getElementById('abonoFecha');
+        const abonoMonto = document.getElementById('abonoMonto');
+
 
         console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
         console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
@@ -458,6 +526,14 @@
         console.log('DEBUG: btnCrearFactura al obtener referencia:', btnCrearFactura);
         console.log('DEBUG: radioContado al obtener referencia:', radioContado); // DEBUG
         console.log('DEBUG: radioCredito al obtener referencia:', radioCredito); // DEBUG
+        console.log('DEBUG: moduloAbonar al obtener referencia:', moduloAbonar);
+        console.log('DEBUG: cerrarAbonar al obtener referencia:', cerrarAbonar);
+        console.log('DEBUG: formAbonar al obtener referencia:', formAbonar);
+        console.log('DEBUG: abonoFacturaId al obtener referencia:', abonoFacturaId);
+        console.log('DEBUG: abonoFacturaInfo al obtener referencia:', abonoFacturaInfo);
+        console.log('DEBUG: abonoSaldoPendiente al obtener referencia:', abonoSaldoPendiente);
+        console.log('DEBUG: abonoFecha al obtener referencia:', abonoFecha);
+        console.log('DEBUG: abonoMonto al obtener referencia:', abonoMonto);
 
 
         // --- Variables de estado ---
@@ -486,6 +562,7 @@
                 moduloFacturacion.style.display = 'none';
                 moduloVerFacturas.style.display = 'none';
                 moduloBuscarProducto.style.display = 'none';
+                moduloAbonar.style.display = 'none'; // Asegurarse de ocultar el modal de abonos
 
                 moduloAMostrar.style.display = 'block';
 
@@ -598,6 +675,16 @@
              // No llamamos a filtrarFacturas aquí, ya que cargarFacturas lo hará después de cargar los datos.
          }
 
+         function resetFormAbonar() {
+             formAbonar.reset();
+             abonoFacturaId.value = '';
+             abonoFacturaInfo.textContent = '';
+             abonoSaldoPendiente.textContent = '';
+              // Establecer la fecha actual en el campo de fecha del abono
+             const today = new Date().toISOString().split('T')[0];
+             if(abonoFecha) abonoFecha.value = today;
+         }
+
 
         // --- Lógica de Firebase ---
 
@@ -679,19 +766,21 @@
 
         // Función para cargar facturas desde Firebase en tiempo real
         function cargarFacturas() {
-             tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
+             tablaFacturas.innerHTML = '<tr><td colspan="7" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
 
              onSnapshot(facturasCol, (snapshot) => {
                  tablaFacturas.innerHTML = ''; // Limpiar tabla
 
                  if (snapshot.empty) {
-                     tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
+                     tablaFacturas.innerHTML = '<tr><td colspan="7" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
                      return;
                  }
 
                  snapshot.forEach((doc) => {
                      const factura = doc.data();
                      const row = tablaFacturas.insertRow();
+                     row.dataset.id = doc.id; // Guardar ID de la factura
+                     row.dataset.abonos = JSON.stringify(factura.abonos || []); // Guardar abonos en el dataset
 
                      let productosFacturadosDisplay = '';
                      if (factura.productos && factura.productos.length > 0) {
@@ -711,22 +800,38 @@
                      // Determinar el texto a mostrar para el tipo de pago
                      const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
 
+                     // Formatear el saldo pendiente
+                     const saldoPendienteDisplay = parseFloat(factura.saldoPendiente || factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+                     // Botones de acción
+                     let accionesHtml = `<button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>`;
+
+                     // Añadir botón Abonar para facturas de crédito con saldo pendiente > 0
+                     if (factura.tipoPago === 'credito' && (factura.saldoPendiente > 0 || typeof factura.saldoPendiente === 'undefined')) {
+                         accionesHtml = `<button class="btn btn-success btn-sm mr-2 btn-abonar" data-id="${doc.id}" data-saldo="${factura.saldoPendiente || factura.valorTotal}" data-cliente="${factura.cliente}" data-valortotal="${factura.valorTotal}">Abonar</button>` + accionesHtml;
+                     }
+
+                      // Añadir botón Ver Abonos si hay abonos registrados
+                     if (factura.abonos && factura.abonos.length > 0) {
+                          accionesHtml = `<button class="btn btn-info btn-sm mr-2 btn-ver-abonos" data-id="${doc.id}">Ver Abonos (${factura.abonos.length})</button>` + accionesHtml;
+                     }
+
 
                      row.innerHTML = `
                          <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
                          <td class="px-4 py-2 border-b">${factura.cliente}</td>
-                         <td class="px-4 py-2 border-b">${tipoPagoDisplay}</td> <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
+                         <td class="px-4 py-2 border-b">${tipoPagoDisplay}</td>
+                         <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
                          <td class="px-4 py-2 border-b">${parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                         <td class="px-4 py-2 border-b">
-                             <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>
-                         </td>
+                         <td class="px-4 py-2 border-b">${saldoPendienteDisplay}</td>
+                         <td class="px-4 py-2 border-b">${accionesHtml}</td>
                      `;
                  });
 
                  filtrarFacturas(); // Aplicar el filtro inicial después de cargar
              }, (error) => {
                  console.error("Error cargando facturas:", error);
-                 tablaFacturas.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
+                 tablaFacturas.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
                  showStatusMessage("Error al cargar facturas.", true);
              });
         }
@@ -738,7 +843,9 @@
 
             rows.forEach(row => {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
-                if (row.style.display === 'none' || row.querySelector('td[colspan="6"]')) { // Ajustar colspan y añadir check de display
+                // También saltar las filas de detalle de abonos
+                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="7"]')) {
+                    row.style.display = 'none'; // Asegurarse de ocultar las filas de abono también
                     return;
                 }
 
@@ -750,6 +857,11 @@
                     row.style.display = ''; // Mostrar fila si coincide
                 } else {
                     row.style.display = 'none'; // Ocultar fila si no coincide
+                     // Si la fila principal se oculta, también ocultar su fila de abonos si existe
+                     const abonosRow = row.nextElementSibling;
+                     if (abonosRow && abonosRow.classList.contains('abonos-row')) {
+                         abonosRow.style.display = 'none';
+                     }
                 }
             });
         }
@@ -780,8 +892,8 @@
             console.log('DEBUG: Iniciando exportación de facturas a Excel.');
             let csvContent = "data:text/csv;charset=utf-8,";
 
-            // Encabezados del CSV
-            const headers = ["Fecha", "Cliente", "Tipo Pago", "Productos", "Valor Total"]; // Ajustar encabezados
+            // Encabezados del CSV (Añadir Saldo Pendiente)
+            const headers = ["Fecha", "Cliente", "Tipo Pago", "Productos", "Valor Total", "Saldo Pendiente"]; // Ajustar encabezados
             csvContent += headers.join(";") + "\r\n"; // Usar ; como separador
 
             // Datos de la tabla (solo filas visibles después del filtro)
@@ -789,14 +901,15 @@
 
             rows.forEach(function(row) {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
-                if (row.style.display === 'none' || row.querySelector('td[colspan="6"]')) { // Ajustar colspan y añadir check de display
+                // También saltar las filas de detalle de abonos
+                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="7"]')) {
                     return;
                 }
 
                 let rowData = [];
                 // Seleccionar solo las celdas de datos (excluir encabezados si se ejecuta después de cargar)
                 row.querySelectorAll("td").forEach(function(cell, index) {
-                     // Excluir la última celda que contiene el botón de eliminar
+                     // Excluir la última celda que contiene los botones de acción
                      if (index < row.cells.length - 1) {
                         rowData.push(cell.textContent.trim());
                      }
@@ -1407,6 +1520,8 @@
                 tipoPago: tipoPago, // Añadir el tipo de pago a los datos de la factura
                 productos: productosEnFactura, // Guardar el array de productos
                 valorTotal: valorTotal,
+                 saldoPendiente: valorTotal, // Inicializar saldo pendiente con el valor total
+                abonos: [], // Inicializar array de abonos
                 createdAt: new Date() // Opcional: añadir timestamp de creación
             };
 
@@ -1423,6 +1538,115 @@
             } catch (e) {
                 console.error("Error al crear factura: ", e);
                 showStatusMessage("Error al crear la factura.", true);
+            }
+        }
+
+        // --- Lógica de Abonos ---
+
+        // Función para abrir el modal de abonos
+        function abrirModalAbonar(facturaId, saldoActual, cliente, valorTotal) {
+            console.log(`DEBUG: Abriendo modal de abono para factura ${facturaId}. Saldo actual: ${saldoActual}`);
+            resetFormAbonar(); // Resetear el formulario del modal
+            abonoFacturaId.value = facturaId;
+            abonoFacturaInfo.textContent = `Cliente: ${cliente} | Valor Total: ${parseFloat(valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            abonoSaldoPendiente.textContent = parseFloat(saldoActual).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            abonoMonto.max = saldoActual; // Establecer el monto máximo del abono
+            moduloAbonar.style.display = 'block';
+             // Establecer la fecha actual al abrir el modal
+             const today = new Date().toISOString().split('T')[0];
+             if(abonoFecha) abonoFecha.value = today;
+        }
+
+        // Función para guardar el abono en Firebase
+        async function guardarAbono(event) {
+            event.preventDefault();
+
+            const facturaId = abonoFacturaId.value;
+            const fechaAbono = abonoFecha.value.trim();
+            const montoAbono = parseFloat(abonoMonto.value);
+            const saldoPendienteActual = parseFloat(abonoSaldoPendiente.textContent.replace(/\./g, '').replace(/,/g, '.')); // Obtener saldo actual desde el display
+
+            if (!facturaId || !fechaAbono || isNaN(montoAbono) || montoAbono <= 0) {
+                showStatusMessage("Por favor, complete todos los campos del abono correctamente.", true);
+                return;
+            }
+
+            if (montoAbono > saldoPendienteActual) {
+                showStatusMessage("El monto del abono no puede ser mayor que el saldo pendiente.", true);
+                return;
+            }
+
+            const nuevoSaldoPendiente = saldoPendienteActual - montoAbono;
+
+            const abonoData = {
+                fechaAbono: fechaAbono,
+                montoAbono: montoAbono,
+                createdAt: new Date() // Opcional: timestamp del abono
+            };
+
+            try {
+                const facturaRef = doc(db, "facturas", facturaId);
+
+                // Actualizar el documento de la factura: añadir el abono al array 'abonos' y actualizar 'saldoPendiente'
+                await updateDoc(facturaRef, {
+                    abonos: arrayUnion(abonoData), // Añadir el abono al array existente
+                    saldoPendiente: nuevoSaldoPendiente // Actualizar el saldo pendiente
+                });
+
+                showStatusMessage("Abono registrado con éxito!");
+                moduloAbonar.style.display = 'none'; // Cerrar el modal
+                resetFormAbonar(); // Resetear el formulario
+                // La tabla de facturas se actualizará automáticamente gracias al onSnapshot en cargarFacturas()
+
+            } catch (e) {
+                console.error("Error al guardar el abono: ", e);
+                showStatusMessage("Error al guardar el abono.", true);
+            }
+        }
+
+        // Función para mostrar/ocultar los abonos de una factura
+        function toggleAbonos(button) {
+            const row = button.closest('tr'); // Obtener la fila principal de la factura
+            const facturaId = row.dataset.id;
+            const abonosData = JSON.parse(row.dataset.abonos || '[]'); // Obtener abonos del dataset
+
+            // Buscar si ya existe una fila de abonos debajo de esta factura
+            const existingAbonosRow = row.nextElementSibling;
+            const isAbonosRowVisible = existingAbonosRow && existingAbonosRow.classList.contains('abonos-row') && existingAbonosRow.style.display !== 'none';
+
+
+            if (isAbonosRowVisible) {
+                // Si la fila de abonos ya existe y está visible, ocultarla y cambiar el texto del botón
+                existingAbonosRow.remove(); // Eliminar la fila de abonos
+                button.textContent = `Ver Abonos (${abonosData.length})`;
+                button.classList.remove('btn-danger'); // Cambiar color del botón
+                button.classList.add('btn-info');
+            } else {
+                // Si la fila de abonos no existe o está oculta, crearla y mostrarla
+                const newRow = tablaFacturas.insertRow(row.rowIndex + 1); // Insertar nueva fila debajo de la fila actual
+                newRow.classList.add('abonos-row'); // Añadir clase para identificarla
+
+                const cell = newRow.insertCell(0);
+                cell.colSpan = 7; // Cubrir todas las columnas de la tabla principal
+                cell.classList.add('px-4', 'py-2'); // Añadir padding
+
+                let abonosHtml = '<div class="abonos-list">';
+                if (abonosData.length > 0) {
+                    abonosHtml += '<p class="font-semibold mb-2">Historial de Abonos:</p>';
+                    abonosData.forEach(abono => {
+                         const montoFormateado = parseFloat(abono.montoAbono).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                        abonosHtml += `<div class="abono-item">Fecha: ${abono.fechaAbono} - Monto: ${montoFormateado}</div>`;
+                    });
+                } else {
+                    abonosHtml += '<p>No hay abonos registrados para esta factura.</p>';
+                }
+                abonosHtml += '</div>';
+
+                cell.innerHTML = abonosHtml;
+
+                button.textContent = 'Ocultar Abonos'; // Cambiar texto del botón
+                button.classList.remove('btn-info'); // Cambiar color del botón
+                button.classList.add('btn-danger');
             }
         }
 
@@ -1458,6 +1682,10 @@
              if (event.target === moduloBuscarProducto) {
                  moduloBuscarProducto.style.display = 'none';
              }
+              if (event.target === moduloAbonar) { // Cerrar modal de abono al hacer clic fuera
+                 moduloAbonar.style.display = 'none';
+                 resetFormAbonar();
+             }
          });
 
         inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
@@ -1466,6 +1694,28 @@
 
         btnAgregarProductoFactura.addEventListener('click', agregarProductoAListaFactura); // Evento para agregar a la lista
         btnCrearFactura.addEventListener('click', crearFactura); // Evento para crear la factura final
+
+        // Event Listener para los botones de "Abonar" y "Ver Abonos" en la tabla de facturas (delegación)
+        tablaFacturas.addEventListener('click', (event) => {
+            if (event.target.classList.contains('btn-abonar')) {
+                const facturaId = event.target.dataset.id;
+                const saldoActual = parseFloat(event.target.dataset.saldo);
+                 const cliente = event.target.dataset.cliente;
+                 const valorTotal = parseFloat(event.target.dataset.valortotal);
+                abrirModalAbonar(facturaId, saldoActual, cliente, valorTotal);
+            } else if (event.target.classList.contains('btn-ver-abonos')) {
+                toggleAbonos(event.target); // Llamar a la función para mostrar/ocultar abonos
+            }
+        });
+
+        // Event Listener para cerrar el modal de abonos
+        cerrarAbonar.addEventListener('click', () => {
+            moduloAbonar.style.display = 'none';
+            resetFormAbonar();
+        });
+
+        // Event Listener para el formulario de abonos
+        formAbonar.addEventListener('submit', guardarAbono);
 
 
         // --- Inicialización ---
@@ -1476,6 +1726,7 @@
 
              console.log('DEBUG: invFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('invFechaHora'));
              console.log('DEBUG: facFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('facFechaHora'));
+             console.log('DEBUG: abonoFecha al cargar (dentro de DOMContentLoaded):', document.getElementById('abonoFecha'));
 
 
              mostrarModulo(moduloInventario);
@@ -1486,6 +1737,7 @@
              const today = new Date().toISOString().split('T')[0];
              if(invFechaHora) invFechaHora.value = today;
              if(facFechaHora) facFechaHora.value = today;
+             if(abonoFecha) abonoFecha.value = today;
 
 
              console.log('DEBUG: Inicialización completada.');
