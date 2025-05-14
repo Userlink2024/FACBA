@@ -1637,7 +1637,47 @@
                 showStatusMessage("Abono registrado con éxito!");
                 moduloAbonar.style.display = 'none'; // Cerrar el modal
                 resetFormAbonar(); // Resetear el formulario
+
+                // --- Actualización directa de la UI ---
+                const facturaRow = tablaFacturas.querySelector(`tr[data-id="${facturaId}"]`);
+                if (facturaRow) {
+                     // Encontrar la celda de Saldo Pendiente (asumiendo que es la 7ª celda, índice 6)
+                     // Verificar los índices de las columnas: Código(0), Fecha(1), Cliente(2), Tipo Pago(3), Productos(4), Valor Total(5), Saldo Pendiente(6), Acciones(7)
+                     const saldoCellIndex = 6; // Índice de la columna Saldo Pendiente
+                     if (facturaRow.cells.length > saldoCellIndex) {
+                         const saldoPendienteCell = facturaRow.cells[saldoCellIndex];
+                         saldoPendienteCell.textContent = parseFloat(nuevoSaldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+                         // Si el saldo pendiente es 0, eliminar el botón de Abonar
+                         if (nuevoSaldoPendiente <= 0) {
+                             const abonarButton = facturaRow.querySelector('.btn-abonar');
+                             if (abonarButton) {
+                                 abonarButton.remove();
+                             }
+                         }
+                          // Actualizar el data-saldo en el botón Ver Abonos para el modal de abono
+                          const verAbonosButton = facturaRow.querySelector('.btn-ver-abonos');
+                           if(verAbonosButton) {
+                               verAbonosButton.dataset.saldo = nuevoSaldoPendiente;
+                           }
+                           // Actualizar el data-abonos en la fila para el modal de historial
+                           // Necesitamos obtener los abonos actualizados. El onSnapshot lo hará,
+                           // pero para una actualización inmediata del modal historial, podríamos
+                           // necesitar re-fetch o actualizar el dataset aquí.
+                           // Por ahora, confiamos en el onSnapshot para la tabla principal y el modal historial.
+                           // Si el modal historial estuviera abierto, necesitaría re-renderizarse.
+                           // Para simplificar, asumimos que el modal historial no está abierto al abonar.
+                     } else {
+                          console.warn(`DEBUG: No se encontró la celda de Saldo Pendiente en la fila de la factura ${facturaId}.`);
+                     }
+                } else {
+                     console.warn(`DEBUG: No se encontró la fila de la factura ${facturaId} en la tabla para actualizar la UI.`);
+                }
+                // --- Fin Actualización directa de la UI ---
+
+
                 // La tabla de facturas se actualizará automáticamente gracias al onSnapshot en cargarFacturas()
+                // Esta actualización directa es solo para una respuesta visual más rápida.
 
             } catch (e) {
                 console.error("Error al guardar el abono: ", e);
