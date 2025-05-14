@@ -830,10 +830,13 @@
                      // Determinar el texto a mostrar para el tipo de pago
                      const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
 
-                     // Mostrar 0 saldo pendiente si es Contado
+                     // --- Corrección aquí: Mostrar 0 saldo pendiente si es Contado o si saldoPendiente es 0 ---
                      const saldoPendienteDisplay = factura.tipoPago === 'contado'
                          ? '0'
-                         : parseFloat(factura.saldoPendiente || factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                         : (factura.saldoPendiente !== undefined && factura.saldoPendiente !== null
+                             ? parseFloat(factura.saldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                             : parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
+                     // --- Fin Corrección ---
 
 
                      // Botones de acción
@@ -841,7 +844,7 @@
 
                      // Añadir botón Abonar para facturas de crédito con saldo pendiente > 0
                      if (factura.tipoPago === 'credito' && (factura.saldoPendiente > 0 || typeof factura.saldoPendiente === 'undefined')) {
-                         accionesHtml = `<button class="btn btn-success btn-sm mr-2 btn-abonar" data-id="${doc.id}" data-saldo="${factura.saldoPendiente || factura.valorTotal}" data-cliente="${factura.cliente}" data-valortotal="${factura.valorTotal}">Abonar</button>` + accionesHtml;
+                         accionesHtml = `<button class="btn btn-success btn-sm mr-2 btn-abonar" data-id="${doc.id}" data-saldo="${factura.saldoPendiente !== undefined ? factura.saldoPendiente : factura.valorTotal}" data-cliente="${factura.cliente}" data-valortotal="${factura.valorTotal}">Abonar</button>` + accionesHtml;
                      }
 
                       // Añadir botón Ver Abonos si hay abonos registrados
