@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         /* Estilos personalizados */
         body {
@@ -54,6 +56,13 @@
          }
          .btn-info:hover {
              background-color: #0284c7; /* Azul claro más oscuro */
+         }
+         .btn-secondary { /* Nuevo estilo para botón Generar PDF */
+             background-color: #6b7280; /* Gris */
+             color: white;
+         }
+         .btn-secondary:hover {
+             background-color: #4b5563; /* Gris más oscuro */
          }
         .form-input {
             padding: 8px;
@@ -155,12 +164,111 @@
              font-weight: 700;
              color: #0284c7; /* Deeper blue */
          }
+
+         /* Estilos para la plantilla de PDF (oculta) */
+         #pdfTemplate {
+             width: 210mm; /* Ancho de una hoja A4 */
+             /* min-height: 297mm; Removido para evitar espacio extra */
+             padding: 20mm; /* Márgenes A4 */
+             box-sizing: border-box;
+             background-color: white;
+             font-family: 'Inter', sans-serif;
+             color: #333;
+             display: none; /* Ocultar por defecto */
+             flex-direction: column;
+             /* justify-content: space-between; Removido, puede causar espacio extra */
+             position: relative; /* Necesario para posicionar el footer al final */
+         }
+
+         #pdfTemplate .pdf-header {
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             margin-bottom: 20mm; /* Reducir margen */
+             padding-bottom: 10mm;
+             border-bottom: 2px solid #3b82f6; /* Línea azul */
+         }
+
+         #pdfTemplate .pdf-header h1 {
+             font-size: 2.5em;
+             font-weight: 700;
+             color: #3b82f6;
+         }
+
+         #pdfTemplate .pdf-header .company-info {
+             text-align: right;
+             font-size: 1em; /* Ajustar tamaño */
+         }
+
+          #pdfTemplate .pdf-info {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 20mm;
+              border-bottom: 1px solid #eee;
+              padding-bottom: 10mm;
+              font-size: 1em;
+          }
+
+          #pdfTemplate .pdf-info div {
+              width: 48%; /* Distribuir espacio */
+          }
+
+          #pdfTemplate .pdf-info strong {
+              display: block;
+              margin-bottom: 5px;
+              color: #555;
+          }
+
+         #pdfTemplate .pdf-items table {
+             width: 100%;
+             border-collapse: collapse;
+             margin-bottom: 20mm;
+         }
+
+         #pdfTemplate .pdf-items th,
+         #pdfTemplate .pdf-items td {
+             border: 1px solid #eee;
+             padding: 10px;
+             text-align: left;
+         }
+
+         #pdfTemplate .pdf-items th {
+             background-color: #e0f2f7; /* Fondo azul claro */
+             font-weight: 600;
+             color: #0284c7; /* Texto azul oscuro */
+         }
+
+         #pdfTemplate .pdf-totals {
+             text-align: right;
+             margin-top: 20mm;
+             padding-top: 10mm;
+             border-top: 2px solid #3b82f6; /* Línea azul */
+         }
+
+         #pdfTemplate .pdf-totals div {
+             margin-bottom: 10px;
+         }
+
+         #pdfTemplate .pdf-totals strong {
+             font-size: 1.2em;
+         }
+
+         #pdfTemplate .pdf-footer {
+             text-align: center;
+             font-size: 0.8em;
+             color: #777;
+             margin-top: auto; /* Empujar al final si flex column */
+             padding-top: 10mm;
+             border-top: 1px solid #eee;
+         }
+
+
     </style>
 </head>
 <body class="p-4">
 
     <div class="container mx-auto">
-        <h1 class="text-2xl font-bold text-center mb-6">Inventario y Facturación China - La Zapatería</h1>
+        <h1 class="text-2xl font-bold text-center mb-6">Sistema de Inventario y Facturación</h1>
 
         <div class="flex justify-center space-x-4 mb-8">
             <button id="btnInventario" class="btn btn-primary">Ver Inventarios</button>
@@ -410,7 +518,7 @@
                     </table>
                 </div>
                  <div class="mt-4 flex justify-end space-x-2">
-                    <button id="btnExportarFacturas" class="btn btn-primary">Exportar Facturas</button>
+                     <button id="btnExportarFacturas" class="btn btn-primary">Exportar Facturas (CSV)</button>
                  </div>
             </div>
         </div>
@@ -464,7 +572,53 @@
              Mensaje de estado
          </div>
 
-    </div>
+        <div id="pdfTemplate">
+            <div class="pdf-header">
+                <h1>FACTURA</h1>
+                <div class="company-info">
+                    <p><strong>La Zapatería</strong></p> <p>Calle 21 # 22 - 38 San Francisco</p> <p>Bucaramanga</p> </div>
+            </div>
+
+            <div class="pdf-info">
+                <div>
+                    <strong>Factura No:</strong> <span id="pdfFacturaCodigo"></span><br>
+                    <strong>Fecha:</strong> <span id="pdfFacturaFecha"></span><br>
+                    <strong>Tipo de Pago:</strong> <span id="pdfFacturaTipoPago"></span>
+                </div>
+                <div>
+                    <strong>Cliente:</strong> <span id="pdfFacturaCliente"></span><br>
+                    </div>
+            </div>
+
+            <div class="pdf-items">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Producto (Proveedor)</th>
+                            <th>Cantidad</th>
+                            <th>Valor Unitario</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfFacturaItems">
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="pdf-totals">
+                <div>
+                    <strong>Valor Total:</strong> <span id="pdfFacturaValorTotal"></span>
+                </div>
+                 <div>
+                    <strong>Saldo Pendiente:</strong> <span id="pdfFacturaSaldoPendiente"></span>
+                </div>
+            </div>
+
+            <div class="pdf-footer">
+                <p>Gracias por tu compra.</p>
+                <p>Sistema de Inventario y Facturación - La Zapatería</p> </div>
+        </div>
+        </div>
 
     <script type="module">
         console.log('DEBUG: Script module iniciado.');
@@ -576,6 +730,16 @@
         const creditoPendienteDisplay = document.getElementById('creditoPendienteDisplay');
         const totalAbonadoDisplay = document.getElementById('totalAbonadoDisplay'); // Nueva referencia
 
+        // Referencias para la plantilla de PDF
+        const pdfTemplate = document.getElementById('pdfTemplate');
+        const pdfFacturaCodigo = document.getElementById('pdfFacturaCodigo');
+        const pdfFacturaFecha = document.getElementById('pdfFacturaFecha');
+        const pdfFacturaTipoPago = document.getElementById('pdfFacturaTipoPago');
+        const pdfFacturaCliente = document.getElementById('pdfFacturaCliente');
+        const pdfFacturaItems = document.getElementById('pdfFacturaItems');
+        const pdfFacturaValorTotal = document.getElementById('pdfFacturaValorTotal');
+        const pdfFacturaSaldoPendiente = document.getElementById('pdfFacturaSaldoPendiente');
+
 
         console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
         console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
@@ -608,6 +772,14 @@
         console.log('DEBUG: totalAbonadoDisplay al obtener referencia:', totalAbonadoDisplay); // DEBUG
         console.log('DEBUG: prodProveedorFac al obtener referencia:', prodProveedorFac); // DEBUG
         console.log('DEBUG: facProductProveedor al obtener referencia:', facProductProveedor); // DEBUG
+        console.log('DEBUG: pdfTemplate al obtener referencia:', pdfTemplate); // DEBUG
+        console.log('DEBUG: pdfFacturaCodigo al obtener referencia:', pdfFacturaCodigo); // DEBUG
+        console.log('DEBUG: pdfFacturaFecha al obtener referencia:', pdfFacturaFecha); // DEBUG
+        console.log('DEBUG: pdfFacturaTipoPago al obtener referencia:', pdfFacturaTipoPago); // DEBUG
+        console.log('DEBUG: pdfFacturaCliente al obtener referencia:', pdfFacturaCliente); // DEBUG
+        console.log('DEBUG: pdfFacturaItems al obtener referencia:', pdfFacturaItems); // DEBUG
+        console.log('DEBUG: pdfFacturaValorTotal al obtener referencia:', pdfFacturaValorTotal); // DEBUG
+        console.log('DEBUG: pdfFacturaSaldoPendiente al obtener referencia:', pdfFacturaSaldoPendiente); // DEBUG
 
 
         // --- Variables de estado ---
@@ -924,7 +1096,8 @@
 
 
                      // Botones de acción
-                     let accionesHtml = `<button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>`;
+                     let accionesHtml = `<button class="btn btn-secondary btn-sm mr-2 btn-generate-pdf" data-id="${doc.id}">Generar PDF</button>`; // Botón Generar PDF
+                     accionesHtml += `<button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>`; // Botón Eliminar
 
                      // Añadir botón Abonar para facturas de crédito con saldo pendiente > 0
                      if (factura.tipoPago === 'credito' && saldoPendiente > 0) {
@@ -1840,6 +2013,138 @@
         }
 
 
+        // --- Lógica de Generación de PDF ---
+
+        async function generarFacturaPDF(facturaId) {
+            console.log(`DEBUG: Generando PDF para factura ID: ${facturaId}`);
+            showStatusMessage("Generando PDF...", false);
+
+            try {
+                const facturaRef = doc(db, "facturas", facturaId);
+                const facturaSnap = await getDoc(facturaRef);
+
+                if (!facturaSnap.exists()) {
+                    showStatusMessage("Factura no encontrada para generar PDF.", true);
+                    console.error(`DEBUG: Factura con ID ${facturaId} no encontrada.`);
+                    return;
+                }
+
+                const factura = facturaSnap.data();
+                console.log("DEBUG: Datos de la factura para PDF:", factura);
+
+                // Llenar la plantilla oculta con los datos de la factura
+                pdfFacturaCodigo.textContent = factura.codigoRegistro || 'N/A';
+                pdfFacturaFecha.textContent = factura.fechaHora || 'N/A';
+                pdfFacturaTipoPago.textContent = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
+                pdfFacturaCliente.textContent = factura.cliente || 'N/A';
+
+                // Llenar la tabla de productos en la plantilla
+                pdfFacturaItems.innerHTML = ''; // Limpiar items anteriores
+                if (factura.productos && factura.productos.length > 0) {
+                    factura.productos.forEach(item => {
+                        const row = pdfFacturaItems.insertRow();
+                        let cantidadDisplay = '';
+                        if (item.unidadMedida === 'metros') {
+                             cantidadDisplay = `${item.metrosFacturados || 0}.${(item.centimetrosFacturados || 0).toString().padStart(2, '0')}m`;
+                        } else if (item.unidadMedida === 'unidades') {
+                            cantidadDisplay = `${item.unidadesFacturadas || 0} und`;
+                        }
+                         const proveedorDisplay = item.proveedor ? ` (${item.proveedor})` : '';
+
+                        row.innerHTML = `
+                            <td>${item.referenciaColor}${proveedorDisplay}</td>
+                            <td>${cantidadDisplay}</td>
+                            <td>${parseFloat(item.valorUnitario || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                            <td>${parseFloat(item.subtotal || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                        `;
+                    });
+                } else {
+                     pdfFacturaItems.innerHTML = '<tr><td colspan="4" class="text-center py-4">No hay productos en esta factura.</td></tr>';
+                }
+
+
+                // Mostrar totales
+                pdfFacturaValorTotal.textContent = parseFloat(factura.valorTotal || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+                // Mostrar saldo pendiente correctamente (0 si es contado)
+                let saldoPendientePDF = factura.saldoPendiente !== undefined && factura.saldoPendiente !== null
+                         ? parseFloat(factura.saldoPendiente)
+                         : parseFloat(factura.valorTotal || 0);
+
+                 if (factura.tipoPago === 'contado') {
+                     saldoPendientePDF = 0;
+                 }
+                 pdfFacturaSaldoPendiente.textContent = parseFloat(saldoPendientePDF).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+
+                // Asegurarse de que la plantilla esté visible para html2canvas
+                // Establecer estilos que ayuden a html2canvas a capturar el contenido correctamente
+                pdfTemplate.style.display = 'block'; // Usar block para una captura más predecible
+                pdfTemplate.style.position = 'absolute'; // Posicionar fuera del flujo normal
+                pdfTemplate.style.top = '-9999px'; // Mover fuera de la vista
+                pdfTemplate.style.left = '-9999px';
+                pdfTemplate.style.zIndex = '-1000'; // Asegurarse de que no interfiera con la UI
+
+
+                // Generar la imagen del HTML
+                // Ajustar html2canvas options if needed, e.g., windowHeight
+                const canvas = await html2canvas(pdfTemplate, {
+                    scale: 2, // Aumentar escala para mejor resolución
+                    useCORS: true // Importante si tienes imágenes de otros dominios (no aplica aquí, pero buena práctica)
+                    // windowHeight: pdfTemplate.scrollHeight // Considerar si el contenido es muy largo
+                });
+                const imgData = canvas.toDataURL('image/png');
+
+                // Ocultar la plantilla de nuevo inmediatamente después de la captura
+                pdfTemplate.style.display = 'none';
+                pdfTemplate.style.position = 'static';
+                pdfTemplate.style.top = 'auto';
+                pdfTemplate.style.left = 'auto';
+                pdfTemplate.style.zIndex = 'auto';
+
+
+                // Crear el PDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4'); // 'p' = portrait, 'mm' = millimeters, 'a4' = size
+
+                const imgWidth = 210; // Ancho A4 en mm
+                const pageHeight = 297; // Alto A4 en mm
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                // Añadir la imagen al PDF
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                // Si la imagen es más larga que una página, añadir nuevas páginas
+                while (heightLeft > 0) { // Cambiado a > 0 para evitar una página extra si heightLeft es exactamente 0
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                // Descargar el PDF
+                const filename = `factura_${factura.codigoRegistro || facturaId}.pdf`;
+                pdf.save(filename);
+
+                showStatusMessage("PDF generado con éxito!");
+                console.log(`DEBUG: PDF ${filename} generado.`);
+
+            } catch (error) {
+                console.error("Error al generar PDF:", error);
+                showStatusMessage("Error al generar el PDF de la factura.", true);
+                 // Asegurarse de ocultar la plantilla si hubo un error
+                 pdfTemplate.style.display = 'none';
+                 pdfTemplate.style.position = 'static';
+                 pdfTemplate.style.top = 'auto';
+                 pdfTemplate.style.left = 'auto';
+                 pdfTemplate.style.zIndex = 'auto';
+            }
+        }
+
+
         // --- Event Listeners ---
         btnInventario.addEventListener('click', () => mostrarModulo(moduloInventario));
         btnFacturacion.addEventListener('click', () => mostrarModulo(moduloFacturacion));
@@ -1887,7 +2192,7 @@
         btnAgregarProductoFactura.addEventListener('click', agregarProductoAListaFactura); // Evento para agregar a la lista
         btnCrearFactura.addEventListener('click', crearFactura); // Evento para crear la factura final
 
-        // Event Listener para los botones de "Abonar" y "Ver Abonos" en la tabla de facturas (delegación)
+        // Event Listener para los botones de "Abonar", "Ver Abonos" y "Generar PDF" en la tabla de facturas (delegación)
         tablaFacturas.addEventListener('click', (event) => {
             if (event.target.classList.contains('btn-abonar')) {
                 const facturaId = event.target.dataset.id;
@@ -1907,6 +2212,9 @@
                       return;
                  }
                 mostrarHistorialAbonos(abonosData); // Llamar a la nueva función para mostrar en modal
+            } else if (event.target.classList.contains('btn-generate-pdf')) { // Nuevo listener para el botón PDF
+                const facturaId = event.target.dataset.id;
+                generarFacturaPDF(facturaId); // Llamar a la función para generar PDF
             }
         });
 
