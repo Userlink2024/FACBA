@@ -379,7 +379,11 @@
                     <strong>Crédito Pendiente:</strong>
                     <span id="creditoPendienteDisplay" class="summary-value">0</span>
                 </div>
-            </div>
+                 <div class="summary-item">
+                     <strong>Total Abonado:</strong>
+                     <span id="totalAbonadoDisplay" class="summary-value">0</span>
+                 </div>
+                 </div>
             <div>
                 <h3 class="text-lg font-medium mb-3">Lista de Facturas</h3>
                 <div class="mb-4">
@@ -570,6 +574,7 @@
         // Referencias para los nuevos elementos de resumen
         const totalFacturadoDisplay = document.getElementById('totalFacturadoDisplay');
         const creditoPendienteDisplay = document.getElementById('creditoPendienteDisplay');
+        const totalAbonadoDisplay = document.getElementById('totalAbonadoDisplay'); // Nueva referencia
 
 
         console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
@@ -600,6 +605,7 @@
         console.log('DEBUG: historialAbonosContent al obtener referencia:', historialAbonosContent); // DEBUG
         console.log('DEBUG: totalFacturadoDisplay al obtener referencia:', totalFacturadoDisplay); // DEBUG
         console.log('DEBUG: creditoPendienteDisplay al obtener referencia:', creditoPendienteDisplay); // DEBUG
+        console.log('DEBUG: totalAbonadoDisplay al obtener referencia:', totalAbonadoDisplay); // DEBUG
 
 
         // --- Variables de estado ---
@@ -837,18 +843,21 @@
 
              let totalFacturado = 0;
              let totalCreditoPendiente = 0;
+             let totalAbonado = 0; // Nueva variable para el total abonado
 
              onSnapshot(facturasCol, (snapshot) => {
                  tablaFacturas.innerHTML = ''; // Limpiar tabla
 
                  totalFacturado = 0; // Resetear totales antes de procesar el nuevo snapshot
                  totalCreditoPendiente = 0;
+                 totalAbonado = 0; // Resetear total abonado
 
                  if (snapshot.empty) {
                      tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
                       // Actualizar los displays de totales a 0 si no hay facturas
                      totalFacturadoDisplay.textContent = '0';
                      creditoPendienteDisplay.textContent = '0';
+                     totalAbonadoDisplay.textContent = '0'; // Actualizar display total abonado
                      return;
                  }
 
@@ -861,6 +870,13 @@
 
                      // Sumar al total facturado
                      totalFacturado += parseFloat(factura.valorTotal) || 0;
+
+                     // Sumar al total abonado para esta factura
+                     if (factura.abonos && Array.isArray(factura.abonos)) {
+                         factura.abonos.forEach(abono => {
+                             totalAbonado += parseFloat(abono.montoAbono) || 0;
+                         });
+                     }
 
 
                      let productosFacturadosDisplay = '';
@@ -881,17 +897,20 @@
                      // Determinar el texto a mostrar para el tipo de pago
                      const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
 
-                     // Calcular y mostrar el saldo pendiente
+                     // --- Corrección aquí: Calcular y mostrar el saldo pendiente ---
+                     let saldoPendienteDisplay;
                      const saldoPendiente = factura.saldoPendiente !== undefined && factura.saldoPendiente !== null
                          ? parseFloat(factura.saldoPendiente)
-                         : parseFloat(factura.valorTotal); // Usar valorTotal si saldoPendiente no existe
+                         : parseFloat(factura.valorTotal || 0); // Fallback si saldoPendiente no existe, usar 0 si valorTotal tampoco existe
 
-                     const saldoPendienteDisplay = parseFloat(saldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
-                     // Sumar al total de crédito pendiente solo si es factura de crédito
-                     if (factura.tipoPago === 'credito') {
+                     if (factura.tipoPago === 'contado') {
+                         saldoPendienteDisplay = '0'; // Siempre 0 para facturas de contado
+                     } else {
+                         saldoPendienteDisplay = parseFloat(saldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                         // Sumar al total de crédito pendiente solo si es factura de crédito
                          totalCreditoPendiente += saldoPendiente;
                      }
+                     // --- Fin Corrección ---
 
 
                      // Botones de acción
@@ -923,6 +942,7 @@
                  // Actualizar los displays de totales después de procesar todas las facturas
                  totalFacturadoDisplay.textContent = parseFloat(totalFacturado).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
                  creditoPendienteDisplay.textContent = parseFloat(totalCreditoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                 totalAbonadoDisplay.textContent = parseFloat(totalAbonado).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); // Actualizar display total abonado
 
 
                  filtrarFacturas(); // Aplicar el filtro inicial después de cargar
@@ -933,6 +953,7 @@
                   // Asegurarse de mostrar 0 en los totales en caso de error de carga
                  totalFacturadoDisplay.textContent = '0';
                  creditoPendienteDisplay.textContent = '0';
+                 totalAbonadoDisplay.textContent = '0'; // Asegurarse de mostrar 0 en caso de error
              });
         }
 
