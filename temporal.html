@@ -106,26 +106,31 @@
             text-decoration: none;
             cursor: pointer;
         }
-        /* Estilo para la fila de abonos */
-        .abonos-row {
-            background-color: #f9fafb; /* Gris muy claro */
-            font-size: 0.9em;
-        }
-        .abonos-list {
+        /* Estilo para la lista de abonos dentro del modal */
+        .abonos-list-modal {
             margin-top: 10px;
-            padding-left: 20px;
+            padding-left: 0; /* No padding left for modal list */
+            list-style: none; /* Remove default list style */
         }
-        .abono-item {
-            margin-bottom: 5px;
-            padding: 5px;
-            border-bottom: 1px dotted #ccc;
+        .abono-item-modal {
+            margin-bottom: 8px; /* More space between items */
+            padding: 10px;
+            border: 1px solid #e5e7eb; /* Light gray border */
+            border-radius: 4px;
+            background-color: #f9fafb; /* Very light gray background */
+            display: flex; /* Use flexbox for layout */
+            justify-content: space-between; /* Space out date and amount */
+            align-items: center; /* Vertically align items */
         }
-         .abono-item:last-child {
-             border-bottom: none;
+         .abono-item-modal:last-child {
+             border-bottom: 1px solid #e5e7eb; /* Keep border for consistency */
          }
-         /* Asegurar que las celdas de la fila de abonos no tengan borde inferior */
-         .abonos-row td {
-             border-bottom: none !important;
+         .abono-item-modal span {
+             font-weight: 500; /* Make amount bold */
+         }
+         .abono-item-modal .abono-date {
+             font-size: 0.9em;
+             color: #6b7280; /* Gray text for date */
          }
     </style>
 </head>
@@ -352,7 +357,8 @@
                     <table id="tablaFacturas" class="min-w-full bg-white border border-gray-200 rounded-lg">
                         <thead>
                             <tr>
-                                <th class="px-4 py-2 border-b text-left">Código Registro</th> <th class="px-4 py-2 border-b text-left">Fecha</th>
+                                <th class="px-4 py-2 border-b text-left">Código Registro</th>
+                                <th class="px-4 py-2 border-b text-left">Fecha</th>
                                 <th class="px-4 py-2 border-b text-left">Cliente</th>
                                 <th class="px-4 py-2 border-b text-left">Tipo Pago</th>
                                 <th class="px-4 py-2 border-b text-left">Productos</th>
@@ -363,7 +369,8 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="8" class="text-center py-4">Cargando facturas...</td> </tr>
+                                <td colspan="8" class="text-center py-4">Cargando facturas...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -409,7 +416,16 @@
                  </form>
              </div>
          </div>
-         <div id="statusMessage" class="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded shadow-lg hidden">
+
+        <div id="modalHistorialAbonos" class="modal">
+            <div class="modal-content">
+                <span class="close-button" id="cerrarHistorialAbonos">&times;</span>
+                <h3 class="text-lg font-medium mb-4">Historial de Abonos</h3>
+                <div id="historialAbonosContent">
+                    </div>
+            </div>
+        </div>
+        <div id="statusMessage" class="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded shadow-lg hidden">
              Mensaje de estado
          </div>
 
@@ -513,6 +529,11 @@
         const abonoFecha = document.getElementById('abonoFecha');
         const abonoMonto = document.getElementById('abonoMonto');
 
+        // Referencias para el nuevo modal de historial de abonos
+        const modalHistorialAbonos = document.getElementById('modalHistorialAbonos');
+        const cerrarHistorialAbonos = document.getElementById('cerrarHistorialAbonos');
+        const historialAbonosContent = document.getElementById('historialAbonosContent');
+
 
         console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
         console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
@@ -537,6 +558,9 @@
         console.log('DEBUG: abonoSaldoPendiente al obtener referencia:', abonoSaldoPendiente);
         console.log('DEBUG: abonoFecha al obtener referencia:', abonoFecha);
         console.log('DEBUG: abonoMonto al obtener referencia:', abonoMonto);
+        console.log('DEBUG: modalHistorialAbonos al obtener referencia:', modalHistorialAbonos); // DEBUG
+        console.log('DEBUG: cerrarHistorialAbonos al obtener referencia:', cerrarHistorialAbonos); // DEBUG
+        console.log('DEBUG: historialAbonosContent al obtener referencia:', historialAbonosContent); // DEBUG
 
 
         // --- Variables de estado ---
@@ -566,6 +590,7 @@
                 moduloVerFacturas.style.display = 'none';
                 moduloBuscarProducto.style.display = 'none';
                 moduloAbonar.style.display = 'none'; // Asegurarse de ocultar el modal de abonos
+                modalHistorialAbonos.style.display = 'none'; // Asegurarse de ocultar el modal de historial
 
                 moduloAMostrar.style.display = 'block';
 
@@ -826,7 +851,8 @@
 
 
                      row.innerHTML = `
-                         <td class="px-4 py-2 border-b">${factura.codigoRegistro || 'N/A'}</td> <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
+                         <td class="px-4 py-2 border-b">${factura.codigoRegistro || 'N/A'}</td>
+                         <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
                          <td class="px-4 py-2 border-b">${factura.cliente}</td>
                          <td class="px-4 py-2 border-b">${tipoPagoDisplay}</td>
                          <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
@@ -851,13 +877,12 @@
 
             rows.forEach(row => {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
-                // También saltar las filas de detalle de abonos
-                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="8"]')) { // Ajustar colspan
-                    row.style.display = 'none'; // Asegurarse de ocultar las filas de abono también
+                // Las filas de abono ya no están en la tabla principal
+                if (row.querySelector('td[colspan="8"]')) { // Ajustar colspan
                     return;
                 }
 
-                const codigoRegistro = row.cells[0].textContent.toLowerCase(); // Nueva columna Código Registro
+                const codigoRegistro = row.cells[0].textContent.toLowerCase(); // Columna Código Registro
                 const cliente = row.cells[2].textContent.toLowerCase(); // Columna Cliente (índice ajustado)
                 const tipoPago = row.cells[3].textContent.toLowerCase(); // Columna Tipo Pago (índice ajustado)
                 const productos = row.cells[4].textContent.toLowerCase();      // Columna Productos (índice ajustado)
@@ -866,11 +891,7 @@
                     row.style.display = ''; // Mostrar fila si coincide
                 } else {
                     row.style.display = 'none'; // Ocultar fila si no coincide
-                     // Si la fila principal se oculta, también ocultar su fila de abonos si existe
-                     const abonosRow = row.nextElementSibling;
-                     if (abonosRow && abonosRow.classList.contains('abonos-row')) {
-                         abonosRow.style.display = 'none';
-                     }
+                     // Ya no necesitamos ocultar la fila de abonos, ya que está en un modal
                 }
             });
         }
@@ -910,8 +931,8 @@
 
             rows.forEach(function(row) {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
-                // También saltar las filas de detalle de abonos
-                if (row.classList.contains('abonos-row') || row.querySelector('td[colspan="8"]')) { // Ajustar colspan
+                // Las filas de abono ya no están en la tabla principal
+                if (row.querySelector('td[colspan="8"]')) { // Ajustar colspan
                     return;
                 }
 
@@ -1621,83 +1642,28 @@
             }
         }
 
-        // Función para mostrar/ocultar los abonos de una factura
-        function toggleAbonos(button) {
-            console.log('DEBUG: toggleAbonos called.');
-            const row = button.closest('tr'); // Obtener la fila principal de la factura
-            const facturaId = row.dataset.id;
-            console.log('DEBUG: Factura ID:', facturaId);
+        // Función para mostrar el historial de abonos en un modal
+        function mostrarHistorialAbonos(abonosData) {
+             console.log('DEBUG: mostrarHistorialAbonos called with data:', abonosData);
+             historialAbonosContent.innerHTML = ''; // Limpiar contenido anterior
 
-            const abonosJson = row.dataset.abonos;
-            console.log('DEBUG: Abonos data from dataset (JSON string):', abonosJson);
+             let abonosHtml = '<ul class="abonos-list-modal">';
+             if (abonosData && abonosData.length > 0) {
+                 // Ordenar abonos por fecha (opcional, pero útil)
+                 abonosData.sort((a, b) => new Date(a.fechaAbono) - new Date(b.fechaAbono));
 
-            let abonosData = [];
-            try {
-                 abonosData = JSON.parse(abonosJson || '[]'); // Obtener abonos del dataset
-                 console.log('DEBUG: Parsed abonosData:', abonosData);
-            } catch (error) {
-                 console.error('DEBUG: Error parsing abonos JSON:', error);
-                 showStatusMessage("Error al leer datos de abonos.", true);
-                 return; // Salir si hay error de parsing
-            }
+                 abonosData.forEach(abono => {
+                      const montoFormateado = parseFloat(abono.montoAbono).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                     abonosHtml += `<li class="abono-item-modal"><span class="abono-date">Fecha: ${abono.fechaAbono}</span> <span>Monto: ${montoFormateado}</span></li>`;
+                 });
+             } else {
+                 abonosHtml += '<p class="text-center py-4">No hay abonos registrados para esta factura.</p>';
+             }
+             abonosHtml += '</ul>';
 
-
-            // Buscar si ya existe una fila de abonos debajo de esta factura
-            // Iterar sobre los hermanos siguientes hasta encontrar la fila de abonos o el final de la tabla
-            let existingAbonosRow = null;
-            let nextSibling = row.nextElementSibling;
-            while(nextSibling) {
-                if (nextSibling.classList.contains('abonos-row')) {
-                    existingAbonosRow = nextSibling;
-                    break;
-                }
-                nextSibling = nextSibling.nextElementSibling;
-            }
-
-            const isAbonosRowVisible = existingAbonosRow && existingAbonosRow.style.display !== 'none';
-            console.log('DEBUG: existingAbonosRow:', existingAbonosRow);
-            console.log('DEBUG: isAbonosRowVisible:', isAbonosRowVisible);
-
-
-            if (isAbonosRowVisible) {
-                // Si la fila de abonos ya existe y está visible, ocultarla y cambiar el texto del botón
-                console.log('DEBUG: Ocultando fila de abonos existente.');
-                existingAbonosRow.remove(); // Eliminar la fila de abonos
-                button.textContent = `Ver Abonos (${abonosData.length})`;
-                button.classList.remove('btn-danger'); // Cambiar color del botón
-                button.classList.add('btn-info');
-            } else {
-                // Si la fila de abonos no existe o está oculta, crearla y mostrarla
-                console.log('DEBUG: Creando y mostrando fila de abonos.');
-                const newRow = tablaFacturas.insertRow(row.rowIndex + 1); // Insertar nueva fila debajo de la fila actual
-                newRow.classList.add('abonos-row'); // Añadir clase para identificarla
-
-                const cell = newRow.insertCell(0);
-                cell.colSpan = 8; // Cubrir todas las columnas de la tabla principal (ajustado a 8)
-                cell.classList.add('px-4', 'py-2'); // Añadir padding
-
-                let abonosHtml = '<div class="abonos-list">';
-                if (abonosData.length > 0) {
-                    abonosHtml += '<p class="font-semibold mb-2">Historial de Abonos:</p>';
-                    // Ordenar abonos por fecha (opcional, pero útil)
-                    abonosData.sort((a, b) => new Date(a.fechaAbono) - new Date(b.fechaAbono));
-
-                    abonosData.forEach(abono => {
-                         const montoFormateado = parseFloat(abono.montoAbono).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-                        abonosHtml += `<div class="abono-item">Fecha: ${abono.fechaAbono} - Monto: ${montoFormateado}</div>`;
-                    });
-                } else {
-                    abonosHtml += '<p>No hay abonos registrados para esta factura.</p>';
-                }
-                abonosHtml += '</div>';
-
-                console.log('DEBUG: Generated abonosHtml:', abonosHtml);
-                cell.innerHTML = abonosHtml;
-
-                button.textContent = 'Ocultar Abonos'; // Cambiar texto del botón
-                button.classList.remove('btn-info'); // Cambiar color del botón
-                button.classList.add('btn-danger');
-            }
+             console.log('DEBUG: Generated historial abonos HTML:', abonosHtml);
+             historialAbonosContent.innerHTML = abonosHtml;
+             modalHistorialAbonos.style.display = 'block'; // Mostrar el modal
         }
 
 
@@ -1736,6 +1702,9 @@
                  moduloAbonar.style.display = 'none';
                  resetFormAbonar();
              }
+             if (event.target === modalHistorialAbonos) { // Cerrar modal de historial de abonos al hacer clic fuera
+                 modalHistorialAbonos.style.display = 'none';
+             }
          });
 
         inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
@@ -1754,7 +1723,17 @@
                  const valorTotal = parseFloat(event.target.dataset.valortotal);
                 abrirModalAbonar(facturaId, saldoActual, cliente, valorTotal);
             } else if (event.target.classList.contains('btn-ver-abonos')) {
-                toggleAbonos(event.target); // Llamar a la función para mostrar/ocultar abonos
+                 const row = event.target.closest('tr');
+                 const abonosJson = row.dataset.abonos;
+                 let abonosData = [];
+                 try {
+                      abonosData = JSON.parse(abonosJson || '[]');
+                 } catch (error) {
+                      console.error('Error parsing abonos JSON from dataset:', error);
+                      showStatusMessage("Error al cargar historial de abonos.", true);
+                      return;
+                 }
+                mostrarHistorialAbonos(abonosData); // Llamar a la nueva función para mostrar en modal
             }
         });
 
@@ -1763,6 +1742,12 @@
             moduloAbonar.style.display = 'none';
             resetFormAbonar();
         });
+
+         // Event Listener para cerrar el modal de historial de abonos
+        cerrarHistorialAbonos.addEventListener('click', () => {
+            modalHistorialAbonos.style.display = 'none';
+        });
+
 
         // Event Listener para el formulario de abonos
         formAbonar.addEventListener('submit', guardarAbono);
