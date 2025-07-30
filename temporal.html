@@ -356,7 +356,8 @@
                                 <th class="px-4 py-2 border-b text-left">Fecha</th>
                                 <th class="px-4 py-2 border-b text-left">Referencia</th>
                                 <th class="px-4 py-2 border-b text-left">Color</th>
-                                <th class="px-4 py-2 border-b text-left">Cantidad</th>
+                                <th class="px-4 py-2 border-b text-left">Cantidad en Stock</th>
+                                <th class="px-4 py-2 border-b text-left">Cantidad Vendida</th> <!-- NEW COLUMN HEADER -->
                                 <th class="px-4 py-2 border-b text-left">Valor</th>
                                 <th class="px-4 py-2 border-b text-left">Proveedor</th>
                                 <th class="px-4 py-2 border-b text-left">Acciones</th>
@@ -364,7 +365,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="7" class="text-center py-4">Cargando inventario...</td>
+                                <td colspan="8" class="text-center py-4">Cargando inventario...</td> <!-- Adjusted colspan -->
                             </tr>
                         </tbody>
                     </table>
@@ -945,14 +946,42 @@
 
 
         // Función para cargar inventario desde Firebase en tiempo real
-        function cargarInventario() {
-            tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4">Cargando inventario...</td></tr>';
+        async function cargarInventario() { // Made async to await factura fetching
+            tablaInventario.innerHTML = '<tr><td colspan="8" class="text-center py-4">Cargando inventario...</td></tr>'; // Adjusted colspan
+
+            // Map to store product ID -> total sold quantity (in its original unit: meters or units)
+            const soldQuantitiesMap = new Map();
+
+            // Fetch all facturas first to calculate sold quantities
+            try {
+                const facturasSnapshot = await getDocs(facturasCol);
+                facturasSnapshot.forEach(facturaDoc => {
+                    const factura = facturaDoc.data();
+                    if (factura.productos && Array.isArray(factura.productos)) {
+                        factura.productos.forEach(p => {
+                            const productId = p.id; // Assuming product ID is stored in factura.productos
+                            const soldQuantity = p.cantidadFacturada; // This is already the unified quantity (e.g., 1.5 or 5)
+
+                            if (soldQuantitiesMap.has(productId)) {
+                                soldQuantitiesMap.set(productId, soldQuantitiesMap.get(productId) + soldQuantity);
+                            } else {
+                                soldQuantitiesMap.set(productId, soldQuantity);
+                            }
+                        });
+                    }
+                });
+                console.log('DEBUG: Sold quantities calculated:', soldQuantitiesMap);
+            } catch (error) {
+                console.error("Error fetching facturas for sold quantities:", error);
+                showStatusMessage("Error al cargar datos de ventas.", true);
+            }
+
 
             onSnapshot(inventarioCol, (snapshot) => {
                 tablaInventario.innerHTML = '';
 
                 if (snapshot.empty) {
-                    tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4">No hay productos en el inventario.</td></tr>';
+                    tablaInventario.innerHTML = '<tr><td colspan="8" class="text-center py-4">No hay productos en el inventario.</td></tr>'; // Adjusted colspan
                     return;
                 }
 
@@ -970,12 +999,26 @@
                         cantidadDisplay = `${producto.unidades || 0} Unidades`;
                     }
 
+                    // Get sold quantity for this product
+                    const totalSold = soldQuantitiesMap.get(doc.id) || 0;
+                    let soldQuantityDisplay = '';
+                    if (producto.unidadMedida === 'metros') {
+                        const soldMetros = Math.floor(totalSold);
+                        const soldCentimetros = Math.round((totalSold - soldMetros) * 100);
+                        soldQuantityDisplay = `${soldMetros}.${soldCentimetros.toString().padStart(2, '0')} Metros`;
+                    } else if (producto.unidadMedida === 'unidades') {
+                        soldQuantityDisplay = `${totalSold} Unidades`;
+                    }
+
+
                     row.innerHTML = `
                         <td class="px-4 py-2 border-b">${producto.fechaHora}</td>
                         <td class="px-4 py-2 border-b">${producto.referencia}</td>
                         <td class="px-4 py-2 border-b">${producto.color}</td>
                         <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
-                        <td class="px-4 py-2 border-b">${parseFloat(producto.valor).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td> <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
+                        <td class="px-4 py-2 border-b">${soldQuantityDisplay}</td> <!-- NEW COLUMN -->
+                        <td class="px-4 py-2 border-b">${parseFloat(producto.valor).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                        <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
                         <td class="px-4 py-2 border-b">
                             <button class="btn btn-primary btn-sm mr-2" data-id="${doc.id}" onclick="window.modificarProducto('${doc.id}')">Modificar</button>
                             <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarProducto('${doc.id}')">Eliminar</button>
@@ -988,7 +1031,7 @@
                  filtrarInventario(); // Aplicar el filtro inicial después de cargar
             }, (error) => {
                 console.error("Error cargando inventario:", error);
-                tablaInventario.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Error al cargar inventario.</td></tr>';
+                tablaInventario.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Error al cargar inventario.</td></tr>'; // Adjusted colspan
                 showStatusMessage("Error al cargar inventario.", true);
             });
         }
@@ -1000,13 +1043,13 @@
 
             rows.forEach(row => {
                 // Saltar la fila de "Cargando inventario..." o "No hay productos..."
-                if (row.querySelector('td[colspan="7"]')) {
+                if (row.querySelector('td[colspan="8"]')) { // Adjusted colspan
                     return;
                 }
 
                 const referencia = row.cells[1].textContent.toLowerCase(); // Columna Referencia
                 const color = row.cells[2].textContent.toLowerCase();      // Columna Color
-                const proveedor = row.cells[5].textContent.toLowerCase(); // Columna Proveedor
+                const proveedor = row.cells[6].textContent.toLowerCase(); // Columna Proveedor (index adjusted)
 
                 if (referencia.includes(searchTerm) || color.includes(searchTerm) || proveedor.includes(searchTerm)) {
                     row.style.display = ''; // Mostrar fila si coincide
@@ -1253,7 +1296,7 @@
 
             rows.forEach(function(row) {
                  // Saltar filas no visibles (ocultas por el filtro) o filas de estado
-                 if (row.style.display === 'none' || row.querySelector('td[colspan="7"]')) {
+                 if (row.style.display === 'none' || row.querySelector('td[colspan="8"]')) { // Adjusted colspan
                     return;
                  }
 
