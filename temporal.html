@@ -1474,7 +1474,7 @@
         async function buscarProductoParaFacturacion() {
             console.log('DEBUG: Iniciando búsqueda de producto para facturación...');
             const searchTerm = inputBuscarProducto.value.toLowerCase().trim();
-            resultadosBusqueda.innerHTML = '';
+            resultadosBusqueda.innerHTML = ''; // Clear previous results
 
             console.log('DEBUG: Término de búsqueda (en minúsculas):', searchTerm);
 
@@ -1487,39 +1487,48 @@
              try {
                  const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
                  const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
-                 const qProveedor = query(inventarioCol, where("proveedor", ">=", searchTerm), where("proveedor", "<=", searchTerm + '\uf8ff')); // Buscar por proveedor también
+                 const qProveedor = query(inventarioCol, where("proveedor", ">=", searchTerm), where("proveedor", "<=", searchTerm + '\uf8ff'));
 
                  console.log('DEBUG: Ejecutando consultas a Firestore...');
-                 console.log('DEBUG: Consulta Referencia:', qRef);
-                 console.log('DEBUG: Consulta Color:', qColor);
-                 console.log('DEBUG: Consulta Proveedor:', qProveedor);
+
+                 const [snapshotRef, snapshotColor, snapshotProveedor] = await Promise.all([getDocs(qRef), getDocs(qColor), getDocs(qProveedor)]);
+
+                 const uniqueProductIds = new Set();
+                 const uniqueProducts = [];
+
+                 // Process results from reference query
+                 snapshotRef.forEach(doc => {
+                     if (!uniqueProductIds.has(doc.id)) {
+                         uniqueProductIds.add(doc.id);
+                         uniqueProducts.push({ id: doc.id, ...doc.data() });
+                     }
+                 });
+                 // Process results from color query
+                 snapshotColor.forEach(doc => {
+                     if (!uniqueProductIds.has(doc.id)) {
+                         uniqueProductIds.add(doc.id);
+                         uniqueProducts.push({ id: doc.id, ...doc.data() });
+                     }
+                 });
+                 // Process results from supplier query
+                 snapshotProveedor.forEach(doc => {
+                     if (!uniqueProductIds.has(doc.id)) {
+                         uniqueProductIds.add(doc.id);
+                         uniqueProducts.push({ id: doc.id, ...doc.data() });
+                     }
+                 });
+
+                 console.log('DEBUG: Total de resultados únicos encontrados (after Set de-duplication):', uniqueProducts.length);
+                 console.log('DEBUG: Resultados combinados únicos:', uniqueProducts);
 
 
-                 const [snapshotRef, snapshotColor, snapshotProveedor] = await Promise.all([getDocs(qRef), getDocs(qColor), getDocs(qProveedor)]); // Ejecutar las 3 consultas
-
-                 console.log('DEBUG: Consultas ejecutadas. snapshotRef:', snapshotRef.docs.length, 'resultados. snapshotColor:', snapshotColor.docs.length, 'resultados. snapshotProveedor:', snapshotProveedor.docs.length, 'resultados.');
-                 console.log('DEBUG: Documentos de snapshotRef:', snapshotRef.docs.map(doc => doc.data()));
-                 console.log('DEBUG: Documentos de snapshotColor:', snapshotColor.docs.map(doc => doc.data()));
-                 console.log('DEBUG: Documentos de snapshotProveedor:', snapshotProveedor.docs.map(doc => doc.data()));
-
-
-                 const resultados = new Map();
-
-                 snapshotRef.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
-                 snapshotColor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() }));
-                 snapshotProveedor.forEach(doc => resultados.set(doc.id, { id: doc.id, ...doc.data() })); // Añadir resultados de proveedor
-
-                 console.log('DEBUG: Total de resultados únicos encontrados:', resultados.size);
-                 console.log('DEBUG: Resultados combinados:', Array.from(resultados.values()));
-
-
-                 if (resultados.size === 0) {
+                 if (uniqueProducts.length === 0) {
                      resultadosBusqueda.innerHTML = '<p class="text-center py-2">No se encontraron productos.</p>';
                      console.log('DEBUG: No se encontraron productos.');
                      return;
                  }
 
-                 resultados.forEach(producto => {
+                 uniqueProducts.forEach(producto => { // Iterate over the de-duplicated array
                      const resultadoDiv = document.createElement('div');
                      resultadoDiv.classList.add('p-2', 'border-b', 'cursor-pointer', 'hover:bg-gray-100');
 
@@ -1532,9 +1541,9 @@
                          cantidadDisplay = `${producto.unidades || 0} Unidades`;
                      }
 
-                     const proveedorDisplay = producto.proveedor ? ` [${producto.proveedor}]` : ''; // Mostrar proveedor si existe
+                     const proveedorDisplay = producto.proveedor ? ` [${producto.proveedor}]` : '';
 
-                     resultadoDiv.textContent = `${producto.referencia} - ${producto.color} (${cantidadDisplay})${proveedorDisplay}`; // Incluir proveedor en el texto
+                     resultadoDiv.textContent = `${producto.referencia} - ${producto.color} (${cantidadDisplay})${proveedorDisplay}`;
                      resultadoDiv.onclick = () => seleccionarProductoParaFactura(producto);
                      resultadosBusqueda.appendChild(resultadoDiv);
                  });
