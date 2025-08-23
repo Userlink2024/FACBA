@@ -1,893 +1,2323 @@
-<!DOCTYPE <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generar Guía Inter Rapidisimo - La Zapatería</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>Inventario y Facturación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        /* Estilos personalizados */
         body {
-            font-family: Arial, sans-serif;
-            background-color: #e7f3ff;
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            min-height: 100vh;
-            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Fondo gris claro */
         }
-        .container {
-            background-color: #fff;
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 95%;
-            max-width: 800px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
+        .module {
+            display: none; /* Ocultar módulos por defecto */
         }
-        h2 {
-            text-align: center;
-            color: #0056b3;
-            margin-bottom: 20px;
-            /* Nuevos estilos para centrar el icono de ayuda */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px; /* Espacio entre el título y el icono */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer; /* Añadir cursor pointer */
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
-            font-size: 1em;
-        }
-        input[type="text"],
-        input[type="date"],
-        input[type="number"] { /* 'select' removido de aquí */
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1em;
-        }
-        /* Estilo específico para el nuevo select del filtro */
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1em;
-        }
-        button {
-            background-color: #007bff;
+        .btn-primary {
+            background-color: #3b82f6; /* Azul */
             color: white;
-            padding: 10px 15px;
-            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* Azul más oscuro al pasar el ratón */
+        }
+         .btn-danger {
+            background-color: #ef4444; /* Rojo */
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626; /* Rojo más oscuro al pasar el ratón */
+        }
+         .btn-success { /* Nuevo estilo para botón Abonar */
+            background-color: #22c55e; /* Verde */
+            color: white;
+        }
+         .btn-success:hover {
+            background-color: #16a34a; /* Verde más oscuro */
+        }
+         .btn-sm {
+             padding: 5px 10px; /* Padding más pequeño para botones en tabla */
+             font-size: 0.875rem; /* Tamaño de fuente más pequeño */
+         }
+         .btn-info { /* Nuevo estilo para botón Ver Abonos */
+             background-color: #0ea5e9; /* Azul claro */
+             color: white;
+         }
+         .btn-info:hover {
+             background-color: #0284c7; /* Azul claro más oscuro */
+         }
+         .btn-secondary { /* Nuevo estilo para botón Generar PDF */
+             background-color: #6b7280; /* Gris */
+             color: white;
+         }
+         .btn-secondary:hover {
+             background-color: #4b5563; /* Gris más oscuro */
+         }
+        .form-input {
+            padding: 8px;
+            border: 1px solid #d1d5db; /* Gris */
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 1em;
-            margin-top: 5px;
             width: 100%;
-            box-sizing: border-box;
+            box-sizing: border-box; /* Incluir padding y borde en el ancho */
         }
-        button:hover {
-            background-color: #0056b3;
+        .form-label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
         }
-        .error-message {
-            color: red;
-            margin-top: 10px;
-            font-size: 0.9em;
-            text-align: center;
-        }
-        #exportarExcelBtn {
-            background-color: #28a745;
-            margin-top: 10px;
-        }
-        #exportarExcelBtn:hover {
-            background-color: #1e7e34;
-        }
-        #verGuiasBtn {
-            background-color: #6c757d;
-            margin-top: 10px;
-        }
-        #verGuiasBtn:hover {
-            background-color: #5a6268;
-        }
-        #guiasModulo {
-            display: none;
-            margin-top: 40px;
-            background-color: #f9f9f9;
+        .card {
+            background-color: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 95%;
-            box-sizing: border-box;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        #buscadorGuias, #filtroAsesor { /* Añadido #filtroAsesor aquí para consistencia */
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1em;
-        }
-        #listaGuias {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        #listaGuias li {
-            border-bottom: 1px solid #eee;
-            padding: 10px 0;
-            margin-bottom: 10px;
-            font-size: 0.9em;
-        }
-        #listaGuias li:last-child {
-            border-bottom: none;
-        }
-        .guia-acciones {
-            display: flex;
-            gap: 5px;
-            justify-content: flex-end;
-            margin-top: 10px;
-        }
-        .accion-btn {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 8px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8em;
-        }
-        .accion-btn.eliminar {
-            background-color: #dc3545;
-        }
-        .accion-btn:hover {
-            opacity: 0.8;
-        }
-        /* Estilo para botones deshabilitados (NUEVO) */
-        .accion-btn:disabled {
-            background-color: #cccccc !important;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        /* Estilos para el icono de ayuda (NUEVO) */
-        .help-icon {
-            cursor: pointer;
-            color: #007bff;
-            font-size: 1.2em;
-            transition: color 0.3s ease;
-        }
-        .help-icon:hover {
-            color: #0056b3;
-        }
-
-        /* Estilos para el modal personalizado (NUEVO) */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
+        .modal {
+             display: none; /* Ocultar modal por defecto */
+             position: fixed; /* Posición fija */
+             z-index: 1000; /* Estar por encima de otros elementos */
+             left: 0;
+             top: 0;
+             width: 100%; /* Ancho completo */
+             height: 100%; /* Alto completo */
+             overflow: auto; /* Habilitar scroll si es necesario */
+             background-color: rgba(0, 0, 0, 0.4); /* Fondo oscuro semi-transparente */
         }
         .modal-content {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 90%;
-            text-align: left;
-            position: relative;
-            transform: translateY(-20px);
-            transition: transform 0.3s ease;
+             background-color: #fefefe;
+             margin: 15% auto; /* 15% desde arriba y centrado horizontalmente */
+             padding: 20px;
+             border: 1px solid #888;
+             width: 80%; /* Podrías ajustar esto */
+             max-width: 500px; /* Ancho máximo */
+             border-radius: 8px;
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-        .modal-overlay.active .modal-content {
-            transform: translateY(0);
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
         }
-        .modal-content h3 {
-            color: #0056b3;
-            /* Color de título original de inter.txt */
-            margin-top: 0;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 1.8em;
-        }
-        .modal-content p {
-            margin-bottom: 10px;
-            line-height: 1.6;
-            color: #333;
-        }
-        .modal-content p strong {
-            color: #0056b3;
-            /* Color de título original de inter.txt */
-        }
-        .modal-close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            font-size: 1.5em;
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
             cursor: pointer;
-            color: #888;
-            transition: color 0.3s ease;
-            width: auto;
-            /* Anular el 100% de width para este botón */
-            padding: 0;
-            margin: 0;
         }
-        .modal-close-btn:hover {
-            color: #333;
+        /* Estilo para la lista de abonos dentro del modal */
+        .abonos-list-modal {
+            margin-top: 10px;
+            padding-left: 0; /* No padding left for modal list */
+            list-style: none; /* Remove default list style */
         }
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
+        .abono-item-modal {
+            margin-bottom: 8px; /* More space between items */
+            padding: 10px;
+            border: 1px solid #e5e7eb; /* Light gray border */
+            border-radius: 4px;
+            background-color: #f9fafb; /* Very light gray background */
+            display: flex; /* Use flexbox for layout */
+            justify-content: space-between; /* Space out date and amount */
+            align-items: center; /* Vertically align items */
         }
-        .modal-actions button {
-            width: auto;
-            padding: 10px 20px;
-            font-size: 0.9em;
-        }
-        .modal-actions .confirm-btn {
-            background-color: #dc3545;
-        }
-        .modal-actions .confirm-btn:hover {
-            background-color: #c82333;
-        }
-        .modal-actions .cancel-btn {
-            background-color: #6c757d;
-        }
-        .modal-actions .cancel-btn:hover {
-            background-color: #5a6268;
-        }
-        /* Estilos para los filtros dentro del modal */
-        .filter-options {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .filter-options label {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            font-weight: normal;
-            font-size: 1em;
-            color: #333;
-        }
-        .filter-options input[type="checkbox"] {
-            margin-right: 8px;
-            width: auto;
-            margin-bottom: 0; /* Override default input margin-bottom */
-        }
+         .abono-item-modal:last-child {
+             border-bottom: 1px solid #e5e7eb; /* Keep border for consistency */
+         }
+         .abono-item-modal span {
+             font-weight: 500; /* Make amount bold */
+         }
+         .abono-item-modal .abono-date {
+             font-size: 0.9em;
+             color: #6b7280; /* Gray text for date */
+         }
+         .summary-box {
+             background-color: #e0f2f7; /* Light blue */
+             padding: 15px;
+             border-radius: 8px;
+             margin-bottom: 20px;
+             display: flex;
+             justify-content: space-around;
+             flex-wrap: wrap; /* Allow wrapping on small screens */
+         }
+         .summary-item {
+             text-align: center;
+             margin: 5px 15px;
+         }
+         .summary-item strong {
+             display: block; /* Stack label and value */
+             font-size: 1.1em;
+             margin-bottom: 4px;
+         }
+         .summary-value {
+             font-size: 1.3em;
+             font-weight: 700;
+             color: #0284c7; /* Deeper blue */
+         }
+
+         /* Estilos para la plantilla de PDF (oculta) */
+         #pdfTemplate {
+             width: 210mm; /* Ancho de una hoja A4 */
+             /* min-height: 297mm; Removido para evitar espacio extra */
+             padding: 20mm; /* Márgenes A4 */
+             box-sizing: border-box;
+             background-color: white;
+             font-family: 'Inter', sans-serif;
+             color: #333;
+             display: none; /* Ocultar por defecto */
+             flex-direction: column;
+             /* justify-content: space-between; Removido, puede causar espacio extra */
+             position: relative; /* Necesario para posicionar el footer al final */
+         }
+
+         #pdfTemplate .pdf-header {
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             margin-bottom: 20mm; /* Reducir margen */
+             padding-bottom: 10mm;
+             border-bottom: 2px solid #3b82f6; /* Línea azul */
+         }
+
+         #pdfTemplate .pdf-header h1 {
+             font-size: 2.5em;
+             font-weight: 700;
+             color: #3b82f6;
+         }
+
+         #pdfTemplate .pdf-header .company-info {
+             text-align: right;
+             font-size: 1em; /* Ajustar tamaño */
+         }
+
+          #pdfTemplate .pdf-info {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 20mm;
+              border-bottom: 1px solid #eee;
+              padding-bottom: 10mm;
+              font-size: 1em;
+          }
+
+          #pdfTemplate .pdf-info div {
+              width: 48%; /* Distribuir espacio */
+          }
+
+          #pdfTemplate .pdf-info strong {
+              display: block;
+              margin-bottom: 5px;
+              color: #555;
+          }
+
+         #pdfTemplate .pdf-items table {
+             width: 100%;
+             border-collapse: collapse;
+             margin-bottom: 20mm;
+         }
+
+         #pdfTemplate .pdf-items th,
+         #pdfTemplate .pdf-items td {
+             border: 1px solid #eee;
+             padding: 10px;
+             text-align: left;
+         }
+
+         #pdfTemplate .pdf-items th {
+             background-color: #e0f2f7; /* Fondo azul claro */
+             font-weight: 600;
+             color: #0284c7; /* Texto azul oscuro */
+         }
+
+         #pdfTemplate .pdf-totals {
+             text-align: right;
+             margin-top: 20mm;
+             padding-top: 10mm;
+             border-top: 2px solid #3b82f6; /* Línea azul */
+         }
+
+         #pdfTemplate .pdf-totals div {
+             margin-bottom: 10px;
+         }
+
+         #pdfTemplate .pdf-totals strong {
+             font-size: 1.2em;
+         }
+
+         #pdfTemplate .pdf-footer {
+             text-align: center;
+             font-size: 0.8em;
+             color: #777;
+             margin-top: auto; /* Empujar al final si flex column */
+             padding-top: 10mm;
+             border-top: 1px solid #eee;
+         }
+
+
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script>
+</head>
+<body class="p-4">
+
+    <div class="container mx-auto">
+        <h1 class="text-2xl font-bold text-center mb-6">Sistema de Inventario y Facturación</h1>
+
+        <div class="flex justify-center space-x-4 mb-8">
+            <button id="btnInventario" class="btn btn-primary">Ver Inventarios</button>
+            <button id="btnFacturacion" class="btn btn-primary">Abrir Módulo Facturación</button>
+            <button id="btnVerFacturas" class="btn btn-primary">Ver Facturas</button>
+        </div>
+
+        <div id="moduloInventario" class="module card">
+            <h2 class="text-xl font-semibold mb-4">Gestión de Inventario</h2>
+
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3" id="formInventarioTitle">Agregar Producto</h3>
+                <form id="formInventario" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="hidden" id="invProductId">
+                    <div>
+                        <label for="invFechaHora" class="form-label">Fecha:</label>
+                        <input type="date" id="invFechaHora" class="form-input bg-gray-100" required>
+                    </div>
+                    <div>
+                        <label for="invReferencia" class="form-label">Referencia:</label>
+                        <input type="text" id="invReferencia" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="invColor" class="form-label">Color:</label>
+                        <input type="text" id="invColor" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label mb-2">Unidad de Medida:</label>
+                        <div class="flex items-center space-x-4">
+                            <label>
+                                <input type="radio" name="unidadMedida" value="metros" id="radioMetros" class="mr-1" required>
+                                Metros con Centímetros
+                            </label>
+                            <label>
+                                <input type="radio" name="unidadMedida" value="unidades" id="radioUnidades" class="mr-1" required>
+                                Unidades
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="camposMetros" class="grid grid-cols-2 gap-4 hidden">
+                        <div>
+                            <label for="invMetros" class="form-label">Metros:</label>
+                            <input type="number" id="invMetros" class="form-input" min="0" value="0">
+                        </div>
+                        <div>
+                            <label for="invCentimetros" class="form-label">Centímetros:</label>
+                            <input type="number" id="invCentimetros" class="form-input" min="0" max="99" value="0">
+                        </div>
+                    </div>
+
+                    <div id="camposUnidades" class="hidden">
+                         <div>
+                            <label for="invUnidades" class="form-label">Unidades:</label>
+                            <input type="number" id="invUnidades" class="form-input" min="0" value="0">
+                         </div>
+                    </div>
+
+                     <div>
+                        <label for="invValor" class="form-label">Valor:</label>
+                        <input type="number" id="invValor" class="form-input" min="0" step="0.01" required>
+                    </div>
+                    <div>
+                        <label for="invProveedor" class="form-label">Proveedor de China:</label>
+                        <input type="text" id="invProveedor" class="form-input">
+                    </div>
+
+                    <div class="md:col-span-2 flex justify-end space-x-2">
+                         <button type="button" id="btnCancelarEdicion" class="btn btn-danger hidden">Cancelar Edición</button>
+                        <button type="submit" class="btn btn-primary">Guardar Producto</button>
+                    </div>
+                </form>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-medium mb-3">Lista de Inventario</h3>
+                <div class="mb-4">
+                    <label for="inputBuscarInventario" class="form-label">Buscar en Inventario:</label>
+                    <input type="text" id="inputBuscarInventario" class="form-input" placeholder="Buscar por Referencia o Color...">
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="tablaInventario" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 border-b text-left">Fecha</th>
+                                <th class="px-4 py-2 border-b text-left">Referencia</th>
+                                <th class="px-4 py-2 border-b text-left">Color</th>
+                                <th class="px-4 py-2 border-b text-left">Cantidad en Stock</th>
+                                <th class="px-4 py-2 border-b text-left">Cantidad Vendida</th> <!-- NEW COLUMN HEADER -->
+                                <th class="px-4 py-2 border-b text-left">Valor</th>
+                                <th class="px-4 py-2 border-b text-left">Proveedor</th>
+                                <th class="px-4 py-2 border-b text-left">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="text-center py-4">Cargando inventario...</td> <!-- Adjusted colspan -->
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button id="btnExportarInventario" class="btn btn-primary">Exportar Inventario</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="moduloFacturacion" class="module card">
+            <h2 class="text-xl font-semibold mb-4">Crear Factura</h2>
+
+            <form id="formFacturacion" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                 <div>
+                    <label for="facFechaHora" class="form-label">Fecha:</label>
+                     <input type="date" id="facFechaHora" class="form-input bg-gray-100" required>
+                </div>
+                <div>
+                    <label for="facCliente" class="form-label">Cliente:</label>
+                    <input type="text" id="facCliente" class="form-input" required>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label mb-2">Tipo de Pago:</label>
+                    <div class="flex items-center space-x-4">
+                        <label>
+                            <input type="radio" name="tipoPago" value="contado" id="radioContado" class="mr-1" required>
+                            Contado
+                        </label>
+                        <label>
+                            <input type="radio" name="tipoPago" value="credito" id="radioCredito" class="mr-1" required>
+                            Credito
+                        </label>
+                    </div>
+                </div>
+                </form>
+
+            <div class="mb-6 p-4 border rounded-lg bg-gray-50">
+                 <h3 class="text-lg font-medium mb-3">Agregar Productos a la Factura</h3>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div class="md:col-span-2">
+                         <label for="facProducto" class="form-label">Producto:</label>
+                         <input type="text" id="facProducto" class="form-input" placeholder="Buscar producto en inventario..." readonly>
+                         <button id="btnBuscarProducto" type="button" class="btn btn-primary mt-2">Buscar Producto</button>
+                         <div id="detalleProductoFactura" class="mt-3 p-3 border rounded hidden bg-white">
+                             <p><strong>Producto Seleccionado:</strong> <span id="prodNombreFac"></span></p>
+                             <p><strong>Cantidad Disponible:</strong> <span id="prodCantidadFac"></span></p>
+                             <p><strong>Proveedor:</strong> <span id="prodProveedorFac"></span></p> <input type="hidden" id="facProductId">
+                             <input type="hidden" id="facProductUnit">
+                             <input type="hidden" id="facProductMetros">
+                             <input type="hidden" id="facProductCentimetros">
+                             <input type="hidden" id="facProductUnidades">
+                             <input type="hidden" id="facProductValorUnitario">
+                             <input type="hidden" id="facProductProveedor"> <div id="camposDescuentoMetros" class="grid grid-cols-2 gap-4 mt-2 hidden">
+                                 <div>
+                                     <label for="descMetros" class="form-label">Metros a Descontar:</label>
+                                     <input type="number" id="descMetros" class="form-input" min="0" value="0">
+                                 </div>
+                                 <div>
+                                     <label for="descCentimetros" class="form-label">Centímetros a Descontar:</label>
+                                     <input type="number" id="descCentimetros" class="form-input" min="0" max="99" value="0">
+                                 </div>
+                             </div>
+                              <div id="camposDescuentoUnidades" class="mt-2 hidden">
+                                  <div>
+                                     <label for="descUnidades" class="form-label">Unidades a Descontar:</label>
+                                     <input type="number" id="descUnidades" class="form-input" min="0" value="0">
+                                  </div>
+                              </div>
+                             <button type="button" id="btnAgregarProductoFactura" class="btn btn-primary mt-3">Agregar a Factura</button>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+
+            <div class="mb-6">
+                 <h3 class="text-lg font-medium mb-3">Productos en Factura</h3>
+                 <div class="overflow-x-auto">
+                     <table id="tablaProductosFactura" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                         <thead>
+                             <tr>
+                                 <th class="px-4 py-2 border-b text-left">Referencia - Color (Proveedor)</th> <th class="px-4 py-2 border-b text-left">Cantidad</th>
+                                 <th class="px-4 py-2 border-b text-left">Valor Unitario</th>
+                                 <th class="px-4 py-2 border-b text-left">Subtotal</th>
+                                 <th class="px-4 py-2 border-b text-left">Acciones</th>
+                             </tr>
+                         </thead>
+                         <tbody>
+                             <tr>
+                                 <td colspan="5" class="text-center py-4">No hay productos agregados a la factura.</td>
+                             </tr>
+                         </tbody>
+                     </table>
+                 </div>
+            </div>
+
+             <div class="flex justify-end items-center mb-6">
+                 <strong class="text-xl mr-2">Valor Total:</strong>
+                 <span id="facValorTotalDisplay" class="text-xl">0</span> <input type="hidden" id="facValorTotal">
+             </div>
+
+
+             <div class="flex justify-end">
+                <button type="button" id="btnCrearFactura" class="btn btn-primary">Crear Factura</button>
+             </div>
+
+            </div>
+
+        <div id="moduloVerFacturas" class="module card">
+            <h2 class="text-xl font-semibold mb-4">Facturas Emitidas</h2>
+
+            <div class="summary-box">
+                <div class="summary-item">
+                    <strong>Total Facturado:</strong>
+                    <span id="totalFacturadoDisplay" class="summary-value">0</span>
+                </div>
+                <div class="summary-item">
+                    <strong>Crédito Pendiente:</strong>
+                    <span id="creditoPendienteDisplay" class="summary-value">0</span>
+                </div>
+                 <div class="summary-item">
+                     <strong>Total Abonado:</strong>
+                     <span id="totalAbonadoDisplay" class="summary-value">0</span>
+                 </div>
+                 </div>
+            <div>
+                <h3 class="text-lg font-medium mb-3">Lista de Facturas</h3>
+                <div class="mb-4">
+                    <label for="inputBuscarFacturas" class="form-label">Buscar Factura:</label>
+                    <input type="text" id="inputBuscarFacturas" class="form-input" placeholder="Buscar por Código, Cliente o Producto...">
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="tablaFacturas" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 border-b text-left">Código Registro</th>
+                                <th class="px-4 py-2 border-b text-left">Fecha</th>
+                                <th class="px-4 py-2 border-b text-left">Cliente</th>
+                                <th class="px-4 py-2 border-b text-left">Tipo Pago</th>
+                                <th class="px-4 py-2 border-b text-left">Productos</th>
+                                <th class="px-4 py-2 border-b text-left">Valor Total</th>
+                                <th class="px-4 py-2 border-b text-left">Saldo Pendiente</th>
+                                <th class="px-4 py-2 border-b text-left">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="text-center py-4">Cargando facturas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                 <div class="mt-4 flex justify-end space-x-2">
+                     <button id="btnExportarFacturas" class="btn btn-primary">Exportar Facturas (CSV)</button>
+                 </div>
+            </div>
+        </div>
+
+
+        <div id="moduloBuscarProducto" class="modal">
+            <div class="modal-content">
+                 <span class="close-button" id="cerrarBuscarProducto">&times;</span>
+                <h3 class="text-lg font-medium mb-4">Buscar Producto en Inventario</h3>
+                <input type="text" id="inputBuscarProducto" class="form-input mb-4" placeholder="Escribe para buscar...">
+                <div id="resultadosBusqueda" class="border rounded max-h-40 overflow-y-auto">
+                    <p class="text-center py-2">Escribe para buscar...</p>
+                </div>
+            </div>
+        </div>
+
+         <div id="moduloAbonar" class="modal">
+             <div class="modal-content">
+                 <span class="close-button" id="cerrarAbonar">&times;</span>
+                 <h3 class="text-lg font-medium mb-4">Registrar Abono</h3>
+                 <form id="formAbonar">
+                     <input type="hidden" id="abonoFacturaId">
+                     <div class="mb-4">
+                         <p><strong>Factura:</strong> <span id="abonoFacturaInfo"></span></p>
+                         <p><strong>Saldo Pendiente:</strong> <span id="abonoSaldoPendiente"></span></p>
+                     </div>
+                     <div class="mb-4">
+                         <label for="abonoFecha" class="form-label">Fecha del Abono:</label>
+                         <input type="date" id="abonoFecha" class="form-input" required>
+                     </div>
+                     <div class="mb-4">
+                         <label for="abonoMonto" class="form-label">Monto del Abono:</label>
+                         <input type="number" id="abonoMonto" class="form-input" min="0.01" step="0.01" required>
+                     </div>
+                     <div class="flex justify-end">
+                         <button type="submit" class="btn btn-primary">Guardar Abono</button>
+                     </div>
+                 </form>
+             </div>
+         </div>
+
+        <div id="modalHistorialAbonos" class="modal">
+            <div class="modal-content">
+                <span class="close-button" id="cerrarHistorialAbonos">&times;</span>
+                <h3 class="text-lg font-medium mb-4">Historial de Abonos</h3>
+                <div id="historialAbonosContent">
+                    </div>
+            </div>
+        </div>
+        <div id="statusMessage" class="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded shadow-lg hidden">
+             Mensaje de estado
+         </div>
+
+        <div id="pdfTemplate">
+            <div class="pdf-header">
+                <h1>FACTURA</h1>
+                <div class="company-info">
+                    <p><strong>La Zapatería</strong></p> <p>Calle 21 # 22 - 38 San Francisco</p> <p>Bucaramanga</p> </div>
+            </div>
+
+            <div class="pdf-info">
+                <div>
+                    <strong>Factura No:</strong> <span id="pdfFacturaCodigo"></span><br>
+                    <strong>Fecha:</strong> <span id="pdfFacturaFecha"></span><br>
+                    <strong>Tipo de Pago:</strong> <span id="pdfFacturaTipoPago"></span>
+                </div>
+                <div>
+                    <strong>Cliente:</strong> <span id="pdfFacturaCliente"></span><br>
+                    </div>
+            </div>
+
+            <div class="pdf-items">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Producto (Proveedor)</th>
+                            <th>Cantidad</th>
+                            <th>Valor Unitario</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfFacturaItems">
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="pdf-totals">
+                <div>
+                    <strong>Valor Total:</strong> <span id="pdfFacturaValorTotal"></span>
+                </div>
+                 <div>
+                    <strong>Saldo Pendiente:</strong> <span id="pdfFacturaSaldoPendiente"></span>
+                </div>
+            </div>
+
+            <div class="pdf-footer">
+                <p>Gracias por tu compra.</p>
+                <p>Sistema de Inventario y Facturación - La Zapatería</p> </div>
+        </div>
+        </div>
+
+    <script type="module">
+        console.log('DEBUG: Script module iniciado.');
+
+        // Importar las funciones necesarias de Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js"; // Opcional si no usas Analytics
+        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, onSnapshot, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyChvezwN6DrYXdnBvGLxnjhi4I9xUaxKfU",
-            authDomain: "lazapateria-c4157.firebaseapp.com",
-            projectId: "lazapateria-c4157",
-            storageBucket: "lazapateria-c4157.firebasestorage.app",
-            messagingSenderId: "300241769138",
-            appId: "1:300241769138:web:8ca1847de3c4fb5042afab",
-            measurementId: "G-HVG7615JEE"
+            apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
+            authDomain: "lazapateria-ce24f.firebaseapp.com",
+            projectId: "lazapateria-ce24f",
+            storageBucket: "lazapateria-ce24f.firebaseapp.com",
+            messagingSenderId: "642571845821",
+            appId: "1:642571845821:web:45858a0abc0df728fd77d4",
+            measurementId: "G-6JCF33H0K1" // Opcional
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const collectionGuias = db.collection('guias_interrapidissimo'); // Referencia a la colección de guías
-        let guiasInterrapidissimo = [];
-        let guiaAEditarId = null;
-        let datosUsuario = null; // Variable global para almacenar los datos del usuario
 
-        window.onload = () => {
-            cargarUsuarioLogueado();
-            verificarRolParaExportar();
-            setupPendienteCheckListener(); // Configura el listener para el checkbox PENDIENTE
-            setupFilterModalListeners(); // NUEVO: Configura los listeners para los filtros del modal
-            cargarGuias(); // Carga las guías al iniciar
-        };
-        /**
-         * Configura el event listener para el checkbox PENDIENTE.
-         */
-        function setupPendienteCheckListener() {
-            const pendienteCheck = document.getElementById('pendienteCheck');
-            if (pendienteCheck) {
-                pendienteCheck.addEventListener('change', toggleNumeroGuiaInput);
-                toggleNumeroGuiaInput(); // Llama una vez al cargar para establecer el estado inicial
-            }
-        }
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        // const analytics = getAnalytics(app); // Opcional
+        const db = getFirestore(app); // Usaremos Firestore
 
-        /**
-         * Habilita o deshabilita el campo "Número de Guía" basado en el estado del checkbox "PENDIENTE".
-         * También vacía el campo si se deshabilita.
-         */
-        function toggleNumeroGuiaInput() {
-            const numeroGuiaInput = document.getElementById('numeroGuia');
-            const pendienteCheck = document.getElementById('pendienteCheck');
+        // --- Elementos del DOM ---
+        console.log('DEBUG: Obteniendo referencias a elementos del DOM...');
+        const btnInventario = document.getElementById('btnInventario');
+        const btnFacturacion = document.getElementById('btnFacturacion');
+        const btnVerFacturas = document.getElementById('btnVerFacturas');
+        const moduloInventario = document.getElementById('moduloInventario');
+        const moduloFacturacion = document.getElementById('moduloFacturacion');
+        const moduloVerFacturas = document.getElementById('moduloVerFacturas');
+        const formInventario = document.getElementById('formInventario');
+        const formInventarioTitle = document.getElementById('formInventarioTitle');
+        const invProductId = document.getElementById('invProductId');
+        const radioMetros = document.getElementById('radioMetros');
+        const radioUnidades = document.getElementById('radioUnidades');
+        const camposMetros = document.getElementById('camposMetros');
+        const camposUnidades = document.getElementById('camposUnidades');
+        const invFechaHora = document.getElementById('invFechaHora');
+        const invReferencia = document.getElementById('invReferencia');
+        const invColor = document.getElementById('invColor');
+        const invMetros = document.getElementById('invMetros');
+        const invCentimetros = document.getElementById('invCentimetros');
+        const invUnidades = document.getElementById('invUnidades');
+        const invValor = document.getElementById('invValor');
+        const invProveedor = document.getElementById('invProveedor');
+        const btnCancelarEdicion = document.getElementById('btnCancelarEdicion');
+        const tablaInventario = document.getElementById('tablaInventario').querySelector('tbody');
+        const inputBuscarInventario = document.getElementById('inputBuscarInventario');
+        const btnExportarInventario = document.getElementById('btnExportarInventario');
+        const formFacturacion = document.getElementById('formFacturacion');
+        const facFechaHora = document.getElementById('facFechaHora');
+        const facCliente = document.getElementById('facCliente');
+        // Nuevas referencias para Tipo de Pago
+        const radioContado = document.getElementById('radioContado');
+        const radioCredito = document.getElementById('radioCredito');
+        // Fin Nuevas referencias
+        const facProducto = document.getElementById('facProducto');
+        const btnBuscarProducto = document.getElementById('btnBuscarProducto');
+        const detalleProductoFactura = document.getElementById('detalleProductoFactura');
+        const prodNombreFac = document.getElementById('prodNombreFac');
+        const prodCantidadFac = document.getElementById('prodCantidadFac');
+        const prodProveedorFac = document.getElementById('prodProveedorFac'); // Nueva referencia para mostrar proveedor
+        const camposDescuentoMetros = document.getElementById('camposDescuentoMetros');
+        const camposDescuentoUnidades = document.getElementById('camposDescuentoUnidades');
+        const descMetros = document.getElementById('descMetros');
+        const descCentimetros = document.getElementById('descCentimetros');
+        const descUnidades = document.getElementById('descUnidades');
+        const facValorTotalDisplay = document.getElementById('facValorTotalDisplay'); // Elemento para mostrar el total
+        const facValorTotal = document.getElementById('facValorTotal'); // Campo oculto para el total
+        const facProductId = document.getElementById('facProductId');
+        const facProductUnit = document.getElementById('facProductUnit');
+        const facProductMetros = document.getElementById('facProductMetros');
+        const facProductCentimetros = document.getElementById('facProductCentimetros');
+        const facProductUnidades = document.getElementById('facProductUnidades');
+        const facProductValorUnitario = document.getElementById('facProductValorUnitario'); // Valor unitario del producto seleccionado
+        const facProductProveedor = document.getElementById('facProductProveedor'); // Nuevo campo oculto para Proveedor
+        const btnAgregarProductoFactura = document.getElementById('btnAgregarProductoFactura'); // Botón para agregar producto a la lista
+        const tablaProductosFactura = document.getElementById('tablaProductosFactura').querySelector('tbody'); // Tabla de productos en la factura
+        const btnCrearFactura = document.getElementById('btnCrearFactura'); // Botón para crear la factura final
+        const moduloBuscarProducto = document.getElementById('moduloBuscarProducto');
+        const cerrarBuscarProducto = document.getElementById('cerrarBuscarProducto');
+        const inputBuscarProducto = document.getElementById('inputBuscarProducto');
+        const resultadosBusqueda = document.getElementById('resultadosBusqueda');
+        const statusMessage = document.getElementById('statusMessage');
+        const tablaFacturas = document.getElementById('tablaFacturas').querySelector('tbody');
+        const inputBuscarFacturas = document.getElementById('inputBuscarFacturas');
+        const btnExportarFacturas = document.getElementById('btnExportarFacturas');
 
-            if (numeroGuiaInput && pendienteCheck) {
-                numeroGuiaInput.disabled = pendienteCheck.checked;
-                if (pendienteCheck.checked) {
-                    numeroGuiaInput.value = '';
+        // Nuevas referencias para el módulo de Abonos
+        const moduloAbonar = document.getElementById('moduloAbonar');
+        const cerrarAbonar = document.getElementById('cerrarAbonar');
+        const formAbonar = document.getElementById('formAbonar');
+        const abonoFacturaId = document.getElementById('abonoFacturaId');
+        const abonoFacturaInfo = document.getElementById('abonoFacturaInfo');
+        const abonoSaldoPendiente = document.getElementById('abonoSaldoPendiente');
+        const abonoFecha = document.getElementById('abonoFecha');
+        const abonoMonto = document.getElementById('abonoMonto');
+
+        // Referencias para el nuevo modal de historial de abonos
+        const modalHistorialAbonos = document.getElementById('modalHistorialAbonos');
+        const cerrarHistorialAbonos = document.getElementById('cerrarHistorialAbonos');
+        const historialAbonosContent = document.getElementById('historialAbonosContent');
+
+        // Referencias para los nuevos elementos de resumen
+        const totalFacturadoDisplay = document.getElementById('totalFacturadoDisplay');
+        const creditoPendienteDisplay = document.getElementById('creditoPendienteDisplay');
+        const totalAbonadoDisplay = document.getElementById('totalAbonadoDisplay'); // Nueva referencia
+
+        // Referencias para la plantilla de PDF
+        const pdfTemplate = document.getElementById('pdfTemplate');
+        const pdfFacturaCodigo = document.getElementById('pdfFacturaCodigo');
+        const pdfFacturaFecha = document.getElementById('pdfFacturaFecha');
+        const pdfFacturaTipoPago = document.getElementById('pdfFacturaTipoPago');
+        const pdfFacturaCliente = document.getElementById('pdfFacturaCliente');
+        const pdfFacturaItems = document.getElementById('pdfFacturaItems');
+        const pdfFacturaValorTotal = document.getElementById('pdfFacturaValorTotal');
+        const pdfFacturaSaldoPendiente = document.getElementById('pdfFacturaSaldoPendiente');
+
+
+        console.log('DEBUG: invFechaHora al obtener referencia:', invFechaHora);
+        console.log('DEBUG: facFechaHora al obtener referencia:', facFechaHora);
+        console.log('DEBUG: btnVerFacturas al obtener referencia:', btnVerFacturas);
+        console.log('DEBUG: moduloVerFacturas al obtener referencia:', moduloVerFacturas);
+        console.log('DEBUG: btnExportarFacturas al obtener referencia:', btnExportarFacturas);
+        console.log('DEBUG: inputBuscarInventario al obtener referencia:', inputBuscarInventario);
+        console.log('DEBUG: inputBuscarFacturas al obtener referencia:', inputBuscarFacturas);
+        console.log('DEBUG: facValorTotalDisplay al obtener referencia:', facValorTotalDisplay);
+        console.log('DEBUG: facValorTotal al obtener referencia:', facValorTotal);
+        console.log('DEBUG: facProductValorUnitario al obtener referencia:', facProductValorUnitario);
+        console.log('DEBUG: btnAgregarProductoFactura al obtener referencia:', btnAgregarProductoFactura);
+        console.log('DEBUG: tablaProductosFactura al obtener referencia:', tablaProductosFactura);
+        console.log('DEBUG: btnCrearFactura al obtener referencia:', btnCrearFactura);
+        console.log('DEBUG: radioContado al obtener referencia:', radioContado); // DEBUG
+        console.log('DEBUG: radioCredito al obtener referencia:', radioCredito); // DEBUG
+        console.log('DEBUG: moduloAbonar al obtener referencia:', moduloAbonar);
+        console.log('DEBUG: cerrarAbonar al obtener referencia:', cerrarAbonar);
+        console.log('DEBUG: formAbonar al obtener referencia:', formAbonar);
+        console.log('DEBUG: abonoFacturaId al obtener referencia:', abonoFacturaId);
+        console.log('DEBUG: abonoFacturaInfo al obtener referencia:', abonoFacturaInfo);
+        console.log('DEBUG: abonoSaldoPendiente al obtener referencia:', abonoSaldoPendiente);
+        console.log('DEBUG: abonoFecha al obtener referencia:', abonoFecha);
+        console.log('DEBUG: abonoMonto al obtener referencia:', abonoMonto);
+        console.log('DEBUG: modalHistorialAbonos al obtener referencia:', modalHistorialAbonos); // DEBUG
+        console.log('DEBUG: cerrarHistorialAbonos al obtener referencia:', cerrarHistorialAbonos); // DEBUG
+        console.log('DEBUG: historialAbonosContent al obtener referencia:', historialAbonosContent); // DEBUG
+        console.log('DEBUG: totalFacturadoDisplay al obtener referencia:', totalFacturadoDisplay); // DEBUG
+        console.log('DEBUG: creditoPendienteDisplay al obtener referencia:', creditoPendienteDisplay); // DEBUG
+        console.log('DEBUG: totalAbonadoDisplay al obtener referencia:', totalAbonadoDisplay); // DEBUG
+        console.log('DEBUG: prodProveedorFac al obtener referencia:', prodProveedorFac); // DEBUG
+        console.log('DEBUG: facProductProveedor al obtener referencia:', facProductProveedor); // DEBUG
+        console.log('DEBUG: pdfTemplate al obtener referencia:', pdfTemplate); // DEBUG
+        console.log('DEBUG: pdfFacturaCodigo al obtener referencia:', pdfFacturaCodigo); // DEBUG
+        console.log('DEBUG: pdfFacturaFecha al obtener referencia:', pdfFacturaFecha); // DEBUG
+        console.log('DEBUG: pdfFacturaTipoPago al obtener referencia:', pdfFacturaTipoPago); // DEBUG
+        console.log('DEBUG: pdfFacturaCliente al obtener referencia:', pdfFacturaCliente); // DEBUG
+        console.log('DEBUG: pdfFacturaItems al obtener referencia:', pdfFacturaItems); // DEBUG
+        console.log('DEBUG: pdfFacturaValorTotal al obtener referencia:', pdfFacturaValorTotal); // DEBUG
+        console.log('DEBUG: pdfFacturaSaldoPendiente al obtener referencia:', pdfFacturaSaldoPendiente); // DEBUG
+
+
+        // --- Variables de estado ---
+        let productosEnFactura = []; // Array para almacenar los productos de la factura actual
+
+
+        // --- Funciones de Utilidad ---
+
+         function showStatusMessage(message, isError = false) {
+             statusMessage.textContent = message;
+             statusMessage.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
+             if (isError) {
+                 statusMessage.classList.add('bg-red-500');
+             } else {
+                 statusMessage.classList.add('bg-green-500');
+             }
+             setTimeout(() => {
+                 statusMessage.classList.add('hidden');
+             }, 3000);
+         }
+
+
+        function mostrarModulo(moduloAMostrar) {
+             try {
+                moduloInventario.style.display = 'none';
+                moduloFacturacion.style.display = 'none';
+                moduloVerFacturas.style.display = 'none';
+                moduloBuscarProducto.style.display = 'none';
+                moduloAbonar.style.display = 'none'; // Asegurarse de ocultar el modal de abonos
+                modalHistorialAbonos.style.display = 'none'; // Asegurarse de ocultar el modal de historial
+
+                moduloAMostrar.style.display = 'block';
+
+                if (moduloAMostrar === moduloInventario) {
+                    console.log('DEBUG: Mostrando Módulo Inventario.');
+                    resetFormInventario();
+                    cargarInventario();
+                } else if (moduloAMostrar === moduloFacturacion) {
+                    console.log('DEBUG: Mostrando Módulo Facturación.');
+                    resetFormFacturacion(); // Resetear formulario y lista de productos de la factura
+                } else if (moduloAMostrar === moduloVerFacturas) {
+                     console.log('DEBUG: Mostrando Módulo Ver Facturas.');
+                     resetBusquedaFacturas();
+                     cargarFacturas(); // Cargar facturas y calcular totales al mostrar este módulo
                 }
-            }
+             } catch (error) {
+                 console.error("Error en mostrarModulo:", error);
+                 showStatusMessage("Error interno al cambiar de módulo.", true);
+             }
         }
 
-        /**
-         * Configura los event listeners para los checkboxes de filtro en el modal.
-         */
-        function setupFilterModalListeners() {
-            const filterCheckboxes = document.querySelectorAll('#filterModal .filter-options input[type="checkbox"]');
-            filterCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', filtrarGuias);
-            });
+        function handleUnidadMedida() {
+            if (radioMetros.checked) {
+                camposMetros.classList.remove('hidden');
+                camposUnidades.classList.add('hidden');
+                 invMetros.setAttribute('required', 'required');
+                 invCentimetros.setAttribute('required', 'required');
+                 invUnidades.removeAttribute('required');
+                 invUnidades.value = 0;
+            } else if (radioUnidades.checked) {
+                camposMetros.classList.add('hidden');
+                camposUnidades.classList.remove('hidden');
+                 invUnidades.setAttribute('required', 'required');
+                 invMetros.removeAttribute('required');
+                 invCentimetros.removeAttribute('required');
+                 invMetros.value = 0;
+                 invCentimetros.value = 0;
+            }
+             if (!radioMetros.checked && !radioUnidades.checked) {
+             }
         }
 
-        async function cargarUsuarioLogueado() {
-            const usuarioLogueadoElement = document.getElementById('usuarioLogueado');
-            datosUsuario = JSON.parse(localStorage.getItem('datosUsuario')); // Asigna a la variable global
+         function handleCamposDescuento(unidad) {
+             camposDescuentoMetros.classList.add('hidden');
+             camposDescuentoUnidades.classList.add('hidden');
 
-            if (datosUsuario && datosUsuario.nombreCompleto) {
-                usuarioLogueadoElement.value = datosUsuario.nombreCompleto;
-                usuarioLogueadoElement.readOnly = true;
-                usuarioLogueadoElement.draggable = true;
-                usuarioLogueadoElement.ondragstart = (event) => {
-                    event.dataTransfer.setData("text", event.target.value);
-                };
-                console.log("Usuario cargado y arrastrable:", datosUsuario.nombreCompleto);
-            } else {
-                usuarioLogueadoElement.value = 'No se pudo cargar el usuario';
-                usuarioLogueadoElement.readOnly = true;
-                console.error("No se encontraron datos del usuario en localStorage.");
-            }
-        }
+             descMetros.removeAttribute('required');
+             descCentimetros.removeAttribute('required');
+             descUnidades.removeAttribute('required');
 
-        function verificarRolParaExportar() {
-            // Usa la variable global datosUsuario
-            const exportarExcelBtn = document.getElementById('exportarExcelBtn');
-            if (datosUsuario && datosUsuario.permisos && datosUsuario.permisos.toLowerCase() === 'administrador') {
-                exportarExcelBtn.style.display = 'block';
-            } else {
-                exportarExcelBtn.style.display = 'none';
-            }
-        }
+             descMetros.value = 0;
+             descCentimetros.value = 0;
+             descUnidades.value = 0;
 
-        async function guardarGuia() {
-            const usuario = document.getElementById('usuarioLogueado').value;
-            const fecha = document.getElementById('fechaGuia').value;
-            const nombreCliente = document.getElementById('nombreCliente').value;
-            const valorMercancia = document.getElementById('valorMercancia').value;
-            const numeroGuiaInput = document.getElementById('numeroGuia');
-            const numeroGuia = numeroGuiaInput.value;
-            const pendienteCheck = document.getElementById('pendienteCheck');
-            const errorMessageElement = document.getElementById('error-message');
-            errorMessageElement.textContent = '';
-            const guardarBtn = document.querySelector('#generarGuiaForm button[type="submit"]');
 
-            if (!fecha || !nombreCliente || !usuario || !valorMercancia) {
-                errorMessageElement.textContent = 'Por favor, completa todos los campos obligatorios.';
-                showMessageModal('Error de Validación', 'Por favor, completa todos los campos obligatorios.', 'error');
-                return;
-            }
+             if (unidad === 'metros') {
+                 camposDescuentoMetros.classList.remove('hidden');
+                 descMetros.setAttribute('required', 'required');
+                 descCentimetros.setAttribute('required', 'required');
+             } else if (unidad === 'unidades') {
+                 camposDescuentoUnidades.classList.remove('hidden');
+                 descUnidades.setAttribute('required', 'required');
+             }
+         }
 
-            if (!pendienteCheck.checked && !numeroGuia) {
-                errorMessageElement.textContent = 'El campo "Número de Guía" no puede estar vacío a menos que el check "PENDIENTE" esté activo.';
-                showMessageModal('Error de Validación', 'El campo "Número de Guía" no puede estar vacío a menos que el check "PENDIENTE" esté activo.', 'error');
-                return;
-            }
+         function resetFormInventario() {
+             formInventario.reset();
+             invProductId.value = '';
+             formInventarioTitle.textContent = 'Agregar Producto';
+             btnCancelarEdicion.classList.add('hidden');
+             camposMetros.classList.add('hidden');
+             camposUnidades.classList.add('hidden');
+             radioMetros.checked = false;
+             radioUnidades.checked = false;
+             handleUnidadMedida();
+             if(invFechaHora) invFechaHora.value = '';
+             if(inputBuscarInventario) inputBuscarInventario.value = ''; // Limpiar búsqueda al resetear
+             filtrarInventario(); // Aplicar filtro vacío
+         }
 
-            const guiaData = {
-                usuario: usuario, // El usuario logueado actúa como el asesor
-                fecha: fecha,
-                nombreCliente: nombreCliente,
-                valorMercancia: parseFloat(valorMercancia),
-                numeroGuia: pendienteCheck.checked ? '' : numeroGuia,
-                pendiente: pendienteCheck.checked,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                verificado: false,
-                novedad: false,
-                anulado: false
-            };
+         function resetFormFacturacion() {
+             // Resetear campos de factura
+             facFechaHora.value = '';
+             facCliente.value = '';
+             // Resetear radios de tipo de pago
+             radioContado.checked = false;
+             radioCredito.checked = false;
 
+             facValorTotalDisplay.textContent = '0';
+             facValorTotal.value = 0;
+
+             // Resetear sección de agregar producto
+             facProducto.value = '';
+             detalleProductoFactura.classList.add('hidden');
+             facProductId.value = '';
+             facProductUnit.value = '';
+             facProductMetros.value = '';
+             facProductCentimetros.value = '';
+             facProductUnidades.value = '';
+             facProductValorUnitario.value = '';
+             facProductProveedor.value = ''; // Resetear campo oculto de proveedor
+             prodNombreFac.textContent = ''; // Limpiar display de nombre
+             prodCantidadFac.textContent = ''; // Limpiar display de cantidad
+             prodProveedorFac.textContent = ''; // Limpiar display de proveedor
+
+             handleCamposDescuento('');
+
+             // Limpiar lista de productos en factura
+             productosEnFactura = [];
+             renderProductosEnFactura(); // Renderizar tabla vacía
+         }
+
+         function resetBusquedaFacturas() {
+             if(inputBuscarFacturas) inputBuscarFacturas.value = ''; // Limpiar búsqueda de facturas
+             // No llamamos a filtrarFacturas aquí, ya que cargarFacturas lo hará después de cargar los datos.
+         }
+
+         function resetFormAbonar() {
+             formAbonar.reset();
+             abonoFacturaId.value = '';
+             abonoFacturaInfo.textContent = '';
+             abonoSaldoPendiente.textContent = '';
+              // Establecer la fecha actual en el campo de fecha del abono
+             const today = new Date().toISOString().split('T')[0];
+             if(abonoFecha) abonoFecha.value = today;
+         }
+
+
+        // --- Lógica de Firebase ---
+
+        const inventarioCol = collection(db, "inventario");
+        const facturasCol = collection(db, "facturas");
+
+
+        // Función para cargar inventario desde Firebase en tiempo real
+        async function cargarInventario() { // Made async to await factura fetching
+            tablaInventario.innerHTML = '<tr><td colspan="8" class="text-center py-4">Cargando inventario...</td></tr>'; // Adjusted colspan
+
+            // Map to store product ID -> total sold quantity (in its original unit: meters or units)
+            const soldQuantitiesMap = new Map();
+
+            // Fetch all facturas first to calculate sold quantities
             try {
-                if (guiaAEditarId) {
-                    console.log("Actualizando guía con ID:", guiaAEditarId, guiaData);
-                    await collectionGuias.doc(guiaAEditarId).update(guiaData);
-                    showMessageModal('Éxito', 'Guía de Inter Rapidisimo actualizada exitosamente.', 'success');
-                    guardarBtn.textContent = 'Guardar Guía';
-                    guiaAEditarId = null;
-                } else {
-                    console.log("Guardando nueva guía:", guiaData);
-                    await collectionGuias.add(guiaData);
-                    showMessageModal('Éxito', 'Guía de Inter Rapidisimo registrada exitosamente.', 'success');
-                }
-                document.getElementById('generarGuiaForm').reset();
-                cargarUsuarioLogueado();
-                toggleNumeroGuiaInput();
-            } catch (error) {
-                console.error("Error al guardar/actualizar la guía: ", error);
-                errorMessageElement.textContent = `Error al ${guiaAEditarId ? 'actualizar' : 'guardar'} la guía de Inter Rapidisimo. Inténtalo de nuevo.`;
-                showMessageModal('Error', `Error al ${guiaAEditarId ? 'actualizar' : 'guardar'} la guía de Inter Rapidisimo. Inténtalo de nuevo.`, 'error');
-            }
-        }
+                const facturasSnapshot = await getDocs(facturasCol);
+                facturasSnapshot.forEach(facturaDoc => {
+                    const factura = facturaDoc.data();
+                    if (factura.productos && Array.isArray(factura.productos)) {
+                        factura.productos.forEach(p => {
+                            const productId = p.id; // Assuming product ID is stored in factura.productos
+                            const soldQuantity = p.cantidadFacturada; // This is already the unified quantity (e.g., 1.5 or 5)
 
-        async function exportarGuiasExcel(filter = 'all') {
-            try {
-                const querySnapshot = await collectionGuias.get();
-                const data = [];
-                querySnapshot.forEach(doc => {
-                    const guia = doc.data();
-                    if (filter === 'all' || 
-                        (filter === 'pendiente' && guia.pendiente) ||
-                        (filter === 'verificado' && guia.verificado) ||
-                        (filter === 'anulado' && guia.anulado) ||
-                        (filter === 'novedad' && guia.novedad)
-                    ) {
-                        data.push(guia);
+                            if (soldQuantitiesMap.has(productId)) {
+                                soldQuantitiesMap.set(productId, soldQuantitiesMap.get(productId) + soldQuantity);
+                            } else {
+                                soldQuantitiesMap.set(productId, soldQuantity);
+                            }
+                        });
                     }
                 });
-                if (data.length > 0) {
-                    const workbook = XLSX.utils.book_new();
-                    const worksheet = XLSX.utils.json_to_sheet(data);
-                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Guias Inter Rapidisimo');
-                    XLSX.writeFile(workbook, 'guias_interrapidissimo.xlsx');
-                } else {
-                    showMessageModal('Información', 'No hay guías de Inter Rapidisimo para exportar con el filtro seleccionado.', 'info');
-                }
+                console.log('DEBUG: Sold quantities calculated:', soldQuantitiesMap);
             } catch (error) {
-                console.error("Error al exportar guías a Excel: ", error);
-                showMessageModal('Error', 'Error al exportar guías a Excel.', 'error');
-            }
-        }
-        
-        function showExportModal() {
-            const exportModal = document.getElementById('exportModal');
-            exportModal.classList.add('active');
-        }
-
-        function closeExportModal() {
-            const exportModal = document.getElementById('exportModal');
-            exportModal.classList.remove('active');
-        }
-
-
-        function mostrarModuloGuias() {
-            document.getElementById('guiasModulo').style.display = 'block';
-        }
-
-        /**
-         * Carga todas las guías desde Firestore en tiempo real usando onSnapshot.
-         * También actualiza el filtro de asesor con los usuarios únicos.
-         */
-        function cargarGuias() {
-            const listaGuiasElement = document.getElementById('listaGuias');
-            listaGuiasElement.innerHTML = '';
-            guiasInterrapidissimo = [];
-
-            // Configura el listener en tiempo real
-            collectionGuias.orderBy('timestamp', 'desc').onSnapshot(snapshot => {
-                guiasInterrapidissimo = [];
-                const asesoresUnicos = new Set();
-
-                snapshot.forEach(doc => {
-                    const guia = doc.data();
-                    guia.id = doc.id;
-                    guiasInterrapidissimo.push(guia);
-                    if (guia.usuario) {
-                        asesoresUnicos.add(guia.usuario);
-                    }
-                });
-
-                // Actualiza el filtro de asesor
-                const filtroAsesorSelect = document.getElementById('filtroAsesor');
-                const currentSelectedAsesor = filtroAsesorSelect.value;
-                filtroAsesorSelect.innerHTML = '<option value="">Todos los Asesores</option>';
-                asesoresUnicos.forEach(asesor => {
-                    const option = document.createElement('option');
-                    option.value = asesor;
-                    option.textContent = asesor;
-                    filtroAsesorSelect.appendChild(option);
-                });
-                if (asesoresUnicos.has(currentSelectedAsesor)) {
-                    filtroAsesorSelect.value = currentSelectedAsesor;
-                }
-
-
-                mostrarGuiasFiltradas(guiasInterrapidissimo);
-            }, error => {
-                console.error("Error al cargar las guías en tiempo real: ", error);
-                showMessageModal('Error', 'Error al cargar las guías de Inter Rapidisimo en tiempo real.', 'error');
-            });
-        }
-
-        function mostrarGuiasFiltradas(guias) {
-            const listaGuiasElement = document.getElementById('listaGuias');
-            listaGuiasElement.innerHTML = '';
-
-            const filtroBusqueda = document.getElementById('buscadorGuias').value.toLowerCase();
-            const filtroAsesor = document.getElementById('filtroAsesor').value;
-            const filtroPendiente = document.getElementById('pendienteFilter').checked;
-            const filtroVerificado = document.getElementById('verificadoFilter').checked;
-            const filtroAnulado = document.getElementById('anuladoFilter').checked;
-            const filtroNovedad = document.getElementById('novedadFilter').checked;
-            const guiasFiltradas = guias.filter(guia => {
-                const coincideBusqueda = Object.values(guia).some(valor => {
-                    if (typeof valor === 'string' || typeof valor === 'number') {
-                        return String(valor).toLowerCase().includes(filtroBusqueda);
-                    }
-                    return false;
-                });
-
-                const coincideAsesor = filtroAsesor === "" || (guia.usuario && guia.usuario === filtroAsesor);
-
-                const coincidePendiente = !filtroPendiente || guia.pendiente === true;
-                const coincideVerificado = !filtroVerificado || guia.verificado === true;
-                const coincideAnulado = !filtroAnulado || guia.anulado === true;
-                const coincideNovedad = !filtroNovedad || guia.novedad === true;
-
-                return coincideBusqueda && coincideAsesor && coincidePendiente && coincideVerificado && coincideAnulado && coincideNovedad;
-            });
-
-            if (guiasFiltradas.length === 0) {
-                listaGuiasElement.innerHTML = '<li>No se encontraron guías que coincidan con los filtros.</li>';
-                return;
+                console.error("Error fetching facturas for sold quantities:", error);
+                showStatusMessage("Error al cargar datos de ventas.", true);
             }
 
-            guiasFiltradas.forEach(guia => {
-                const isOperador = datosUsuario && datosUsuario.permisos.toLowerCase() === 'operador';
-                const isAdministrador = datosUsuario && datosUsuario.permisos.toLowerCase() === 'administrador';
-                const isVerificado = guia.verificado === true;
-                const isNovedad = guia.novedad === true;
-                const isAnulado = guia.anulado === true;
-                const disableActions = isOperador && (isVerificado || isNovedad || isAnulado);
 
-                const listItem = document.createElement('li');
-                const editButtonAttrs = `${disableActions ? 'disabled' : ''} ${disableActions ? '' : `onclick="cargarDatosParaEdicion('${guia.id}')"`}`;
-                const deleteButtonAttrs = `${disableActions ? 'disabled' : ''} ${disableActions ? '' : `onclick="showConfirmModal('Confirmar Eliminación', '¿Estás seguro de que deseas eliminar esta guía?', () => eliminarGuia('${guia.id}'))"`}`;
-                listItem.innerHTML = `
-                    <div><strong>Número de Guía:</strong> ${guia.numeroGuia || (guia.pendiente ? 'PENDIENTE' : 'N/A')}</div>
-                    <div><strong>Nombre del Cliente:</strong> ${guia.nombreCliente}</div>
-                    <div><strong>Fecha:</strong> ${guia.fecha}</div>
-                    <div><strong>Valor:</strong> ${guia.valorMercancia}</div>
-                    <div><strong>Usuario (Asesor):</strong> ${guia.usuario}</div>
-                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 5px;">
-                        ${guia.pendiente ? '<div><strong>Estado:</strong> PENDIENTE</div>' : ''}
-                        ${isAdministrador ? `
-                            <label style="margin-bottom: 0; font-weight: normal;">
-                                <input type="checkbox" id="verificado-${guia.id}" ${guia.verificado ? 'checked' : ''} onchange="toggleVerificado('${guia.id}', this.checked)" style="margin-right: 5px; width: auto;"> Verificado
-                            </label>
-                            <label style="margin-bottom: 0; font-weight: normal;">
-                                <input type="checkbox" id="novedad-${guia.id}" ${guia.novedad ? 'checked' : ''} onchange="toggleNovedad('${guia.id}', this.checked)" style="margin-right: 5px; width: auto;"> Novedad
-                            </label>
-                        ` : `
-                            ${isVerificado ? '<div><strong>Verificado:</strong> Sí</div>' : ''}
-                            ${isNovedad ? '<div><strong>Novedad:</strong> Sí</div>' : ''}
-                        `}
-                        ${isAdministrador || isOperador ? `
-                            <label style="margin-bottom: 0; font-weight: normal;">
-                                <input type="checkbox" id="anulado-${guia.id}" ${guia.anulado ? 'checked' : ''} onchange="toggleAnulado('${guia.id}', this.checked)" style="margin-right: 5px; width: auto;"> Anulado
-                            </label>
-                        ` : (isAnulado ? '<div><strong>Anulado:</strong> Sí</div>' : '')}
-                    </div>
-                    <div class="guia-acciones">
-                        <button class="accion-btn ${disableActions ? 'disabled-btn' : ''}" ${editButtonAttrs}>Editar</button>
-                        <button class="accion-btn eliminar ${disableActions ? 'disabled-btn' : ''}" ${deleteButtonAttrs}>Eliminar</button>
-                    </div>
-                    <hr style="border-top: 1px solid #ccc; margin-top: 10px; margin-bottom: 10px;">
-                `;
-                listaGuiasElement.appendChild(listItem);
-            });
-        }
+            onSnapshot(inventarioCol, (snapshot) => {
+                tablaInventario.innerHTML = '';
 
-        async function toggleVerificado(guiaId, isChecked) {
-            try {
-                await collectionGuias.doc(guiaId).update({ verificado: isChecked });
-                showMessageModal('Éxito', `Guía ${isChecked ? 'verificada' : 'desverificada'} exitosamente.`, 'success');
-            } catch (error) {
-                console.error("Error al actualizar el estado de verificación: ", error);
-                showMessageModal('Error', 'Error al actualizar el estado de verificación.', 'error');
-            }
-        }
-
-        async function toggleNovedad(guiaId, isChecked) {
-            try {
-                await collectionGuias.doc(guiaId).update({ novedad: isChecked });
-                showMessageModal('Éxito', `Guía ${isChecked ? 'marcada con novedad' : 'sin novedad'} exitosamente.`, 'success');
-            } catch (error) {
-                console.error("Error al actualizar el estado de novedad: ", error);
-                showMessageModal('Error', 'Error al actualizar el estado de novedad.', 'error');
-            }
-        }
-
-        async function toggleAnulado(guiaId, isChecked) {
-            try {
-                await collectionGuias.doc(guiaId).update({ anulado: isChecked });
-                showMessageModal('Éxito', `Guía ${isChecked ? 'marcada como anulada' : 'desmarcada como anulada'} exitosamente.`, 'success');
-            } catch (error) {
-                console.error("Error al actualizar el estado de anulado: ", error);
-                showMessageModal('Error', 'Error al actualizar el estado de anulado.', 'error');
-            }
-        }
-
-        function cargarDatosParaEdicion(guiaId) {
-            console.log("Cargando datos para edición con ID:", guiaId);
-            const guiaParaEditar = guiasInterrapidissimo.find(guia => guia.id === guiaId);
-            if (guiaParaEditar) {
-                const isOperador = datosUsuario && datosUsuario.permisos.toLowerCase() === 'operador';
-                const isVerificado = guiaParaEditar.verificado === true;
-                const isNovedad = guiaParaEditar.novedad === true;
-                const isAnulado = guiaParaEditar.anulado === true;
-                if (isOperador && (isVerificado || isNovedad || isAnulado)) {
-                    showMessageModal('Acción Restringida', 'No puedes editar guías verificadas, con novedad o anuladas como Operador.', 'info');
+                if (snapshot.empty) {
+                    tablaInventario.innerHTML = '<tr><td colspan="8" class="text-center py-4">No hay productos en el inventario.</td></tr>'; // Adjusted colspan
                     return;
                 }
-                console.log("Guía encontrada para editar:", guiaParaEditar);
-                document.getElementById('usuarioLogueado').value = guiaParaEditar.usuario;
-                document.getElementById('fechaGuia').value = guiaParaEditar.fecha;
-                document.getElementById('nombreCliente').value = guiaParaEditar.nombreCliente;
-                document.getElementById('valorMercancia').value = guiaParaEditar.valorMercancia;
-                document.getElementById('numeroGuia').value = guiaParaEditar.numeroGuia;
-                document.getElementById('pendienteCheck').checked = guiaParaEditar.pendiente || false;
-                toggleNumeroGuiaInput();
-                guiaAEditarId = guiaId;
-                const guardarBtn = document.querySelector('#generarGuiaForm button[type="submit"]');
-                guardarBtn.textContent = 'Actualizar Guía';
-                document.getElementById('guiasModulo').style.display = 'none';
-                document.querySelector('.container:first-child').style.display = 'block';
-            } else {
-                console.error("No se encontró la guía con ID:", guiaId);
-                showMessageModal('Error', 'No se pudo cargar la guía para editar.', 'error');
+
+                snapshot.forEach((doc) => {
+                    const producto = doc.data();
+                    const row = tablaInventario.insertRow();
+                    row.dataset.id = doc.id; // Guardar ID en la fila para filtrado
+
+                    let cantidadDisplay = '';
+                    if (producto.unidadMedida === 'metros') {
+                         const metros = producto.metros || 0;
+                         const centimetros = producto.centimetros || 0;
+                         cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                    } else if (producto.unidadMedida === 'unidades') {
+                        cantidadDisplay = `${producto.unidades || 0} Unidades`;
+                    }
+
+                    // Get sold quantity for this product
+                    const totalSold = soldQuantitiesMap.get(doc.id) || 0;
+                    let soldQuantityDisplay = '';
+                    if (producto.unidadMedida === 'metros') {
+                        const soldMetros = Math.floor(totalSold);
+                        const soldCentimetros = Math.round((totalSold - soldMetros) * 100);
+                        soldQuantityDisplay = `${soldMetros}.${soldCentimetros.toString().padStart(2, '0')} Metros`;
+                    } else if (producto.unidadMedida === 'unidades') {
+                        soldQuantityDisplay = `${totalSold} Unidades`;
+                    }
+
+
+                    row.innerHTML = `
+                        <td class="px-4 py-2 border-b">${producto.fechaHora}</td>
+                        <td class="px-4 py-2 border-b">${producto.referencia}</td>
+                        <td class="px-4 py-2 border-b">${producto.color}</td>
+                        <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
+                        <td class="px-4 py-2 border-b">${soldQuantityDisplay}</td> <!-- NEW COLUMN -->
+                        <td class="px-4 py-2 border-b">${parseFloat(producto.valor).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                        <td class="px-4 py-2 border-b">${producto.proveedor || ''}</td>
+                        <td class="px-4 py-2 border-b">
+                            <button class="btn btn-primary btn-sm mr-2" data-id="${doc.id}" onclick="window.modificarProducto('${doc.id}')">Modificar</button>
+                            <button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarProducto('${doc.id}')">Eliminar</button>
+                        </td>
+                    `;
+                     // Guardar cantidadDisplay en el objeto producto para usarlo si se modifica
+                     producto.cantidadDisplay = cantidadDisplay;
+                });
+
+                 filtrarInventario(); // Aplicar el filtro inicial después de cargar
+            }, (error) => {
+                console.error("Error cargando inventario:", error);
+                tablaInventario.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Error al cargar inventario.</td></tr>'; // Adjusted colspan
+                showStatusMessage("Error al cargar inventario.", true);
+            });
+        }
+
+        // Función para filtrar la tabla de inventario
+        function filtrarInventario() {
+            const searchTerm = inputBuscarInventario.value.toLowerCase().trim();
+            const rows = tablaInventario.querySelectorAll("tr");
+
+            rows.forEach(row => {
+                // Saltar la fila de "Cargando inventario..." o "No hay productos..."
+                if (row.querySelector('td[colspan="8"]')) { // Adjusted colspan
+                    return;
+                }
+
+                const referencia = row.cells[1].textContent.toLowerCase(); // Columna Referencia
+                const color = row.cells[2].textContent.toLowerCase();      // Columna Color
+                const proveedor = row.cells[6].textContent.toLowerCase(); // Columna Proveedor (index adjusted)
+
+                if (referencia.includes(searchTerm) || color.includes(searchTerm) || proveedor.includes(searchTerm)) {
+                    row.style.display = ''; // Mostrar fila si coincide
+                } else {
+                    row.style.display = 'none'; // Ocultar fila si no coincide
+                }
+            });
+        }
+
+
+        // Función para cargar facturas desde Firebase en tiempo real
+        function cargarFacturas() {
+             tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4">Cargando facturas...</td></tr>'; // Ajustar colspan
+
+             let totalFacturado = 0;
+             let totalCreditoPendiente = 0;
+             let totalAbonado = 0; // Nueva variable para el total abonado
+
+             onSnapshot(facturasCol, (snapshot) => {
+                 tablaFacturas.innerHTML = ''; // Limpiar tabla
+
+                 totalFacturado = 0; // Resetear totales antes de procesar el nuevo snapshot
+                 totalCreditoPendiente = 0;
+                 totalAbonado = 0; // Resetear total abonado
+
+                 if (snapshot.empty) {
+                     tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4">No hay facturas emitidas.</td></tr>'; // Ajustar colspan
+                      // Actualizar los displays de totales a 0 si no hay facturas
+                     totalFacturadoDisplay.textContent = '0';
+                     creditoPendienteDisplay.textContent = '0';
+                     totalAbonadoDisplay.textContent = '0'; // Actualizar display total abonado
+                     return;
+                 }
+
+                 snapshot.forEach((doc) => {
+                     const factura = doc.data();
+                     const row = tablaFacturas.insertRow();
+                     row.dataset.id = doc.id; // Guardar ID de la factura
+                     // Guardar abonos en el dataset como string JSON
+                     row.dataset.abonos = JSON.stringify(factura.abonos || []);
+
+                     // Sumar al total facturado
+                     totalFacturado += parseFloat(factura.valorTotal) || 0;
+
+                     // Sumar al total abonado para esta factura
+                     if (factura.abonos && Array.isArray(factura.abonos)) {
+                         factura.abonos.forEach(abono => {
+                             totalAbonado += parseFloat(abono.montoAbono) || 0;
+                         });
+                     }
+
+
+                     let productosFacturadosDisplay = '';
+                     if (factura.productos && factura.productos.length > 0) {
+                         productosFacturadosDisplay = factura.productos.map(p => {
+                             let cantidad = '';
+                             if (p.unidadMedida === 'metros') {
+                                 cantidad = `${p.metrosFacturados || 0}.${(p.centimetrosFacturados || 0).toString().padStart(2, '0')}m`;
+                             } else if (p.unidadMedida === 'unidades') {
+                                 cantidad = `${p.unidadesFacturadas || 0} und`;
+                             }
+                             // Incluir proveedor en la visualización de productos
+                             const proveedorDisplay = p.proveedor ? ` [${p.proveedor}]` : '';
+                             return `${p.referenciaColor} (${cantidad})${proveedorDisplay}`;
+                         }).join(', '); // Unir productos con coma y espacio
+                     } else {
+                         productosFacturadosDisplay = 'Sin productos';
+                     }
+
+                     // Determinar el texto a mostrar para el tipo de pago
+                     const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
+
+                     // --- Corrección aquí: Calcular y mostrar el saldo pendiente ---
+                     let saldoPendienteDisplay;
+                     const saldoPendiente = factura.saldoPendiente !== undefined && factura.saldoPendiente !== null
+                         ? parseFloat(factura.saldoPendiente)
+                         : parseFloat(factura.valorTotal || 0); // Fallback si saldoPendiente no existe, usar 0 si valorTotal tampoco existe
+
+                     if (factura.tipoPago === 'contado') {
+                         saldoPendienteDisplay = '0'; // Siempre 0 para facturas de contado
+                     } else {
+                         saldoPendienteDisplay = parseFloat(saldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                         // Sumar al total de crédito pendiente solo si es factura de crédito
+                         totalCreditoPendiente += saldoPendiente;
+                     }
+                     // --- Fin Corrección ---
+
+
+                     // Botones de acción
+                     let accionesHtml = `<button class="btn btn-secondary btn-sm mr-2 btn-generate-pdf" data-id="${doc.id}">Generar PDF</button>`; // Botón Generar PDF
+                     accionesHtml += `<button class="btn btn-danger btn-sm" data-id="${doc.id}" onclick="window.eliminarFactura('${doc.id}')">Eliminar</button>`; // Botón Eliminar
+
+                     // Añadir botón Abonar para facturas de crédito con saldo pendiente > 0
+                     if (factura.tipoPago === 'credito' && saldoPendiente > 0) {
+                         accionesHtml = `<button class="btn btn-success btn-sm mr-2 btn-abonar" data-id="${doc.id}" data-saldo="${saldoPendiente}" data-cliente="${factura.cliente}" data-valortotal="${factura.valorTotal}">Abonar</button>` + accionesHtml;
+                     }
+
+                      // Añadir botón Ver Abonos si hay abonos registrados
+                     if (factura.abonos && factura.abonos.length > 0) {
+                          accionesHtml = `<button class="btn btn-info btn-sm mr-2 btn-ver-abonos" data-id="${doc.id}">Ver Abonos (${factura.abonos.length})</button>` + accionesHtml;
+                     }
+
+
+                     row.innerHTML = `
+                         <td class="px-4 py-2 border-b">${factura.codigoRegistro || 'N/A'}</td>
+                         <td class="px-4 py-2 border-b">${factura.fechaHora}</td>
+                         <td class="px-4 py-2 border-b">${factura.cliente}</td>
+                         <td class="px-4 py-2 border-b">${tipoPagoDisplay}</td>
+                         <td class="px-4 py-2 border-b">${productosFacturadosDisplay}</td>
+                         <td class="px-4 py-2 border-b">${parseFloat(factura.valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                         <td class="px-4 py-2 border-b">${saldoPendienteDisplay}</td>
+                         <td class="px-4 py-2 border-b">${accionesHtml}</td>
+                     `;
+                 });
+
+                 // Actualizar los displays de totales después de procesar todas las facturas
+                 totalFacturadoDisplay.textContent = parseFloat(totalFacturado).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                 creditoPendienteDisplay.textContent = parseFloat(totalCreditoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                 totalAbonadoDisplay.textContent = parseFloat(totalAbonado).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); // Actualizar display total abonado
+
+
+                 filtrarFacturas(); // Aplicar el filtro inicial después de cargar
+             }, (error) => {
+                 console.error("Error cargando facturas:", error);
+                 tablaFacturas.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Error al cargar facturas.</td></tr>'; // Ajustar colspan
+                 showStatusMessage("Error al cargar facturas.", true);
+                  // Asegurarse de mostrar 0 en los totales en caso de error de carga
+                 totalFacturadoDisplay.textContent = '0';
+                 creditoPendienteDisplay.textContent = '0';
+                 totalAbonadoDisplay.textContent = '0'; // Asegurarse de mostrar 0 en caso de error
+             });
+        }
+
+         // Función para filtrar la tabla de facturas
+        function filtrarFacturas() {
+            const searchTerm = inputBuscarFacturas.value.toLowerCase().trim();
+            const rows = tablaFacturas.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
+
+            rows.forEach(row => {
+                // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
+                // Las filas de abono ya no están en la tabla principal
+                if (row.querySelector('td[colspan="8"]')) { // Ajustar colspan
+                    return;
+                }
+
+                const codigoRegistro = row.cells[0].textContent.toLowerCase(); // Columna Código Registro
+                const cliente = row.cells[2].textContent.toLowerCase(); // Columna Cliente (índice ajustado)
+                const tipoPago = row.cells[3].textContent.toLowerCase(); // Columna Tipo Pago (índice ajustado)
+                const productos = row.cells[4].textContent.toLowerCase();      // Columna Productos (índice ajustado)
+                 const saldoPendiente = row.cells[6].textContent.toLowerCase(); // Columna Saldo Pendiente
+
+                if (codigoRegistro.includes(searchTerm) || cliente.includes(searchTerm) || tipoPago.includes(searchTerm) || productos.includes(searchTerm) || saldoPendiente.includes(searchTerm)) {
+                    row.style.display = ''; // Mostrar fila si coincide
+                } else {
+                    row.style.display = 'none'; // Ocultar fila si no coincide
+                     // Ya no necesitamos ocultar la fila de abonos, ya que está en un modal
+                }
+            });
+        }
+
+
+        // Función para eliminar factura en Firebase
+        async function eliminarFactura(idFactura) {
+            if (confirm("¿Estás seguro de eliminar esta factura?")) {
+                try {
+                    // Opcional: Aquí podrías añadir lógica para "devolver" la cantidad al inventario
+                    // si es necesario al eliminar una factura. Esto haría el sistema más robusto.
+
+                    await deleteDoc(doc(db, "facturas", idFactura));
+                    showStatusMessage("Factura eliminada con éxito.");
+                } catch (error) {
+                    console.error("Error al eliminar documento:", error);
+                    showStatusMessage("Error al eliminar la factura.", true);
+                }
             }
         }
 
-        async function eliminarGuia(id) {
-            const guiaAEliminar = guiasInterrapidissimo.find(guia => guia.id === id);
-            const isOperador = datosUsuario && datosUsuario.permisos.toLowerCase() === 'operador';
-            const isVerificado = guiaAEliminar && guiaAEliminar.verificado === true;
-            const isNovedad = guiaAEliminar && guiaAEliminar.novedad === true;
-            const isAnulado = guiaAEliminar && guiaAEliminar.anulado === true;
-            if (isOperador && (isVerificado || isNovedad || isAnulado)) {
-                showMessageModal('Acción Restringida', 'No puedes eliminar guías verificadas, con novedad o anuladas como Operador.', 'info');
+        // Exponer la función al ámbito global
+        window.eliminarFactura = eliminarFactura;
+
+
+        // Función para exportar facturas a Excel (CSV) - Mantenemos CSV aquí ya que no se pidió XLSX para facturas
+        function exportarFacturasAExcel() {
+            console.log('DEBUG: Iniciando exportación de facturas a Excel.');
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            // Encabezados del CSV (Añadir Código Registro y Saldo Pendiente)
+            const headers = ["Código Registro", "Fecha", "Cliente", "Tipo Pago", "Productos", "Valor Total", "Saldo Pendiente"]; // Ajustar encabezados
+            csvContent += headers.join(";") + "\r\n"; // Usar ; como separador
+
+            // Datos de la tabla (solo filas visibles después del filtro)
+            const rows = tablaFacturas.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
+
+            rows.forEach(function(row) {
+                // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
+                // Las filas de abono ya no están en la tabla principal
+                if (row.querySelector('td[colspan="8"]')) { // Ajustar colspan
+                    return;
+                }
+
+                let rowData = [];
+                // Iterar sobre las celdas de datos (excluir la última celda de acciones)
+                row.querySelectorAll("td").forEach(function(cell, index) {
+                     // Asegurarse de que no estamos seleccionando la columna de acciones (última celda)
+                     if (index < row.cells.length - 1) {
+                        rowData.push(cell.textContent.trim());
+                     }
+                });
+                csvContent += rowData.join(";") + "\r\n";
+            });
+
+            // Crear enlace de descarga
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "facturas.csv");
+            document.body.appendChild(link); // Requerido para algunos navegadores como Firefox
+            link.click(); // Simular clic para descargar
+            document.body.removeChild(link); // Limpiar el enlace
+
+            showStatusMessage("Facturas exportadas a facturas.csv");
+            console.log('DEBUG: Exportación de facturas completada.');
+        }
+
+        // Función para exportar inventario a Excel (XLSX)
+        function exportarInventarioAExcel() {
+            console.log('DEBUG: Iniciando exportación de inventario a XLSX.');
+
+            // Datos para el libro de trabajo (workbook)
+            const data = [];
+
+            // Encabezados (coinciden con los th de la tabla)
+            const headers = [];
+            tablaInventario.closest('table').querySelectorAll('thead th').forEach(headerCell => {
+                // Excluir la columna de Acciones
+                if (headerCell.textContent.trim() !== 'Acciones') {
+                    headers.push(headerCell.textContent.trim());
+                }
+            });
+            data.push(headers); // Añadir encabezados a los datos
+
+            // Datos de las filas (solo filas visibles después del filtro)
+            const rows = tablaInventario.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
+
+            rows.forEach(function(row) {
+                 // Saltar filas no visibles (ocultas por el filtro) o filas de estado
+                 if (row.style.display === 'none' || row.querySelector('td[colspan="8"]')) { // Adjusted colspan
+                    return;
+                 }
+
+                let rowData = [];
+                // Iterar sobre las celdas de datos (excluir la última celda de acciones)
+                row.querySelectorAll("td").forEach(function(cell, index) {
+                    // Asegurarse de que no estamos seleccionando la columna de acciones (última celda)
+                    if (index < row.cells.length - 1) {
+                         rowData.push(cell.textContent.trim());
+                    }
+                });
+                data.push(rowData); // Añadir datos de la fila
+            });
+
+            // Crear un nuevo libro de trabajo
+            const wb = XLSX.utils.book_new();
+            // Crear una hoja de cálculo a partir de los datos
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            // Añadir la hoja de cálculo al libro de trabajo
+            XLSX.utils.book_append_sheet(wb, ws, "Inventario");
+
+            // Escribir el archivo XLSX y descargarlo
+            XLSX.writeFile(wb, "inventario.xlsx");
+
+            showStatusMessage("Inventario exportado a inventario.xlsx");
+            console.log('DEBUG: Exportación de inventario completada.');
+        }
+
+
+        async function productoExiste(referencia, color, excludeId = null) {
+            const q = query(inventarioCol, where("referencia", "==", referencia), where("color", "==", color));
+            const snapshot = await getDocs(q);
+
+            if (excludeId) {
+                 return snapshot.docs.some(doc => doc.id !== excludeId);
+            } else {
+                 return !snapshot.empty;
+            }
+        }
+
+
+        async function guardarProducto(event) {
+            event.preventDefault();
+
+            const id = invProductId.value;
+            const referencia = invReferencia.value.trim().toLowerCase();
+            const color = invColor.value.trim().toLowerCase();
+            const valor = parseFloat(invValor.value);
+            const proveedor = invProveedor.value.trim();
+            const fechaHora = invFechaHora.value.trim();
+
+            if (!fechaHora) {
+                 showStatusMessage("La fecha es obligatoria.", true);
+                 return;
+            }
+
+
+            let unidad = '';
+            let metros = 0;
+            let centimetros = 0;
+            let unidades = 0;
+
+            if (radioMetros.checked) {
+                unidad = 'metros';
+                metros = parseInt(invMetros.value) || 0;
+                centimetros = parseInt(invCentimetros.value) || 0;
+                 if (metros === 0 && centimetros === 0) {
+                     showStatusMessage("La cantidad en metros o centímetros debe ser mayor a 0.", true);
+                     return;
+                 }
+            } else if (radioUnidades.checked) {
+                unidad = 'unidades';
+                unidades = parseInt(invUnidades.value) || 0;
+                 if (unidades === 0) {
+                     showStatusMessage("La cantidad en unidades debe ser mayor a 0.", true);
+                     return;
+                 }
+            } else {
+                 showStatusMessage("Debe seleccionar una unidad de medida.", true);
+                 return;
+            }
+
+            if (!id && await productoExiste(referencia, color)) {
+                showStatusMessage(`El producto con referencia "${referencia}" y color "${color}" ya existe.`, true);
                 return;
             }
-            try {
-                await collectionGuias.doc(id).delete();
-                showMessageModal('Éxito', 'Guía eliminada exitosamente.', 'success');
-            }
-            catch (error) {
-                console.error("Error al eliminar la guía: ", error);
-                showMessageModal('Error', 'Error al eliminar la guía.', 'error');
-            }
-        }
 
-        function filtrarGuias() {
-            mostrarGuiasFiltradas(guiasInterrapidissimo);
-        }
+             if (id && await productoExiste(referencia, color, id)) {
+                 showStatusMessage(`Ya existe otro producto con referencia "${referencia}" y color "${color}".`, true);
+                 return;
+             }
 
-        /**
-         * Muestra el modal de filtros y ayuda.
-         */
-        function mostrarFiltrosModal() {
-            const filterModal = document.getElementById('filterModal');
-            filterModal.classList.add('active');
-        }
-
-        /**
-         * Cierra el modal de filtros y ayuda.
-         */
-        function cerrarFiltrosModal() {
-            const filterModal = document.getElementById('filterModal');
-            filterModal.classList.remove('active');
-        }
-
-        /**
-         * Muestra un modal de mensaje genérico.
-         * @param {string} title Título del modal.
-         * @param {string} message Mensaje a mostrar.
-         * @param {string} type Tipo de mensaje ('success', 'error', 'info').
-         */
-        function showMessageModal(title, message, type) {
-            const messageModal = document.getElementById('messageModal');
-            const messageModalTitle = document.getElementById('messageModalTitle');
-            const messageModalBody = document.getElementById('messageModalBody');
-            const messageModalCloseBtn = document.getElementById('messageModalCloseBtn');
-
-            messageModalTitle.textContent = title;
-            messageModalBody.textContent = message;
-            messageModalTitle.style.color = '';
-            if (type === 'success') {
-                messageModalTitle.style.color = '#28a745';
-            } else if (type === 'error') {
-                messageModalTitle.style.color = '#dc3545';
-            } else if (type === 'info') {
-                messageModalTitle.style.color = '#007bff';
-            }
-
-            messageModal.classList.add('active');
-            messageModalCloseBtn.onclick = () => messageModal.classList.remove('active');
-        }
-
-        /**
-         * Muestra un modal de confirmación con botones de sí/no.
-         * @param {string} title Título del modal.
-         * @param {string} message Mensaje de confirmación.
-         * @param {function} onConfirm Callback a ejecutar si se confirma.
-         */
-        function showConfirmModal(title, message, onConfirm) {
-            const confirmModal = document.getElementById('confirmModal');
-            const confirmModalTitle = document.getElementById('confirmModalTitle');
-            const confirmModalBody = document.getElementById('confirmModalBody');
-            const confirmBtn = document.getElementById('confirmActionBtn');
-            const cancelBtn = document.getElementById('cancelActionBtn');
-
-            confirmModalTitle.textContent = title;
-            confirmModalBody.textContent = message;
-
-            confirmModal.classList.add('active');
-
-            confirmBtn.onclick = () => {
-                onConfirm();
-                confirmModal.classList.remove('active');
+            const productoData = {
+                fechaHora: fechaHora,
+                referencia: referencia,
+                color: color,
+                unidadMedida: unidad,
+                metros: metros,
+                centimetros: centimetros,
+                unidades: unidades,
+                valor: valor, // Guardar el valor numérico sin formato
+                proveedor: proveedor
             };
-            cancelBtn.onclick = () => confirmModal.classList.remove('active');
+
+            try {
+                if (id) {
+                    const productRef = doc(db, "inventario", id);
+                    await updateDoc(productRef, productoData);
+                    showStatusMessage("Producto actualizado con éxito!");
+                } else {
+                    await addDoc(inventarioCol, productoData);
+                    showStatusMessage("Producto guardado con éxito!");
+                }
+                resetFormInventario();
+            } catch (e) {
+                console.error("Error al guardar el producto: ", e);
+                showStatusMessage("Error al guardar el producto.", true);
+            }
         }
+
+        async function eliminarProducto(idProducto) {
+            if (confirm("¿Estás seguro de eliminar este producto?")) {
+                try {
+                    await deleteDoc(doc(db, "inventario", idProducto));
+                    showStatusMessage("Producto eliminado con éxito.");
+                } catch (error) {
+                    console.error("Error al eliminar documento:", error);
+                    showStatusMessage("Error al eliminar el producto.", true);
+                }
+            }
+        }
+
+        async function modificarProducto(idProducto) {
+             try {
+                 const productRef = doc(db, "inventario", idProducto);
+                 const productSnap = await getDoc(productRef);
+
+                 if (productSnap.exists()) {
+                     const producto = productSnap.data();
+                     invProductId.value = idProducto;
+                     invFechaHora.value = producto.fechaHora;
+                     invReferencia.value = producto.referencia;
+                     invColor.value = producto.color;
+                     invValor.value = producto.valor; // Cargar el valor numérico
+                     invProveedor.value = producto.proveedor || '';
+
+                     if (producto.unidadMedida === 'metros') {
+                         radioMetros.checked = true;
+                         invMetros.value = producto.metros || 0;
+                         invCentimetros.value = producto.centimetros || 0;
+                     } else if (producto.unidadMedida === 'unidades') {
+                         radioUnidades.checked = true;
+                         invUnidades.value = producto.unidades || 0;
+                     }
+                     handleUnidadMedida();
+
+                     formInventarioTitle.textContent = 'Modificar Producto';
+                     btnCancelarEdicion.classList.remove('hidden');
+                     formInventario.scrollIntoView({ behavior: 'smooth' });
+
+                 } else {
+                     showStatusMessage("Producto no encontrado para modificar.", true);
+                 }
+             } catch (error) {
+                 console.error("Error cargando datos para modificar:", error);
+                 showStatusMessage("Error cargando datos para modificar.", true);
+             }
+        }
+
+        window.modificarProducto = modificarProducto;
+        window.eliminarProducto = eliminarProducto;
+
+
+        // Función para buscar producto en Firebase para facturación
+        async function buscarProductoParaFacturacion() {
+            console.log('DEBUG: Iniciando búsqueda de producto para facturación...');
+            const searchTerm = inputBuscarProducto.value.toLowerCase().trim();
+            resultadosBusqueda.innerHTML = ''; // Clear previous results
+
+            console.log('DEBUG: Término de búsqueda (en minúsculas):', searchTerm);
+
+             if (searchTerm.length < 2) {
+                 resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe al menos 2 caracteres para buscar.</p>';
+                 console.log('DEBUG: Término de búsqueda demasiado corto.');
+                 return;
+             }
+
+             try {
+                 const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
+                 const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
+                 const qProveedor = query(inventarioCol, where("proveedor", ">=", searchTerm), where("proveedor", "<=", searchTerm + '\uf8ff'));
+
+                 console.log('DEBUG: Ejecutando consultas a Firestore...');
+
+                 const [snapshotRef, snapshotColor, snapshotProveedor] = await Promise.all([getDocs(qRef), getDocs(qColor), getDocs(qProveedor)]);
+
+                 const uniqueProductIds = new Set();
+                 const uniqueProducts = [];
+
+                 // Process results from reference query
+                 snapshotRef.forEach(doc => {
+                     if (!uniqueProductIds.has(doc.id)) {
+                         uniqueProductIds.add(doc.id);
+                         uniqueProducts.push({ id: doc.id, ...doc.data() });
+                     }
+                 });
+                 // Process results from color query
+                 snapshotColor.forEach(doc => {
+                     if (!uniqueProductIds.has(doc.id)) {
+                         uniqueProductIds.add(doc.id);
+                         uniqueProducts.push({ id: doc.id, ...doc.data() });
+                     }
+                 });
+                 // Process results from supplier query
+                 snapshotProveedor.forEach(doc => {
+                     if (!uniqueProductIds.has(doc.id)) {
+                         uniqueProductIds.add(doc.id);
+                         uniqueProducts.push({ id: doc.id, ...doc.data() });
+                     }
+                 });
+
+                 console.log('DEBUG: Total de resultados únicos encontrados (after Set de-duplication):', uniqueProducts.length);
+                 console.log('DEBUG: Resultados combinados únicos:', uniqueProducts);
+
+
+                 if (uniqueProducts.length === 0) {
+                     resultadosBusqueda.innerHTML = '<p class="text-center py-2">No se encontraron productos.</p>';
+                     console.log('DEBUG: No se encontraron productos.');
+                     return;
+                 }
+
+                 uniqueProducts.forEach(producto => { // Iterate over the de-duplicated array
+                     const resultadoDiv = document.createElement('div');
+                     resultadoDiv.classList.add('p-2', 'border-b', 'cursor-pointer', 'hover:bg-gray-100');
+
+                     let cantidadDisplay = '';
+                     if (producto.unidadMedida === 'metros') {
+                          const metros = producto.metros || 0;
+                          const centimetros = producto.centimetros || 0;
+                          cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                     } else if (producto.unidadMedida === 'unidades') {
+                         cantidadDisplay = `${producto.unidades || 0} Unidades`;
+                     }
+
+                     const proveedorDisplay = producto.proveedor ? ` [${producto.proveedor}]` : '';
+
+                     resultadoDiv.textContent = `${producto.referencia} - ${producto.color} (${cantidadDisplay})${proveedorDisplay}`;
+                     resultadoDiv.onclick = () => seleccionarProductoParaFactura(producto);
+                     resultadosBusqueda.appendChild(resultadoDiv);
+                 });
+                 console.log('DEBUG: Resultados de búsqueda mostrados.');
+
+             } catch (error) {
+                 console.error("Error buscando producto:", error);
+                 resultadosBusqueda.innerHTML = '<p class="text-center py-2 text-red-500">Error buscando productos.</p>';
+                 showStatusMessage("Error buscando productos.", true);
+             }
+        }
+
+        function seleccionarProductoParaFactura(producto) {
+            console.log("DEBUG: Producto seleccionado para factura:", producto);
+            moduloBuscarProducto.style.display = 'none';
+
+            // Llenar campos ocultos y de visualización para el producto seleccionado
+            facProductId.value = producto.id;
+            facProductUnit.value = producto.unidadMedida;
+            facProductMetros.value = producto.metros || 0;
+            facProductCentimetros.value = producto.centimetros || 0;
+            facProductUnidades.value = producto.unidades || 0;
+            facProductValorUnitario.value = producto.valor; // Guardar valor unitario
+            facProductProveedor.value = producto.proveedor || ''; // Guardar proveedor en campo oculto
+
+            detalleProductoFactura.classList.remove('hidden');
+            prodNombreFac.textContent = `${producto.referencia} - ${producto.color}`;
+            prodProveedorFac.textContent = producto.proveedor || 'N/A'; // Mostrar proveedor
+
+            let cantidadDisplay = '';
+            if (producto.unidadMedida === 'metros') {
+                 const metros = producto.metros || 0;
+                 const centimetros = producto.centimetros || 0;
+                 cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                 descMetros.max = metros;
+                 descCentimetros.max = 99;
+                 descMetros.value = 0; // Resetear campos de cantidad
+                 descCentimetros.value = 0;
+            } else if (producto.unidadMedida === 'unidades') {
+                cantidadDisplay = `${producto.unidades || 0} Unidades`;
+                 descUnidades.max = producto.unidades || 0;
+                 descUnidades.value = 0; // Resetear campo de cantidad
+            }
+            prodCantidadFac.textContent = cantidadDisplay;
+
+            handleCamposDescuento(producto.unidadMedida);
+
+            // Enfocar el campo de cantidad a descontar
+            if (producto.unidadMedida === 'metros') {
+                 descMetros.focus();
+            } else if (producto.unidadMedida === 'unidades') {
+                 descUnidades.focus();
+            }
+        }
+
+        // Función para agregar el producto seleccionado a la lista temporal de la factura
+        async function agregarProductoAListaFactura() { // Ahora async
+            const productoId = facProductId.value;
+            const unidadMedida = facProductUnit.value;
+            const valorUnitario = parseFloat(facProductValorUnitario.value);
+            const nombreProducto = prodNombreFac.textContent;
+            const proveedorProducto = facProductProveedor.value; // Obtener proveedor del campo oculto
+
+
+            if (!productoId || !unidadMedida || isNaN(valorUnitario)) {
+                 showStatusMessage("Por favor, selecciona un producto válido del inventario.", true);
+                 return;
+            }
+
+            let cantidadADescontar = 0;
+            let metrosADescontar = 0;
+            let centimetrosADescontar = 0;
+            let unidadesADescontar = 0;
+            let cantidadDisponible = 0;
+
+            if (unidadMedida === 'metros') {
+                 metrosADescontar = parseInt(descMetros.value) || 0;
+                 centimetrosADescontar = parseInt(descCentimetros.value) || 0;
+                 cantidadADescontar = metrosADescontar + centimetrosADescontar / 100;
+                 cantidadDisponible = (parseInt(facProductMetros.value) || 0) + (parseInt(facProductCentimetros.value) || 0) / 100;
+
+                 if (cantidadADescontar <= 0) {
+                      showStatusMessage("La cantidad a descontar debe ser mayor a 0.", true);
+                      return;
+                 }
+
+                 if (cantidadADescontar > cantidadDisponible) {
+                     showStatusMessage(`Cantidad a descontar (${cantidadADescontar}m) supera la disponible (${cantidadDisponible}m).`, true);
+                     return;
+                 }
+
+            } else if (unidadMedida === 'unidades') {
+                unidadesADescontar = parseInt(descUnidades.value) || 0;
+                cantidadADescontar = unidadesADescontar;
+                cantidadDisponible = parseInt(facProductUnidades.value) || 0;
+
+                 if (cantidadADescontar <= 0) {
+                      showStatusMessage("La cantidad a descontar debe ser mayor a 0.", true);
+                      return;
+                 }
+
+                 if (cantidadADescontar > cantidadDisponible) {
+                     showStatusMessage(`Cantidad a descontar (${cantidadADescontar} unidades) supera la disponible (${cantidadDisponible} unidades).`, true);
+                     return;
+                 }
+            } else {
+                 showStatusMessage("Error interno: Unidad de medida del producto no reconocida.", true);
+                 return;
+            }
+
+            // Calcular subtotal para este producto
+            const subtotal = cantidadADescontar * valorUnitario;
+
+            // Agregar producto a la lista temporal
+            productosEnFactura.push({
+                id: productoId,
+                referenciaColor: nombreProducto, // Usar la cadena Referencia - Color
+                unidadMedida: unidadMedida,
+                cantidadFacturada: cantidadADescontar, // Cantidad total (ej: 1.50 para metros, 5 para unidades)
+                metrosFacturados: metrosADescontar, // Solo para metros
+                centimetrosFacturados: centimetrosADescontar, // Solo para metros
+                unidadesFacturadas: unidadesADescontar, // Solo para unidades
+                valorUnitario: valorUnitario,
+                subtotal: subtotal, // Subtotal calculado
+                proveedor: proveedorProducto // Incluir proveedor
+            });
+
+            // --- Actualizar inventario en Firebase (Descontar) ---
+            try {
+                 const productRef = doc(db, "inventario", productoId);
+                 const productSnap = await getDoc(productRef);
+
+                 if (productSnap.exists()) {
+                     const productoInventario = productSnap.data();
+                     let nuevaCantidadEnInventario;
+
+                     if (unidadMedida === 'metros') {
+                          let totalCmDisponible = (parseInt(productoInventario.metros) || 0) * 100 + (parseInt(productoInventario.centimetros) || 0);
+                          let totalCmADescontar = (metrosADescontar * 100) + centimetrosADescontar;
+                          let totalCmRestante = totalCmDisponible - totalCmADescontar;
+
+                          nuevaCantidadEnInventario = {
+                              metros: Math.floor(totalCmRestante / 100),
+                              centimetros: totalCmRestante % 100
+                          };
+                     } else if (unidadMedida === 'unidades') {
+                         nuevaCantidadEnInventario = {
+                             unidades: (parseInt(productoInventario.unidades) || 0) - unidadesADescontar
+                         };
+                     }
+
+                     if (nuevaCantidadEnInventario) {
+                         await updateDoc(productRef, nuevaCantidadEnInventario);
+                         console.log(`DEBUG: Inventario actualizado en Firebase (descontado) para producto ${nombreProducto}.`);
+                         showStatusMessage("Producto agregado a la factura y inventario actualizado.");
+                     } else {
+                          showStatusMessage("Error al calcular nueva cantidad de inventario.", true);
+                     }
+                 } else {
+                     console.warn(`DEBUG: Producto con ID ${productoId} no encontrado en inventario al descontar.`);
+                     showStatusMessage("Error: Producto no encontrado en inventario.", true);
+                 }
+            } catch (error) {
+                 console.error("DEBUG: Error al actualizar inventario en Firebase:", error);
+                 showStatusMessage("Error al actualizar inventario.", true);
+                 // Considerar revertir la adición a productosEnFactura si falla la actualización de inventario
+                 productosEnFactura.pop(); // Eliminar el último producto agregado si la actualización falla
+            }
+            // --- Fin Actualización inventario en Firebase ---
+
+
+            renderProductosEnFactura(); // Actualizar la tabla de productos en factura
+            calcularTotalFactura(); // Recalcular el total
+
+            // Limpiar la sección de agregar producto para la próxima adición
+            facProducto.value = '';
+            detalleProductoFactura.classList.add('hidden');
+            facProductId.value = '';
+            facProductUnit.value = '';
+            facProductMetros.value = '';
+            facProductCentimetros.value = '';
+            facProductUnidades.value = '';
+            facProductValorUnitario.value = '';
+            facProductProveedor.value = ''; // Limpiar campo oculto de proveedor
+            prodNombreFac.textContent = ''; // Limpiar display de nombre
+            prodCantidadFac.textContent = ''; // Limpiar display de cantidad
+            prodProveedorFac.textContent = ''; // Limpiar display de proveedor
+
+            handleCamposDescuento('');
+
+        }
+
+        // Función para renderizar la lista de productos en la tabla temporal de la factura
+        function renderProductosEnFactura() {
+            tablaProductosFactura.innerHTML = ''; // Limpiar tabla actual
+
+            if (productosEnFactura.length === 0) {
+                 tablaProductosFactura.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay productos agregados a la factura.</td></tr>';
+                 return;
+            }
+
+            productosEnFactura.forEach((producto, index) => {
+                 const row = tablaProductosFactura.insertRow();
+
+                 let cantidadDisplay = '';
+                 if (producto.unidadMedida === 'metros') {
+                      cantidadDisplay = `${producto.metrosFacturados}.${producto.centimetrosFacturados.toString().padStart(2, '0')}m`;
+                 } else if (producto.unidadMedida === 'unidades') {
+                     cantidadDisplay = `${producto.unidadesFacturadas} und`;
+                 }
+
+                 // Mostrar Referencia - Color (Proveedor)
+                 const nombreProveedorDisplay = producto.proveedor ? ` (${producto.proveedor})` : '';
+
+                 row.innerHTML = `
+                     <td class="px-4 py-2 border-b">${producto.referenciaColor}${nombreProveedorDisplay}</td>
+                     <td class="px-4 py-2 border-b">${cantidadDisplay}</td>
+                     <td class="px-4 py-2 border-b">${parseFloat(producto.valorUnitario).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                     <td class="px-4 py-2 border-b">${parseFloat(producto.subtotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                     <td class="px-4 py-2 border-b">
+                         <button class="btn btn-danger btn-sm" onclick="window.eliminarProductoDeListaFactura(${index})">Eliminar</button>
+                     </td>
+                 `;
+            });
+        }
+
+        // Función para eliminar un producto de la lista temporal de la factura
+        async function eliminarProductoDeListaFactura(index) { // Ahora async
+            console.log(`DEBUG: Intentando eliminar producto en índice: ${index}`);
+            if (index === undefined || index < 0 || index >= productosEnFactura.length) {
+                 console.error(`DEBUG: Índice inválido para eliminar: ${index}`);
+                 showStatusMessage("Error interno al eliminar producto.", true);
+                 return;
+            }
+
+            if (confirm("¿Estás seguro de eliminar este producto de la factura?")) {
+                const productoAEliminar = productosEnFactura[index];
+                const productoId = productoAEliminar.id;
+                const unidadMedida = productoAEliminar.unidadMedida;
+                const metrosADevolver = productoAEliminar.metrosFacturados;
+                const centimetrosADevolver = productoAEliminar.centimetrosFacturados;
+                const unidadesADevolver = productoAEliminar.unidadesFacturadas;
+
+
+                // --- Devolver cantidad al inventario en Firebase ---
+                try {
+                    const productRef = doc(db, "inventario", productoId);
+                    const productSnap = await getDoc(productRef);
+
+                    if (productSnap.exists()) {
+                        const productoInventario = productSnap.data();
+                        let nuevaCantidadEnInventario;
+
+                        if (unidadMedida === 'metros') {
+                            let totalCmDisponible = (parseInt(productoInventario.metros) || 0) * 100 + (parseInt(productoInventario.centimetros) || 0);
+                            let totalCmADevolver = (metrosADevolver * 100) + centimetrosADevolver;
+                            let totalCmRestante = totalCmDisponible + totalCmADevolver; // Sumar de nuevo
+
+                            nuevaCantidadEnInventario = {
+                                metros: Math.floor(totalCmRestante / 100),
+                                centimetros: totalCmRestante % 100
+                            };
+                        } else if (unidadMedida === 'unidades') {
+                            nuevaCantidadEnInventario = {
+                                unidades: (parseInt(productoInventario.unidades) || 0) + unidadesADevolver // Sumar de nuevo
+                            };
+                        }
+
+                        if (nuevaCantidadEnInventario) {
+                            await updateDoc(productRef, nuevaCantidadEnInventario);
+                            console.log(`DEBUG: Inventario actualizado en Firebase (devolución) para producto ${productoAEliminar.referenciaColor}.`);
+                             showStatusMessage("Producto eliminado de la lista y cantidad devuelta al inventario.");
+                        } else {
+                             showStatusMessage("Error al calcular nueva cantidad de inventario para devolución.", true);
+                        }
+                    } else {
+                        console.warn(`DEBUG: Producto con ID ${productoId} no encontrado en inventario para devolución.`);
+                        showStatusMessage("Error: Producto no encontrado en inventario para devolución.", true);
+                    }
+                } catch (error) {
+                    console.error("DEBUG: Error al actualizar inventario (devolución) en Firebase:", error);
+                    showStatusMessage("Error al devolver cantidad al inventario.", true);
+                    // Si falla la devolución, podrías considerar no eliminar de la lista temporal
+                    // o mostrar un error más crítico. Por ahora, permitimos eliminar de la lista.
+                }
+                // --- Fin Devolución cantidad al inventario en Firebase ---
+
+
+                productosEnFactura.splice(index, 1); // Eliminar el producto del array
+                renderProductosEnFactura(); // Volver a renderizar la tabla
+                calcularTotalFactura(); // Recalcular el total
+            }
+        }
+        // Exponer la función al ámbito global
+        window.eliminarProductoDeListaFactura = eliminarProductoDeListaFactura;
+
+
+        // Función para calcular el valor total de la factura
+        function calcularTotalFactura() {
+            let total = 0;
+            // Iterar sobre el array de productos en la factura
+            productosEnFactura.forEach(producto => {
+                 // Sumar el subtotal de cada producto al total
+                 total += producto.subtotal;
+            });
+            // Formatear y mostrar el total
+            facValorTotalDisplay.textContent = parseFloat(total).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            // Guardar el valor numérico sin formato en el campo oculto
+            facValorTotal.value = total;
+             console.log(`DEBUG: Total de factura calculado: ${total}`);
+        }
+
+
+        // Función para crear la factura final en Firebase
+        async function crearFactura() {
+            const cliente = facCliente.value.trim();
+            const fechaHora = facFechaHora.value.trim();
+            const tipoPago = document.querySelector('input[name="tipoPago"]:checked')?.value; // Obtener el tipo de pago seleccionado
+
+            if (!fechaHora) {
+                 showStatusMessage("La fecha es obligatoria.", true);
+                 return;
+            }
+
+            if (!cliente) {
+                 showStatusMessage("El cliente es obligatorio.", true);
+                 return;
+            }
+
+             if (!tipoPago) {
+                 showStatusMessage("Debe seleccionar un tipo de pago (Contado o Credito).", true);
+                 return;
+            }
+
+
+            if (productosEnFactura.length === 0) {
+                 showStatusMessage("Debe agregar al menos un producto a la factura.", true);
+                 return;
+            }
+
+            const valorTotal = parseFloat(facValorTotal.value); // Obtener el valor total numérico del campo oculto
+
+            // --- Generar Código de Registro Único ---
+            const now = new Date();
+            const codigoRegistro = `${now.getFullYear()}${('0' + (now.getMonth() + 1)).slice(-2)}${('0' + now.getDate()).slice(-2)}${('0' + now.getHours()).slice(-2)}${('0' + now.getMinutes()).slice(-2)}${('0' + now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
+            console.log('DEBUG: Código de Registro Generado:', codigoRegistro);
+            // --- Fin Generar Código de Registro Único ---
+
+
+            const nuevaFactura = {
+                codigoRegistro: codigoRegistro, // Añadir el código de registro
+                fechaHora: fechaHora,
+                cliente: cliente,
+                tipoPago: tipoPago, // Añadir el tipo de pago a los datos de la factura
+                productos: productosEnFactura, // Guardar el array de productos (ahora incluye proveedor)
+                valorTotal: valorTotal,
+                 saldoPendiente: valorTotal, // Inicializar saldo pendiente con el valor total (se ajusta al mostrar si es contado)
+                abonos: [], // Inicializar array de abonos
+                createdAt: new Date() // Opcional: añadir timestamp de creación
+            };
+
+            try {
+                // Guardar la factura en la colección 'facturas'
+                await addDoc(facturasCol, nuevaFactura);
+                console.log("Factura creada con éxito.");
+
+                // La actualización del inventario ya se hizo al agregar/eliminar de la lista temporal.
+                // No necesitamos iterar y actualizar aquí de nuevo.
+
+                showStatusMessage("Factura creada con éxito!");
+                resetFormFacturacion(); // Resetear todo el formulario de facturación
+            } catch (e) {
+                console.error("Error al crear factura: ", e);
+                showStatusMessage("Error al crear la factura.", true);
+            }
+        }
+
+        // --- Lógica de Abonos ---
+
+        // Función para abrir el modal de abonos
+        function abrirModalAbonar(facturaId, saldoActual, cliente, valorTotal) {
+            console.log(`DEBUG: Abriendo modal de abono para factura ${facturaId}. Saldo actual: ${saldoActual}`);
+            resetFormAbonar(); // Resetear el formulario del modal
+            abonoFacturaId.value = facturaId;
+            abonoFacturaInfo.textContent = `Cliente: ${cliente} | Valor Total: ${parseFloat(valorTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            abonoSaldoPendiente.textContent = parseFloat(saldoActual).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            abonoMonto.max = saldoActual; // Establecer el monto máximo del abono
+            moduloAbonar.style.display = 'block';
+             // Establecer la fecha actual al abrir el modal
+             const today = new Date().toISOString().split('T')[0];
+             if(abonoFecha) abonoFecha.value = today;
+        }
+
+        // Función para guardar el abono en Firebase
+        async function guardarAbono(event) {
+            event.preventDefault();
+
+            const facturaId = abonoFacturaId.value;
+            const fechaAbono = abonoFecha.value.trim();
+            const montoAbono = parseFloat(abonoMonto.value);
+            const saldoPendienteActual = parseFloat(abonoSaldoPendiente.textContent.replace(/\./g, '').replace(/,/g, '.')); // Obtener saldo actual desde el display
+
+            if (!facturaId || !fechaAbono || isNaN(montoAbono) || montoAbono <= 0) {
+                showStatusMessage("Por favor, complete todos los campos del abono correctamente.", true);
+                return;
+            }
+
+            if (montoAbono > saldoPendienteActual) {
+                showStatusMessage("El monto del abono no puede ser mayor que el saldo pendiente.", true);
+                return;
+            }
+
+            const nuevoSaldoPendiente = saldoPendienteActual - montoAbono;
+
+            const abonoData = {
+                fechaAbono: fechaAbono,
+                montoAbono: montoAbono,
+                createdAt: new Date() // Opcional: timestamp del abono
+            };
+
+            try {
+                const facturaRef = doc(db, "facturas", facturaId);
+
+                // Obtener la factura actual para actualizar el array de abonos localmente
+                const facturaSnap = await getDoc(facturaRef);
+                let abonosActuales = [];
+                if (facturaSnap.exists()) {
+                    abonosActuales = facturaSnap.data().abonos || [];
+                }
+                 const nuevosAbonos = [...abonosActuales, abonoData];
+
+
+                // Actualizar el documento de la factura: añadir el abono al array 'abonos' y actualizar 'saldoPendiente'
+                await updateDoc(facturaRef, {
+                    abonos: arrayUnion(abonoData), // Añadir el abono al array existente
+                    saldoPendiente: nuevoSaldoPendiente // Actualizar el saldo pendiente
+                });
+
+                showStatusMessage("Abono registrado con éxito!");
+                moduloAbonar.style.display = 'none'; // Cerrar el modal
+                resetFormAbonar(); // Resetear el formulario
+
+                // --- Actualización directa de la UI ---
+                const facturaRow = tablaFacturas.querySelector(`tr[data-id="${facturaId}"]`);
+                if (facturaRow) {
+                     // Encontrar la celda de Saldo Pendiente (asumiendo que es la 7ª celda, índice 6)
+                     // Verificar los índices de las columnas: Código(0), Fecha(1), Cliente(2), Tipo Pago(3), Productos(4), Valor Total(5), Saldo Pendiente(6), Acciones(7)
+                     const saldoCellIndex = 6; // Índice de la columna Saldo Pendiente
+                     if (facturaRow.cells.length > saldoCellIndex) {
+                         const saldoPendienteCell = facturaRow.cells[saldoCellIndex];
+                         saldoPendienteCell.textContent = parseFloat(nuevoSaldoPendiente).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+                         // Si el saldo pendiente es 0, eliminar el botón de Abonar
+                         if (nuevoSaldoPendiente <= 0) {
+                             const abonarButton = facturaRow.querySelector('.btn-abonar');
+                             if (abonarButton) {
+                                 abonarButton.remove();
+                             }
+                         }
+                          // Actualizar el data-saldo en el botón Ver Abonos para el modal de abono
+                          const verAbonosButton = facturaRow.querySelector('.btn-ver-abonos');
+                           if(verAbonosButton) {
+                               verAbonosButton.dataset.saldo = nuevoSaldoPendiente;
+                               // Actualizar el contador de abonos en el botón "Ver Abonos"
+                               verAbonosButton.textContent = `Ver Abonos (${nuevosAbonos.length})`;
+                               // Actualizar el dataset de abonos en la fila para el modal de historial
+                               facturaRow.dataset.abonos = JSON.stringify(nuevosAbonos);
+                           } else {
+                                // Si no existía el botón "Ver Abonos", crearlo
+                                const accionesCell = facturaRow.cells[7]; // Columna de acciones
+                                const verAbonosBtn = document.createElement('button');
+                                verAbonosBtn.classList.add('btn', 'btn-info', 'btn-sm', 'mr-2', 'btn-ver-abonos');
+                                verAbonosBtn.dataset.id = facturaId;
+                                verAbonosBtn.dataset.saldo = nuevoSaldoPendiente;
+                                verAbonosBtn.textContent = `Ver Abonos (${nuevosAbonos.length})`;
+                                facturaRow.dataset.abonos = JSON.stringify(nuevosAbonos);
+                                accionesCell.insertBefore(verAbonosBtn, accionesCell.firstChild); // Insertar al principio
+                           }
+                     } else {
+                          console.warn(`DEBUG: No se encontró la celda de Saldo Pendiente en la fila de la factura ${facturaId}.`);
+                     }
+                } else {
+                     console.warn(`DEBUG: No se encontró la fila de la factura ${facturaId} en la tabla para actualizar la UI.`);
+                }
+                // --- Fin Actualización directa de la UI ---
+
+
+                // La tabla de facturas se actualizará automáticamente gracias al onSnapshot en cargarFacturas()
+                // Esta actualización directa es solo para una respuesta visual más rápida.
+
+            } catch (e) {
+                console.error("Error al guardar el abono: ", e);
+                showStatusMessage("Error al guardar el abono.", true);
+            }
+        }
+
+        // Función para mostrar el historial de abonos en un modal
+        function mostrarHistorialAbonos(abonosData) {
+             console.log('DEBUG: mostrarHistorialAbonos called with data:', abonosData);
+             historialAbonosContent.innerHTML = ''; // Limpiar contenido anterior
+
+             let abonosHtml = '<ul class="abonos-list-modal">';
+             if (abonosData && abonosData.length > 0) {
+                 // Ordenar abonos por fecha (opcional, pero útil)
+                 abonosData.sort((a, b) => new Date(a.fechaAbono) - new Date(b.fechaAbono));
+
+                 abonosData.forEach(abono => {
+                      const montoFormateado = parseFloat(abono.montoAbono).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                     abonosHtml += `<li class="abono-item-modal"><span class="abono-date">Fecha: ${abono.fechaAbono}</span> <span>Monto: ${montoFormateado}</span></li>`;
+                 });
+             } else {
+                 abonosHtml += '<p class="text-center py-4">No hay abonos registrados para esta factura.</p>';
+             }
+             abonosHtml += '</ul>';
+
+             console.log('DEBUG: Generated historial abonos HTML:', abonosHtml);
+             historialAbonosContent.innerHTML = abonosHtml;
+             modalHistorialAbonos.style.display = 'block'; // Mostrar el modal
+        }
+
+
+        // --- Lógica de Generación de PDF ---
+
+        async function generarFacturaPDF(facturaId) {
+            console.log(`DEBUG: Generando PDF para factura ID: ${facturaId}`);
+            showStatusMessage("Generando PDF...", false);
+
+            try {
+                const facturaRef = doc(db, "facturas", facturaId);
+                const facturaSnap = await getDoc(facturaRef);
+
+                if (!facturaSnap.exists()) {
+                    showStatusMessage("Factura no encontrada para generar PDF.", true);
+                    console.error(`DEBUG: Factura con ID ${facturaId} no encontrada.`);
+                    return;
+                }
+
+                const factura = facturaSnap.data();
+                console.log("DEBUG: Datos de la factura para PDF:", factura);
+
+                // Llenar la plantilla oculta con los datos de la factura
+                pdfFacturaCodigo.textContent = factura.codigoRegistro || 'N/A';
+                pdfFacturaFecha.textContent = factura.fechaHora || 'N/A';
+                pdfFacturaTipoPago.textContent = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
+                pdfFacturaCliente.textContent = factura.cliente || 'N/A';
+
+                // Llenar la tabla de productos en la plantilla
+                pdfFacturaItems.innerHTML = ''; // Limpiar items anteriores
+                if (factura.productos && factura.productos.length > 0) {
+                    factura.productos.forEach(item => {
+                        const row = pdfFacturaItems.insertRow();
+                        let cantidadDisplay = '';
+                        if (item.unidadMedida === 'metros') {
+                             cantidadDisplay = `${item.metrosFacturados || 0}.${(item.centimetrosFacturados || 0).toString().padStart(2, '0')}m`;
+                        } else if (item.unidadMedida === 'unidades') {
+                            cantidadDisplay = `${item.unidadesFacturadas || 0} und`;
+                        }
+                         const proveedorDisplay = item.proveedor ? ` (${item.proveedor})` : '';
+
+                        row.innerHTML = `
+                            <td>${item.referenciaColor}${proveedorDisplay}</td>
+                            <td>${cantidadDisplay}</td>
+                            <td>${parseFloat(item.valorUnitario || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                            <td>${parseFloat(item.subtotal || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                        `;
+                    });
+                } else {
+                     pdfFacturaItems.innerHTML = '<tr><td colspan="4" class="text-center py-4">No hay productos en esta factura.</td></tr>';
+                }
+
+
+                // Mostrar totales
+                pdfFacturaValorTotal.textContent = parseFloat(factura.valorTotal || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+                // Mostrar saldo pendiente correctamente (0 si es contado)
+                let saldoPendientePDF = factura.saldoPendiente !== undefined && factura.saldoPendiente !== null
+                         ? parseFloat(factura.saldoPendiente)
+                         : parseFloat(factura.valorTotal || 0);
+
+                 if (factura.tipoPago === 'contado') {
+                     saldoPendientePDF = 0;
+                 }
+                 pdfFacturaSaldoPendiente.textContent = parseFloat(saldoPendientePDF).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+
+                // Asegurarse de que la plantilla esté visible para html2canvas
+                // Establecer estilos que ayuden a html2canvas a capturar el contenido correctamente
+                pdfTemplate.style.display = 'block'; // Usar block para una captura más predecible
+                pdfTemplate.style.position = 'absolute'; // Posicionar fuera del flujo normal
+                pdfTemplate.style.top = '-9999px'; // Mover fuera de la vista
+                pdfTemplate.style.left = '-9999px';
+                pdfTemplate.style.zIndex = '-1000'; // Asegurarse de que no interfiera con la UI
+
+
+                // Generar la imagen del HTML
+                // Ajustar html2canvas options if needed, e.g., windowHeight
+                const canvas = await html2canvas(pdfTemplate, {
+                    scale: 2, // Aumentar escala para mejor resolución
+                    useCORS: true // Importante si tienes imágenes de otros dominios (no aplica aquí, pero buena práctica)
+                    // windowHeight: pdfTemplate.scrollHeight // Considerar si el contenido es muy largo
+                });
+                const imgData = canvas.toDataURL('image/png');
+
+                // Ocultar la plantilla de nuevo inmediatamente después de la captura
+                pdfTemplate.style.display = 'none';
+                pdfTemplate.style.position = 'static';
+                pdfTemplate.style.top = 'auto';
+                pdfTemplate.style.left = 'auto';
+                pdfTemplate.style.zIndex = 'auto';
+
+
+                // Crear el PDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4'); // 'p' = portrait, 'mm' = millimeters, 'a4' = size
+
+                const imgWidth = 210; // Ancho A4 en mm
+                const pageHeight = 297; // Alto A4 en mm
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                // Añadir la imagen al PDF
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                // Si la imagen es más larga que una página, añadir nuevas páginas
+                while (heightLeft > 0) { // Cambiado a > 0 para evitar una página extra si heightLeft es exactamente 0
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                // Descargar el PDF
+                const filename = `factura_${factura.codigoRegistro || facturaId}.pdf`;
+                pdf.save(filename);
+
+                showStatusMessage("PDF generado con éxito!");
+                console.log(`DEBUG: PDF ${filename} generado.`);
+
+            } catch (error) {
+                console.error("Error al generar PDF:", error);
+                showStatusMessage("Error al generar el PDF de la factura.", true);
+                 // Asegurarse de ocultar la plantilla si hubo un error
+                 pdfTemplate.style.display = 'none';
+                 pdfTemplate.style.position = 'static';
+                 pdfTemplate.style.top = 'auto';
+                 pdfTemplate.style.left = 'auto';
+                 pdfTemplate.style.zIndex = 'auto';
+            }
+        }
+
+
+        // --- Event Listeners ---
+        btnInventario.addEventListener('click', () => mostrarModulo(moduloInventario));
+        btnFacturacion.addEventListener('click', () => mostrarModulo(moduloFacturacion));
+        btnVerFacturas.addEventListener('click', () => mostrarModulo(moduloVerFacturas));
+
+        radioMetros.addEventListener('change', handleUnidadMedida);
+        radioUnidades.addEventListener('change', handleUnidadMedida);
+
+        formInventario.addEventListener('submit', guardarProducto);
+
+        btnCancelarEdicion.addEventListener('click', resetFormInventario);
+
+        btnExportarInventario.addEventListener('click', exportarInventarioAExcel);
+        btnExportarFacturas.addEventListener('click', exportarFacturasAExcel);
+
+
+        btnBuscarProducto.addEventListener('click', () => {
+            moduloBuscarProducto.style.display = 'block';
+             inputBuscarProducto.value = '';
+             resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe para buscar...</p>';
+             inputBuscarProducto.focus();
+        });
+
+        cerrarBuscarProducto.addEventListener('click', () => {
+            moduloBuscarProducto.style.display = 'none';
+        });
+
+         window.addEventListener('click', (event) => {
+             if (event.target === moduloBuscarProducto) {
+                 moduloBuscarProducto.style.display = 'none';
+             }
+              if (event.target === moduloAbonar) { // Cerrar modal de abono al hacer clic fuera
+                 moduloAbonar.style.display = 'none';
+                 resetFormAbonar();
+             }
+             if (event.target === modalHistorialAbonos) { // Cerrar modal de historial de abonos al hacer clic fuera
+                 modalHistorialAbonos.style.display = 'none';
+             }
+         });
+
+        inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
+        inputBuscarInventario.addEventListener('input', filtrarInventario);
+        inputBuscarFacturas.addEventListener('input', filtrarFacturas);
+
+        btnAgregarProductoFactura.addEventListener('click', agregarProductoAListaFactura); // Evento para agregar a la lista
+        btnCrearFactura.addEventListener('click', crearFactura); // Evento para crear la factura final
+
+        // Event Listener para los botones de "Abonar", "Ver Abonos" y "Generar PDF" en la tabla de facturas (delegación)
+        tablaFacturas.addEventListener('click', (event) => {
+            if (event.target.classList.contains('btn-abonar')) {
+                const facturaId = event.target.dataset.id;
+                const saldoActual = parseFloat(event.target.dataset.saldo);
+                 const cliente = event.target.dataset.cliente;
+                 const valorTotal = parseFloat(event.target.dataset.valortotal);
+                abrirModalAbonar(facturaId, saldoActual, cliente, valorTotal);
+            } else if (event.target.classList.contains('btn-ver-abonos')) {
+                 const row = event.target.closest('tr');
+                 const abonosJson = row.dataset.abonos;
+                 let abonosData = [];
+                 try {
+                      abonosData = JSON.parse(abonosJson || '[]');
+                 } catch (error) {
+                      console.error('Error parsing abonos JSON from dataset:', error);
+                      showStatusMessage("Error al cargar historial de abonos.", true);
+                      return;
+                 }
+                mostrarHistorialAbonos(abonosData); // Llamar a la nueva función para mostrar en modal
+            } else if (event.target.classList.contains('btn-generate-pdf')) { // Nuevo listener para el botón PDF
+                const facturaId = event.target.dataset.id;
+                generarFacturaPDF(facturaId); // Llamar a la función para generar PDF
+            }
+        });
+
+        // Event Listener para cerrar el modal de abonos
+        cerrarAbonar.addEventListener('click', () => {
+            moduloAbonar.style.display = 'none';
+            resetFormAbonar();
+        });
+
+         // Event Listener para cerrar el modal de historial de abonos
+        cerrarHistorialAbonos.addEventListener('click', () => {
+            modalHistorialAbonos.style.display = 'none';
+        });
+
+
+        // Event Listener para el formulario de abonos
+        formAbonar.addEventListener('submit', guardarAbono);
+
+
+        // --- Inicialización ---
+        console.log('DEBUG: Añadiendo listener para DOMContentLoaded.');
+
+        document.addEventListener('DOMContentLoaded', () => {
+             console.log('DEBUG: DOMContentLoaded disparado. Iniciando...');
+
+             console.log('DEBUG: invFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('invFechaHora'));
+             console.log('DEBUG: facFechaHora al cargar (dentro de DOMContentLoaded):', document.getElementById('facFechaHora'));
+             console.log('DEBUG: abonoFecha al cargar (dentro de DOMContentLoaded):', document.getElementById('abonoFecha'));
+
+
+             mostrarModulo(moduloInventario);
+             handleUnidadMedida();
+             handleCamposDescuento('');
+
+             // Establecer la fecha actual en los campos de fecha al cargar
+             const today = new Date().toISOString().split('T')[0];
+             if(invFechaHora) invFechaHora.value = today;
+             if(facFechaHora) facFechaHora.value = today;
+             if(abonoFecha) abonoFecha.value = today;
+
+
+             console.log('DEBUG: Inicialización completada.');
+        });
+
+         if (document.readyState === 'loading') {
+             console.log('DEBUG: document.readyState es "loading". Esperando DOMContentLoaded.');
+         } else {
+              console.log('DEBUG: document.readyState NO es "loading" (es "' + document.readyState + '"). DOM probablemente ya cargado.');
+         }
+
     </script>
-</head>
-<body>
-    <div class="container">
-        <h2>Generar guía de Inter Rapidisimo</h2>
-        <form id="generarGuiaForm" onsubmit="event.preventDefault(); guardarGuia();">
-            <label for="usuarioLogueado">Usuario (Asesor):</label>
-            <input type="text" id="usuarioLogueado" readonly draggable="true" ondragstart="event.dataTransfer.setData('text', this.value)">
 
-            <label for="fechaGuia">Fecha:</label>
-            <input type="date" id="fechaGuia" required>
-
-            <label for="nombreCliente">Nombre del Cliente:</label>
-            <input type="text" id="nombreCliente" required>
-
-            <label for="valorMercancia">Valor de la Mercancía:</label>
-            <input type="number" id="valorMercancia" required>
-
-            <label for="numeroGuia">Número de Guía:</label>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                <input type="number" id="numeroGuia" style="flex-grow: 1;" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
-                <label for="pendienteCheck" style="margin-bottom: 0; font-weight: normal; display: flex; align-items: center;">
-                    <input type="checkbox" id="pendienteCheck" style="margin-right: 5px; width: auto;"> PENDIENTE
-                </label>
-            </div>
-
-            <button type="submit">Guardar Guía</button>
-            <button type="button" id="exportarExcelBtn" onclick="showExportModal()" style="display:none;">Exportar a Excel</button>
-            <button type="button" id="verGuiasBtn" onclick="mostrarModuloGuias()">Ver Guías</button>
-            <p id="error-message" class="error-message"></p>
-        </form>
-    </div>
-
-    <div class="container" id="guiasModulo">
-        <h2>
-            Listado de Guías de Inter Rapidisimo
-            <i class="fas fa-cog help-icon" onclick="mostrarFiltrosModal()"></i>
-        </h2>
-        <input type="text" id="buscadorGuias" onkeyup="filtrarGuias()" placeholder="Buscar en todas las guías...">
-
-        <label for="filtroAsesor" class="mt-4">Filtrar por Asesor:</label>
-        <select id="filtroAsesor" onchange="filtrarGuias()">
-            <option value="">Todos los Asesores</option>
-            </select>
-
-        <ul id="listaGuias">
-            </ul>
-    </div>
-
-    <div id="filterModal" class="modal-overlay">
-        <div class="modal-content">
-            <button class="modal-close-btn" onclick="cerrarFiltrosModal()">&times;</button>
-            <h3>Opciones de Filtrado y Ayuda</h3>
-
-            <div class="filter-options">
-                <h4>Filtrar por Estado:</h4>
-                <label>
-                    <input type="checkbox" id="pendienteFilter"> Pendientes
-                </label>
-                <label>
-                    <input type="checkbox" id="verificadoFilter"> Verificados
-                </label>
-                <label>
-                    <input type="checkbox" id="anuladoFilter"> Anulados
-                </label>
-                <label>
-                    <input type="checkbox" id="novedadFilter"> Novedad
-                </label>
-            </div>
-
-            <div class="help-text">
-                <h4>Estados de Envío:</h4>
-                <p><strong>NOVEDAD:</strong> El envío presenta demoras en los pagos.</p>
-                <p><strong>PENDIENTE:</strong> El envío aún no tiene guía asignada.</p>
-                <p><strong>ANULADO:</strong> Se ha devuelto el paquete a la bodega.</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="messageModal" class="modal-overlay">
-        <div class="modal-content">
-            <button class="modal-close-btn" id="messageModalCloseBtn">&times;</button>
-            <h3 id="messageModalTitle"></h3>
-            <p id="messageModalBody"></p>
-            <div class="modal-actions">
-                <button class="cancel-btn" onclick="document.getElementById('messageModal').classList.remove('active');">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirmModal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 id="confirmModalTitle"></h3>
-            <p id="confirmModalBody"></p>
-            <div class="modal-actions">
-                <button class="confirm-btn" id="confirmActionBtn">Sí</button>
-                <button class="cancel-btn" id="cancelActionBtn">No</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- NUEVO MODAL DE SELECCIÓN DE FILTROS PARA EXPORTAR -->
-    <div id="exportModal" class="modal-overlay">
-        <div class="modal-content">
-            <button class="modal-close-btn" onclick="closeExportModal()">&times;</button>
-            <h3>Exportar Guías a Excel</h3>
-            <p>Selecciona los tipos de guías que deseas exportar:</p>
-            <div class="filter-options">
-                <label>
-                    <input type="radio" name="exportFilter" value="all" checked> Todas
-                </label>
-                <label>
-                    <input type="radio" name="exportFilter" value="pendiente"> Pendientes
-                </label>
-                <label>
-                    <input type="radio" name="exportFilter" value="verificado"> Verificadas
-                </label>
-                <label>
-                    <input type="radio" name="exportFilter" value="anulado"> Anuladas
-                </label>
-                <label>
-                    <input type="radio" name="exportFilter" value="novedad"> Con Novedad
-                </label>
-            </div>
-            <div class="modal-actions">
-                <button class="confirm-btn" onclick="const selectedFilter = document.querySelector('input[name=exportFilter]:checked').value; exportarGuiasExcel(selectedFilter); closeExportModal();">Exportar</button>
-                <button class="cancel-btn" onclick="closeExportModal()">Cancelar</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
