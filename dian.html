@@ -22,7 +22,7 @@
     </script>
     <!-- Fuente Inter -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f9fafb;
@@ -134,35 +134,22 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, query, setDoc, updateDoc, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- Configuración de Firebase (USANDO LA CONFIGURACIÓN PROPORCIONADA POR EL USUARIO) ---
+        // --- Configuración de Firebase ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-prefactura-app';
-        
-        // Configuración de Firebase del usuario (FORZADA)
-        const firebaseConfig = {
-            apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
-            authDomain: "lazapateria-ce24f.firebaseapp.com",
-            projectId: "lazapateria-ce24f",
-            storageBucket: "lazapateria-ce24f.firebasestorage.app",
-            messagingSenderId: "642571845821",
-            appId: "1:642571845821:web:45858a0abc0df728fd77d4",
-            measurementId: "G-6JCF33H0K1"
-        };
-        
-        // Usamos el token inicial de Canvas si está disponible
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app, db, auth; 
-        setLogLevel('debug'); // Habilitar logs para depuración
-        let itemLineCounter = 0; // Contador global para IDs únicos de líneas
+        setLogLevel('debug'); 
+        let itemLineCounter = 0; 
         let prefacturasUnsubscribe = null; 
-        
-        // --- ESTADO DE VISTA (NUEVO) ---
-        // 'pending': muestra facturas no pagadas, 'paid': muestra facturas pagadas
         let currentView = 'pending'; 
+        
+        // **NUEVO** ID de usuario para el path privado
+        let currentUserId = null; 
         
         // --- Utilidades UI (Funciones showMessage y showConfirm sin cambios) ---
         
-        // Función para mostrar mensajes personalizados (reemplaza a alert)
         function showMessage(text, type = 'success') {
             const container = document.getElementById('message-container');
             const color = type === 'error' ? 'bg-red-500' : (type === 'success' ? 'bg-secondary' : 'bg-blue-500');
@@ -173,7 +160,6 @@
             
             container.appendChild(messageDiv);
             
-            // Eliminar mensajes viejos si hay demasiados
             while (container.children.length > 5) {
                 container.removeChild(container.firstChild);
             }
@@ -184,8 +170,6 @@
             }, 3000);
         }
 
-        // --- Modal Utilidades (Reemplazo para prompt/confirm) ---
-
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
 
@@ -194,7 +178,6 @@
             modalContent.innerHTML = '';
         }
 
-        // Función para mostrar un diálogo de confirmación (reemplaza a window.confirm)
         function showConfirm(title, message, onConfirm, onCancel = hideModal) {
             modalContent.innerHTML = `
                 <h3 class="text-xl font-semibold text-gray-900 mb-4">${title}</h3>
@@ -210,10 +193,9 @@
             `;
             modalOverlay.classList.remove('hidden');
 
-            // CORRECCIÓN: Llamar a onCancel (que es hideModal por defecto)
             document.getElementById('modal-cancel-btn').addEventListener('click', () => {
                 onCancel(); 
-                hideModal(); // Asegurarse de que el modal se oculte
+                hideModal(); 
             });
             
             document.getElementById('modal-confirm-btn').addEventListener('click', () => {
@@ -225,48 +207,59 @@
         // --- Configuración y Autenticación de Firebase ---
 
         try {
+            if (!firebaseConfig) {
+                console.error("Firebase Config no está disponible.");
+                showMessage("Error: La configuración de Firebase no está disponible.", 'error');
+                throw new Error("Missing Firebase Config");
+            }
+            
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
             
-            // Autenticación con token o anónimamente
             if (initialAuthToken) {
                 signInWithCustomToken(auth, initialAuthToken).catch(e => {
                     console.error("Error al iniciar sesión con token personalizado:", e);
-                    signInAnonymously(auth);
+                    // Fallback a anónimo si el token falla (como se vio en el error anterior)
+                    signInAnonymously(auth); 
                 });
             } else {
                 signInAnonymously(auth);
             }
 
             onAuthStateChanged(auth, (user) => {
-                // Una vez que la autenticación está lista, configuramos el listener
+                // **CORRECCIÓN:** Obtenemos el ID de usuario tan pronto como la autenticación esté lista.
+                currentUserId = user ? user.uid : crypto.randomUUID(); 
+                
                 setupRealtimeListener();
-                // Inicializar la vista después de la autenticación
                 updateView(currentView);
             });
 
         } catch (error) {
             console.error("Error al inicializar Firebase:", error);
-            showMessage("Error al inicializar la base de datos.", 'error');
+            if (error.message !== "Missing Firebase Config") {
+                 showMessage("Error al inicializar la base de datos.", 'error');
+            }
         }
 
-        // Función para obtener la ruta de la colección de pre-facturas
-        function getPrefacturasCollectionRef() {
-            // RUTA MODIFICADA: Usa la colección de datos pública/compartida (MISMA RUTA ANTERIOR)
-            const path = `artifacts/${appId}/public/data/prefacturas`;
-            console.log(`[Ruta Firestore] Usando la colección COMPARTIDA: ${path}`); 
+        // **CORRECCIÓN:** Función para obtener la ruta de la colección de pre-facturas (USANDO RUTA PRIVADA)
+        function getPrefacturasCollectionRef(userId) {
+            if (!userId) {
+                console.error("UserId no está definido para construir la ruta de la colección.");
+                return null;
+            }
+            // RUTA MODIFICADA: Usa la colección de datos privada/de usuario
+            const path = `artifacts/${appId}/users/${userId}/prefacturas`;
+            console.log(`[Ruta Firestore] Usando la colección PRIVADA: ${path}`); 
             return collection(db, path);
         }
 
         // --- Lógica de Manejo de Líneas de Items (Múltiples Referencias) ---
         
-        // Actualiza el resumen de items totales en el formulario
         function updateItemSummary() {
             const itemLines = Array.from(document.querySelectorAll('.item-line-quantity'));
             let total = 0;
             itemLines.forEach(input => {
-                // Asegurar que el valor sea un número positivo
                 const quantity = parseInt(input.value, 10) || 0;
                 if (quantity > 0) {
                     total += quantity;
@@ -275,7 +268,6 @@
             document.getElementById('summary-total-items').textContent = total.toString();
         }
 
-        // Agrega una nueva línea de item al formulario
         function addItemLine(reference = 'SN01', quantity = '') {
             const container = document.getElementById('item-lines-container');
             const id = `line-${itemLineCounter++}`;
@@ -307,7 +299,6 @@
 
             container.appendChild(lineDiv);
             
-            // Adjuntar event listeners para actualizar el resumen y eliminar
             lineDiv.querySelector('.item-line-quantity').addEventListener('input', updateItemSummary);
             lineDiv.querySelector('.remove-item-btn').addEventListener('click', (e) => {
                 const targetId = e.currentTarget.getAttribute('data-line-id');
@@ -318,7 +309,6 @@
             updateItemSummary();
         }
 
-        // Event listener para el botón de "Agregar Referencia"
         document.getElementById('add-item-btn').addEventListener('click', () => addItemLine());
 
 
@@ -328,12 +318,11 @@
         document.getElementById('prefactura-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (!db) {
-                showMessage("La base de datos no está inicializada. Inténtalo de nuevo.", 'error');
+            if (!db || !currentUserId) { // **CORRECCIÓN:** Verificar currentUserId
+                showMessage("La base de datos no está lista o el usuario no está autenticado.", 'error');
                 return;
             }
 
-            // 1. Recolectar Líneas de Items Dinámicos
             const itemLinesElements = document.querySelectorAll('#item-lines-container > div');
             const item_lines = [];
             let aggregate_total_items = 0;
@@ -353,7 +342,6 @@
                     isValid = false;
                 }
 
-                // Aseguramos 'invoiced: 0' para el seguimiento detallado
                 item_lines.push({
                     reference: reference,
                     quantity: quantity,
@@ -367,44 +355,38 @@
                 return;
             }
 
-            // 2. Preparar los datos
             const data = {
                 date: document.getElementById('fecha').value,
                 consecutivo: document.getElementById('consecutivo').value.trim(),
                 total_value: parseFloat(document.getElementById('valor').value),
                 total_profit: parseFloat(document.getElementById('ganancia').value),
-                
                 item_lines: item_lines, 
                 total_items: aggregate_total_items, 
-                
-                // Nuevo campo: Estado de Pago. true/false
                 is_paid: false, 
-
                 created_at: new Date().toISOString()
             };
 
             try {
-                // Generar un ID basado en el consecutivo para fácil referencia
                 const docId = data.consecutivo.replace(/[^a-zA-Z0-9]/g, '_');
-                // Llamada a la colección sin el ID de usuario
-                await setDoc(doc(getPrefacturasCollectionRef(), docId), data); 
+                
+                // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
+                await setDoc(doc(getPrefacturasCollectionRef(currentUserId), docId), data); 
+                
                 showMessage(`Pre-factura ${data.consecutivo} guardada con éxito.`, 'success');
                 
-                // Limpiar formulario y líneas dinámicas
                 e.target.reset(); 
                 document.getElementById('item-lines-container').innerHTML = ''; 
-                addItemLine(); // Agregar la primera línea de nuevo
+                addItemLine(); 
             } catch (error) {
                 console.error("Error al guardar la pre-factura:", error);
                 showMessage("Error al guardar la pre-factura. Revisa la consola.", 'error');
             }
         });
 
-        // 2. Actualizar la Cantidad Facturada Parcialmente (IMPLEMENTACIÓN PARA MÚLTIPLES PRODUCTOS)
+        // 2. Actualizar la Cantidad Facturada Parcialmente 
         async function updateFacturacion(docId, itemLines) {
-            if (!db) return; // Si no hay DB, salir.
+            if (!db || !currentUserId) return; 
             
-            // Filtrar líneas que aún no han sido facturadas completamente
             const availableLines = itemLines.filter(line => line.quantity > (line.invoiced || 0));
             
             if (availableLines.length === 0) {
@@ -412,11 +394,9 @@
                 return;
             }
 
-            // Calcular el progreso global
             const currentTotalInvoiced = itemLines.reduce((acc, line) => acc + (line.invoiced || 0), 0);
             const totalItemsAggregate = itemLines.reduce((acc, line) => acc + (line.quantity || 0), 0);
 
-            // Generar el HTML para las múltiples líneas de input
             const linesInputHtml = availableLines.map(line => {
                 const remaining = line.quantity - (line.invoiced || 0);
                 return `
@@ -436,7 +416,6 @@
             }).join('');
 
 
-            // Inyectar el HTML del modal
             modalContent.innerHTML = `
                 <h3 class="text-xl font-semibold text-gray-900 mb-4">Facturar Múltiples Items: ${docId}</h3>
                 <p class="text-gray-600 mb-4">Ingresa la cantidad a facturar (por cada referencia) en este movimiento. Solo las líneas con valor > 0 serán registradas.</p>
@@ -462,56 +441,45 @@
 
             document.getElementById('modal-cancel-btn').addEventListener('click', hideModal);
             
-            // Lógica de submit para MÚLTIPLES entradas
             document.getElementById('modal-submit-btn').addEventListener('click', async () => {
                 const qtyInputs = document.querySelectorAll('.modal-invoice-qty');
                 const invoiceChanges = [];
                 let totalInvoicedInThisMovement = 0;
-
                 let isValid = true;
                 
                 qtyInputs.forEach(input => {
                     const reference = input.getAttribute('data-reference');
                     const maxQty = parseInt(input.getAttribute('data-max-qty'), 10);
-                    // Usamos parseInt con base 10
                     const amount = parseInt(input.value, 10); 
 
-                    // 1. Validar que es un número no negativo
                     if (isNaN(amount) || amount < 0) {
                         isValid = false;
                         input.classList.add('border-red-500', 'ring-red-500');
                         showMessage(`Cantidad inválida para ${reference}.`, 'error');
-                        return; // Salir de la iteración forEach
+                        return; 
                     }
 
-                    // 2. Validar que no exceda el máximo
                     if (amount > maxQty) {
                         isValid = false;
                         input.classList.add('border-red-500', 'ring-red-500');
                         showMessage(`Error: Solo quedan ${maxQty} para ${reference}.`, 'error');
-                        return; // Salir de la iteración forEach
+                        return; 
                     }
 
-                    // 3. Registrar si hay cantidad a facturar (> 0)
                     if (amount > 0) {
                         invoiceChanges.push({ reference, amount });
                         totalInvoicedInThisMovement += amount;
                     }
-                    // Limpiar visualmente si no hay error
                     input.classList.remove('border-red-500', 'ring-red-500'); 
                 });
 
-                if (!isValid) {
-                    // Si hubo algún error en el loop, salimos. Los mensajes ya se mostraron.
+                if (!isValid || totalInvoicedInThisMovement === 0) {
+                    if (totalInvoicedInThisMovement === 0 && isValid) {
+                         showMessage("Debes ingresar una cantidad mayor a cero en al menos una referencia para facturar.", 'info');
+                    }
                     return; 
                 }
 
-                if (totalInvoicedInThisMovement === 0) {
-                    showMessage("Debes ingresar una cantidad mayor a cero en al menos una referencia para facturar.", 'info');
-                    return;
-                }
-
-                // Aplicar todos los cambios en un solo objeto de actualización
                 const updatedItemLines = itemLines.map(line => {
                     const change = invoiceChanges.find(c => c.reference === line.reference);
                     if (change) {
@@ -524,10 +492,9 @@
                     return line;
                 });
 
-                    // Ejecutar la actualización en Firestore
                     try {
-                        // Llamada a la colección sin el ID de usuario
-                        const docRef = doc(getPrefacturasCollectionRef(), docId); 
+                        // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
+                        const docRef = doc(getPrefacturasCollectionRef(currentUserId), docId); 
                         await updateDoc(docRef, {
                             item_lines: updatedItemLines
                         });
@@ -543,32 +510,30 @@
 
         // --- FUNCIÓN PARA MARCAR COMO PAGADO ---
         async function markAsPaid(docId) {
-            if (!db) return;
+            if (!db || !currentUserId) return;
 
             try {
-                // Llamada a la colección sin el ID de usuario
-                const docRef = doc(getPrefacturasCollectionRef(), docId); 
+                // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
+                const docRef = doc(getPrefacturasCollectionRef(currentUserId), docId); 
                 await updateDoc(docRef, {
                     is_paid: true,
-                    paid_at: new Date().toISOString() // Opcional: registrar la fecha de pago
+                    paid_at: new Date().toISOString() 
                 });
                 showMessage(`Pre-factura ${docId} marcada como PAGADA.`, 'success');
-                // Al marcar como pagado, cambiamos a la vista de Pagadas automáticamente
                 updateView('paid'); 
             } catch (error) {
                 console.error("Error al marcar como pagado:", error);
                 showMessage("Error al marcar como pagado.", 'error');
             }
         }
-        // --- FIN FUNCIÓN ---
 
-        // --- FUNCIÓN PARA ELIMINAR (SIN CAMBIOS EN LÓGICA DE FIREBASE) ---
+        // --- FUNCIÓN PARA ELIMINAR ---
          async function deletePrefactura(docId) {
-             if (!db) return;
+             if (!db || !currentUserId) return;
              
              try {
-                // Llamada a la colección sin el ID de usuario
-                const docRef = doc(getPrefacturasCollectionRef(), docId); 
+                // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
+                const docRef = doc(getPrefacturasCollectionRef(currentUserId), docId); 
                 await deleteDoc(docRef);
                 showMessage(`Pre-factura ${docId} eliminada.`, 'success');
             } catch (error) {
@@ -578,7 +543,7 @@
         }
 
 
-        // 3. Renderizado de la lista y Canvas de Progreso (Actualizado para usar item_lines)
+        // 3. Renderizado de la lista y Canvas de Progreso 
         function drawProgress(canvas, total, invoiced) {
             const ctx = canvas.getContext('2d');
             const size = canvas.width;
@@ -589,21 +554,18 @@
 
             ctx.clearRect(0, 0, size, size);
 
-            // Círculo de fondo
             ctx.beginPath();
             ctx.arc(center, center, radius, 0, Math.PI * 2);
             ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 10;
             ctx.stroke();
 
-            // Arco de progreso
             ctx.beginPath();
             ctx.arc(center, center, radius, -(Math.PI / 2), endAngle);
             ctx.strokeStyle = percentage === 1 ? '#10b981' : '#4f46e5';
             ctx.lineWidth = 10;
             ctx.stroke();
 
-            // Texto de porcentaje
             const text = `${Math.round(percentage * 100)}%`;
             ctx.font = 'bold 16px Inter';
             ctx.fillStyle = '#1f2937';
@@ -614,12 +576,10 @@
 
         function renderPrefacturas(allPrefacturas) {
             
-            // --- FILTRADO POR VISTA (PENDIENTE VS PAGADA) ---
             const filteredPrefacturas = allPrefacturas.filter(p => {
                 const isPaid = p.is_paid || false;
                 return currentView === 'paid' ? isPaid : !isPaid;
             });
-            // --------------------------------------------------
 
             const listContainer = document.getElementById('prefacturas-list');
             listContainer.innerHTML = ''; 
@@ -638,15 +598,12 @@
             }
 
             filteredPrefacturas
-                // Ordenar por fecha de creación descendente
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                 .forEach(p => {
                 
-                // Calcular agregados desde item_lines
                 let total_invoiced = 0;
                 let total_items_aggregate = 0;
 
-                // Asegurar que item_lines existe y es un array
                 const safeItemLines = Array.isArray(p.item_lines) ? p.item_lines : [];
 
                 safeItemLines.forEach(line => {
@@ -654,14 +611,12 @@
                     total_items_aggregate += line.quantity || 0;
                 });
                 
-                // Nuevos checks de estado
                 const isComplete = total_invoiced >= total_items_aggregate;
-                const isPaid = p.is_paid || false; // Nuevo: verificar el campo is_paid
+                const isPaid = p.is_paid || false; 
                 
                 const statusColor = isPaid ? 'bg-secondary' : (isComplete ? 'bg-indigo-700' : 'bg-primary');
                 const statusText = isPaid ? 'Pagada' : (isComplete ? 'Factura Completa' : 'Pendiente');
                 
-                // Generar HTML para las líneas de items (ahora mostrando el progreso individual)
                 const itemLinesHtml = safeItemLines.map(line => {
                     const lineStatusColor = (line.invoiced || 0) >= line.quantity ? 'bg-secondary text-white' : 'bg-indigo-100 text-indigo-700';
                     
@@ -670,7 +625,6 @@
                     </span>`;
                 }).join(' ') ;
                 
-                // Estilo condicional de la tarjeta
                 const cardStyle = isPaid ? 'border-secondary/30 bg-secondary/5' : (isComplete ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-surface');
                 
                 const card = document.createElement('div');
@@ -702,7 +656,7 @@
                     <!-- Botones de Acción -->
                     <div class="w-full sm:w-auto flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-3 sm:mt-0">
                         
-                        <!-- Botón de Facturar (Solo si NO está completa) -->
+                        <!-- Botón de Facturar (Solo si NO está completa y NO está pagada) -->
                         ${!isComplete && !isPaid ? `
                             <button data-id="${p.consecutivo}" data-lines='${JSON.stringify(safeItemLines).replace(/'/g, '&#39;')}'
                                 class="btn-facturar w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-white bg-primary hover:bg-indigo-700 transition ease-in-out duration-150">
@@ -737,18 +691,16 @@
                 
                 listContainer.appendChild(card);
                 
-                // Dibujar el progreso en el canvas
                 const canvasElement = document.getElementById(`canvas-${p.consecutivo}`);
                 if (canvasElement) {
                     drawProgress(canvasElement, total_items_aggregate, total_invoiced);
                 }
             });
 
-            // Asignar eventos a los botones
+            // Asignar eventos
             document.querySelectorAll('.btn-facturar').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
-                    // Usamos getAttribute para evitar problemas de parsing del JSON escapado
                     const linesJson = e.target.getAttribute('data-lines'); 
                     try {
                         const itemLines = JSON.parse(linesJson); 
@@ -760,7 +712,6 @@
                 });
             });
             
-            // ASIGNAR EVENTO AL NUEVO BOTÓN DE PAGAR
             document.querySelectorAll('.btn-pagar').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
@@ -792,11 +743,12 @@
         }
 
         // 4. Listener en Tiempo Real
-        let allPrefacturasCache = []; // Caché para guardar todos los datos
+        let allPrefacturasCache = []; 
         
         function setupRealtimeListener() {
-            if (!db) {
-                console.error("Firebase no está listo.");
+            // **CORRECCIÓN:** Esperar por el ID de usuario
+            if (!db || !currentUserId) { 
+                console.warn("Base de datos no lista o UserID no definido. Reintentando...");
                 return;
             }
 
@@ -805,16 +757,14 @@
                 prefacturasUnsubscribe();
             }
 
-            // Llamada a la colección sin el ID de usuario
-            const q = query(getPrefacturasCollectionRef()); 
+            // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
+            const q = query(getPrefacturasCollectionRef(currentUserId)); 
             
-            // onSnapshot se mantiene escuchando TODOS los documentos
             prefacturasUnsubscribe = onSnapshot(q, (querySnapshot) => {
-                allPrefacturasCache = []; // Limpiar caché
+                allPrefacturasCache = []; 
                 querySnapshot.forEach((doc) => {
                     allPrefacturasCache.push({ id: doc.id, ...doc.data() });
                 });
-                // Renderizar la vista actual con el caché actualizado
                 renderPrefacturas(allPrefacturasCache); 
             }, (error) => {
                 console.error("Error detallado al escuchar cambios en Firestore:", error);
@@ -825,9 +775,9 @@
             });
         }
         
-        // --- LÓGICA DE CAMBIO DE VISTA (NUEVO) ---
+        // --- LÓGICA DE CAMBIO DE VISTA ---
         function updateView(newView) {
-            if (currentView === newView) return; // No hacer nada si es la misma vista
+            if (currentView === newView) return; 
 
             currentView = newView;
 
@@ -836,20 +786,18 @@
             const listTitle = document.getElementById('list-title');
             const formModule = document.getElementById('new-prefactura-module');
 
-            // Actualizar el estilo de los botones
             if (newView === 'pending') {
                 listTitle.textContent = 'Facturas Pendientes';
                 pendingBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-primary text-white';
                 paidBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-gray-200 text-gray-700 hover:bg-gray-300';
                 formModule.classList.remove('hidden-by-view');
-            } else { // 'paid'
+            } else { 
                 listTitle.textContent = 'Archivo de Facturas Pagadas';
                 paidBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-secondary text-white';
                 pendingBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-gray-200 text-gray-700 hover:bg-gray-300';
-                formModule.classList.add('hidden-by-view'); // Ocultar formulario en vista pagada
+                formModule.classList.add('hidden-by-view'); 
             }
 
-            // Forzar el renderizado con el nuevo filtro de vista
             renderPrefacturas(allPrefacturasCache);
         }
 
@@ -858,12 +806,10 @@
         document.getElementById('view-paid-btn').addEventListener('click', () => updateView('paid'));
 
 
-        // Configurar la fecha de hoy y la línea inicial
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fecha').value = today;
-            addItemLine(); // Añadir la primera línea de item al cargar
-            updateView(currentView); // Inicializar la vista por defecto (Pendientes)
+            addItemLine(); 
         });
 
     </script>
