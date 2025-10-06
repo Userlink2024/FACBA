@@ -386,7 +386,7 @@
             return isNaN(number) ? 0 : number; 
         }
 
-        // 0.3. Listener para formatear el input en tiempo real (NUEVO)
+        // 0.3. Listener para formatear el input en tiempo real
         function setupCurrencyInputListeners() {
             document.querySelectorAll('.currency-input').forEach(input => {
                 // Función que se ejecuta en cada pulsación/cambio
@@ -395,17 +395,15 @@
                     const numberValue = parseInt(cleanValue, 10);
                     
                     if (!isNaN(numberValue) && numberValue > 0) {
-                        // Formatear el valor sin perder la posición del cursor, pero aquí lo simplificamos
+                        // Formatear el valor
                         input.value = formatCurrency(numberValue);
                     } else if (cleanValue === '') {
                         // Si se borra todo, dejar vacío
                         input.value = '';
                     }
-                    // NOTA: Para una UX perfecta, se necesitaría controlar la posición del cursor, 
-                    // pero para la función básica de previsualización, esto es suficiente.
                 };
 
-                // Aplicar el formato al salir del campo por si el usuario lo dejó incompleto
+                // Aplicar el formato al salir del campo
                 input.addEventListener('blur', updateFormat);
                 
                 // Aplicar el formato mientras se escribe
@@ -879,7 +877,11 @@
                                 await deletePrefactura(prefacturaToDelete.id);
                             }
                         },
-                        () => showMessage(`Eliminación de ${id} cancelada.`, 'info') 
+                        // CORRECCIÓN: Se agrega hideModal() para asegurar que el cuadro de diálogo se cierre.
+                        () => { 
+                            hideModal(); 
+                            showMessage(`Eliminación de ${id} cancelada.`, 'info'); 
+                        }
                     );
                 });
             });
