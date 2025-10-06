@@ -32,6 +32,13 @@
         #message-container {
             min-height: 40px; /* Para evitar CLS */
         }
+        /* Estilo para el Canvas de Progreso */
+        /* Aseguramos que el canvas siempre se vea en la lista */
+        .progress-canvas {
+            width: 70px;
+            height: 70px;
+            display: block;
+        }
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -48,6 +55,14 @@
         <div id="message-container" class="fixed top-0 left-0 right-0 z-50 flex items-start justify-center pointer-events-none">
             <!-- Los mensajes se insertarán aquí por JS -->
         </div>
+
+        <!-- Alerta de Error de Configuración (Nueva) -->
+        <div id="config-error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+            <strong class="font-bold">Error de Conexión a Base de Datos:</strong>
+            <span class="block sm:inline" id="config-error-message"></span>
+            <p class="mt-2 text-sm">El error `projectId not provided` indica que la configuración de Firebase no es correcta. **Necesitas revisar tus credenciales**.</p>
+        </div>
+
 
         <!-- Modal Overlay para Confirmación/Input (Reemplaza a prompt/confirm) -->
         <div id="modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
@@ -154,10 +169,11 @@
         // Configuración de Firebase y Variables Globales
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-prefactura-app';
         // OBLIGATORIO: Usar la configuración proporcionada por el entorno (__firebase_config)
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'); 
+        const firebaseConfigRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app, db, auth, userId = null;
+        let isFirebaseReady = false; // Nuevo flag para controlar el estado
         setLogLevel('debug'); // Habilitar logs para depuración
         let itemLineCounter = 0; // Contador global para IDs únicos de líneas
         let prefacturasUnsubscribe = null; 
@@ -218,43 +234,68 @@
         
         // --- Configuración y Autenticación de Firebase ---
 
-        try {
-            // Inicializar Firebase con la configuración proporcionada por el entorno
-            app = initializeApp(firebaseConfig); 
-            db = getFirestore(app);
-            auth = getAuth(app);
-            
-            // Autenticación
-            if (initialAuthToken) {
-                signInWithCustomToken(auth, initialAuthToken).catch(e => {
-                    console.error("Error al iniciar sesión con token personalizado:", e);
-                    signInAnonymously(auth);
-                });
-            } else {
-                signInAnonymously(auth).catch(e => {
-                     console.error("Error al iniciar sesión anónimamente:", e);
-                });
-            }
+        function initializeFirebase() {
+            try {
+                const firebaseConfig = JSON.parse(firebaseConfigRaw);
 
-            onAuthStateChanged(auth, (user) => {
-                const displayUserIdElement = document.getElementById('display-user-id');
-                if (user) {
-                    userId = user.uid;
-                    displayUserIdElement.textContent = userId;
-                    console.log("Usuario autenticado. ID:", userId);
-                    setupRealtimeListeners(); // Llama a ambos listeners
-                } else {
-                    userId = crypto.randomUUID(); 
-                    displayUserIdElement.textContent = userId + ' (Anónimo)';
-                    console.warn("Usuario no autenticado, usando ID temporal.");
-                    setupRealtimeListeners();
+                if (!firebaseConfig.projectId) {
+                    throw new Error("projectId not provided in firebaseConfig. La configuración está incompleta o vacía.");
                 }
-            });
 
-        } catch (error) {
-            console.error("Error al inicializar Firebase:", error);
-            showMessage("Error al inicializar la base de datos. Revisa tu configuración.", 'error');
+                app = initializeApp(firebaseConfig); 
+                db = getFirestore(app);
+                auth = getAuth(app);
+                isFirebaseReady = true;
+
+                // 1. Intentar iniciar sesión
+                const signInPromise = initialAuthToken 
+                    ? signInWithCustomToken(auth, initialAuthToken)
+                    : signInAnonymously(auth);
+
+                signInPromise.catch(e => {
+                    console.error("Error durante el proceso de inicio de sesión:", e);
+                    // Si falla el custom token, intentamos anónimo como fallback
+                    if (initialAuthToken) {
+                         signInAnonymously(auth).catch(e => {
+                            console.error("Error al iniciar sesión anónimamente (fallback):", e);
+                        });
+                    }
+                });
+
+                // 2. Establecer el listener de estado de autenticación (CRUCIAL)
+                onAuthStateChanged(auth, (user) => {
+                    const displayUserIdElement = document.getElementById('display-user-id');
+                    const loadingIndicator = document.getElementById('loading-indicator');
+
+                    if (user) {
+                        userId = user.uid;
+                        displayUserIdElement.textContent = userId;
+                        console.log("Usuario autenticado. ID:", userId);
+                        loadingIndicator.textContent = 'Cargando datos...';
+                        setupRealtimeListeners(); // <--- LLAMADA CRÍTICA AHORA DENTRO DE onAuthStateChanged
+                    } else {
+                        // En caso de deslogueo, aunque no debería pasar en este entorno.
+                        userId = crypto.randomUUID(); 
+                        displayUserIdElement.textContent = userId + ' (Anónimo - Temporal)';
+                        console.warn("Usuario no autenticado, usando ID temporal.");
+                        loadingIndicator.textContent = 'Cargando datos (Modo Anónimo)...';
+                        setupRealtimeListeners(); // <--- LLAMADA CRÍTICA AHORA DENTRO DE onAuthStateChanged
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                // Mostrar la alerta de configuración
+                document.getElementById('config-error-message').textContent = error.message;
+                document.getElementById('config-error-alert').classList.remove('hidden');
+                document.getElementById('loading-indicator').textContent = 'Error de configuración. No se pueden cargar los datos.';
+                isFirebaseReady = false;
+            }
         }
+        
+        // Llamar a la función de inicialización al cargar el script
+        initializeFirebase();
+
 
         // --- CORRECCIÓN CRÍTICA DE RUTA DE FIRESTORE ---
         
@@ -336,8 +377,8 @@
         document.getElementById('prefactura-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (!userId || !db) {
-                showMessage("La base de datos no está lista. Inténtalo de nuevo.", 'error');
+            if (!userId || !isFirebaseReady) {
+                showMessage("La base de datos no está lista. Verifica la conexión.", 'error');
                 return;
             }
 
@@ -413,8 +454,8 @@
 
         // 2. Actualizar la Cantidad Facturada Parcialmente
         async function updateFacturacion(docId, itemLines) {
-            if (!userId) {
-                showMessage("Esperando autenticación.", 'error');
+            if (!userId || !isFirebaseReady) {
+                showMessage("Esperando autenticación y conexión a Firebase.", 'error');
                 return;
             }
             
@@ -431,16 +472,16 @@
             const linesInputHtml = availableLines.map(line => {
                 const remaining = line.quantity - (line.invoiced || 0);
                 return `
-                    <div class="p-3 border rounded-lg bg-gray-50 flex items-center justify-between gap-4">
-                        <label class="text-sm font-medium text-gray-700 w-1/3 flex-shrink-0">${line.reference}</label>
-                        <div class="text-sm text-gray-500 w-1/3 text-center">Pendiente: <span class="font-bold text-primary">${remaining}</span></div>
+                    <div class="p-3 border rounded-lg bg-gray-50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <label class="text-sm font-medium text-gray-700 w-full sm:w-1/3 flex-shrink-0">${line.reference}</label>
+                        <div class="text-sm text-gray-500 w-full sm:w-1/3 text-center">Pendiente: <span class="font-bold text-primary">${remaining}</span></div>
                         <input type="number" 
                                data-reference="${line.reference}" 
                                data-max-qty="${remaining}"
                                value="0" 
                                min="0" 
                                max="${remaining}"
-                               class="modal-invoice-qty mt-1 block w-1/3 rounded-lg border-gray-300 shadow-sm p-2 border focus:border-primary focus:ring-primary text-sm text-right transition"
+                               class="modal-invoice-qty mt-1 block w-full sm:w-1/3 rounded-lg border-gray-300 shadow-sm p-2 border focus:border-primary focus:ring-primary text-sm text-right transition"
                                placeholder="Cantidad a facturar">
                     </div>
                 `;
@@ -459,7 +500,7 @@
                     Progreso Global: ${currentTotalInvoiced} / ${totalItemsAggregate} Items facturados.
                 </div>
 
-                <div class="flex justify-end space-x-3">
+                <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
                     <button id="modal-cancel-btn" class="py-2 px-4 text-sm font-medium rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-50 transition">
                         Cancelar
                     </button>
@@ -534,8 +575,8 @@
         
         // 3. FUNCIÓN: Marcar como Pagada e Inmutable
         async function markAsPaid(prefacturaData) {
-            if (!userId) {
-                showMessage("Esperando autenticación.", 'error');
+            if (!userId || !isFirebaseReady) {
+                showMessage("Esperando autenticación y conexión a Firebase.", 'error');
                 return;
             }
             
@@ -569,21 +610,25 @@
         
         // 4. Renderizado de la lista de Pre-facturas (Con el botón de pago funcional)
         function drawProgress(canvas, total, invoiced) {
+            // Check para evitar errores si el canvas no está visible (ej. en la pestaña Paid)
+            if (!canvas || !canvas.offsetParent) return; 
+
             const ctx = canvas.getContext('2d');
             const size = canvas.width;
             const center = size / 2;
             const radius = size * 0.4;
             const percentage = total > 0 ? invoiced / total : 0;
 
-            if (!canvas.offsetParent) return;
-
             ctx.clearRect(0, 0, size, size);
+            
+            // Background ring (gris claro)
             ctx.beginPath();
             ctx.arc(center, center, radius, 0, Math.PI * 2);
             ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 10;
             ctx.stroke();
 
+            // Progress arc (color primario/secundario)
             if (percentage > 0) {
                 const endAngle = (Math.PI * 2 * percentage) - (Math.PI / 2);
                 ctx.beginPath();
@@ -593,12 +638,16 @@
                 ctx.stroke();
             }
 
-            const text = `${Math.round(percentage * 100)}%`;
+            // Text
             ctx.font = 'bold 16px Inter';
             ctx.fillStyle = '#1f2937';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, center, center);
+            const text = `${Math.round(percentage * 100)}%`;
+            // Ajuste para dibujar texto solo si hay espacio y datos
+            if (size > 30) {
+                 ctx.fillText(text, center, center);
+            }
         }
 
         function renderPrefacturas(prefacturas) {
@@ -686,7 +735,7 @@
                 card.innerHTML = `
                     <div class="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
                         <!-- Canvas para progreso -->
-                        <canvas id="canvas-${p.consecutivo}" width="70" height="70" class="mr-4 flex-shrink-0"></canvas>
+                        <canvas id="canvas-${p.consecutivo}" width="70" height="70" class="mr-4 flex-shrink-0 progress-canvas"></canvas>
                         
                         <!-- Detalles de la Pre-factura -->
                         <div class="flex-grow">
@@ -715,7 +764,8 @@
                 
                 const canvasElement = document.getElementById(`canvas-${p.consecutivo}`);
                 if (canvasElement) {
-                    drawProgress(canvasElement, total_items_aggregate, total_invoiced);
+                    // Esperamos a que el elemento esté en el DOM y visible antes de dibujar
+                    setTimeout(() => drawProgress(canvasElement, total_items_aggregate, total_invoiced), 0);
                 }
             });
 
@@ -780,7 +830,7 @@
             });
         }
         
-        // 5. Renderizado del módulo de Facturas Pagadas (sin cambios, solo restauración)
+        // 5. Renderizado del módulo de Facturas Pagadas
         function renderPaidInvoices(invoices) {
             const listContainer = document.getElementById('paid-invoices-list');
             listContainer.innerHTML = '';
@@ -832,10 +882,12 @@
 
         // 6. Listener en Tiempo Real (AMBOS)
         function setupRealtimeListeners() {
-            if (!db || !userId) {
+            // CAMBIO CRÍTICO: Aseguramos que db y userId existan antes de configurar listeners.
+            if (!db || !userId || !isFirebaseReady) {
+                console.warn("No se pueden configurar listeners: Firebase no está completamente listo.");
                 return;
             }
-
+            
             // --- Listener para Pre-facturas Pendientes (Privado) ---
             if (prefacturasUnsubscribe) {
                 prefacturasUnsubscribe();
@@ -852,7 +904,8 @@
                 renderPrefacturas(prefacturas);
             }, (error) => {
                 console.error("Error al escuchar pre-facturas:", error);
-                showMessage(`Error al cargar pendientes. Código: ${error.code}. Verifica la ruta privada.`, 'error');
+                // Muestra un error específico y sugiere la causa
+                showMessage(`ERROR: No tienes permiso para cargar pre-facturas. Revisa tus Reglas de Seguridad.`, 'error');
             });
             
             // --- Listener para Facturas Pagadas (Público) ---
@@ -870,13 +923,14 @@
                 renderPaidInvoices(paidInvoices);
             }, (error) => {
                  console.error("Error al escuchar facturas pagadas:", error);
-                 showMessage(`Error al cargar pagadas. Código: ${error.code}. Verifica la ruta pública.`, 'error');
+                 // Muestra un error específico y sugiere la causa
+                 showMessage(`ERROR: No tienes permiso para cargar facturas pagadas. Revisa tus Reglas de Seguridad.`, 'error');
             });
         }
         
         // 7. Eliminar Pre-factura (Usando el ID de Firestore)
         async function deletePrefactura(docId) {
-             if (!userId) return;
+             if (!userId || !isFirebaseReady) return;
              
              try {
                 const docRef = doc(getPrefacturasCollectionRef(userId), docId);
@@ -888,7 +942,7 @@
             }
         }
         
-        // --- Lógica de Pestañas (Restaurada) ---
+        // --- Lógica de Pestañas ---
         const tabButtons = document.querySelectorAll('.tab-button');
         const views = {
             'pending': document.getElementById('view-pending'),
@@ -914,6 +968,23 @@
                     views[key].classList.add('hidden');
                 }
             });
+            
+            // Redibujar canvas al cambiar de pestaña si es necesario
+            if (viewName === 'pending') {
+                document.querySelectorAll('.progress-canvas').forEach(canvas => {
+                     const id = canvas.id.replace('canvas-', '');
+                     const prefactura = prefacturasData.find(p => p.consecutivo === id);
+                     if (prefactura) {
+                         let total_invoiced = 0;
+                         let total_items_aggregate = 0;
+                         prefactura.item_lines.forEach(line => {
+                             total_invoiced += line.invoiced || 0;
+                             total_items_aggregate += line.quantity || 0;
+                         });
+                         drawProgress(canvas, total_items_aggregate, total_invoiced);
+                     }
+                });
+            }
         }
         
         tabButtons.forEach(button => {
