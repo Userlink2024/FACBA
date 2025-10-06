@@ -81,11 +81,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label for="valor" class="block text-sm font-medium text-gray-700">Valor Total ($)</label>
-                            <input type="number" id="valor" step="0.01" min="0" placeholder="1000.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
+                            <input type="text" id="valor" inputmode="numeric" placeholder="127000" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary currency-input">
                         </div>
                         <div>
                             <label for="ganancia" class="block text-sm font-medium text-gray-700">Ganancia Total ($)</label>
-                            <input type="number" id="ganancia" step="0.01" min="0" placeholder="200.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
+                            <input type="text" id="ganancia" inputmode="numeric" placeholder="20000" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary currency-input">
                         </div>
                     </div>
 
@@ -250,10 +250,6 @@
                     const errorMessage = `ERROR DE AUTENTICACIÓN: ${e.code}. Esto suele pasar si el proyecto no tiene habilitada la Autenticación Anónima.`;
                     console.error(errorMessage, e);
                     showMessage(errorMessage, 'error');
-                    
-                    // CÓDIGO COMENTADO: Anteriormente mostraba la alerta de configuración detallada en la UI
-                    // document.getElementById('config-error-message').textContent = errorMessage;
-                    // document.getElementById('config-error-alert').classList.remove('hidden');
                 });
 
                 // 2. Establecer el listener de estado de autenticación (CRUCIAL)
@@ -270,24 +266,12 @@
                         // Si falla la autenticación, usamos un ID temporal.
                         userId = crypto.randomUUID(); 
                         console.warn("Usuario no autenticado, usando ID temporal. Firestore probablemente dará 'Permission Denied'.");
-                        // CÓDIGO MODIFICADO: Cambiar el mensaje del loading indicator para no mencionar la solución
                         loadingIndicator.textContent = 'Intentando conexión a la base de datos...';
-                        
-                        // CÓDIGO COMENTADO: Anteriormente mostraba la alerta de configuración detallada
-                        /*
-                        if (document.getElementById('config-error-alert').classList.contains('hidden')) {
-                             document.getElementById('config-error-message').textContent = "Falló la autenticación. Revisa que el 'Anonymous Sign-in' esté Habilitado en tu Consola de Firebase.";
-                             document.getElementById('config-error-alert').classList.remove('hidden');
-                        }
-                        */
                     }
                 });
 
             } catch (error) {
                 console.error("Error al inicializar Firebase:", error);
-                // CÓDIGO COMENTADO: Anteriormente mostraba la alerta de configuración
-                // document.getElementById('config-error-message').textContent = error.message;
-                // document.getElementById('config-error-alert').classList.remove('hidden');
                 document.getElementById('loading-indicator').textContent = 'Error de configuración. No se pueden cargar los datos.';
                 isFirebaseReady = false;
             }
@@ -372,21 +356,63 @@
 
         // --- Lógica de la Aplicación (CRUD) ---
         
-        // 0. Utilidad de Formato de Moneda
+        // 0.1. Utilidad de Formato de Moneda
         function formatCurrency(number) {
             if (typeof number !== 'number' || isNaN(number)) {
-                return '$ 0';
+                return ''; // Devolvemos cadena vacía para el campo de entrada
             }
             // Formatea como Pesos Colombianos (COP) o un formato similar al solicitado ($ 1.000)
             return new Intl.NumberFormat('es-CO', {
                 style: 'currency',
-                currency: 'COP', // Puedes cambiar 'COP' por la moneda que prefieras
-                minimumFractionDigits: 0, // Mínimo 0 decimales para $ 1.000
+                currency: 'COP', 
+                minimumFractionDigits: 0, // Mínimo 0 decimales
                 maximumFractionDigits: 2 // Máximo 2 decimales
-            }).format(number).replace('COP', '$').trim(); // Reemplaza el código de moneda por $
+            }).format(number).replace('COP', '$').trim();
+        }
+        
+        // 0.2. Utilidad para extraer el número del formato de moneda
+        function parseCurrency(formattedValue) {
+            if (typeof formattedValue !== 'string') return NaN;
+            
+            // 1. Eliminar el símbolo de la moneda y el espacio ($ )
+            let cleanString = formattedValue.replace(/[$.]/g, ''); // Elimina $ y puntos
+            
+            // 2. Reemplazar la coma (si se usa como separador decimal) por un punto
+            cleanString = cleanString.replace(',', '.'); 
+            
+            // 3. Convertir a número
+            const number = parseFloat(cleanString);
+            
+            return isNaN(number) ? 0 : number; 
         }
 
+        // 0.3. Listener para formatear el input en tiempo real (NUEVO)
+        function setupCurrencyInputListeners() {
+            document.querySelectorAll('.currency-input').forEach(input => {
+                // Función que se ejecuta en cada pulsación/cambio
+                const updateFormat = () => {
+                    const cleanValue = input.value.replace(/[^\d]/g, ''); // Solo números
+                    const numberValue = parseInt(cleanValue, 10);
+                    
+                    if (!isNaN(numberValue) && numberValue > 0) {
+                        // Formatear el valor sin perder la posición del cursor, pero aquí lo simplificamos
+                        input.value = formatCurrency(numberValue);
+                    } else if (cleanValue === '') {
+                        // Si se borra todo, dejar vacío
+                        input.value = '';
+                    }
+                    // NOTA: Para una UX perfecta, se necesitaría controlar la posición del cursor, 
+                    // pero para la función básica de previsualización, esto es suficiente.
+                };
 
+                // Aplicar el formato al salir del campo por si el usuario lo dejó incompleto
+                input.addEventListener('blur', updateFormat);
+                
+                // Aplicar el formato mientras se escribe
+                input.addEventListener('input', updateFormat);
+            });
+        }
+        
         // 1. Agregar Nueva Pre-factura
         document.getElementById('prefactura-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -435,12 +461,16 @@
                 showMessage("El consecutivo no puede estar vacío.", 'error');
                 return;
             }
+            
+            // --- USAR parseCurrency para obtener el número puro antes de guardar ---
+            const totalValueInput = document.getElementById('valor').value;
+            const totalProfitInput = document.getElementById('ganancia').value;
 
             const data = {
                 date: document.getElementById('fecha').value,
                 consecutivo: document.getElementById('consecutivo').value.trim(),
-                total_value: parseFloat(document.getElementById('valor').value),
-                total_profit: parseFloat(document.getElementById('ganancia').value),
+                total_value: parseCurrency(totalValueInput), // Valor numérico
+                total_profit: parseCurrency(totalProfitInput), // Valor numérico
                 
                 item_lines: item_lines, 
                 total_items: aggregate_total_items, 
@@ -450,6 +480,11 @@
                 
                 created_at: new Date().toISOString()
             };
+            
+            if (isNaN(data.total_value) || data.total_value <= 0) {
+                 showMessage("El Valor Total debe ser un número válido mayor a cero.", 'error');
+                 return;
+            }
 
             try {
                 // Usamos setDoc con el consecutivo como ID del documento en la colección pública
@@ -1043,11 +1078,12 @@
             });
         });
 
-        // Configurar la fecha de hoy y la línea inicial
+        // Configurar la fecha de hoy, la línea inicial y los listeners de moneda
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fecha').value = today;
             addItemLine(); // Añadir la primera línea de item al cargar
+            setupCurrencyInputListeners(); // CONFIGURAR EL FORMATO EN TIEMPO REAL
             switchView('pending'); // Mostrar la vista inicial
         });
 
