@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Facturación Parcial (Pre-facturas)</title>
-    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,7 +19,6 @@
             }
         }
     </script>
-    <!-- Fuente Inter -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
@@ -40,29 +38,22 @@
         <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Control de Pre-facturación</h1>
         <p class="text-gray-500 mb-6">Gestiona tus pedidos totales (pre-facturas) y controla la cantidad facturada por partes.</p>
 
-        <!-- Mensajes del Sistema (Reemplaza a alert/confirm) -->
         <div id="message-container" class="fixed top-0 left-0 right-0 z-50 flex items-start justify-center pointer-events-none">
-            <!-- Los mensajes se insertarán aquí por JS -->
-        </div>
+            </div>
 
-        <!-- Modal Overlay para Confirmación/Input (Reemplaza a prompt/confirm) -->
         <div id="modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
             <div id="modal-content" class="bg-surface rounded-xl shadow-2xl p-6 w-full max-w-lg">
-                <!-- El contenido del modal se inyectará dinámicamente -->
-            </div>
+                </div>
         </div>
 
-        <!-- Formulario para Nueva Pre-factura -->
         <div class="bg-surface shadow-xl rounded-xl p-6 mb-8 border border-gray-100">
             <h2 class="text-2xl font-semibold text-primary mb-4">Registrar Nueva Pre-factura</h2>
             <form id="prefactura-form" class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Fecha -->
                     <div>
                         <label for="fecha" class="block text-sm font-medium text-gray-700">Fecha</label>
                         <input type="date" id="fecha" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
                     </div>
-                    <!-- Consecutivo -->
                     <div>
                         <label for="consecutivo" class="block text-sm font-medium text-gray-700">Consecutivo (ID)</label>
                         <input type="text" id="consecutivo" placeholder="Ej: PFT-2025001" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
@@ -70,30 +61,25 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Valor Total -->
                     <div>
                         <label for="valor" class="block text-sm font-medium text-gray-700">Valor Total ($)</label>
                         <input type="number" id="valor" step="0.01" min="0" placeholder="1000.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
                     </div>
-                    <!-- Ganancia de Factura -->
                     <div>
                         <label for="ganancia" class="block text-sm font-medium text-gray-700">Ganancia Total ($)</label>
                         <input type="number" id="ganancia" step="0.01" min="0" placeholder="200.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
                     </div>
                 </div>
 
-                <!-- SECCIÓN DE MÚLTIPLES REFERENCIAS -->
                 <div class="space-y-4">
                     <h3 class="text-lg font-medium text-gray-700 pt-2 border-t border-gray-100">Detalle de Items por Referencia</h3>
                     <div id="item-lines-container" class="space-y-3 p-3 border rounded-lg bg-gray-50">
-                        <!-- Líneas de items se insertarán aquí por JS -->
-                    </div>
+                        </div>
                     <button type="button" id="add-item-btn" class="w-full py-2 px-4 border border-primary text-primary rounded-lg hover:bg-primary/10 transition ease-in-out duration-150 font-medium">
                         + Agregar Referencia
                     </button>
                 </div>
                 
-                <!-- Resumen de Items Totales -->
                 <div class="p-3 bg-indigo-50 rounded-lg text-sm font-medium text-gray-700 border border-indigo-200">
                     Total de Items en Pre-factura (Calculado): <span id="summary-total-items" class="font-bold text-primary text-lg">0</span>
                 </div>
@@ -104,27 +90,44 @@
             </form>
         </div>
 
-        <!-- Lista de Pre-facturas -->
         <div class="bg-surface shadow-xl rounded-xl p-6 border border-gray-100">
             <h2 class="text-2xl font-semibold text-primary mb-4">Pre-facturas Pendientes y Completadas</h2>
             <div id="prefacturas-list" class="space-y-4">
                 <p id="loading-indicator" class="text-center text-gray-500">Cargando datos...</p>
-                <!-- Las pre-facturas se renderizarán aquí -->
-            </div>
+                </div>
             <div id="user-info" class="mt-6 text-xs text-gray-400 text-center"></div>
         </div>
     </div>
 
-    <!-- Script de Firebase y Lógica de la Aplicación -->
+    <script>
+        // La configuración de Firebase se pasa como una cadena JSON.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
+            authDomain: "lazapateria-ce24f.firebaseapp.com",
+            projectId: "lazapateria-ce24f",
+            storageBucket: "lazapateria-ce24f.firebasestorage.app",
+            messagingSenderId: "642571845821",
+            appId: "1:642571845821:web:45858a0abc0df728fd77d4",
+            measurementId: "G-6JCF33H0K1"
+        };
+        
+        // Variables globales que el código dentro del 'type="module"' espera.
+        window.__firebase_config = JSON.stringify(firebaseConfig);
+        window.__app_id = firebaseConfig.appId; // Usamos el appId como el identificador de la aplicación
+        // window.__initial_auth_token no es necesario a menos que uses tokens personalizados.
+    </script>
+    
     <script type="module">
+        // El script importa las funciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, query, setDoc, updateDoc, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Configuración de Firebase y Variables Globales
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-prefactura-app';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Ahora lee de las variables globales inyectadas.
+        const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-prefactura-app';
+        const firebaseConfig = JSON.parse(typeof window.__firebase_config !== 'undefined' ? window.__firebase_config : '{}');
+        const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
 
         let app, db, auth, userId = null;
         setLogLevel('debug'); // Habilitar logs para depuración
@@ -191,6 +194,11 @@
         // --- Configuración y Autenticación de Firebase ---
 
         try {
+            // Verifica que la configuración no esté vacía
+            if (Object.keys(firebaseConfig).length === 0) {
+                 throw new Error("La configuración de Firebase está vacía o no se cargó.");
+            }
+            
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
@@ -201,6 +209,7 @@
                     signInAnonymously(auth);
                 });
             } else {
+                // El código original siempre intenta el signInAnonymously si no hay token.
                 signInAnonymously(auth);
             }
 
@@ -220,7 +229,8 @@
 
         } catch (error) {
             console.error("Error al inicializar Firebase:", error);
-            showMessage("Error al inicializar la base de datos.", 'error');
+            // Muestra un error más claro si falla la inicialización
+            showMessage(`Error al inicializar la base de datos: ${error.message}`, 'error');
         }
 
         // Función para obtener la ruta de la colección de pre-facturas
@@ -596,10 +606,8 @@
                 
                 card.innerHTML = `
                     <div class="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
-                        <!-- Canvas para progreso -->
                         <canvas id="canvas-${p.consecutivo}" width="70" height="70" class="mr-4 flex-shrink-0"></canvas>
                         
-                        <!-- Detalles de la Pre-factura -->
                         <div class="flex-grow">
                             <div class="flex items-center space-x-2">
                                 <h3 class="text-lg font-bold text-gray-900">${p.consecutivo}</h3>
@@ -607,7 +615,6 @@
                                     ${statusText}
                                 </span>
                             </div>
-                            <!-- Mostrar múltiples referencias -->
                             <p class="text-sm text-gray-600 mb-1 flex flex-wrap gap-1">
                                 Líneas: ${itemLinesHtml}
                             </p>
@@ -617,7 +624,6 @@
                         </div>
                     </div>
                     
-                    <!-- Botón de Acción -->
                     <div class="w-full sm:w-auto flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-3 sm:mt-0">
                         ${!isComplete ? `
                             <button data-id="${p.consecutivo}" data-lines='${JSON.stringify(safeItemLines)}'
