@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Facturación Parcial (Pre-facturas)</title>
+    <title>Control de Facturación y Pagos</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,6 +13,7 @@
                     colors: {
                         'primary': '#4f46e5',
                         'secondary': '#10b981',
+                        'success': '#10b981', /* Color para pago y completado */
                         'background': '#f9fafb',
                         'surface': '#ffffff'
                     }
@@ -22,27 +23,26 @@
     </script>
     <!-- Fuente Inter -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f9fafb;
         }
-        /* Estilos para el Canvas de Progreso */
-        .progress-canvas {
-            width: 100px;
-            height: 100px;
-        }
-        /* Clase de ocultamiento para manejar las vistas */
-        .hidden-by-view {
-            display: none !important;
+        /* Estilo para el contenedor de mensajes */
+        #message-container {
+            min-height: 40px; /* Para evitar CLS */
         }
     </style>
 </head>
 <body class="p-4 sm:p-8">
 
     <div id="app" class="max-w-4xl mx-auto">
-        <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Control de Pre-facturación</h1>
-        <p class="text-gray-500 mb-6">Gestiona tus pedidos totales (pre-facturas) y controla la cantidad facturada por partes.</p>
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Control de Facturación y Pagos</h1>
+        <p class="text-gray-500 mb-2">Gestiona tus pedidos y la facturación parcial.</p>
+        <p class="text-sm text-gray-500 mb-6">
+            <span class="font-semibold">ID de Usuario: </span>
+            <span id="display-user-id" class="text-primary font-mono bg-gray-100 px-2 py-0.5 rounded text-xs">Cargando...</span>
+        </p>
 
         <!-- Mensajes del Sistema (Reemplaza a alert/confirm) -->
         <div id="message-container" class="fixed top-0 left-0 right-0 z-50 flex items-start justify-center pointer-events-none">
@@ -55,75 +55,92 @@
                 <!-- El contenido del modal se inyectará dinámicamente -->
             </div>
         </div>
-
-        <!-- Formulario para Nueva Pre-factura -->
-        <div id="new-prefactura-module" class="bg-surface shadow-xl rounded-xl p-6 mb-8 border border-gray-100">
-            <h2 class="text-2xl font-semibold text-primary mb-4">Registrar Nueva Pre-factura</h2>
-            <form id="prefactura-form" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Fecha -->
-                    <div>
-                        <label for="fecha" class="block text-sm font-medium text-gray-700">Fecha</label>
-                        <input type="date" id="fecha" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
-                    </div>
-                    <!-- Consecutivo -->
-                    <div>
-                        <label for="consecutivo" class="block text-sm font-medium text-gray-700">Consecutivo (ID)</label>
-                        <input type="text" id="consecutivo" placeholder="Ej: PFT-2025001" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Valor Total -->
-                    <div>
-                        <label for="valor" class="block text-sm font-medium text-gray-700">Valor Total ($)</label>
-                        <input type="number" id="valor" step="0.01" min="0" placeholder="1000.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
-                    </div>
-                    <!-- Ganancia de Factura -->
-                    <div>
-                        <label for="ganancia" class="block text-sm font-medium text-gray-700">Ganancia Total ($)</label>
-                        <input type="number" id="ganancia" step="0.01" min="0" placeholder="200.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
-                    </div>
-                </div>
-
-                <!-- SECCIÓN DE MÚLTIPLES REFERENCIAS -->
-                <div class="space-y-4">
-                    <h3 class="text-lg font-medium text-gray-700 pt-2 border-t border-gray-100">Detalle de Items por Referencia</h3>
-                    <div id="item-lines-container" class="space-y-3 p-3 border rounded-lg bg-gray-50">
-                        <!-- Líneas de items se insertarán aquí por JS -->
-                    </div>
-                    <button type="button" id="add-item-btn" class="w-full py-2 px-4 border border-primary text-primary rounded-lg hover:bg-primary/10 transition ease-in-out duration-150 font-medium">
-                        + Agregar Referencia
-                    </button>
-                </div>
-                
-                <!-- Resumen de Items Totales -->
-                <div class="p-3 bg-indigo-50 rounded-lg text-sm font-medium text-gray-700 border border-indigo-200">
-                    Total de Items en Pre-factura (Calculado): <span id="summary-total-items" class="font-bold text-primary text-lg">0</span>
-                </div>
-                
-                <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-md text-white font-medium bg-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition ease-in-out duration-150">
-                    Guardar Pre-factura
+        
+        <!-- --- PESTAÑAS DE NAVEGACIÓN --- -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="flex space-x-4">
+                <button data-view="pending" class="tab-button py-2 px-4 text-sm font-medium border-b-2 border-primary text-primary transition-colors duration-200">
+                    Pre-facturas Pendientes
                 </button>
-            </form>
+                <button data-view="paid" class="tab-button py-2 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors duration-200">
+                    Facturas Pagadas
+                </button>
+            </nav>
+        </div>
+        <!-- --- FIN PESTAÑAS DE NAVEGACIÓN --- -->
+
+        <!-- Vista: Pending (Registrar y Listar Pre-facturas) -->
+        <div id="view-pending">
+            <!-- Formulario para Nueva Pre-factura -->
+            <div class="bg-surface shadow-xl rounded-xl p-6 mb-8 border border-gray-100">
+                <h2 class="text-2xl font-semibold text-primary mb-4">Registrar Nueva Pre-factura</h2>
+                <form id="prefactura-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Fecha -->
+                        <div>
+                            <label for="fecha" class="block text-sm font-medium text-gray-700">Fecha</label>
+                            <input type="date" id="fecha" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
+                        </div>
+                        <!-- Consecutivo -->
+                        <div>
+                            <label for="consecutivo" class="block text-sm font-medium text-gray-700">Consecutivo (ID)</label>
+                            <input type="text" id="consecutivo" placeholder="Ej: PFT-2025001" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Valor Total -->
+                        <div>
+                            <label for="valor" class="block text-sm font-medium text-gray-700">Valor Total ($)</label>
+                            <input type="number" id="valor" step="0.01" min="0" placeholder="1000.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
+                        </div>
+                        <!-- Ganancia de Factura -->
+                        <div>
+                            <label for="ganancia" class="block text-sm font-medium text-gray-700">Ganancia Total ($)</label>
+                            <input type="number" id="ganancia" step="0.01" min="0" placeholder="200.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN DE MÚLTIPLES REFERENCIAS -->
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-medium text-gray-700 pt-2 border-t border-gray-100">Detalle de Items por Referencia</h3>
+                        <div id="item-lines-container" class="space-y-3 p-3 border rounded-lg bg-gray-50">
+                            <!-- Líneas de items se insertarán aquí por JS -->
+                        </div>
+                        <button type="button" id="add-item-btn" class="w-full py-2 px-4 border border-primary text-primary rounded-lg hover:bg-primary/10 transition ease-in-out duration-150 font-medium">
+                            + Agregar Referencia
+                        </button>
+                    </div>
+                    
+                    <!-- Resumen de Items Totales -->
+                    <div class="p-3 bg-indigo-50 rounded-lg text-sm font-medium text-gray-700 border border-indigo-200">
+                        Total de Items en Pre-factura (Calculado): <span id="summary-total-items" class="font-bold text-primary text-lg">0</span>
+                    </div>
+                    
+                    <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-md text-white font-medium bg-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition ease-in-out duration-150">
+                        Guardar Pre-factura
+                    </button>
+                </form>
+            </div>
+
+            <!-- Lista de Pre-facturas -->
+            <div class="bg-surface shadow-xl rounded-xl p-6 border border-gray-100">
+                <h2 class="text-2xl font-semibold text-primary mb-4">Pre-facturas Pendientes y Completadas</h2>
+                <div id="prefacturas-list" class="space-y-4">
+                    <p id="loading-indicator" class="text-center text-gray-500">Cargando datos...</p>
+                    <!-- Las pre-facturas se renderizarán aquí -->
+                </div>
+            </div>
         </div>
 
-        <!-- Botones de Vista (Pendientes vs Pagadas) -->
-        <div class="flex space-x-4 mb-6">
-            <button id="view-pending-btn" class="py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150" data-view="pending">
-                Facturas Pendientes
-            </button>
-            <button id="view-paid-btn" class="py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150" data-view="paid">
-                Facturas Pagadas
-            </button>
-        </div>
-
-        <!-- Lista de Pre-facturas (Contenedor principal para ambas vistas) -->
-        <div class="bg-surface shadow-xl rounded-xl p-6 border border-gray-100">
-            <h2 id="list-title" class="text-2xl font-semibold text-primary mb-4">Facturas Pendientes</h2>
-            <div id="prefacturas-list" class="space-y-4">
-                <p id="loading-indicator" class="text-center text-gray-500">Cargando datos...</p>
-                <!-- Las pre-facturas se renderizarán aquí -->
+        <!-- Vista: Paid (Facturas Pagadas) -->
+        <div id="view-paid" class="hidden">
+            <div class="bg-surface shadow-xl rounded-xl p-6 border border-gray-100">
+                <h2 class="text-2xl font-semibold text-success mb-4">Historial de Facturas Pagadas</h2>
+                <div id="paid-invoices-list" class="space-y-4">
+                    <p class="text-center text-gray-500 py-4">Cargando historial de pagos...</p>
+                    <!-- Las facturas pagadas se renderizarán aquí -->
+                </div>
             </div>
         </div>
     </div>
@@ -132,23 +149,22 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, query, setDoc, updateDoc, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, collection, query, setDoc, updateDoc, deleteDoc, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- Configuración de Firebase ---
+        // Configuración de Firebase y Variables Globales
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-prefactura-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        // OBLIGATORIO: Usar la configuración proporcionada por el entorno (__firebase_config)
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'); 
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        let app, db, auth; 
-        setLogLevel('debug'); 
-        let itemLineCounter = 0; 
+        let app, db, auth, userId = null;
+        setLogLevel('debug'); // Habilitar logs para depuración
+        let itemLineCounter = 0; // Contador global para IDs únicos de líneas
         let prefacturasUnsubscribe = null; 
-        let currentView = 'pending'; 
-        
-        // **NUEVO** ID de usuario para el path privado
-        let currentUserId = null; 
-        
-        // --- Utilidades UI (Funciones showMessage y showConfirm sin cambios) ---
+        let paidInvoicesUnsubscribe = null;
+        let prefacturasData = []; // Caché de datos para usar en los listeners de botones
+
+        // --- Utilidades UI (showMessage, hideModal, showConfirm) ---
         
         function showMessage(text, type = 'success') {
             const container = document.getElementById('message-container');
@@ -193,11 +209,7 @@
             `;
             modalOverlay.classList.remove('hidden');
 
-            document.getElementById('modal-cancel-btn').addEventListener('click', () => {
-                onCancel(); 
-                hideModal(); 
-            });
-            
+            document.getElementById('modal-cancel-btn').addEventListener('click', onCancel);
             document.getElementById('modal-confirm-btn').addEventListener('click', () => {
                 onConfirm();
                 hideModal();
@@ -207,50 +219,56 @@
         // --- Configuración y Autenticación de Firebase ---
 
         try {
-            if (!firebaseConfig) {
-                console.error("Firebase Config no está disponible.");
-                showMessage("Error: La configuración de Firebase no está disponible.", 'error');
-                throw new Error("Missing Firebase Config");
-            }
-            
-            app = initializeApp(firebaseConfig);
+            // Inicializar Firebase con la configuración proporcionada por el entorno
+            app = initializeApp(firebaseConfig); 
             db = getFirestore(app);
             auth = getAuth(app);
             
+            // Autenticación
             if (initialAuthToken) {
                 signInWithCustomToken(auth, initialAuthToken).catch(e => {
                     console.error("Error al iniciar sesión con token personalizado:", e);
-                    // Fallback a anónimo si el token falla (como se vio en el error anterior)
-                    signInAnonymously(auth); 
+                    signInAnonymously(auth);
                 });
             } else {
-                signInAnonymously(auth);
+                signInAnonymously(auth).catch(e => {
+                     console.error("Error al iniciar sesión anónimamente:", e);
+                });
             }
 
             onAuthStateChanged(auth, (user) => {
-                // **CORRECCIÓN:** Obtenemos el ID de usuario tan pronto como la autenticación esté lista.
-                currentUserId = user ? user.uid : crypto.randomUUID(); 
-                
-                setupRealtimeListener();
-                updateView(currentView);
+                const displayUserIdElement = document.getElementById('display-user-id');
+                if (user) {
+                    userId = user.uid;
+                    displayUserIdElement.textContent = userId;
+                    console.log("Usuario autenticado. ID:", userId);
+                    setupRealtimeListeners(); // Llama a ambos listeners
+                } else {
+                    userId = crypto.randomUUID(); 
+                    displayUserIdElement.textContent = userId + ' (Anónimo)';
+                    console.warn("Usuario no autenticado, usando ID temporal.");
+                    setupRealtimeListeners();
+                }
             });
 
         } catch (error) {
             console.error("Error al inicializar Firebase:", error);
-            if (error.message !== "Missing Firebase Config") {
-                 showMessage("Error al inicializar la base de datos.", 'error');
-            }
+            showMessage("Error al inicializar la base de datos. Revisa tu configuración.", 'error');
         }
 
-        // **CORRECCIÓN:** Función para obtener la ruta de la colección de pre-facturas (USANDO RUTA PRIVADA)
-        function getPrefacturasCollectionRef(userId) {
-            if (!userId) {
-                console.error("UserId no está definido para construir la ruta de la colección.");
-                return null;
-            }
-            // RUTA MODIFICADA: Usa la colección de datos privada/de usuario
-            const path = `artifacts/${appId}/users/${userId}/prefacturas`;
-            console.log(`[Ruta Firestore] Usando la colección PRIVADA: ${path}`); 
+        // --- CORRECCIÓN CRÍTICA DE RUTA DE FIRESTORE ---
+        
+        // Función para obtener la ruta de la colección de pre-facturas (Datos Privados)
+        function getPrefacturasCollectionRef(uid) {
+            // RUTA MANDATORIA CORREGIDA: /artifacts/{appId}/users/{userId}/prefacturas
+            const path = `artifacts/${appId}/users/${uid}/prefacturas`;
+            return collection(db, path);
+        }
+        
+        // Función para obtener la ruta de la colección de facturas pagadas (Módulo Público/Compartido)
+        function getPaidInvoicesCollectionRef() {
+            // RUTA MANDATORIA CORREGIDA: /artifacts/{appId}/public/data/paid_invoices
+            const path = `artifacts/${appId}/public/data/paid_invoices`;
             return collection(db, path);
         }
 
@@ -314,12 +332,12 @@
 
         // --- Lógica de la Aplicación (CRUD) ---
 
-        // 1. Agregar Nueva Pre-factura
+        // 1. Agregar Nueva Pre-factura (Restaurando el modelo de datos original)
         document.getElementById('prefactura-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (!db || !currentUserId) { // **CORRECCIÓN:** Verificar currentUserId
-                showMessage("La base de datos no está lista o el usuario no está autenticado.", 'error');
+            if (!userId || !db) {
+                showMessage("La base de datos no está lista. Inténtalo de nuevo.", 'error');
                 return;
             }
 
@@ -345,7 +363,7 @@
                 item_lines.push({
                     reference: reference,
                     quantity: quantity,
-                    invoiced: 0 
+                    invoiced: 0 // Inicia facturado en 0
                 });
                 aggregate_total_items += quantity;
             });
@@ -354,38 +372,51 @@
                 showMessage("Todas las cantidades de las líneas deben ser números positivos válidos.", 'error');
                 return;
             }
+            
+            const docId = document.getElementById('consecutivo').value.trim().replace(/[^a-zA-Z0-9]/g, '_');
+            
+            if (!docId) {
+                showMessage("El consecutivo no puede estar vacío.", 'error');
+                return;
+            }
 
             const data = {
                 date: document.getElementById('fecha').value,
                 consecutivo: document.getElementById('consecutivo').value.trim(),
                 total_value: parseFloat(document.getElementById('valor').value),
                 total_profit: parseFloat(document.getElementById('ganancia').value),
+                
                 item_lines: item_lines, 
                 total_items: aggregate_total_items, 
+                
                 is_paid: false, 
+                paid_at: null,  
+                
                 created_at: new Date().toISOString()
             };
 
             try {
-                const docId = data.consecutivo.replace(/[^a-zA-Z0-9]/g, '_');
-                
-                // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
-                await setDoc(doc(getPrefacturasCollectionRef(currentUserId), docId), data); 
-                
+                // Usamos setDoc con el consecutivo como ID del documento
+                await setDoc(doc(getPrefacturasCollectionRef(userId), docId), data);
                 showMessage(`Pre-factura ${data.consecutivo} guardada con éxito.`, 'success');
                 
+                // Limpiar formulario
                 e.target.reset(); 
                 document.getElementById('item-lines-container').innerHTML = ''; 
                 addItemLine(); 
             } catch (error) {
                 console.error("Error al guardar la pre-factura:", error);
-                showMessage("Error al guardar la pre-factura. Revisa la consola.", 'error');
+                // Muestra un error específico sobre la conexión/permisos
+                showMessage(`ERROR AL GUARDAR: ${error.message}. Verifica las reglas de seguridad.`, 'error');
             }
         });
 
-        // 2. Actualizar la Cantidad Facturada Parcialmente 
+        // 2. Actualizar la Cantidad Facturada Parcialmente
         async function updateFacturacion(docId, itemLines) {
-            if (!db || !currentUserId) return; 
+            if (!userId) {
+                showMessage("Esperando autenticación.", 'error');
+                return;
+            }
             
             const availableLines = itemLines.filter(line => line.quantity > (line.invoiced || 0));
             
@@ -417,8 +448,8 @@
 
 
             modalContent.innerHTML = `
-                <h3 class="text-xl font-semibold text-gray-900 mb-4">Facturar Múltiples Items: ${docId}</h3>
-                <p class="text-gray-600 mb-4">Ingresa la cantidad a facturar (por cada referencia) en este movimiento. Solo las líneas con valor > 0 serán registradas.</p>
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">Facturar Items: ${docId}</h3>
+                <p class="text-gray-600 mb-4">Ingresa la cantidad a facturar en este movimiento. Solo las líneas con valor > 0 serán registradas.</p>
                 
                 <div id="modal-lines-container" class="mb-6 space-y-3 max-h-60 overflow-y-auto pr-2 border p-2 rounded-lg">
                     ${linesInputHtml}
@@ -445,6 +476,7 @@
                 const qtyInputs = document.querySelectorAll('.modal-invoice-qty');
                 const invoiceChanges = [];
                 let totalInvoicedInThisMovement = 0;
+
                 let isValid = true;
                 
                 qtyInputs.forEach(input => {
@@ -452,18 +484,11 @@
                     const maxQty = parseInt(input.getAttribute('data-max-qty'), 10);
                     const amount = parseInt(input.value, 10); 
 
-                    if (isNaN(amount) || amount < 0) {
+                    if (isNaN(amount) || amount < 0 || amount > maxQty) {
                         isValid = false;
                         input.classList.add('border-red-500', 'ring-red-500');
-                        showMessage(`Cantidad inválida para ${reference}.`, 'error');
-                        return; 
-                    }
-
-                    if (amount > maxQty) {
-                        isValid = false;
-                        input.classList.add('border-red-500', 'ring-red-500');
-                        showMessage(`Error: Solo quedan ${maxQty} para ${reference}.`, 'error');
-                        return; 
+                        showMessage(`Cantidad inválida para ${reference}. Máximo: ${maxQty}.`, 'error');
+                        return;
                     }
 
                     if (amount > 0) {
@@ -473,11 +498,11 @@
                     input.classList.remove('border-red-500', 'ring-red-500'); 
                 });
 
-                if (!isValid || totalInvoicedInThisMovement === 0) {
-                    if (totalInvoicedInThisMovement === 0 && isValid) {
-                         showMessage("Debes ingresar una cantidad mayor a cero en al menos una referencia para facturar.", 'info');
-                    }
-                    return; 
+                if (!isValid) return;
+
+                if (totalInvoicedInThisMovement === 0) {
+                    showMessage("Debes ingresar una cantidad mayor a cero para facturar.", 'info');
+                    return;
                 }
 
                 const updatedItemLines = itemLines.map(line => {
@@ -492,79 +517,81 @@
                     return line;
                 });
 
-                    try {
-                        // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
-                        const docRef = doc(getPrefacturasCollectionRef(currentUserId), docId); 
-                        await updateDoc(docRef, {
-                            item_lines: updatedItemLines
-                        });
-                        showMessage(`Facturación de ${totalInvoicedInThisMovement} items (Múltiples referencias) registrada.`, 'success');
-                        hideModal();
-                    } catch (error) {
-                        console.error("Error al actualizar la facturación parcial:", error);
-                        showMessage("Error al actualizar la facturación parcial.", 'error');
-                        hideModal();
-                    }
+                try {
+                    const docRef = doc(getPrefacturasCollectionRef(userId), docId);
+                    await updateDoc(docRef, {
+                        item_lines: updatedItemLines
+                    });
+                    showMessage(`Facturación de ${totalInvoicedInThisMovement} items registrada.`, 'success');
+                    hideModal();
+                } catch (error) {
+                    console.error("Error al actualizar la facturación parcial:", error);
+                    showMessage("Error al actualizar la facturación parcial.", 'error');
+                    hideModal();
+                }
             });
         }
+        
+        // 3. FUNCIÓN: Marcar como Pagada e Inmutable
+        async function markAsPaid(prefacturaData) {
+            if (!userId) {
+                showMessage("Esperando autenticación.", 'error');
+                return;
+            }
+            
+            const { id: docId, consecutivo } = prefacturaData;
 
-        // --- FUNCIÓN PARA MARCAR COMO PAGADO ---
-        async function markAsPaid(docId) {
-            if (!db || !currentUserId) return;
-
+            // 1. Mover la pre-factura a la colección de facturas pagadas (inmutable)
             try {
-                // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
-                const docRef = doc(getPrefacturasCollectionRef(currentUserId), docId); 
-                await updateDoc(docRef, {
+                const paidInvoiceData = {
+                    ...prefacturaData,
                     is_paid: true,
-                    paid_at: new Date().toISOString() 
-                });
-                showMessage(`Pre-factura ${docId} marcada como PAGADA.`, 'success');
-                updateView('paid'); 
-            } catch (error) {
-                console.error("Error al marcar como pagado:", error);
-                showMessage("Error al marcar como pagado.", 'error');
-            }
-        }
-
-        // --- FUNCIÓN PARA ELIMINAR ---
-         async function deletePrefactura(docId) {
-             if (!db || !currentUserId) return;
-             
-             try {
-                // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
-                const docRef = doc(getPrefacturasCollectionRef(currentUserId), docId); 
+                    paid_at: serverTimestamp(), // Usamos serverTimestamp para el registro del pago
+                    paid_by_uid: userId,
+                    prefactura_id: docId // Guardamos el ID original
+                };
+                delete paidInvoiceData.id; // Limpiamos el ID local antes de mover
+                
+                // Se guarda en la colección pública (solo pagadas)
+                await setDoc(doc(getPaidInvoicesCollectionRef(), docId), paidInvoiceData);
+                
+                // 2. Eliminar de la colección de pre-facturas pendientes
+                const docRef = doc(getPrefacturasCollectionRef(userId), docId);
                 await deleteDoc(docRef);
-                showMessage(`Pre-factura ${docId} eliminada.`, 'success');
+                
+                showMessage(`Factura ${consecutivo} marcada como PAGADA y archivada.`, 'success');
+                
             } catch (error) {
-                console.error("Error al eliminar la pre-factura:", error);
-                showMessage("Error al eliminar la pre-factura.", 'error');
+                console.error("Error al marcar como pagada:", error);
+                showMessage("Error al marcar como pagada. Revisa la consola.", 'error');
             }
         }
-
-
-        // 3. Renderizado de la lista y Canvas de Progreso 
+        
+        // 4. Renderizado de la lista de Pre-facturas (Con el botón de pago funcional)
         function drawProgress(canvas, total, invoiced) {
             const ctx = canvas.getContext('2d');
             const size = canvas.width;
             const center = size / 2;
             const radius = size * 0.4;
             const percentage = total > 0 ? invoiced / total : 0;
-            const endAngle = (Math.PI * 2 * percentage) - (Math.PI / 2);
+
+            if (!canvas.offsetParent) return;
 
             ctx.clearRect(0, 0, size, size);
-
             ctx.beginPath();
             ctx.arc(center, center, radius, 0, Math.PI * 2);
             ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 10;
             ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(center, center, radius, -(Math.PI / 2), endAngle);
-            ctx.strokeStyle = percentage === 1 ? '#10b981' : '#4f46e5';
-            ctx.lineWidth = 10;
-            ctx.stroke();
+            if (percentage > 0) {
+                const endAngle = (Math.PI * 2 * percentage) - (Math.PI / 2);
+                ctx.beginPath();
+                ctx.arc(center, center, radius, -(Math.PI / 2), endAngle);
+                ctx.strokeStyle = percentage === 1 ? '#10b981' : '#4f46e5';
+                ctx.lineWidth = 10;
+                ctx.stroke();
+            }
 
             const text = `${Math.round(percentage * 100)}%`;
             ctx.font = 'bold 16px Inter';
@@ -574,13 +601,8 @@
             ctx.fillText(text, center, center);
         }
 
-        function renderPrefacturas(allPrefacturas) {
-            
-            const filteredPrefacturas = allPrefacturas.filter(p => {
-                const isPaid = p.is_paid || false;
-                return currentView === 'paid' ? isPaid : !isPaid;
-            });
-
+        function renderPrefacturas(prefacturas) {
+            prefacturasData = prefacturas; 
             const listContainer = document.getElementById('prefacturas-list');
             listContainer.innerHTML = ''; 
             
@@ -589,47 +611,78 @@
                 loadingIndicator.style.display = 'none';
             }
 
-            if (filteredPrefacturas.length === 0) {
-                const message = currentView === 'paid' 
-                    ? 'No hay facturas en el archivo de PAGADAS.' 
-                    : '¡Felicidades! No hay facturas PENDIENTES.';
-                listContainer.innerHTML = `<p class="text-center text-gray-500 py-4">${message}</p>`;
+            if (prefacturas.length === 0) {
+                listContainer.innerHTML = '<p class="text-center text-gray-500 py-4">No hay pre-facturas pendientes registradas.</p>';
                 return;
             }
 
-            filteredPrefacturas
+            prefacturas
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                 .forEach(p => {
                 
+                const safeItemLines = Array.isArray(p.item_lines) ? p.item_lines : [];
                 let total_invoiced = 0;
                 let total_items_aggregate = 0;
-
-                const safeItemLines = Array.isArray(p.item_lines) ? p.item_lines : [];
 
                 safeItemLines.forEach(line => {
                     total_invoiced += line.invoiced || 0;
                     total_items_aggregate += line.quantity || 0;
                 });
                 
-                const isComplete = total_invoiced >= total_items_aggregate;
-                const isPaid = p.is_paid || false; 
+                const isComplete = total_items_aggregate > 0 && total_invoiced >= total_items_aggregate;
+                const isPaid = p.is_paid || false;
                 
-                const statusColor = isPaid ? 'bg-secondary' : (isComplete ? 'bg-indigo-700' : 'bg-primary');
-                const statusText = isPaid ? 'Pagada' : (isComplete ? 'Factura Completa' : 'Pendiente');
+                // Si ya está pagada, NO renderizarla en la lista pendiente 
+                if (isPaid) return; 
+                
+                const statusColor = isComplete ? 'bg-success' : 'bg-primary';
+                const statusText = isComplete ? 'Fact. Completa' : 'Pendiente';
                 
                 const itemLinesHtml = safeItemLines.map(line => {
-                    const lineStatusColor = (line.invoiced || 0) >= line.quantity ? 'bg-secondary text-white' : 'bg-indigo-100 text-indigo-700';
+                    const lineProgress = line.quantity > 0 ? (line.invoiced / line.quantity) : 0;
+                    const lineStatusColor = lineProgress >= 1 ? 'bg-secondary/20 text-secondary' : 'bg-indigo-100 text-indigo-700';
                     
                     return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${lineStatusColor}">
-                        ${line.reference} (${line.invoiced || 0}/${line.quantity})
+                        ${line.reference} (${line.invoiced}/${line.quantity})
                     </span>`;
                 }).join(' ') ;
                 
-                const cardStyle = isPaid ? 'border-secondary/30 bg-secondary/5' : (isComplete ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-surface');
-                
                 const card = document.createElement('div');
-                card.className = `p-4 border rounded-lg shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between transition hover:shadow-md ${cardStyle}`;
+                card.className = `p-4 border rounded-lg shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between transition hover:shadow-md ${isComplete ? 'border-success/30 bg-success/5' : 'border-gray-200 bg-surface'}`;
                 
+                // --- Determinar Botones ---
+                let actionButtonsHtml = '';
+                
+                // 1. Botón de Facturación Parcial (Mostrar solo si NO está completa)
+                if (!isComplete) {
+                    actionButtonsHtml += `
+                        <button data-id="${p.consecutivo}" data-lines='${JSON.stringify(safeItemLines)}'
+                            class="btn-facturar w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-white bg-primary hover:bg-indigo-700 transition ease-in-out duration-150">
+                            Facturar Parcialmente
+                        </button>
+                    `;
+                }
+                
+                // 2. Botón de Pago Final (Mostrar SIEMPRE, habilitado solo si isComplete)
+                const paidDisabled = isComplete ? '' : 'disabled';
+                const paidStyle = isComplete ? 'bg-success hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed';
+
+                actionButtonsHtml += `
+                    <button data-id="${p.consecutivo}" ${paidDisabled}
+                        data-is-complete="${isComplete}"
+                        class="btn-mark-paid w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-white ${paidStyle} transition ease-in-out duration-150">
+                        Marcar Pago Final
+                    </button>
+                `;
+                
+                // 3. Botón de Eliminar (siempre disponible antes del pago final)
+                actionButtonsHtml += `
+                    <button data-id="${p.consecutivo}" class="btn-delete w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-red-600 border border-red-200 bg-white hover:bg-red-50 transition ease-in-out duration-150">
+                        Eliminar
+                    </button>
+                `;
+                
+                // --- Renderizar Tarjeta ---
                 card.innerHTML = `
                     <div class="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
                         <!-- Canvas para progreso -->
@@ -643,7 +696,6 @@
                                     ${statusText}
                                 </span>
                             </div>
-                            <!-- Mostrar múltiples referencias -->
                             <p class="text-sm text-gray-600 mb-1 flex flex-wrap gap-1">
                                 Líneas: ${itemLinesHtml}
                             </p>
@@ -655,37 +707,7 @@
                     
                     <!-- Botones de Acción -->
                     <div class="w-full sm:w-auto flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-3 sm:mt-0">
-                        
-                        <!-- Botón de Facturar (Solo si NO está completa y NO está pagada) -->
-                        ${!isComplete && !isPaid ? `
-                            <button data-id="${p.consecutivo}" data-lines='${JSON.stringify(safeItemLines).replace(/'/g, '&#39;')}'
-                                class="btn-facturar w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-white bg-primary hover:bg-indigo-700 transition ease-in-out duration-150">
-                                Facturar Parcialmente
-                            </button>
-                        ` : isComplete && !isPaid ? `
-                            <button disabled class="w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-indigo-700 border border-indigo-300 bg-indigo-100 cursor-default opacity-70">
-                                Factura Completa
-                            </button>
-                        ` : ''}
-
-                        <!-- NUEVO BOTÓN DE PAGAR -->
-                        ${!isPaid ? `
-                             <button data-id="${p.consecutivo}" 
-                                class="btn-pagar w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-white bg-secondary hover:bg-emerald-700 transition ease-in-out duration-150">
-                                Pagar
-                            </button>
-                        ` : `
-                            <button disabled class="w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-secondary border border-secondary bg-transparent cursor-default opacity-70">
-                                Pagado
-                            </button>
-                        `}
-                        
-                        <!-- Botón de Eliminar (SOLO SI NO ESTÁ PAGADA) -->
-                        ${!isPaid ? `
-                            <button data-id="${p.consecutivo}" class="btn-delete w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-lg text-red-600 border border-red-200 bg-white hover:bg-red-50 transition ease-in-out duration-150">
-                                Eliminar
-                            </button>
-                        ` : ''}
+                        ${actionButtonsHtml}
                     </div>
                 `;
                 
@@ -697,11 +719,11 @@
                 }
             });
 
-            // Asignar eventos
+            // Asignar eventos a los botones
             document.querySelectorAll('.btn-facturar').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
-                    const linesJson = e.target.getAttribute('data-lines'); 
+                    const linesJson = e.target.getAttribute('data-lines');
                     try {
                         const itemLines = JSON.parse(linesJson); 
                          updateFacturacion(id, itemLines);
@@ -712,104 +734,200 @@
                 });
             });
             
-            document.querySelectorAll('.btn-pagar').forEach(button => {
+            // EVENTO: Marcar como Pagada 
+            document.querySelectorAll('.btn-mark-paid').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
+                    const isReadyToPay = e.target.getAttribute('data-is-complete') === 'true'; 
+                    const prefacturaToPay = prefacturasData.find(p => p.consecutivo === id); // Buscar por consecutivo
+
+                    if (!prefacturaToPay) return;
+
+                    if (!isReadyToPay) {
+                        showMessage(`La factura ${id} aún no está 100% facturada. Debes facturar todos los ítems primero.`, 'info');
+                        return;
+                    }
+                    
                     showConfirm(
-                        'Confirmar Pago',
-                        `¿Confirmas que la pre-factura ${id} ha sido completamente PAGADA?`,
-                        async () => {
-                            await markAsPaid(id);
+                        'Confirmar Pago Final',
+                        `¿Estás seguro de que la factura ${id} ha sido completamente pagada por el cliente? Esto la archivará y la hará inmutable.`,
+                        async () => { 
+                            // Pasamos el ID del documento de Firestore, que está en 'id'
+                            await markAsPaid({ ...prefacturaToPay, id: prefacturaToPay.id }); 
                         },
                         () => showMessage(`Pago de ${id} cancelado.`, 'info') 
                     );
                 });
             });
-            
+
             document.querySelectorAll('.btn-delete').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
                     
                     showConfirm(
                         'Confirmar Eliminación',
-                        `¿Estás seguro de que quieres eliminar permanentemente la pre-factura ${id}? Esta acción no se puede deshacer.`,
+                        `¿Estás seguro de que quieres eliminar permanentemente la pre-factura ${id}?`,
                         async () => { 
-                            await deletePrefactura(id);
+                            // El ID para eliminar debe ser el ID real de Firestore (p.id)
+                            const prefacturaToDelete = prefacturasData.find(p => p.consecutivo === id);
+                            if (prefacturaToDelete) {
+                                await deletePrefactura(prefacturaToDelete.id);
+                            }
                         },
                         () => showMessage(`Eliminación de ${id} cancelada.`, 'info') 
                     );
                 });
             });
         }
-
-        // 4. Listener en Tiempo Real
-        let allPrefacturasCache = []; 
         
-        function setupRealtimeListener() {
-            // **CORRECCIÓN:** Esperar por el ID de usuario
-            if (!db || !currentUserId) { 
-                console.warn("Base de datos no lista o UserID no definido. Reintentando...");
+        // 5. Renderizado del módulo de Facturas Pagadas (sin cambios, solo restauración)
+        function renderPaidInvoices(invoices) {
+            const listContainer = document.getElementById('paid-invoices-list');
+            listContainer.innerHTML = '';
+            
+            if (invoices.length === 0) {
+                listContainer.innerHTML = '<p class="text-center text-gray-500 py-4">No hay facturas marcadas como pagadas en el historial.</p>';
                 return;
             }
 
+            invoices
+                .sort((a, b) => {
+                    const dateA = a.paid_at ? (a.paid_at.toDate ? a.paid_at.toDate() : new Date(a.paid_at)) : 0;
+                    const dateB = b.paid_at ? (b.paid_at.toDate ? b.paid_at.toDate() : new Date(b.paid_at)) : 0;
+                    return dateB - dateA;
+                })
+                .forEach(p => {
+                    const paidDate = p.paid_at ? (p.paid_at.toDate ? p.paid_at.toDate().toLocaleDateString() : new Date(p.paid_at).toLocaleDateString()) : 'N/A';
+                    
+                    const itemLinesHtml = Array.isArray(p.item_lines) ? p.item_lines.map(line => {
+                        return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                            ${line.reference} (${line.quantity})
+                        </span>`;
+                    }).join(' ') : 'Sin detalle';
+                    
+                    const card = document.createElement('div');
+                    card.className = `p-4 border rounded-lg shadow-sm bg-green-50 border-green-300`;
+                    
+                    card.innerHTML = `
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between">
+                            <div class="flex-grow">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <h3 class="text-lg font-bold text-gray-900">${p.consecutivo}</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full text-white bg-success">PAGADA</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-1 flex flex-wrap gap-1">
+                                    Líneas: ${itemLinesHtml}
+                                </p>
+                                <p class="text-sm font-medium text-gray-700">Valor Total: <span class="font-bold text-success">$${p.total_value.toFixed(2)}</span> | Ganancia: $${p.total_profit.toFixed(2)}</p>
+                                <p class="text-xs text-gray-500">Fecha de Pago: ${paidDate}</p>
+                                <p class="text-xs text-gray-400">Archivado por: ${p.paid_by_uid ? p.paid_by_uid.substring(0, 8) + '...' : 'Usuario anónimo'}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    listContainer.appendChild(card);
+                });
+        }
+
+
+        // 6. Listener en Tiempo Real (AMBOS)
+        function setupRealtimeListeners() {
+            if (!db || !userId) {
+                return;
+            }
+
+            // --- Listener para Pre-facturas Pendientes (Privado) ---
             if (prefacturasUnsubscribe) {
-                console.log("Desuscribiendo el listener anterior.");
                 prefacturasUnsubscribe();
             }
 
-            // **CORRECCIÓN:** Usar getPrefacturasCollectionRef con currentUserId
-            const q = query(getPrefacturasCollectionRef(currentUserId)); 
+            const qPrefacturas = query(getPrefacturasCollectionRef(userId));
             
-            prefacturasUnsubscribe = onSnapshot(q, (querySnapshot) => {
-                allPrefacturasCache = []; 
+            prefacturasUnsubscribe = onSnapshot(qPrefacturas, (querySnapshot) => {
+                const prefacturas = [];
                 querySnapshot.forEach((doc) => {
-                    allPrefacturasCache.push({ id: doc.id, ...doc.data() });
+                    // Importante: Guardar el doc.id real de Firestore para usarlo en delete/update
+                    prefacturas.push({ id: doc.id, ...doc.data() }); 
                 });
-                renderPrefacturas(allPrefacturasCache); 
+                renderPrefacturas(prefacturas);
             }, (error) => {
-                console.error("Error detallado al escuchar cambios en Firestore:", error);
-                
-                const errorCode = error.code || 'Desconocida';
-                const errorMessage = `Error al cargar las pre-facturas. Código: ${errorCode}. Esto suele ser un problema de Reglas de Seguridad de Firebase.`;
-                showMessage(errorMessage, 'error');
+                console.error("Error al escuchar pre-facturas:", error);
+                showMessage(`Error al cargar pendientes. Código: ${error.code}. Verifica la ruta privada.`, 'error');
+            });
+            
+            // --- Listener para Facturas Pagadas (Público) ---
+            if (paidInvoicesUnsubscribe) {
+                paidInvoicesUnsubscribe();
+            }
+            
+            const qPaid = query(getPaidInvoicesCollectionRef());
+            
+            paidInvoicesUnsubscribe = onSnapshot(qPaid, (querySnapshot) => {
+                const paidInvoices = [];
+                querySnapshot.forEach((doc) => {
+                    paidInvoices.push({ id: doc.id, ...doc.data() });
+                });
+                renderPaidInvoices(paidInvoices);
+            }, (error) => {
+                 console.error("Error al escuchar facturas pagadas:", error);
+                 showMessage(`Error al cargar pagadas. Código: ${error.code}. Verifica la ruta pública.`, 'error');
             });
         }
         
-        // --- LÓGICA DE CAMBIO DE VISTA ---
-        function updateView(newView) {
-            if (currentView === newView) return; 
-
-            currentView = newView;
-
-            const pendingBtn = document.getElementById('view-pending-btn');
-            const paidBtn = document.getElementById('view-paid-btn');
-            const listTitle = document.getElementById('list-title');
-            const formModule = document.getElementById('new-prefactura-module');
-
-            if (newView === 'pending') {
-                listTitle.textContent = 'Facturas Pendientes';
-                pendingBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-primary text-white';
-                paidBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-gray-200 text-gray-700 hover:bg-gray-300';
-                formModule.classList.remove('hidden-by-view');
-            } else { 
-                listTitle.textContent = 'Archivo de Facturas Pagadas';
-                paidBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-secondary text-white';
-                pendingBtn.className = 'py-2 px-4 text-sm font-medium rounded-lg shadow-md transition ease-in-out duration-150 bg-gray-200 text-gray-700 hover:bg-gray-300';
-                formModule.classList.add('hidden-by-view'); 
+        // 7. Eliminar Pre-factura (Usando el ID de Firestore)
+        async function deletePrefactura(docId) {
+             if (!userId) return;
+             
+             try {
+                const docRef = doc(getPrefacturasCollectionRef(userId), docId);
+                await deleteDoc(docRef);
+                showMessage(`Pre-factura ${docId} eliminada.`, 'success');
+            } catch (error) {
+                console.error("Error al eliminar la pre-factura:", error);
+                showMessage("Error al eliminar la pre-factura.", 'error');
             }
-
-            renderPrefacturas(allPrefacturasCache);
         }
+        
+        // --- Lógica de Pestañas (Restaurada) ---
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const views = {
+            'pending': document.getElementById('view-pending'),
+            'paid': document.getElementById('view-paid')
+        };
+        
+        function switchView(viewName) {
+            tabButtons.forEach(btn => {
+                const isSelected = btn.getAttribute('data-view') === viewName;
+                if (isSelected) {
+                    btn.classList.add('border-primary', 'text-primary');
+                    btn.classList.remove('border-transparent', 'text-gray-500', 'hover:border-gray-300', 'hover:text-gray-700');
+                } else {
+                    btn.classList.remove('border-primary', 'text-primary');
+                    btn.classList.add('border-transparent', 'text-gray-500', 'hover:border-gray-300', 'hover:text-gray-700');
+                }
+            });
+            
+            Object.keys(views).forEach(key => {
+                if (key === viewName) {
+                    views[key].classList.remove('hidden');
+                } else {
+                    views[key].classList.add('hidden');
+                }
+            });
+        }
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                switchView(e.target.getAttribute('data-view'));
+            });
+        });
 
-        // --- Event Listeners Iniciales ---
-        document.getElementById('view-pending-btn').addEventListener('click', () => updateView('pending'));
-        document.getElementById('view-paid-btn').addEventListener('click', () => updateView('paid'));
-
-
+        // Configurar la fecha de hoy y la línea inicial
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fecha').value = today;
-            addItemLine(); 
+            addItemLine(); // Añadir la primera línea de item al cargar
+            switchView('pending'); // Mostrar la vista inicial
         });
 
     </script>
