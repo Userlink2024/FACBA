@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Facturación y Pagos</title>
-    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -21,7 +20,6 @@
             }
         }
     </script>
-    <!-- Fuente Inter -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
@@ -47,31 +45,14 @@
         <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Control de Facturación y Pagos</h1>
         <p class="text-gray-500 mb-6">Gestión pública de pedidos y facturación parcial.</p>
         
-        <!-- Mensajes del Sistema (Reemplaza a alert/confirm) -->
         <div id="message-container" class="fixed top-0 left-0 right-0 z-50 flex items-start justify-center pointer-events-none">
-            <!-- Los mensajes se insertarán aquí por JS -->
-        </div>
+            </div>
 
-        <!-- CÓDIGO COMENTADO: Alerta de Error de Configuración (ELIMINADO A PETICIÓN DEL USUARIO) -->
-        <!-- 
-        <div id="config-error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-            <strong class="font-bold">Error de Conexión a Base de Datos:</strong>
-            <span class="block sm:inline" id="config-error-message"></span>
-            <p class="mt-2 text-sm">
-                Asegúrate de que la **Autenticación Anónima** esté habilitada en tu proyecto de Firebase y que las **Reglas de Seguridad** permitan `allow read, write: if request.auth != null;` para la ruta pública.
-            </p>
-        </div>
-        -->
-
-
-        <!-- Modal Overlay para Confirmación/Input (Reemplaza a prompt/confirm) -->
         <div id="modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
             <div id="modal-content" class="bg-surface rounded-xl shadow-2xl p-6 w-full max-w-lg">
-                <!-- El contenido del modal se inyectará dinámicamente -->
-            </div>
+                </div>
         </div>
         
-        <!-- --- PESTAÑAS DE NAVEGACIÓN --- -->
         <div class="mb-6 border-b border-gray-200">
             <nav class="flex space-x-4">
                 <button data-view="pending" class="tab-button py-2 px-4 text-sm font-medium border-b-2 border-primary text-primary transition-colors duration-200">
@@ -82,21 +63,15 @@
                 </button>
             </nav>
         </div>
-        <!-- --- FIN PESTAÑAS DE NAVEGACIÓN --- -->
-
-        <!-- Vista: Pending (Registrar y Listar Pre-facturas) -->
         <div id="view-pending">
-            <!-- Formulario para Nueva Pre-factura -->
             <div class="bg-surface shadow-xl rounded-xl p-6 mb-8 border border-gray-100">
                 <h2 class="text-2xl font-semibold text-primary mb-4">Registrar Nueva Pre-factura</h2>
                 <form id="prefactura-form" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Fecha -->
                         <div>
                             <label for="fecha" class="block text-sm font-medium text-gray-700">Fecha</label>
                             <input type="date" id="fecha" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
                         </div>
-                        <!-- Consecutivo -->
                         <div>
                             <label for="consecutivo" class="block text-sm font-medium text-gray-700">Consecutivo (ID)</label>
                             <input type="text" id="consecutivo" placeholder="Ej: PFT-2025001" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
@@ -104,30 +79,25 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Valor Total -->
                         <div>
                             <label for="valor" class="block text-sm font-medium text-gray-700">Valor Total ($)</label>
                             <input type="number" id="valor" step="0.01" min="0" placeholder="1000.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
                         </div>
-                        <!-- Ganancia de Factura -->
                         <div>
                             <label for="ganancia" class="block text-sm font-medium text-gray-700">Ganancia Total ($)</label>
                             <input type="number" id="ganancia" step="0.01" min="0" placeholder="200.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2.5 border focus:border-primary focus:ring-primary">
                         </div>
                     </div>
 
-                    <!-- SECCIÓN DE MÚLTIPLES REFERENCIAS -->
                     <div class="space-y-4">
                         <h3 class="text-lg font-medium text-gray-700 pt-2 border-t border-gray-100">Detalle de Items por Referencia</h3>
                         <div id="item-lines-container" class="space-y-3 p-3 border rounded-lg bg-gray-50">
-                            <!-- Líneas de items se insertarán aquí por JS -->
-                        </div>
+                            </div>
                         <button type="button" id="add-item-btn" class="w-full py-2 px-4 border border-primary text-primary rounded-lg hover:bg-primary/10 transition ease-in-out duration-150 font-medium">
                             + Agregar Referencia
                         </button>
                     </div>
                     
-                    <!-- Resumen de Items Totales -->
                     <div class="p-3 bg-indigo-50 rounded-lg text-sm font-medium text-gray-700 border border-indigo-200">
                         Total de Items en Pre-factura (Calculado): <span id="summary-total-items" class="font-bold text-primary text-lg">0</span>
                     </div>
@@ -138,29 +108,24 @@
                 </form>
             </div>
 
-            <!-- Lista de Pre-facturas -->
             <div class="bg-surface shadow-xl rounded-xl p-6 border border-gray-100">
                 <h2 class="text-2xl font-semibold text-primary mb-4">Pre-facturas Pendientes y Completadas</h2>
                 <div id="prefacturas-list" class="space-y-4">
                     <p id="loading-indicator" class="text-center text-gray-500">Cargando datos...</p>
-                    <!-- Las pre-facturas se renderizarán aquí -->
-                </div>
+                    </div>
             </div>
         </div>
 
-        <!-- Vista: Paid (Facturas Pagadas) -->
         <div id="view-paid" class="hidden">
             <div class="bg-surface shadow-xl rounded-xl p-6 border border-gray-100">
                 <h2 class="text-2xl font-semibold text-success mb-4">Historial de Facturas Pagadas</h2>
                 <div id="paid-invoices-list" class="space-y-4">
                     <p class="text-center text-gray-500 py-4">Cargando historial de pagos...</p>
-                    <!-- Las facturas pagadas se renderizarán aquí -->
-                </div>
+                    </div>
             </div>
         </div>
     </div>
 
-    <!-- Script de Firebase y Lógica de la Aplicación -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -406,6 +371,21 @@
 
 
         // --- Lógica de la Aplicación (CRUD) ---
+        
+        // 0. Utilidad de Formato de Moneda
+        function formatCurrency(number) {
+            if (typeof number !== 'number' || isNaN(number)) {
+                return '$ 0';
+            }
+            // Formatea como Pesos Colombianos (COP) o un formato similar al solicitado ($ 1.000)
+            return new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP', // Puedes cambiar 'COP' por la moneda que prefieras
+                minimumFractionDigits: 0, // Mínimo 0 decimales para $ 1.000
+                maximumFractionDigits: 2 // Máximo 2 decimales
+            }).format(number).replace('COP', '$').trim(); // Reemplaza el código de moneda por $
+        }
+
 
         // 1. Agregar Nueva Pre-factura
         document.getElementById('prefactura-form').addEventListener('submit', async (e) => {
@@ -774,10 +754,8 @@
                 // --- Renderizar Tarjeta ---
                 card.innerHTML = `
                     <div class="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
-                        <!-- Canvas para progreso -->
                         <canvas id="canvas-${p.consecutivo}" width="70" height="70" class="mr-4 flex-shrink-0 progress-canvas"></canvas>
                         
-                        <!-- Detalles de la Pre-factura -->
                         <div class="flex-grow">
                             <div class="flex items-center space-x-2">
                                 <h3 class="text-lg font-bold text-gray-900">${p.consecutivo}</h3>
@@ -789,12 +767,13 @@
                                 Líneas: ${itemLinesHtml}
                             </p>
                             <p class="text-sm font-medium text-gray-700">Items Facturados: ${total_invoiced} / ${total_items_aggregate}</p>
-                            <p class="text-sm text-gray-600">Valor Total: $${p.total_value.toFixed(2)} | Ganancia: $${p.total_profit.toFixed(2)}</p>
+                            <p class="text-sm text-gray-600">
+                                Valor Total: <span class="font-bold">${formatCurrency(p.total_value)}</span> | Ganancia: ${formatCurrency(p.total_profit)}
+                            </p>
                             <p class="text-xs text-gray-400">Fecha: ${p.date}</p>
                         </div>
                     </div>
                     
-                    <!-- Botones de Acción -->
                     <div class="w-full sm:w-auto flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-3 sm:mt-0">
                         ${actionButtonsHtml}
                     </div>
@@ -927,7 +906,9 @@
                                 <p class="text-sm text-gray-600 mb-1 flex flex-wrap gap-1">
                                     Líneas: ${itemLinesHtml}
                                 </p>
-                                <p class="text-sm font-medium text-gray-700">Valor Total: <span class="font-bold text-success">$${p.total_value.toFixed(2)}</span> | Ganancia: $${p.total_profit.toFixed(2)}</p>
+                                <p class="text-sm font-medium text-gray-700">
+                                    Valor Total: <span class="font-bold text-success">${formatCurrency(p.total_value)}</span> | Ganancia: ${formatCurrency(p.total_profit)}
+                                </p>
                                 <p class="text-xs text-gray-500">Fecha de Pago: ${paidDateString}</p>
                                 <p class="text-xs text-gray-400">Archivado por: ${p.paid_by_uid ? p.paid_by_uid.substring(0, 8) + '...' : 'Usuario anónimo'}</p>
                             </div>
