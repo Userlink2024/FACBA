@@ -45,10 +45,11 @@
 
     <div id="app" class="max-w-4xl mx-auto">
         <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Control de Facturación y Pagos</h1>
-        <p class="text-gray-500 mb-2">Gestiona tus pedidos y la facturación parcial.</p>
+        <p class="text-gray-500 mb-2">Gestión pública de pedidos y facturación parcial.</p>
         <p class="text-sm text-gray-500 mb-6">
             <span class="font-semibold">ID de Usuario: </span>
             <span id="display-user-id" class="text-primary font-mono bg-gray-100 px-2 py-0.5 rounded text-xs">Cargando...</span>
+            <span class="text-red-500 font-semibold">(Acceso de escritura PÚBLICO)</span>
         </p>
 
         <!-- Mensajes del Sistema (Reemplaza a alert/confirm) -->
@@ -60,7 +61,7 @@
         <div id="config-error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
             <strong class="font-bold">Error de Conexión a Base de Datos:</strong>
             <span class="block sm:inline" id="config-error-message"></span>
-            <p class="mt-2 text-sm">El error `projectId not provided` indica que la configuración de Firebase no es correcta. **Necesitas revisar tus credenciales**.</p>
+            <p class="mt-2 text-sm">Verifica la configuración de Firebase y que las **Reglas de Seguridad** permitan `allow read, write: if request.auth != null;` para el acceso público.</p>
         </div>
 
 
@@ -167,18 +168,31 @@
         import { getFirestore, doc, onSnapshot, collection, query, setDoc, updateDoc, deleteDoc, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Configuración de Firebase y Variables Globales
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-prefactura-app';
-        // OBLIGATORIO: Usar la configuración proporcionada por el entorno (__firebase_config)
-        const firebaseConfigRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        // Usamos un ID de app por defecto si __app_id no está definido (aunque debería estarlo)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-prefactura-app'; 
+        
+        // OBLIGATORIO: Token de autenticación inicial proporcionado por el entorno Canvas
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // CONFIGURACIÓN DE FIREBASE POR DEFECTO (si no se proporciona por el entorno)
+        const DEFAULT_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
+            authDomain: "lazapateria-ce24f.firebaseapp.com",
+            projectId: "lazapateria-ce24f",
+            storageBucket: "lazapateria-ce24f.firebasestorage.app",
+            messagingSenderId: "642571845821",
+            appId: "1:642571845821:web:45858a0abc0df728fd77d4",
+            measurementId: "G-6JCF33H0K1"
+        };
+
 
         let app, db, auth, userId = null;
-        let isFirebaseReady = false; // Nuevo flag para controlar el estado
-        setLogLevel('debug'); // Habilitar logs para depuración
-        let itemLineCounter = 0; // Contador global para IDs únicos de líneas
+        let isFirebaseReady = false; 
+        setLogLevel('debug'); 
+        let itemLineCounter = 0; 
         let prefacturasUnsubscribe = null; 
         let paidInvoicesUnsubscribe = null;
-        let prefacturasData = []; // Caché de datos para usar en los listeners de botones
+        let prefacturasData = []; 
 
         // --- Utilidades UI (showMessage, hideModal, showConfirm) ---
         
@@ -232,33 +246,58 @@
             });
         }
         
-        // --- Configuración y Autenticación de Firebase ---
+        // --- Configuración y Autenticación de Firebase (USANDO TU CONFIG) ---
 
         function initializeFirebase() {
             try {
-                const firebaseConfig = JSON.parse(firebaseConfigRaw);
-
-                if (!firebaseConfig.projectId) {
-                    throw new Error("projectId not provided in firebaseConfig. La configuración está incompleta o vacía.");
+                // CORRECCIÓN CLAVE: Usamos la variable global __firebase_config del entorno
+                let firebaseConfig;
+                if (typeof __firebase_config !== 'undefined') {
+                    // Intenta usar la configuración del entorno Canvas
+                    try {
+                        firebaseConfig = JSON.parse(__firebase_config);
+                        console.log("Usando configuración de Firebase proporcionada por el entorno.");
+                    } catch (e) {
+                        console.warn("No se pudo parsear __firebase_config. Usando configuración por defecto.", e);
+                        firebaseConfig = DEFAULT_FIREBASE_CONFIG;
+                    }
+                } else {
+                    // Si no está definida la variable global, usa la configuración por defecto
+                    firebaseConfig = DEFAULT_FIREBASE_CONFIG;
+                    console.warn("Variable __firebase_config no definida. Usando configuración por defecto.");
                 }
 
+                if (!firebaseConfig || !firebaseConfig.projectId) {
+                    throw new Error("La configuración de Firebase no es válida (sin projectId).");
+                }
+                
                 app = initializeApp(firebaseConfig); 
                 db = getFirestore(app);
                 auth = getAuth(app);
                 isFirebaseReady = true;
 
-                // 1. Intentar iniciar sesión
-                const signInPromise = initialAuthToken 
-                    ? signInWithCustomToken(auth, initialAuthToken)
-                    : signInAnonymously(auth);
+                // 1. Intentar iniciar sesión con el token de Canvas o anónimamente
+                let signInPromise;
+                if (initialAuthToken) {
+                    signInPromise = signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    signInPromise = signInAnonymously(auth);
+                }
 
                 signInPromise.catch(e => {
-                    console.error("Error durante el proceso de inicio de sesión:", e);
-                    // Si falla el custom token, intentamos anónimo como fallback
+                    // Este error se produce si la API Key es incorrecta o la configuración es inválida
+                    console.error("Error durante el proceso de inicio de sesión (puede ser normal en entornos sin autenticación avanzada):", e);
+                    
+                    // Si falla el custom token, intentamos anónimo como último recurso (solo si falló el custom token)
+                    // Nota: Si el error es 'auth/configuration-not-found', el reintento anónimo probablemente fallará también,
+                    // pero mantenemos la estructura de manejo de errores.
                     if (initialAuthToken) {
                          signInAnonymously(auth).catch(e => {
                             console.error("Error al iniciar sesión anónimamente (fallback):", e);
+                            showMessage(`ERROR DE AUTENTICACIÓN: ${e.code}. Verifica la configuración de Firebase.`, 'error');
                         });
+                    } else {
+                         showMessage(`ERROR DE AUTENTICACIÓN: ${e.code}. Verifica la configuración de Firebase.`, 'error');
                     }
                 });
 
@@ -272,14 +311,22 @@
                         displayUserIdElement.textContent = userId;
                         console.log("Usuario autenticado. ID:", userId);
                         loadingIndicator.textContent = 'Cargando datos...';
-                        setupRealtimeListeners(); // <--- LLAMADA CRÍTICA AHORA DENTRO DE onAuthStateChanged
+                        setupRealtimeListeners(); 
                     } else {
-                        // En caso de deslogueo, aunque no debería pasar en este entorno.
+                        // Esto se ejecuta cuando falla la autenticación (user=null)
                         userId = crypto.randomUUID(); 
                         displayUserIdElement.textContent = userId + ' (Anónimo - Temporal)';
                         console.warn("Usuario no autenticado, usando ID temporal.");
                         loadingIndicator.textContent = 'Cargando datos (Modo Anónimo)...';
-                        setupRealtimeListeners(); // <--- LLAMADA CRÍTICA AHORA DENTRO DE onAuthStateChanged
+                        
+                        // Si no hay usuario autenticado (incluso anónimamente), los listeners fallarán por permisos.
+                        // Solo configuramos listeners si tenemos una base (user!=null), si no, los onSnapshot fallarán.
+                        // Sin embargo, en el entorno Canvas, onAuthStateChanged debería resolver a un usuario (anónimo o con token)
+                        // si la configuración es correcta.
+                        // Dado que el problema es de permisos, esperamos hasta tener un usuario válido (user.uid)
+                        // Antes de configurar listeners, pero por diseño, el entorno ya maneja esto.
+                        // Mantendremos la llamada para el caso donde el auth es instantáneo.
+                        // setupRealtimeListeners(); // Se elimina la llamada duplicada/innecesaria aquí
                     }
                 });
 
@@ -297,18 +344,18 @@
         initializeFirebase();
 
 
-        // --- CORRECCIÓN CRÍTICA DE RUTA DE FIRESTORE ---
+        // --- RUTAS DE FIRESTORE (ACCESO PÚBLICO TOTAL) ---
         
-        // Función para obtener la ruta de la colección de pre-facturas (Datos Privados)
-        function getPrefacturasCollectionRef(uid) {
-            // RUTA MANDATORIA CORREGIDA: /artifacts/{appId}/users/{userId}/prefacturas
-            const path = `artifacts/${appId}/users/${uid}/prefacturas`;
+        // CORRECCIÓN: Apuntando a la ruta pública que concuerda con las reglas de seguridad.
+        // RUTA: /artifacts/{appId}/public/data/prefacturas
+        function getPrefacturasCollectionRef() {
+            const path = `artifacts/${appId}/public/data/prefacturas`;
             return collection(db, path);
         }
         
-        // Función para obtener la ruta de la colección de facturas pagadas (Módulo Público/Compartido)
+        // CORRECCIÓN: Apuntando a la ruta pública para las facturas pagadas.
+        // RUTA: /artifacts/{appId}/public/data/paid_invoices
         function getPaidInvoicesCollectionRef() {
-            // RUTA MANDATORIA CORREGIDA: /artifacts/{appId}/public/data/paid_invoices
             const path = `artifacts/${appId}/public/data/paid_invoices`;
             return collection(db, path);
         }
@@ -373,11 +420,11 @@
 
         // --- Lógica de la Aplicación (CRUD) ---
 
-        // 1. Agregar Nueva Pre-factura (Restaurando el modelo de datos original)
+        // 1. Agregar Nueva Pre-factura
         document.getElementById('prefactura-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (!userId || !isFirebaseReady) {
+            if (!isFirebaseReady) {
                 showMessage("La base de datos no está lista. Verifica la conexión.", 'error');
                 return;
             }
@@ -414,6 +461,7 @@
                 return;
             }
             
+            // Usamos el consecutivo como ID del documento, eliminando caracteres no válidos de Firestore.
             const docId = document.getElementById('consecutivo').value.trim().replace(/[^a-zA-Z0-9]/g, '_');
             
             if (!docId) {
@@ -437,8 +485,8 @@
             };
 
             try {
-                // Usamos setDoc con el consecutivo como ID del documento
-                await setDoc(doc(getPrefacturasCollectionRef(userId), docId), data);
+                // Usamos setDoc con el consecutivo como ID del documento en la colección pública (getPrefacturasCollectionRef)
+                await setDoc(doc(getPrefacturasCollectionRef(), docId), data);
                 showMessage(`Pre-factura ${data.consecutivo} guardada con éxito.`, 'success');
                 
                 // Limpiar formulario
@@ -448,14 +496,14 @@
             } catch (error) {
                 console.error("Error al guardar la pre-factura:", error);
                 // Muestra un error específico sobre la conexión/permisos
-                showMessage(`ERROR AL GUARDAR: ${error.message}. Verifica las reglas de seguridad.`, 'error');
+                showMessage(`ERROR AL GUARDAR: ${error.message}. Revisa la consola y tus Reglas de Seguridad.`, 'error');
             }
         });
 
         // 2. Actualizar la Cantidad Facturada Parcialmente
         async function updateFacturacion(docId, itemLines) {
-            if (!userId || !isFirebaseReady) {
-                showMessage("Esperando autenticación y conexión a Firebase.", 'error');
+            if (!isFirebaseReady) {
+                showMessage("Esperando conexión a Firebase.", 'error');
                 return;
             }
             
@@ -559,7 +607,8 @@
                 });
 
                 try {
-                    const docRef = doc(getPrefacturasCollectionRef(userId), docId);
+                    // Actualiza en la colección pública de pre-facturas (getPrefacturasCollectionRef)
+                    const docRef = doc(getPrefacturasCollectionRef(), docId);
                     await updateDoc(docRef, {
                         item_lines: updatedItemLines
                     });
@@ -575,8 +624,8 @@
         
         // 3. FUNCIÓN: Marcar como Pagada e Inmutable
         async function markAsPaid(prefacturaData) {
-            if (!userId || !isFirebaseReady) {
-                showMessage("Esperando autenticación y conexión a Firebase.", 'error');
+            if (!isFirebaseReady) {
+                showMessage("Esperando conexión a Firebase.", 'error');
                 return;
             }
             
@@ -588,23 +637,24 @@
                     ...prefacturaData,
                     is_paid: true,
                     paid_at: serverTimestamp(), // Usamos serverTimestamp para el registro del pago
-                    paid_by_uid: userId,
+                    paid_by_uid: userId, // Mantenemos el registro de quién pagó
                     prefactura_id: docId // Guardamos el ID original
                 };
                 delete paidInvoiceData.id; // Limpiamos el ID local antes de mover
                 
-                // Se guarda en la colección pública (solo pagadas)
+                // Se guarda en la colección pública de facturas pagadas (getPaidInvoicesCollectionRef)
                 await setDoc(doc(getPaidInvoicesCollectionRef(), docId), paidInvoiceData);
                 
                 // 2. Eliminar de la colección de pre-facturas pendientes
-                const docRef = doc(getPrefacturasCollectionRef(userId), docId);
+                // Utilizamos la ruta pública corregida (getPrefacturasCollectionRef)
+                const docRef = doc(getPrefacturasCollectionRef(), docId);
                 await deleteDoc(docRef);
                 
                 showMessage(`Factura ${consecutivo} marcada como PAGADA y archivada.`, 'success');
                 
             } catch (error) {
                 console.error("Error al marcar como pagada:", error);
-                showMessage("Error al marcar como pagada. Revisa la consola.", 'error');
+                showMessage("Error al marcar como pagada. Revisa la consola y las reglas de seguridad.", 'error');
             }
         }
         
@@ -842,12 +892,22 @@
 
             invoices
                 .sort((a, b) => {
+                    // Manejo de Firestore Timestamp vs string ISO para la fecha de pago
                     const dateA = a.paid_at ? (a.paid_at.toDate ? a.paid_at.toDate() : new Date(a.paid_at)) : 0;
                     const dateB = b.paid_at ? (b.paid_at.toDate ? b.paid_at.toDate() : new Date(b.paid_at)) : 0;
                     return dateB - dateA;
                 })
                 .forEach(p => {
-                    const paidDate = p.paid_at ? (p.paid_at.toDate ? p.paid_at.toDate().toLocaleDateString() : new Date(p.paid_at).toLocaleDateString()) : 'N/A';
+                    // Manejo de Firestore Timestamp
+                    let paidDateString = 'N/A';
+                    if (p.paid_at) {
+                        try {
+                            const dateObj = p.paid_at.toDate ? p.paid_at.toDate() : new Date(p.paid_at);
+                            paidDateString = dateObj.toLocaleDateString();
+                        } catch (e) {
+                             paidDateString = 'Fecha inválida';
+                        }
+                    }
                     
                     const itemLinesHtml = Array.isArray(p.item_lines) ? p.item_lines.map(line => {
                         return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
@@ -869,7 +929,7 @@
                                     Líneas: ${itemLinesHtml}
                                 </p>
                                 <p class="text-sm font-medium text-gray-700">Valor Total: <span class="font-bold text-success">$${p.total_value.toFixed(2)}</span> | Ganancia: $${p.total_profit.toFixed(2)}</p>
-                                <p class="text-xs text-gray-500">Fecha de Pago: ${paidDate}</p>
+                                <p class="text-xs text-gray-500">Fecha de Pago: ${paidDateString}</p>
                                 <p class="text-xs text-gray-400">Archivado por: ${p.paid_by_uid ? p.paid_by_uid.substring(0, 8) + '...' : 'Usuario anónimo'}</p>
                             </div>
                         </div>
@@ -883,17 +943,18 @@
         // 6. Listener en Tiempo Real (AMBOS)
         function setupRealtimeListeners() {
             // CAMBIO CRÍTICO: Aseguramos que db y userId existan antes de configurar listeners.
-            if (!db || !userId || !isFirebaseReady) {
-                console.warn("No se pueden configurar listeners: Firebase no está completamente listo.");
+            if (!db || !isFirebaseReady || !userId) {
+                console.warn("No se pueden configurar listeners: Firebase no está completamente listo o el ID de usuario es nulo.");
                 return;
             }
             
-            // --- Listener para Pre-facturas Pendientes (Privado) ---
+            // --- Listener para Pre-facturas Pendientes (PÚBLICO) ---
             if (prefacturasUnsubscribe) {
                 prefacturasUnsubscribe();
             }
 
-            const qPrefacturas = query(getPrefacturasCollectionRef(userId));
+            // Usamos la colección pública: getPrefacturasCollectionRef()
+            const qPrefacturas = query(getPrefacturasCollectionRef());
             
             prefacturasUnsubscribe = onSnapshot(qPrefacturas, (querySnapshot) => {
                 const prefacturas = [];
@@ -904,8 +965,8 @@
                 renderPrefacturas(prefacturas);
             }, (error) => {
                 console.error("Error al escuchar pre-facturas:", error);
-                // Muestra un error específico y sugiere la causa
-                showMessage(`ERROR: No tienes permiso para cargar pre-facturas. Revisa tus Reglas de Seguridad.`, 'error');
+                // Muestra un error específico sobre la conexión/permisos
+                showMessage(`ERROR: No se pueden cargar pre-facturas. Revisa que tus Reglas de Seguridad permitan el acceso público (allow read: if request.auth != null;).`, 'error');
             });
             
             // --- Listener para Facturas Pagadas (Público) ---
@@ -923,22 +984,23 @@
                 renderPaidInvoices(paidInvoices);
             }, (error) => {
                  console.error("Error al escuchar facturas pagadas:", error);
-                 // Muestra un error específico y sugiere la causa
-                 showMessage(`ERROR: No tienes permiso para cargar facturas pagadas. Revisa tus Reglas de Seguridad.`, 'error');
+                 // Muestra un error específico sobre la conexión/permisos
+                 showMessage(`ERROR: No se pueden cargar facturas pagadas. Revisa que tus Reglas de Seguridad permitan el acceso público (allow read: if request.auth != null;).`, 'error');
             });
         }
         
         // 7. Eliminar Pre-factura (Usando el ID de Firestore)
         async function deletePrefactura(docId) {
-             if (!userId || !isFirebaseReady) return;
+             if (!isFirebaseReady) return;
              
              try {
-                const docRef = doc(getPrefacturasCollectionRef(userId), docId);
+                // Usa la colección pública corregida (getPrefacturasCollectionRef)
+                const docRef = doc(getPrefacturasCollectionRef(), docId);
                 await deleteDoc(docRef);
                 showMessage(`Pre-factura ${docId} eliminada.`, 'success');
             } catch (error) {
                 console.error("Error al eliminar la pre-factura:", error);
-                showMessage("Error al eliminar la pre-factura.", 'error');
+                showMessage("Error al eliminar la pre-factura. Revisa las reglas de seguridad.", 'error');
             }
         }
         
