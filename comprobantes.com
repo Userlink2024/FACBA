@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractor Inteligente de Comprobantes (Múltiple)</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos generales para un aspecto limpio */
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        /* Estilo para el spinner de carga */
+        .spinner {
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-white shadow-2xl rounded-xl p-8 space-y-6">
+        <h1 class="text-3xl font-extrabold text-gray-900 text-center border-b pb-4">
+            Sistema de Extracción de Comprobantes (Múltiple)
+        </h1>
+
+        <!-- SECCIÓN 1: Carga de Imagen -->
+        <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+            <label for="imageUpload" class="block text-lg font-semibold text-blue-800 mb-2">
+                1. Adjuntar Comprobantes (Múltiples Archivos)
+            </label>
+            <input type="file" id="imageUpload" accept="image/*" multiple class="w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-100 file:text-blue-700
+                hover:file:bg-blue-200"
+            />
+            <button id="processButton" class="w-full mt-4 py-2 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50" disabled>
+                Extraer Datos de <span id="fileCount">0</span> Archivos
+            </button>
+        </div>
+
+        <!-- SECCIÓN 1.5: Selección de Campos -->
+        <div class="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-200">
+            <label class="block text-lg font-semibold text-indigo-800 mb-2">
+                1.5. Seleccionar Campos a Extraer
+            </label>
+            <!-- Selector de todos los campos -->
+            <div class="flex items-center mb-4 pb-2 border-b border-indigo-300">
+                <input type="checkbox" id="selectAllFields" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                <label for="selectAllFields" class="ml-2 text-sm font-bold text-indigo-900 cursor-pointer">
+                    Seleccionar/Deseleccionar Todos los Campos
+                </label>
+            </div>
+            <!-- Fin Selector de todos los campos -->
+
+            <div id="fieldSelection" class="flex flex-wrap gap-4">
+                <!-- Los checkboxes se insertan aquí por JavaScript -->
+            </div>
+        </div>
+
+
+        <!-- SECCIÓN DE CARGA Y ERRORES -->
+        <div id="loadingArea" class="hidden text-center p-4 bg-yellow-100 rounded-lg">
+            <div class="flex items-center justify-center space-x-2">
+                <div class="spinner border-4 border-t-4 border-gray-200 h-6 w-6 rounded-full"></div>
+                <span id="loadingMessage" class="text-yellow-800 font-medium">Analizando imagen con IA...</span></span>
+            </div>
+        </div>
+        <div id="errorArea" class="hidden text-center p-4 bg-red-100 text-red-700 rounded-lg font-medium">
+            Ocurrió un error. Por favor, revisa la consola para más detalles.
+        </div>
+        
+        <!-- SECCIÓN 2: Resultados y Selección -->
+        <div id="resultsArea" class="hidden space-y-4 bg-green-50 p-6 rounded-xl border-2 border-green-200">
+            <h2 class="text-xl font-bold text-green-800 mb-4">2. Resultados Consolidados <span class="text-sm font-normal text-gray-600">(Selecciona qué filas exportar)</span></h2>
+            
+            <!-- Selector de todas las filas -->
+            <div class="flex items-center mb-4 pb-2 border-b border-green-300">
+                <input type="checkbox" id="selectAllResults" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer">
+                <label for="selectAllResults" class="ml-2 text-base font-bold text-green-800 cursor-pointer">
+                    Seleccionar/Deseleccionar Todas las Filas
+                </label>
+            </div>
+            <!-- Fin Selector de todas las filas -->
+
+            <div id="dataList" class="space-y-4">
+                <!-- Los resultados por archivo se insertarán aquí, separados por duplicados -->
+            </div>
+
+            <!-- SECCIÓN 3: Descarga -->
+            <button id="downloadButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50 mt-6" disabled>
+                Descargar Datos Seleccionados (CSV para Excel)
+            </button>
+        </div>
+        
+        <p id="infoMessage" class="text-sm text-gray-500 text-center"></p>
+    </div>
+
+    <script>
+        // --- Variables Globales y Configuración de Gemini ---
+        const imageUpload = document.getElementById('imageUpload');
+        const processButton = document.getElementById('processButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const loadingArea = document.getElementById('loadingArea');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorArea = document.getElementById('errorArea');
+        const resultsArea = document.getElementById('resultsArea');
+        const dataList = document.getElementById('dataList');
+        const fileCountSpan = document.getElementById('fileCount');
+        const infoMessage = document.getElementById('infoMessage');
+        const fieldSelectionDiv = document.getElementById('fieldSelection'); 
+        const selectAllFieldsCheckbox = document.getElementById('selectAllFields'); 
+        const selectAllResultsCheckbox = document.getElementById('selectAllResults'); 
+        
+        const apiKey = ""; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // CONSTANTE CRÍTICA: Delimitador de punto y coma (;) para compatibilidad con Excel español.
+        const CSV_DELIMITER = ';'; 
+
+        // allExtractedData ahora almacenará el resultado y la bandera de duplicado: {fileName, data, isDuplicate: boolean}
+        let allExtractedData = []; 
+        
+        // Mapeo de meses en español (para la conversión de fecha)
+        const MONTH_MAP = {
+            'ene': 0, 'feb': 1, 'mar': 2, 'abr': 3, 'may': 4, 'jun': 5, 
+            'jul': 6, 'ago': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dic': 11,
+            'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5, 
+            'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+        };
+
+
+        // Metadata de los campos disponibles
+        const FIELD_METADATA = {
+            value: { 
+                label: 'Valor de la transferencia', 
+                description: "El valor de la transferencia con el símbolo de moneda, por ejemplo $78.465." 
+            },
+            receipt_number: { 
+                label: 'Nº Comprobante', 
+                description: "El número de comprobante completo, por ejemplo 0000093600." 
+            },
+            date: { 
+                label: 'Fecha', 
+                description: "La fecha de la transferencia, por ejemplo 10 Oct 2025." 
+            },
+            time: { 
+                label: 'Hora', 
+                description: "La hora de la transferencia, por ejemplo 11:36 a. m.." 
+            },
+            recipient: {
+                label: 'Nombre del Destinatario',
+                description: "El nombre completo o razón social del destinatario de la transferencia."
+            }
+        };
+
+        // --- Funciones de Utilidad ---
+
+        /**
+         * Intenta convertir una cadena de fecha extraída (ej: '10 Oct 2025' o '7-oct-25') 
+         * a formato corto DD/MM/AAAA (ej: '10/10/2025').
+         * Si falla, devuelve la cadena original.
+         * @param {string} dateString La cadena de fecha extraída por la IA.
+         * @returns {string} La fecha formateada o la cadena original.
+         */
+        function formatDateShort(dateString) {
+            if (!dateString) return "";
+            
+            // Intenta encontrar el patrón DD [MES] AA(AA)
+            const parts = dateString.trim().split(/[\s\-/]+/);
+            
+            if (parts.length < 3) return dateString; // No tiene suficientes partes
+
+            let day = parseInt(parts[0]);
+            let monthStr = parts[1].toLowerCase().substring(0, 3);
+            let year = parseInt(parts[2]);
+
+            // Buscar el índice del mes (0-11)
+            const monthIndex = MONTH_MAP[monthStr];
+
+            if (isNaN(day) || monthIndex === undefined || isNaN(year)) {
+                // Si no se puede parsear, devolvemos la cadena original
+                return dateString;
+            }
+
+            // Normalizar el año de 2 dígitos a 4 dígitos (ej: 25 -> 2025)
+            if (year < 100) {
+                // Asumimos años del 2000 en adelante
+                year = 2000 + year; 
+            }
+
+            // Convertir a formato DD/MM/AAAA
+            const formattedDay = day; // No añadir cero inicial si no es estrictamente necesario, para coincidir con 7/10/2025
+            const formattedMonth = monthIndex + 1;
+            
+            return `${formattedDay}/${formattedMonth}/${year}`;
+        }
+        
+        // Inicializa los checkboxes de selección de campos (Todos desmarcados por defecto)
+        function initFieldSelection() {
+            fieldSelectionDiv.innerHTML = '';
+            Object.keys(FIELD_METADATA).forEach(key => {
+                const field = FIELD_METADATA[key];
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex items-center';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `field-${key}`;
+                checkbox.value = key;
+                checkbox.checked = false; 
+                checkbox.className = 'w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer field-select-item';
+
+                const label = document.createElement('label');
+                label.htmlFor = `field-${key}`;
+                label.className = 'ml-2 text-sm font-medium text-gray-700 cursor-pointer';
+                label.textContent = field.label;
+
+                wrapper.appendChild(checkbox);
+                wrapper.appendChild(label);
+                fieldSelectionDiv.appendChild(wrapper);
+            });
+            // Asegurar que el checkbox principal de campos esté desmarcado al inicio
+            selectAllFieldsCheckbox.checked = false; 
+        }
+        initFieldSelection(); 
+
+        // Obtiene los campos seleccionados (las claves del JSON)
+        function getSelectedFields() {
+            const selected = [];
+            fieldSelectionDiv.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+                selected.push(checkbox.value);
+            });
+            return selected;
+        }
+
+        // Convierte el archivo a una cadena Base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]); 
+                reader.onerror = error => reject(error);
+            });
+        }
+        
+        // Muestra u oculta elementos de la interfaz
+        function setUIState(isLoading, isError, resultsVisible) {
+            loadingArea.classList.toggle('hidden', !isLoading);
+            processButton.disabled = isLoading || imageUpload.files.length === 0;
+            errorArea.classList.toggle('hidden', !isError);
+            resultsArea.classList.toggle('hidden', !resultsVisible);
+            downloadButton.disabled = true; 
+        }
+
+        /**
+         * Llama a la API de Gemini con lógica de reintento (backoff)
+         */
+        async function fetchWithRetry(url, payload, maxRetries = 5) {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429 && i < maxRetries - 1) { 
+                        console.warn(`Tasa límite alcanzada. Reintentando en ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2; 
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    return response.json();
+
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    console.error("Error temporal. Reintentando...", error);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        /**
+         * Procesa una sola imagen usando la API
+         */
+        async function processSingleImage(file) {
+            const selectedFields = getSelectedFields();
+            if (selectedFields.length === 0) {
+                throw new Error("Debe seleccionar al menos un campo para extraer.");
+            }
+
+            const base64Data = await fileToBase64(file);
+
+            // 1. Construcción dinámica de Prompts y Schema
+            let promptList = [];
+            let schemaProperties = {};
+            
+            selectedFields.forEach(key => {
+                const metadata = FIELD_METADATA[key];
+                // Pedimos a la IA que sea lo más consistente posible con el dato, 
+                // incluso pidiendo la fecha en un formato estandar
+                let description = metadata.description;
+                if (key === 'date') {
+                    description += " Devuélvela en el formato DD MES AAAA (ej: 07 Oct 2025)";
+                }
+
+                promptList.push(`'${metadata.label}'`); 
+                schemaProperties[key] = {
+                    type: "STRING",
+                    description: description
+                };
+            });
+            
+            const fieldsToExtract = promptList.join(', '); 
+            
+            const systemPrompt = `Eres un asistente de extracción de datos especializado en recibos de transferencia. Tu única tarea es extraer únicamente los campos solicitados y devolverlos estrictamente en formato JSON, sin texto adicional o explicaciones. Los campos a buscar son: ${fieldsToExtract}.`;
+            
+            const userPrompt = `Por favor, extrae los siguientes datos de la imagen: ${fieldsToExtract}.`;
+
+            // 2. Construcción del payload
+            const payload = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: userPrompt },
+                            {
+                                inlineData: {
+                                    mimeType: file.type,
+                                    data: base64Data
+                                }
+                            }
+                        ]
+                    },
+                ],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: schemaProperties,
+                        propertyOrdering: selectedFields 
+                    }
+                },
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            const result = await fetchWithRetry(apiUrl, payload);
+            
+            const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!jsonText) throw new Error("Respuesta de la IA vacía o mal formada.");
+            
+            return JSON.parse(jsonText);
+        }
+
+        /**
+         * Dibuja los resultados extraídos en la interfaz, incluyendo la separación de duplicados.
+         * @param {Array<Object>} dataArray - Array de resultados con la propiedad 'isDuplicate' ya agregada.
+         * @param {string} duplicationWarning - Mensaje de advertencia si no se pudo verificar la duplicidad.
+         */
+        function displayResults(dataArray, duplicationWarning = "") {
+            dataList.innerHTML = ''; 
+            selectAllResultsCheckbox.checked = false; // Desmarcar el chulo principal de resultados al mostrar nuevos datos
+            
+            if (dataArray.length === 0) {
+                 infoMessage.textContent = "No se pudo extraer información de ninguna imagen.";
+                 setUIState(false, false, false);
+                 return;
+            } 
+            
+            infoMessage.textContent = `Extracción completada para ${dataArray.length} archivo(s).${duplicationWarning}`;
+            
+            let isUniqueGroupDisplayed = false;
+            let isDuplicateGroupDisplayed = false;
+
+            // Ordenar por Duplicado (Únicos primero)
+            dataArray.sort((a, b) => (a.isDuplicate ? 1 : 0) - (b.isDuplicate ? 1 : 0));
+
+
+            dataArray.forEach((entry, index) => {
+                const data = entry.data;
+                const fileName = entry.fileName;
+                const isDuplicate = entry.isDuplicate || false;
+
+                // Añadir encabezados de grupo dinámicamente
+                if (!isDuplicate && !isUniqueGroupDisplayed) {
+                    isUniqueGroupDisplayed = true;
+                    const uniqueHeader = document.createElement('h3');
+                    uniqueHeader.className = 'text-lg font-bold text-gray-700 mt-4 mb-2 border-b border-gray-300 pb-1';
+                    uniqueHeader.textContent = "Comprobantes Únicos/Originales";
+                    dataList.appendChild(uniqueHeader);
+                } else if (isDuplicate && !isDuplicateGroupDisplayed) {
+                    isDuplicateGroupDisplayed = true;
+                    const duplicateHeader = document.createElement('h3');
+                    duplicateHeader.className = 'text-lg font-bold text-red-600 mt-8 mb-2 border-b-2 border-red-300 pb-1';
+                    duplicateHeader.textContent = "Comprobantes Duplicados (Mismo Nº Comprobante)";
+                    dataList.appendChild(duplicateHeader);
+                }
+                
+                // Contenedor principal de la tarjeta de archivo
+                const fileCard = document.createElement('div');
+                // Usa clases diferentes si es duplicado
+                fileCard.className = `p-4 rounded-lg shadow-xl border ${isDuplicate ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200'}`;
+
+                // Encabezado y Checkbox para toda la fila
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'flex items-center justify-between pb-2 mb-2 border-b border-gray-100';
+
+                // Checkbox (Chulo) para seleccionar esta fila de datos
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `file-entry-${index}`;
+                checkbox.checked = false; // Chulos de resultados desactivados por defecto
+                checkbox.className = 'w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer result-select-item';
+                checkbox.setAttribute('data-index', index); // Index corresponde a la posición en el array ORDENADO
+
+                const label = document.createElement('label');
+                label.htmlFor = `file-entry-${index}`;
+                // Agrega el indicador de duplicado
+                const duplicateIndicator = isDuplicate ? `<span class="text-xs font-semibold text-red-600 mr-2">(DUPLICADO)</span>` : '';
+                label.className = 'ml-3 flex-1 text-base font-bold text-gray-700 cursor-pointer truncate';
+                label.innerHTML = `${duplicateIndicator} Archivo: ${fileName}`;
+                
+                headerDiv.appendChild(checkbox);
+                headerDiv.appendChild(label);
+                fileCard.appendChild(headerDiv);
+
+                // Contenido de la fila de datos (solo muestra los campos extraídos)
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'space-y-1 text-sm';
+                
+                Object.keys(data).forEach(key => {
+                    // Usamos la metadata global para obtener la etiqueta
+                    const labelText = FIELD_METADATA[key] ? FIELD_METADATA[key].label : key; 
+                    let value = data[key];
+
+                    // Formatear la fecha para la visualización en la interfaz también
+                    if (key === 'date') {
+                        value = formatDateShort(value);
+                    }
+                    
+                    const dataLine = document.createElement('p');
+                    dataLine.innerHTML = `<span class="font-semibold text-gray-500">${labelText}:</span> <span class="text-gray-900 font-medium">${value}</span>`;
+                    contentDiv.appendChild(dataLine);
+                });
+
+                fileCard.appendChild(contentDiv);
+                dataList.appendChild(fileCard);
+            });
+
+            // Agregar listener para habilitar/deshabilitar el botón de descarga
+            dataList.addEventListener('change', updateDownloadButtonState);
+            updateDownloadButtonState();
+            setUIState(false, false, true); // Oculta carga, muestra resultados
+        }
+
+        // Actualiza el estado del botón de descarga basado en los chulos seleccionados
+        function updateDownloadButtonState() {
+            const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
+            downloadButton.disabled = checkedCheckboxes.length === 0;
+            
+            // Actualizar el estado del chulo principal de resultados
+            const totalCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item').length;
+            selectAllResultsCheckbox.checked = totalCheckboxes > 0 && checkedCheckboxes.length === totalCheckboxes;
+        }
+
+        // --- Manejadores de Eventos ---
+
+        // Selector/Deselector de todos los CAMPOS
+        selectAllFieldsCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            fieldSelectionDiv.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+        });
+
+        // Selector/Deselector de todas las FILAS DE RESULTADOS
+        selectAllResultsCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            dataList.querySelectorAll('input[type="checkbox"].result-select-item').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateDownloadButtonState(); // Actualizar el estado del botón de descarga
+        });
+
+
+        // Listener para los chulos individuales de campos
+        fieldSelectionDiv.addEventListener('change', () => {
+             // Actualizar el chulo principal de campos
+            const allItems = fieldSelectionDiv.querySelectorAll('input[type="checkbox"]').length;
+            const checkedItems = fieldSelectionDiv.querySelectorAll('input[type="checkbox"]:checked').length;
+            selectAllFieldsCheckbox.checked = allItems > 0 && checkedItems === allItems;
+        });
+
+        // Habilita el botón de proceso y actualiza el contador al seleccionar archivos
+        imageUpload.addEventListener('change', () => {
+            const fileCount = imageUpload.files.length;
+            fileCountSpan.textContent = fileCount;
+            processButton.disabled = fileCount === 0;
+            
+            setUIState(false, false, false);
+            errorArea.classList.add('hidden');
+            allExtractedData = []; // Resetear datos
+            infoMessage.textContent = fileCount > 0 ? "Listo para procesar." : "";
+        });
+
+        // Lógica principal de extracción al hacer clic en el botón
+        processButton.addEventListener('click', async () => {
+            const files = Array.from(imageUpload.files);
+            if (files.length === 0) return;
+            const selectedFields = getSelectedFields();
+            
+            // Validación de campos seleccionados
+            if (selectedFields.length === 0) {
+                infoMessage.textContent = "ERROR: Por favor, selecciona al menos un campo a extraer.";
+                infoMessage.classList.remove('text-gray-500');
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return;
+            } else {
+                 infoMessage.classList.remove('text-red-600', 'font-bold');
+                 infoMessage.classList.add('text-gray-500');
+                 infoMessage.textContent = "Procesando...";
+            }
+
+            setUIState(true, false, false); 
+            errorArea.classList.add('hidden');
+            allExtractedData = []; 
+            let successCount = 0;
+            let errorOccurred = false;
+
+            // Procesamiento secuencial
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                loadingMessage.textContent = `Analizando imagen ${i + 1} de ${files.length}: ${file.name}...`;
+
+                try {
+                    const data = await processSingleImage(file);
+                    
+                    // Almacenar el resultado exitoso
+                    allExtractedData.push({
+                        fileName: file.name,
+                        data: data
+                    });
+                    successCount++;
+
+                } catch (error) {
+                    console.error(`Error al procesar ${file.name}:`, error);
+                    errorOccurred = true;
+                }
+            }
+
+            // --- LÓGICA DE DETECCIÓN Y SEPARACIÓN DE DUPLICADOS ---
+            const CHECK_FIELD_KEY = 'receipt_number';
+            const isDuplicationCheckPossible = selectedFields.includes(CHECK_FIELD_KEY);
+            let duplicationWarning = "";
+
+            if (isDuplicationCheckPossible) {
+                const receiptNumbers = new Set();
+                
+                // 1. Marcar duplicados en allExtractedData
+                allExtractedData.forEach(entry => {
+                    const receiptNumber = entry.data[CHECK_FIELD_KEY];
+                    
+                    if (receiptNumber && receiptNumbers.has(receiptNumber)) {
+                        entry.isDuplicate = true;
+                    } else if (receiptNumber) {
+                        receiptNumbers.add(receiptNumber);
+                        entry.isDuplicate = false; 
+                    } else {
+                        // Si no se extrajo el valor, no se puede verificar duplicidad (se trata como único)
+                        entry.isDuplicate = false; 
+                    }
+                });
+                
+            } else {
+                // Si el campo clave no fue seleccionado
+                duplicationWarning = " (ADVERTENCIA: No se verificó duplicidad porque el 'Nº Comprobante' no fue seleccionado).";
+                allExtractedData.forEach(entry => entry.isDuplicate = false); 
+            }
+            // --- FIN LÓGICA DE DUPLICADOS ---
+
+            if (errorOccurred && successCount === 0) {
+                setUIState(false, true, false); 
+            } else {
+                displayResults(allExtractedData, duplicationWarning);
+                if (errorOccurred) {
+                    infoMessage.textContent = `Extracción completada con errores en ${files.length - successCount} archivo(s). Revise la consola.`;
+                }
+            }
+        });
+
+        // Lógica de descarga de datos seleccionados a CSV (Orden correcto y consistente)
+        downloadButton.addEventListener('click', () => {
+            const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
+            if (checkedCheckboxes.length === 0) {
+                infoMessage.textContent = "ERROR: Selecciona al menos una fila para exportar.";
+                infoMessage.classList.remove('text-gray-500');
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return;
+            }
+
+            // OBTENER LOS CAMPOS SELECCIONADOS EN EL ORDEN CORRECTO
+            const selectedFields = getSelectedFields(); 
+            if (selectedFields.length === 0) {
+                infoMessage.textContent = "ERROR: No hay campos seleccionados para exportar. Selecciona los campos en la sección 1.5.";
+                infoMessage.classList.remove('text-gray-500');
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return;
+            } else {
+                 infoMessage.classList.remove('text-red-600', 'font-bold');
+                 infoMessage.classList.add('text-gray-500');
+            }
+
+
+            // 1. Definir encabezados del CSV dinámicamente (Priorizar campos extraídos)
+            const headers = [];
+            
+            // A. Campos extraídos (en el orden seleccionado por el usuario)
+            selectedFields.forEach(key => {
+                headers.push(FIELD_METADATA[key].label);
+            });
+            
+            // B. Campos de metadatos (al final)
+            headers.push("Archivo", "Es Duplicado");
+            
+            // USAR CSV_DELIMITER (Punto y coma)
+            let csv = headers.join(CSV_DELIMITER) + '\n';
+
+            // 2. Iterar sobre las filas seleccionadas
+            checkedCheckboxes.forEach(checkbox => {
+                const index = parseInt(checkbox.getAttribute('data-index'));
+                const entry = allExtractedData[index]; // Usa el índice en el array ORDENADO
+
+                if (entry) {
+                    const isDuplicateText = entry.isDuplicate ? "Sí" : "No";
+
+                    const rowData = [];
+                    
+                    // A. Datos extraídos (Asegura el orden usando selectedFields)
+                    selectedFields.forEach(key => {
+                        let value = entry.data[key] || ""; 
+                        
+                        // *** FORMATO CRÍTICO DE FECHA PARA EXCEL ***
+                        if (key === 'date') {
+                            value = formatDateShort(value);
+                        }
+                        // *******************************************
+
+                        // Escapar comillas internas y envolver el valor
+                        rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
+                    });
+
+                    // B. Datos de metadatos (al final)
+                    rowData.push(
+                        `"${entry.fileName.replace(/"/g, '""')}"`, // Archivo
+                        `"${isDuplicateText}"`                      // Es Duplicado
+                    );
+
+                    // Agregar la fila al CSV
+                    // USAR CSV_DELIMITER (Punto y coma)
+                    csv += rowData.join(CSV_DELIMITER) + '\n';
+                }
+            });
+
+            // 3. Descargar el archivo
+            // Se añade el BOM (Byte Order Mark) para que Excel reconozca correctamente los caracteres especiales (ñ, tildes) y el delimitador.
+            const BOM = "\uFEFF"; 
+            const finalCsv = BOM + csv;
+
+            const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `comprobantes_extraidos_${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+    </script>
+</body>
+</html>
