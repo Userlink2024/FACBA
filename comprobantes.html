@@ -125,9 +125,9 @@
         const selectAllResultsCheckbox = document.getElementById('selectAllResults'); 
         
         // *****************************************************************************
-        // *** IMPORTANTE: DEJAR VACÍA PARA QUE LA CLAVE API SEA INYECTADA EN TIEMPO DE EJECUCIÓN ***
+        // *** IMPORTANTE: CLAVE API INYECTADA *****************************************
         // *****************************************************************************
-        const apiKey = ""; 
+        const apiKey = "AIzaSyA9J-b9rH1CCMOKUmFxoI4n2B9fiY-RNv4"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         // CONSTANTE CRÍTICA: Delimitador de punto y coma (;) para compatibilidad con Excel español.
@@ -295,13 +295,6 @@
         async function fetchWithRetry(url, payload, maxRetries = 5) {
             let delay = 1000;
             
-            // VERIFICACIÓN CLAVE
-            if (apiKey === "") {
-                // Si la clave está vacía, confiamos en que el entorno la inyecte, pero mostramos un aviso
-                console.warn("La variable 'apiKey' está vacía. Se asume que el entorno inyectará la clave automáticamente.");
-            }
-
-
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, {
@@ -338,6 +331,7 @@
                     delay *= 2;
                 }
             }
+            throw new Error("Fallo en la llamada a la API después de múltiples reintentos.");
         }
 
         /**
@@ -722,14 +716,6 @@
                  infoMessage.textContent = "Procesando...";
             }
 
-            // Validación de API Key antes de empezar
-            if (apiKey !== "") {
-                errorArea.innerHTML = '<strong>ERROR FATAL:</strong> La clave API de Gemini no está configurada correctamente. Por favor, asegúrate de que la variable `apiKey` esté vacía (`""`) en el código.';
-                errorArea.classList.remove('hidden');
-                setUIState(false, true, false);
-                return;
-            }
-
             setUIState(true, false, false); 
             errorArea.classList.add('hidden');
             allExtractedData = []; 
@@ -846,10 +832,11 @@
             });
             
             // B. Campo de Agrupación (CRÍTICO para la agrupación de Excel)
-            // Se añade el campo para agrupar/filtrar por Destinatario. Si no está seleccionado, se usa un valor por defecto.
+            // Se añade el campo Nombre del Destinatario (recipient) para que el usuario pueda filtrar.
             const recipientLabel = FIELD_METADATA.recipient.label;
+            // Solo se añade si no estaba ya seleccionado por el usuario
             if (!hasRecipientSelected) {
-                 headers.push(recipientLabel); // Añadir siempre si no estaba para la agrupación
+                 headers.push(recipientLabel); 
             }
 
             // C. Campos de metadatos (al final)
