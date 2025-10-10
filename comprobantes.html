@@ -53,6 +53,9 @@
             <label class="block text-lg font-semibold text-indigo-800 mb-2">
                 1.5. Seleccionar Campos a Extraer
             </label>
+            <p class="text-sm text-indigo-600 mb-3 font-medium">
+                Nota: Los campos **Fecha** y **Nombre del Destinatario** son importantes para las reglas de consistencia y agrupación.
+            </p>
             <!-- Selector de todos los campos -->
             <div class="flex items-center mb-4 pb-2 border-b border-indigo-300">
                 <input type="checkbox" id="selectAllFields" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
@@ -122,16 +125,16 @@
         const selectAllResultsCheckbox = document.getElementById('selectAllResults'); 
         
         // *****************************************************************************
-        // *** IMPORTANTE: PEGA AQUÍ TU CLAVE DE LA API DE GEMINI PARA QUE FUNCIONE ***
-        // *** EN GITHUB O CUALQUIER SITIO WEB EXTERNO.                            ***
+        // *** IMPORTANTE: DEJAR VACÍA PARA QUE LA CLAVE API SEA INYECTADA EN TIEMPO DE EJECUCIÓN ***
         // *****************************************************************************
-        const apiKey = "AIzaSyA9J-b9rH1CCMOKUmFxoI4n2B9fiY-RNv4"; // <--- ¡CLAVE API AÑADIDA!
+        const apiKey = ""; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         // CONSTANTE CRÍTICA: Delimitador de punto y coma (;) para compatibilidad con Excel español.
         const CSV_DELIMITER = ';'; 
 
-        // allExtractedData ahora almacenará el resultado y la bandera de duplicado: {fileName, data, isDuplicate: boolean}
+        // allExtractedData ahora almacenará el resultado y las banderas de duplicado/excepción: 
+        // {fileName, data, isDuplicate: boolean, isDateException: boolean, observation_date: string}
         let allExtractedData = []; 
         
         // Mapeo de meses en español (para la conversión de fecha)
@@ -143,7 +146,7 @@
         };
 
 
-        // Metadata de los campos disponibles
+        // Metadata de los campos disponibles (SOLO para la extracción de la IA)
         const FIELD_METADATA = {
             value: { 
                 label: 'Valor de la transferencia', 
@@ -172,12 +175,11 @@
         /**
          * Intenta convertir una cadena de fecha extraída (ej: '10 Oct 2025' o '7-oct-25') 
          * a formato corto DD/MM/AAAA (ej: '10/10/2025').
-         * Si falla, devuelve la cadena original.
          * @param {string} dateString La cadena de fecha extraída por la IA.
-         * @returns {string} La fecha formateada o la cadena original.
+         * @returns {string} La fecha formateada (DD/MM/AAAA) o la cadena original, o 'FECHA_NO_ENCONTRADA' si es nula.
          */
         function formatDateShort(dateString) {
-            if (!dateString) return "";
+            if (!dateString) return "FECHA_NO_ENCONTRADA";
             
             // Intenta encontrar el patrón DD [MES] AA(AA)
             const parts = dateString.trim().split(/[\s\-/]+/);
@@ -203,15 +205,18 @@
             }
 
             // Convertir a formato DD/MM/AAAA
-            const formattedDay = day; // No añadir cero inicial si no es estrictamente necesario, para coincidir con 7/10/2025
-            const formattedMonth = monthIndex + 1;
+            const formattedDay = String(day).padStart(2, '0');
+            const formattedMonth = String(monthIndex + 1).padStart(2, '0');
             
             return `${formattedDay}/${formattedMonth}/${year}`;
         }
         
-        // Inicializa los checkboxes de selección de campos (Todos desmarcados por defecto)
+        // Inicializa los checkboxes de selección de campos (Marcar Fecha, Comprobante y Destinatario por defecto)
         function initFieldSelection() {
             fieldSelectionDiv.innerHTML = '';
+            // Marcar 'Fecha', 'Nº Comprobante' y 'Nombre del Destinatario' por defecto
+            const defaultCheckedFields = ['date', 'receipt_number', 'recipient']; 
+            
             Object.keys(FIELD_METADATA).forEach(key => {
                 const field = FIELD_METADATA[key];
                 
@@ -222,7 +227,7 @@
                 checkbox.type = 'checkbox';
                 checkbox.id = `field-${key}`;
                 checkbox.value = key;
-                checkbox.checked = false; 
+                checkbox.checked = defaultCheckedFields.includes(key); 
                 checkbox.className = 'w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer field-select-item';
 
                 const label = document.createElement('label');
@@ -234,8 +239,9 @@
                 wrapper.appendChild(label);
                 fieldSelectionDiv.appendChild(wrapper);
             });
-            // Asegurar que el checkbox principal de campos esté desmarcado al inicio
-            selectAllFieldsCheckbox.checked = false; 
+            // Asegurar que el checkbox principal de campos esté desmarcado al inicio si no todos están marcados
+            const allItems = Object.keys(FIELD_METADATA).length;
+            selectAllFieldsCheckbox.checked = allItems === defaultCheckedFields.length; 
         }
         initFieldSelection(); 
 
@@ -291,7 +297,8 @@
             
             // VERIFICACIÓN CLAVE
             if (apiKey === "") {
-                throw new Error("ERROR FATAL: La clave API de Gemini no está configurada. Por favor, edita la variable 'apiKey' en el código.");
+                // Si la clave está vacía, confiamos en que el entorno la inyecte, pero mostramos un aviso
+                console.warn("La variable 'apiKey' está vacía. Se asume que el entorno inyectará la clave automáticamente.");
             }
 
 
@@ -355,6 +362,7 @@
                 // incluso pidiendo la fecha en un formato estandar
                 let description = metadata.description;
                 if (key === 'date') {
+                    // CRÍTICO: Pedir la fecha en un formato específico para que el parseo sea más robusto
                     description += " Devuélvela en el formato DD MES AAAA (ej: 07 Oct 2025)";
                 }
 
@@ -410,13 +418,75 @@
         }
 
         /**
-         * Dibuja los resultados extraídos en la interfaz, incluyendo la separación de duplicados.
-         * @param {Array<Object>} dataArray - Array de resultados con la propiedad 'isDuplicate' ya agregada.
-         * @param {string} duplicationWarning - Mensaje de advertencia si no se pudo verificar la duplicidad.
+         * Implementa la lógica de CONSISTENCIA DE FECHA: si la fecha más común existe, 
+         * marca el resto como excepciones de fecha.
+         * @param {Array<Object>} dataArray - Array de resultados de extracciones exitosas.
+         * @returns {Object} Un objeto con los resultados del análisis de la fecha.
          */
-        function displayResults(dataArray, duplicationWarning = "") {
+        function detectMajorityDateAndExceptions(dataArray) {
+            const dateCounts = {};
+
+            // 1. Contar frecuencias de fechas (usando el formato normalizado DD/MM/AAAA)
+            dataArray.forEach(entry => {
+                const extractedDate = entry.data.date;
+                // 'FECHA_NO_ENCONTRADA' si el campo 'date' no existe o está vacío
+                const normalizedDate = extractedDate ? formatDateShort(extractedDate) : 'FECHA_NO_ENCONTRADA';
+                
+                // Añadir propiedades de control al objeto de datos
+                entry.normalizedDate = normalizedDate; 
+                entry.isDateException = false; 
+                entry.observation_date = entry.observation_date || ''; // Inicializar campo de observación vacío, manteniendo el existente si ya tiene
+
+                dateCounts[normalizedDate] = (dateCounts[normalizedDate] || 0) + 1;
+            });
+
+            // Si no hay extracciones exitosas, no podemos calcular nada.
+            if (dataArray.length === 0) return { majorityDate: null, nonMajorityCount: 0, totalExtracted: 0 };
+
+            // 2. Encontrar la fecha mayoritaria
+            let majorityDate = null;
+            let maxCount = 0; // Número de archivos exitosos que coinciden con la fecha más común.
+
+            for (const date in dateCounts) {
+                if (dateCounts[date] > maxCount) {
+                    maxCount = dateCounts[date];
+                    majorityDate = date;
+                }
+            }
+
+            // 3. Marcar excepciones y contar las que no coinciden con la mayoría
+            let nonMajorityCount = 0;
+            
+            if (majorityDate) {
+                dataArray.forEach(entry => {
+                    // Si la fecha normalizada NO coincide con la fecha mayoritaria O si la fecha es 'FECHA_NO_ENCONTRADA'
+                    if (entry.normalizedDate !== majorityDate) {
+                        entry.isDateException = true;
+                        nonMajorityCount++;
+                    } else {
+                        entry.isDateException = false;
+                    }
+                });
+            }
+            
+            return { 
+                majorityDate, 
+                nonMajorityCount, 
+                majorityCount: maxCount,
+                totalExtracted: dataArray.length
+            };
+        }
+
+
+        /**
+         * Dibuja los resultados extraídos en la interfaz, incluyendo la separación de duplicados y excepciones de fecha.
+         * @param {Array<Object>} dataArray - Array de resultados con las banderas agregadas.
+         * @param {string} duplicationWarning - Mensaje de advertencia si no se pudo verificar la duplicidad.
+         * @param {Object} dateLogicResult - Resultado de la detección de mayoría de fecha.
+         */
+        function displayResults(dataArray, duplicationWarning = "", dateLogicResult) {
             dataList.innerHTML = ''; 
-            selectAllResultsCheckbox.checked = false; // Desmarcar el chulo principal de resultados al mostrar nuevos datos
+            selectAllResultsCheckbox.checked = false; // Desmarcar el chulo principal de resultados
             
             if (dataArray.length === 0) {
                  infoMessage.textContent = "No se pudo extraer información de ninguna imagen.";
@@ -424,39 +494,73 @@
                  return;
             } 
             
-            infoMessage.textContent = `Extracción completada para ${dataArray.length} archivo(s).${duplicationWarning}`;
+            // Mensaje de Información de Lógica de Fecha (Actualizado para CONTEO)
+            let dateInfoText = '';
+            const isDateSelected = getSelectedFields().includes('date');
             
-            let isUniqueGroupDisplayed = false;
-            let isDuplicateGroupDisplayed = false;
+            // Texto para archivos totales y extraídos
+            const totalFiles = imageUpload.files.length;
+            const extractedFiles = dateLogicResult.totalExtracted || dataArray.length;
+            
+            let filesInfo = `Extracción completada para ${extractedFiles} de ${totalFiles} archivo(s).`;
 
-            // Ordenar por Duplicado (Únicos primero)
-            dataArray.sort((a, b) => (a.isDuplicate ? 1 : 0) - (b.isDuplicate ? 1 : 0));
 
+            if (!isDateSelected) {
+                 dateInfoText = " (ADVERTENCIA: Detección de consistencia de fecha desactivada, no se seleccionó el campo 'Fecha').";
+            } else if (dateLogicResult.totalExtracted > 0) {
+                // Nuevo mensaje basado en CONTEO
+                const totalNonExtracted = totalFiles - extractedFiles;
+                const totalExceptions = dateLogicResult.nonMajorityCount + (totalFiles - dataArray.length); // Fallas totales + excepciones de fecha
+                
+                // NOTA: dateLogicResult.nonMajorityCount ya incluye fallas de parseo de fecha y las que no coinciden.
+                dateInfoText = ` (Fecha Mayoritaria: ${dateLogicResult.majorityDate}, encontrada en ${dateLogicResult.majorityCount} de ${extractedFiles} extracciones. Total de excepciones/fallas de fecha: ${dateLogicResult.nonMajorityCount}).`;
+
+            } else {
+                dateInfoText = ` (No se pudo extraer ninguna fecha para verificar la consistencia).`;
+            }
+
+            infoMessage.textContent = `${filesInfo}${duplicationWarning}${dateInfoText}`;
+            
+            // Ordenar: Excepciones (Duplicados o Fecha) al final, Únicos/Normales primero
+            dataArray.sort((a, b) => {
+                const isAException = a.isDuplicate || a.isDateException;
+                const isBException = b.isDuplicate || b.isDateException;
+                return (isAException ? 1 : 0) - (isBException ? 1 : 0);
+            });
+
+            let isNormalGroupDisplayed = false;
+            let isExceptionGroupDisplayed = false;
 
             dataArray.forEach((entry, index) => {
                 const data = entry.data;
                 const fileName = entry.fileName;
                 const isDuplicate = entry.isDuplicate || false;
+                const isDateException = entry.isDateException || false; // CRÍTICO: Usar esta bandera
+                const isAnyException = isDuplicate || isDateException;
 
+                // Definir colores y encabezados de grupo
+                const cardClasses = isAnyException 
+                    ? 'bg-yellow-50 border-yellow-400' 
+                    : 'bg-white border-gray-200';
+                
                 // Añadir encabezados de grupo dinámicamente
-                if (!isDuplicate && !isUniqueGroupDisplayed) {
-                    isUniqueGroupDisplayed = true;
+                if (!isAnyException && !isNormalGroupDisplayed) {
+                    isNormalGroupDisplayed = true;
                     const uniqueHeader = document.createElement('h3');
                     uniqueHeader.className = 'text-lg font-bold text-gray-700 mt-4 mb-2 border-b border-gray-300 pb-1';
-                    uniqueHeader.textContent = "Comprobantes Únicos/Originales";
+                    uniqueHeader.textContent = "Comprobantes Únicos y con Fecha Mayoritaria";
                     dataList.appendChild(uniqueHeader);
-                } else if (isDuplicate && !isDuplicateGroupDisplayed) {
-                    isDuplicateGroupDisplayed = true;
-                    const duplicateHeader = document.createElement('h3');
-                    duplicateHeader.className = 'text-lg font-bold text-red-600 mt-8 mb-2 border-b-2 border-red-300 pb-1';
-                    duplicateHeader.textContent = "Comprobantes Duplicados (Mismo Nº Comprobante)";
-                    dataList.appendChild(duplicateHeader);
+                } else if (isAnyException && !isExceptionGroupDisplayed) {
+                    isExceptionGroupDisplayed = true;
+                    const exceptionHeader = document.createElement('h3');
+                    exceptionHeader.className = 'text-lg font-bold text-red-600 mt-8 mb-2 border-b-2 border-red-300 pb-1';
+                    exceptionHeader.textContent = "Excepciones Detectadas (Duplicados y/o Fecha Diferente)";
+                    dataList.appendChild(exceptionHeader);
                 }
                 
                 // Contenedor principal de la tarjeta de archivo
                 const fileCard = document.createElement('div');
-                // Usa clases diferentes si es duplicado
-                fileCard.className = `p-4 rounded-lg shadow-xl border ${isDuplicate ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200'}`;
+                fileCard.className = `p-4 rounded-lg shadow-xl border ${cardClasses}`;
 
                 // Encabezado y Checkbox para toda la fila
                 const headerDiv = document.createElement('div');
@@ -466,16 +570,24 @@
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.id = `file-entry-${index}`;
-                checkbox.checked = false; // Chulos de resultados desactivados por defecto
+                checkbox.checked = !isAnyException; // Marcar únicos/normales por defecto
                 checkbox.className = 'w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer result-select-item';
                 checkbox.setAttribute('data-index', index); // Index corresponde a la posición en el array ORDENADO
 
                 const label = document.createElement('label');
                 label.htmlFor = `file-entry-${index}`;
-                // Agrega el indicador de duplicado
-                const duplicateIndicator = isDuplicate ? `<span class="text-xs font-semibold text-red-600 mr-2">(DUPLICADO)</span>` : '';
+                
+                // Indicadores de Excepción
+                let indicators = '';
+                if (isDuplicate) {
+                    indicators += `<span class="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded mr-2">DUPLICADO</span>`;
+                }
+                if (isDateException) {
+                    indicators += `<span class="text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-0.5 rounded mr-2">FECHA APARTE</span>`;
+                }
+
                 label.className = 'ml-3 flex-1 text-base font-bold text-gray-700 cursor-pointer truncate';
-                label.innerHTML = `${duplicateIndicator} Archivo: ${fileName}`;
+                label.innerHTML = `${indicators} Archivo: ${fileName}`;
                 
                 headerDiv.appendChild(checkbox);
                 headerDiv.appendChild(label);
@@ -486,7 +598,6 @@
                 contentDiv.className = 'space-y-1 text-sm';
                 
                 Object.keys(data).forEach(key => {
-                    // Usamos la metadata global para obtener la etiqueta
                     const labelText = FIELD_METADATA[key] ? FIELD_METADATA[key].label : key; 
                     let value = data[key];
 
@@ -501,6 +612,38 @@
                 });
 
                 fileCard.appendChild(contentDiv);
+                
+                // --- CAMPO DE ENTRADA DE FECHA DE OBSERVACIÓN (SOLO SI ES EXCEPCIÓN DE FECHA) ---
+                if (isDateException) {
+                    const manualDateDiv = document.createElement('div');
+                    manualDateDiv.className = 'mt-4 pt-3 border-t border-yellow-200 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4';
+                    
+                    const dateLabel = document.createElement('label');
+                    dateLabel.htmlFor = `obs-date-${index}`;
+                    dateLabel.className = 'font-bold text-sm text-yellow-800 flex-shrink-0';
+                    dateLabel.textContent = 'Fecha de Observación (Manual):';
+                    
+                    const dateInput = document.createElement('input');
+                    dateInput.type = 'date'; // Usar input type="date" para formato YYYY-MM-DD
+                    dateInput.id = `obs-date-${index}`;
+                    dateInput.className = 'p-2 border border-yellow-500 bg-yellow-50 rounded-md shadow-sm text-sm w-full sm:w-auto';
+                    
+                    // Si ya teníamos una fecha guardada (por re-renderizado), la cargamos
+                    if (entry.observation_date) {
+                        dateInput.value = entry.observation_date; 
+                    }
+                    
+                    dateInput.addEventListener('change', (e) => {
+                        // Guardar la fecha en formato YYYY-MM-DD (estándar de input type="date")
+                        entry.observation_date = e.target.value; 
+                    });
+
+                    manualDateDiv.appendChild(dateLabel);
+                    manualDateDiv.appendChild(dateInput);
+                    fileCard.appendChild(manualDateDiv);
+                }
+                // --------------------------------------------------------------------------------
+
                 dataList.appendChild(fileCard);
             });
 
@@ -565,7 +708,8 @@
             const files = Array.from(imageUpload.files);
             if (files.length === 0) return;
             const selectedFields = getSelectedFields();
-            
+            const totalFilesCount = files.length; // Total de archivos subidos
+
             // Validación de campos seleccionados
             if (selectedFields.length === 0) {
                 infoMessage.textContent = "ERROR: Por favor, selecciona al menos un campo a extraer.";
@@ -579,8 +723,8 @@
             }
 
             // Validación de API Key antes de empezar
-            if (apiKey === "") {
-                errorArea.innerHTML = '<strong>ERROR FATAL:</strong> La clave API de Gemini no está configurada. Por favor, edita la variable `apiKey` en el código (línea 105 aprox.) con tu clave.';
+            if (apiKey !== "") {
+                errorArea.innerHTML = '<strong>ERROR FATAL:</strong> La clave API de Gemini no está configurada correctamente. Por favor, asegúrate de que la variable `apiKey` esté vacía (`""`) en el código.';
                 errorArea.classList.remove('hidden');
                 setUIState(false, true, false);
                 return;
@@ -600,10 +744,13 @@
                 try {
                     const data = await processSingleImage(file);
                     
-                    // Almacenar el resultado exitoso
+                    // Almacenar el resultado exitoso e inicializar banderas/campos
                     allExtractedData.push({
                         fileName: file.name,
-                        data: data
+                        data: data,
+                        isDuplicate: false, // Inicializado
+                        isDateException: false, // Inicializado
+                        observation_date: '' // Inicializado
                     });
                     successCount++;
 
@@ -616,41 +763,45 @@
                     errorArea.classList.remove('hidden');
                 }
             }
-
-            // --- LÓGICA DE DETECCIÓN Y SEPARACIÓN DE DUPLICADOS ---
-            const CHECK_FIELD_KEY = 'receipt_number';
-            const isDuplicationCheckPossible = selectedFields.includes(CHECK_FIELD_KEY);
+            
             let duplicationWarning = "";
+            let dateLogicResult = { majorityDate: null, nonMajorityCount: 0, majorityCount: 0, totalExtracted: 0 };
 
-            if (isDuplicationCheckPossible) {
-                const receiptNumbers = new Set();
+            if (successCount > 0) {
                 
-                // 1. Marcar duplicados en allExtractedData
-                allExtractedData.forEach(entry => {
-                    const receiptNumber = entry.data[CHECK_FIELD_KEY];
-                    
-                    if (receiptNumber && receiptNumbers.has(receiptNumber)) {
-                        entry.isDuplicate = true;
-                    } else if (receiptNumber) {
-                        receiptNumbers.add(receiptNumber);
-                        entry.isDuplicate = false; 
-                    } else {
-                        // Si no se extrajo el valor, no se puede verificar duplicidad (se trata como único)
-                        entry.isDuplicate = false; 
-                    }
-                });
-                
-            } else {
-                // Si el campo clave no fue seleccionado
-                duplicationWarning = " (ADVERTENCIA: No se verificó duplicidad porque el 'Nº Comprobante' no fue seleccionado).";
-                allExtractedData.forEach(entry => entry.isDuplicate = false); 
+                // --- LÓGICA DE DETECCIÓN DE DUPLICADOS (Nº Comprobante) ---
+                const CHECK_FIELD_KEY_DUP = 'receipt_number';
+                const isDuplicationCheckPossible = selectedFields.includes(CHECK_FIELD_KEY_DUP);
+
+                if (isDuplicationCheckPossible) {
+                    const receiptNumbers = new Set();
+                    // Primero identificar duplicados
+                    allExtractedData.forEach(entry => {
+                        const receiptNumber = entry.data[CHECK_FIELD_KEY_DUP];
+                        if (receiptNumber && receiptNumbers.has(receiptNumber)) {
+                            entry.isDuplicate = true;
+                        } else if (receiptNumber) {
+                            receiptNumbers.add(receiptNumber);
+                        }
+                    });
+                } else {
+                    duplicationWarning = " (ADVERTENCIA: No se verificó duplicidad porque el 'Nº Comprobante' no fue seleccionado).";
+                }
+                // --- FIN LÓGICA DE DUPLICADOS ---
+
+                // --- LÓGICA DE DETECCIÓN DE CONSISTENCIA POR FECHA (BASADA EN CONTEO) ---
+                if (selectedFields.includes('date')) {
+                    // Solo enviamos los archivos que se extrajeron exitosamente
+                    dateLogicResult = detectMajorityDateAndExceptions(allExtractedData);
+                }
+                // --- FIN LÓGICA DE FECHA ---
             }
-            // --- FIN LÓGICA DE DUPLICADOS ---
+
 
             if (successCount === 0) {
                 setUIState(false, true, false); 
             } else {
-                displayResults(allExtractedData, duplicationWarning);
+                displayResults(allExtractedData, duplicationWarning, dateLogicResult);
             }
             // Asegurarse de quitar el estado de carga después de todo.
             setUIState(false, errorOccurred, allExtractedData.length > 0);
@@ -668,6 +819,9 @@
 
             // OBTENER LOS CAMPOS SELECCIONADOS EN EL ORDEN CORRECTO
             const selectedFields = getSelectedFields(); 
+            const hasDateSelected = selectedFields.includes('date');
+            const hasRecipientSelected = selectedFields.includes('recipient');
+
             if (selectedFields.length === 0) {
                 infoMessage.textContent = "ERROR: No hay campos seleccionados para exportar. Selecciona los campos en la sección 1.5.";
                 infoMessage.classList.remove('text-gray-500');
@@ -679,16 +833,27 @@
             }
 
 
-            // 1. Definir encabezados del CSV dinámicamente (Priorizar campos extraídos)
+            // 1. Definir encabezados del CSV dinámicamente
             const headers = [];
             
             // A. Campos extraídos (en el orden seleccionado por el usuario)
             selectedFields.forEach(key => {
                 headers.push(FIELD_METADATA[key].label);
+                // Si la clave es 'date' Y está seleccionada, añadimos el encabezado de observación justo después
+                if (key === 'date' && hasDateSelected) {
+                    headers.push("Fecha de Observación"); // Nueva columna solo si Fecha está seleccionada
+                }
             });
             
-            // B. Campos de metadatos (al final)
-            headers.push("Archivo", "Es Duplicado");
+            // B. Campo de Agrupación (CRÍTICO para la agrupación de Excel)
+            // Se añade el campo para agrupar/filtrar por Destinatario. Si no está seleccionado, se usa un valor por defecto.
+            const recipientLabel = FIELD_METADATA.recipient.label;
+            if (!hasRecipientSelected) {
+                 headers.push(recipientLabel); // Añadir siempre si no estaba para la agrupación
+            }
+
+            // C. Campos de metadatos (al final)
+            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
             
             // USAR CSV_DELIMITER (Punto y coma)
             let csv = headers.join(CSV_DELIMITER) + '\n';
@@ -696,10 +861,12 @@
             // 2. Iterar sobre las filas seleccionadas
             checkedCheckboxes.forEach(checkbox => {
                 const index = parseInt(checkbox.getAttribute('data-index'));
-                const entry = allExtractedData[index]; // Usa el índice en el array ORDENADO
+                // El allExtractedData está ordenado como se muestra, así que el índice es correcto
+                const entry = allExtractedData.find((_, i) => i === index); 
 
                 if (entry) {
                     const isDuplicateText = entry.isDuplicate ? "Sí" : "No";
+                    const isDateExceptionText = entry.isDateException ? "Sí" : "No";
 
                     const rowData = [];
                     
@@ -707,20 +874,45 @@
                     selectedFields.forEach(key => {
                         let value = entry.data[key] || ""; 
                         
-                        // *** FORMATO CRÍTICO DE FECHA PARA EXCEL ***
-                        if (key === 'date') {
-                            value = formatDateShort(value);
+                        // Procesamiento de Fecha
+                        if (key === 'date' && hasDateSelected) {
+                            // 1. Añadir la Fecha extraída (DD/MM/AAAA)
+                            value = formatDateShort(value); 
+                            rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
+                            
+                            // 2. Añadir la Fecha de Observación (Manual) justo después
+                            let obsDate = '';
+                            // Solo si fue excepción de fecha, habrá una fecha de observación potencial
+                            if (entry.isDateException) { 
+                                obsDate = entry.observation_date || '';
+                                if (obsDate) {
+                                    try {
+                                        // Convierte de YYYY-MM-DD (input date) a DD/MM/AAAA (CSV)
+                                        const [year, month, day] = obsDate.split('-');
+                                        obsDate = `${day}/${month}/${year}`;
+                                    } catch (e) {
+                                        console.error("Error al formatear fecha de observación:", e);
+                                    }
+                                }
+                            }
+                            rowData.push(`"${obsDate.replace(/"/g, '""')}"`); // Columna de Observación (vacía si no fue excepción o no se llenó)
+                        } else {
+                            // Para el resto de campos (incluyendo Destinatario si fue seleccionado)
+                            rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
                         }
-                        // *******************************************
-
-                        // Escapar comillas internas y envolver el valor
-                        rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
                     });
+                    
+                    // B. Campo de Agrupación (Destinatario) si NO FUE seleccionado originalmente
+                    if (!hasRecipientSelected) {
+                        const recipientValue = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
+                        rowData.push(`"${recipientValue.toString().replace(/"/g, '""')}"`);
+                    }
 
-                    // B. Datos de metadatos (al final)
+                    // C. Datos de metadatos (al final)
                     rowData.push(
                         `"${entry.fileName.replace(/"/g, '""')}"`, // Archivo
-                        `"${isDuplicateText}"`                      // Es Duplicado
+                        `"${isDuplicateText}"`,                      // Es Duplicado
+                        `"${isDateExceptionText}"`                  // Es Excepción de Fecha
                     );
 
                     // Agregar la fila al CSV
@@ -738,7 +930,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `comprobantes_extraidos_${Date.now()}.csv`;
+            a.download = `comprobantes_agrupados_por_destinatario_${Date.now()}.csv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
