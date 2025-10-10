@@ -7,6 +7,7 @@
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         /* Estilos generales para un aspecto limpio */
         body {
             font-family: 'Inter', sans-serif;
@@ -243,12 +244,28 @@
             return selected;
         }
 
-        // Convierte el archivo a una cadena Base64
+        /**
+         * Convierte el archivo a una cadena Base64 PURA (sin prefijo) para la API.
+         * @param {File} file El objeto File.
+         * @returns {Promise<string>} La cadena Base64.
+         */
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result.split(',')[1]); 
+                // ESTA ES LA CLAVE: extraer solo la parte después de la coma.
+                reader.onload = () => {
+                    try {
+                        const base64Data = reader.result.split(',')[1];
+                        if (base64Data) {
+                            resolve(base64Data);
+                        } else {
+                            reject(new Error("Error al obtener datos Base64. Formato de archivo inválido."));
+                        }
+                    } catch (e) {
+                         reject(new Error("Error de codificación Base64: " + e.message));
+                    }
+                };
                 reader.onerror = error => reject(error);
             });
         }
@@ -283,7 +300,15 @@
                     }
 
                     if (!response.ok) {
-                        throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
+                        const errorBody = await response.json().catch(() => ({}));
+                        const errorMessage = errorBody.error?.message || response.statusText;
+                        
+                        // Si es un error de Base64, dar un mensaje más claro
+                        if (errorMessage.includes("Unsupported content") || errorMessage.includes("Invalid content")) {
+                            throw new Error(`Error de contenido de imagen. Asegúrese de que el archivo es una imagen válida (JPEG, PNG). Detalle: ${errorMessage}`);
+                        }
+                        
+                        throw new Error(`Error en la API: ${response.status} - ${errorMessage}`);
                     }
                     
                     return response.json();
@@ -306,7 +331,8 @@
                 throw new Error("Debe seleccionar al menos un campo para extraer.");
             }
 
-            const base64Data = await fileToBase64(file);
+            // USAR fileToBase64 para obtener la Base64 PURA.
+            const base64Data = await fileToBase64(file); 
 
             // 1. Construcción dinámica de Prompts y Schema
             let promptList = [];
@@ -343,7 +369,8 @@
                             { text: userPrompt },
                             {
                                 inlineData: {
-                                    mimeType: file.type,
+                                    // USAR file.type AQUÍ (Tipo MIME del archivo original)
+                                    mimeType: file.type, 
                                     data: base64Data
                                 }
                             }
@@ -564,6 +591,10 @@
                 } catch (error) {
                     console.error(`Error al procesar ${file.name}:`, error);
                     errorOccurred = true;
+                    // Mostrar error en la interfaz sin detener el proceso
+                    const errorText = error.message || "Error desconocido.";
+                    errorArea.innerHTML = `Ocurrió un error al procesar "${file.name}": <span class="font-normal">${errorText}</span>. Revisa la consola para más detalles.`;
+                    errorArea.classList.remove('hidden');
                 }
             }
 
@@ -597,14 +628,13 @@
             }
             // --- FIN LÓGICA DE DUPLICADOS ---
 
-            if (errorOccurred && successCount === 0) {
+            if (successCount === 0) {
                 setUIState(false, true, false); 
             } else {
                 displayResults(allExtractedData, duplicationWarning);
-                if (errorOccurred) {
-                    infoMessage.textContent = `Extracción completada con errores en ${files.length - successCount} archivo(s). Revise la consola.`;
-                }
             }
+            // Asegurarse de quitar el estado de carga después de todo.
+            setUIState(false, errorOccurred, allExtractedData.length > 0);
         });
 
         // Lógica de descarga de datos seleccionados a CSV (Orden correcto y consistente)
