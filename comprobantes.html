@@ -121,7 +121,11 @@
         const selectAllFieldsCheckbox = document.getElementById('selectAllFields'); 
         const selectAllResultsCheckbox = document.getElementById('selectAllResults'); 
         
-        const apiKey = ""; 
+        // *****************************************************************************
+        // *** IMPORTANTE: PEGA AQUÍ TU CLAVE DE LA API DE GEMINI PARA QUE FUNCIONE ***
+        // *** EN GITHUB O CUALQUIER SITIO WEB EXTERNO.                            ***
+        // *****************************************************************************
+        const apiKey = "AIzaSyA9J-b9rH1CCMOKUmFxoI4n2B9fiY-RNv4"; // <--- ¡CLAVE API AÑADIDA!
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         // CONSTANTE CRÍTICA: Delimitador de punto y coma (;) para compatibilidad con Excel español.
@@ -284,6 +288,13 @@
          */
         async function fetchWithRetry(url, payload, maxRetries = 5) {
             let delay = 1000;
+            
+            // VERIFICACIÓN CLAVE
+            if (apiKey === "") {
+                throw new Error("ERROR FATAL: La clave API de Gemini no está configurada. Por favor, edita la variable 'apiKey' en el código.");
+            }
+
+
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, {
@@ -565,6 +576,14 @@
                  infoMessage.classList.remove('text-red-600', 'font-bold');
                  infoMessage.classList.add('text-gray-500');
                  infoMessage.textContent = "Procesando...";
+            }
+
+            // Validación de API Key antes de empezar
+            if (apiKey === "") {
+                errorArea.innerHTML = '<strong>ERROR FATAL:</strong> La clave API de Gemini no está configurada. Por favor, edita la variable `apiKey` en el código (línea 105 aprox.) con tu clave.';
+                errorArea.classList.remove('hidden');
+                setUIState(false, true, false);
+                return;
             }
 
             setUIState(true, false, false); 
