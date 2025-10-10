@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extractor Inteligente de Comprobantes (Múltiple)</title>
+    <title>Extractor Inteligente de Comprobantes (Libro XLSX)</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería JSZip para generar archivos ZIP (necesario para emular hojas de Excel) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Librería SheetJS (xlsx) para generar archivos de Excel de múltiples hojas -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.5/dist/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         /* Estilos generales para un aspecto limpio */
@@ -108,7 +108,7 @@
 
             <!-- SECCIÓN 3: Descarga -->
             <button id="downloadButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50 mt-6" disabled>
-                Descargar Datos Seleccionados (ZIP con CSVs Agrupados)
+                Descargar Libro de Excel (XLSX) Agrupado por Destinatario
             </button>
         </div>
         
@@ -137,9 +137,6 @@
         // *****************************************************************************
         const apiKey = ""; // Dejar vacío
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        // CONSTANTE CRÍTICA: Delimitador de punto y coma (;) para compatibilidad con Excel español.
-        const CSV_DELIMITER = ';'; 
 
         // allExtractedData ahora almacenará el resultado y las banderas de duplicado/excepción: 
         // {fileName, data, isDuplicate: boolean, isDateException: boolean, observation_date: string}
@@ -815,7 +812,7 @@
             setUIState(false, errorOccurred, allExtractedData.length > 0);
         });
 
-        // --- Lógica de Descarga de ZIP Agrupado por Destinatario ---
+        // --- Lógica de Descarga de Libro XLSX Agrupado por Destinatario ---
         downloadButton.addEventListener('click', () => {
             const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
             if (checkedCheckboxes.length === 0) {
@@ -839,28 +836,9 @@
                  infoMessage.classList.add('text-gray-500');
             }
             
-            // Función interna para generar la fila de datos y encabezados para un solo entry
-            const getHeadersAndRowData = (entry, selectedFields, hasDateSelected, hasRecipientSelected) => {
+            // Función interna para obtener la estructura de datos para SheetJS (Array of Arrays)
+            const getSheetDataRow = (entry, selectedFields, hasDateSelected, hasRecipientSelected) => {
                 
-                // --- Define Headers ---
-                const headers = [];
-                selectedFields.forEach(key => {
-                    headers.push(FIELD_METADATA[key].label);
-                    if (key === 'date' && hasDateSelected) {
-                        headers.push("Fecha de Observación"); 
-                    }
-                });
-                // El campo Destinatario es CRÍTICO para el agrupamiento, si no está en selectedFields, se añade
-                // al final del encabezado para que el usuario pueda filtrar en Excel.
-                if (!hasRecipientSelected) {
-                     headers.push(FIELD_METADATA.recipient.label); 
-                }
-                headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
-                
-                // --- Define Row Data ---
-                const isDuplicateText = entry.isDuplicate ? "Sí" : "No";
-                const isDateExceptionText = entry.isDateException ? "Sí" : "No";
-
                 const rowData = [];
                 
                 selectedFields.forEach(key => {
@@ -869,44 +847,57 @@
                     if (key === 'date' && hasDateSelected) {
                         // 1. Añadir la Fecha extraída (DD/MM/AAAA)
                         value = formatDateShort(value); 
-                        rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
+                        rowData.push(value); // Fecha extraída (formateada)
                         
                         // 2. Añadir la Fecha de Observación (Manual) justo después
                         let obsDate = '';
-                        if (entry.isDateException) { 
-                            obsDate = entry.observation_date || '';
-                            if (obsDate) {
-                                try {
-                                    // Convierte de YYYY-MM-DD (input date) a DD/MM/AAAA (CSV)
-                                    const [year, month, day] = obsDate.split('-');
-                                    obsDate = `${day}/${month}/${year}`;
-                                } catch (e) {
-                                    /* Ignorar error de formato de fecha */
-                                }
+                        if (entry.isDateException && entry.observation_date) { 
+                            // Convertir de YYYY-MM-DD (input date) a DD/MM/AAAA (para Excel)
+                            try {
+                                const [year, month, day] = entry.observation_date.split('-');
+                                obsDate = `${day}/${month}/${year}`;
+                            } catch (e) {
+                                obsDate = entry.observation_date; // Fallback
                             }
                         }
-                        rowData.push(`"${obsDate.replace(/"/g, '""')}"`); 
+                        rowData.push(obsDate); 
                     } else {
-                        // Para el resto de campos 
-                        rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
+                        // Para el resto de campos (solo el valor)
+                        rowData.push(value);
                     }
                 });
                 
                 // C. Campo de Agrupación (Destinatario) si NO FUE seleccionado originalmente
                 if (!hasRecipientSelected) {
-                    const recipientValue = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
-                    rowData.push(`"${recipientValue.toString().replace(/"/g, '""')}"`);
+                    rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
                 }
 
                 // D. Datos de metadatos (al final)
                 rowData.push(
-                    `"${entry.fileName.replace(/"/g, '""')}"`, 
-                    `"${isDuplicateText}"`,                      
-                    `"${isDateExceptionText}"`                  
+                    entry.fileName,
+                    entry.isDuplicate ? "Sí" : "No",                      
+                    entry.isDateException ? "Sí" : "No"                 
                 );
                 
-                return { headers, rowData };
+                return rowData;
             };
+
+            // Función para obtener los encabezados
+            const getSheetHeaders = (selectedFields, hasDateSelected, hasRecipientSelected) => {
+                const headers = [];
+                selectedFields.forEach(key => {
+                    headers.push(FIELD_METADATA[key].label);
+                    if (key === 'date' && hasDateSelected) {
+                        // CRÍTICO: Añadir encabezado para el campo de observación
+                        headers.push("Fecha de Observación"); 
+                    }
+                });
+                if (!hasRecipientSelected) {
+                     headers.push(FIELD_METADATA.recipient.label); 
+                }
+                headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
+                return headers;
+            }
 
 
             // 1. Obtener datos seleccionados
@@ -923,13 +914,15 @@
             const groups = selectedData.reduce((acc, entry) => {
                 // Usar el valor extraído o un valor por defecto
                 const recipientName = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
-                // Sanitizar el nombre para usarlo como nombre de archivo/hoja
-                const safeRecipientName = recipientName
+                // Sanitizar el nombre para usarlo como nombre de pestaña (max 31 chars, sin caracteres inválidos)
+                let safeRecipientName = recipientName
                     .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar tildes
-                    .replace(/[^a-zA-Z0-9\s_]/g, '') // Quitar caracteres especiales
+                    .replace(/[\\/?*[\]:]/g, '_') // Quitar caracteres inválidos para nombre de hoja de Excel
                     .trim().toUpperCase() 
-                    .replace(/\s+/g, '_') // Reemplazar espacios por guiones bajos
-                    .substring(0, 30) || 'SIN_NOMBRE'; // Limitar longitud
+                    .replace(/\s+/g, '_'); // Reemplazar espacios por guiones bajos
+                
+                // Limitar la longitud a 30 caracteres (Excel tiene un límite de 31)
+                safeRecipientName = safeRecipientName.substring(0, 30) || 'SIN_NOMBRE';
                 
                 if (!acc[safeRecipientName]) {
                     acc[safeRecipientName] = [];
@@ -938,56 +931,51 @@
                 return acc;
             }, {});
 
-            // 3. Generar CSV y ZIP
-            const zip = new JSZip();
-            const BOM = "\uFEFF"; // Byte Order Mark for Excel UTF-8 compatibility
+            // 3. Generar Libro de Excel (Workbook)
+            const workbook = XLSX.utils.book_new();
             let groupCount = 0;
 
             for (const safeRecipientName in groups) {
                 if (Object.hasOwnProperty.call(groups, safeRecipientName)) {
                     const recipientData = groups[safeRecipientName];
-                    let csvContent = "";
                     groupCount++;
 
-                    // Obtener la estructura de encabezados y datos
-                    const { headers } = getHeadersAndRowData(recipientData[0], selectedFields, hasDateSelected, hasRecipientSelected);
-                    csvContent += headers.join(CSV_DELIMITER) + '\n';
+                    // Prepara el array de arrays (AoA) para SheetJS
+                    const sheetData = [];
 
+                    // 1. Añadir Encabezados
+                    const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
+                    sheetData.push(headers);
+                    
+                    // 2. Añadir Filas de Datos
                     recipientData.forEach(entry => {
-                        const { rowData } = getHeadersAndRowData(entry, selectedFields, hasDateSelected, hasRecipientSelected);
-                        csvContent += rowData.join(CSV_DELIMITER) + '\n';
+                        const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
+                        sheetData.push(rowData);
                     });
 
-                    const finalCsv = BOM + csvContent;
-                    // Añadir el archivo al ZIP. Usar el nombre del destinatario sanitizado.
-                    zip.file(`${safeRecipientName}.csv`, finalCsv);
+                    // 3. Crear Worksheet a partir del array de arrays
+                    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                    
+                    // 4. Añadir Worksheet al Workbook
+                    XLSX.utils.book_append_sheet(workbook, worksheet, safeRecipientName);
                 }
             }
 
-            // 4. Generar el ZIP y descargar
+            // 4. Escribir el Workbook y descargar
             if (groupCount > 0) {
-                // Mostrar mensaje de carga mientras se genera el zip
-                infoMessage.textContent = `Generando ZIP con ${groupCount} grupo(s)... Esto puede tardar unos segundos.`;
+                infoMessage.textContent = `Generando libro de Excel con ${groupCount} hoja(s)...`;
                 
-                zip.generateAsync({ type: "blob" })
-                    .then(function (content) {
-                        const fileName = `comprobantes_agrupados_${Date.now()}.zip`;
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(content);
-                        a.download = fileName;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(a.href);
-                        infoMessage.textContent = `¡Descarga de ${groupCount} archivo(s) CSV en formato ZIP completada! (Un CSV por Destinatario)`;
-                    })
-                    .catch(error => {
-                        console.error("Error al generar el archivo ZIP:", error);
-                        infoMessage.textContent = "ERROR al generar el archivo ZIP. Ver consola.";
-                        infoMessage.classList.add('text-red-600', 'font-bold');
-                    });
+                try {
+                    // Esta función maneja la conversión a XLSX y la descarga automáticamente
+                    XLSX.writeFile(workbook, `comprobantes_agrupados_${Date.now()}.xlsx`);
+                    infoMessage.textContent = `¡Descarga del libro de Excel (.xlsx) con ${groupCount} hojas (una por destinatario) completada!`;
+                } catch (error) {
+                    console.error("Error al generar el archivo XLSX:", error);
+                    infoMessage.textContent = "ERROR al generar el archivo XLSX. Ver consola.";
+                    infoMessage.classList.add('text-red-600', 'font-bold');
+                }
             } else {
-                infoMessage.textContent = "ERROR: No hay datos seleccionados para generar el ZIP.";
+                infoMessage.textContent = "ERROR: No hay datos seleccionados para generar el libro XLSX.";
                 infoMessage.classList.add('text-red-600', 'font-bold');
             }
         });
