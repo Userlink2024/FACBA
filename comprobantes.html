@@ -6,6 +6,8 @@
     <title>Extractor Inteligente de Comprobantes (Múltiple)</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Librería JSZip para generar archivos ZIP (necesario para emular hojas de Excel) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         /* Estilos generales para un aspecto limpio */
@@ -86,22 +88,27 @@
         <div id="resultsArea" class="hidden space-y-4 bg-green-50 p-6 rounded-xl border-2 border-green-200">
             <h2 class="text-xl font-bold text-green-800 mb-4">2. Resultados Consolidados <span class="text-sm font-normal text-gray-600">(Selecciona qué filas exportar)</span></h2>
             
-            <!-- Selector de todas las filas -->
-            <div class="flex items-center mb-4 pb-2 border-b border-green-300">
-                <input type="checkbox" id="selectAllResults" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer">
-                <label for="selectAllResults" class="ml-2 text-base font-bold text-green-800 cursor-pointer">
-                    Seleccionar/Deseleccionar Todas las Filas
-                </label>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 pb-2 border-b border-green-300">
+                <!-- Selector de todas las filas -->
+                <div class="flex items-center">
+                    <input type="checkbox" id="selectAllResults" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer result-select-master">
+                    <label for="selectAllResults" class="ml-2 text-base font-bold text-green-800 cursor-pointer">
+                        Seleccionar Todas
+                    </label>
+                </div>
+                <!-- Botón/Selector para Excepciones de Fecha -->
+                <button id="selectDateExceptionsButton" class="text-sm font-semibold py-1 px-3 rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200 transition duration-150 shadow-md">
+                    Seleccionar Solo Excepciones de Fecha
+                </button>
             </div>
-            <!-- Fin Selector de todas las filas -->
-
+            
             <div id="dataList" class="space-y-4">
                 <!-- Los resultados por archivo se insertarán aquí, separados por duplicados -->
             </div>
 
             <!-- SECCIÓN 3: Descarga -->
             <button id="downloadButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50 mt-6" disabled>
-                Descargar Datos Seleccionados (CSV para Excel)
+                Descargar Datos Seleccionados (ZIP con CSVs Agrupados)
             </button>
         </div>
         
@@ -123,11 +130,12 @@
         const fieldSelectionDiv = document.getElementById('fieldSelection'); 
         const selectAllFieldsCheckbox = document.getElementById('selectAllFields'); 
         const selectAllResultsCheckbox = document.getElementById('selectAllResults'); 
+        const selectDateExceptionsButton = document.getElementById('selectDateExceptionsButton');
         
         // *****************************************************************************
         // *** IMPORTANTE: CLAVE API INYECTADA *****************************************
         // *****************************************************************************
-        const apiKey = "AIzaSyA9J-b9rH1CCMOKUmFxoI4n2B9fiY-RNv4"; 
+        const apiKey = ""; // Dejar vacío
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         // CONSTANTE CRÍTICA: Delimitador de punto y coma (;) para compatibilidad con Excel español.
@@ -474,9 +482,6 @@
 
         /**
          * Dibuja los resultados extraídos en la interfaz, incluyendo la separación de duplicados y excepciones de fecha.
-         * @param {Array<Object>} dataArray - Array de resultados con las banderas agregadas.
-         * @param {string} duplicationWarning - Mensaje de advertencia si no se pudo verificar la duplicidad.
-         * @param {Object} dateLogicResult - Resultado de la detección de mayoría de fecha.
          */
         function displayResults(dataArray, duplicationWarning = "", dateLogicResult) {
             dataList.innerHTML = ''; 
@@ -502,10 +507,6 @@
             if (!isDateSelected) {
                  dateInfoText = " (ADVERTENCIA: Detección de consistencia de fecha desactivada, no se seleccionó el campo 'Fecha').";
             } else if (dateLogicResult.totalExtracted > 0) {
-                // Nuevo mensaje basado en CONTEO
-                const totalNonExtracted = totalFiles - extractedFiles;
-                const totalExceptions = dateLogicResult.nonMajorityCount + (totalFiles - dataArray.length); // Fallas totales + excepciones de fecha
-                
                 // NOTA: dateLogicResult.nonMajorityCount ya incluye fallas de parseo de fecha y las que no coinciden.
                 dateInfoText = ` (Fecha Mayoritaria: ${dateLogicResult.majorityDate}, encontrada en ${dateLogicResult.majorityCount} de ${extractedFiles} extracciones. Total de excepciones/fallas de fecha: ${dateLogicResult.nonMajorityCount}).`;
 
@@ -675,6 +676,27 @@
             });
             updateDownloadButtonState(); // Actualizar el estado del botón de descarga
         });
+        
+        // Seleccionar solo las excepciones de fecha
+        selectDateExceptionsButton.addEventListener('click', () => {
+            // Deseleccionar todo primero
+            dataList.querySelectorAll('input[type="checkbox"].result-select-item').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            // Iterar sobre los datos internos (que ya están ordenados y tienen las banderas)
+            allExtractedData.forEach((entry, index) => {
+                if (entry.isDateException) {
+                    // Buscar el checkbox correspondiente por índice
+                    // Nota: Usamos `data-index` que corresponde a la posición en allExtractedData
+                    const checkbox = document.querySelector(`input[type="checkbox"].result-select-item[data-index="${index}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                }
+            });
+            updateDownloadButtonState();
+        });
 
 
         // Listener para los chulos individuales de campos
@@ -793,7 +815,7 @@
             setUIState(false, errorOccurred, allExtractedData.length > 0);
         });
 
-        // Lógica de descarga de datos seleccionados a CSV (Orden correcto y consistente)
+        // --- Lógica de Descarga de ZIP Agrupado por Destinatario ---
         downloadButton.addEventListener('click', () => {
             const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
             if (checkedCheckboxes.length === 0) {
@@ -803,7 +825,6 @@
                 return;
             }
 
-            // OBTENER LOS CAMPOS SELECCIONADOS EN EL ORDEN CORRECTO
             const selectedFields = getSelectedFields(); 
             const hasDateSelected = selectedFields.includes('date');
             const hasRecipientSelected = selectedFields.includes('recipient');
@@ -817,111 +838,158 @@
                  infoMessage.classList.remove('text-red-600', 'font-bold');
                  infoMessage.classList.add('text-gray-500');
             }
-
-
-            // 1. Definir encabezados del CSV dinámicamente
-            const headers = [];
             
-            // A. Campos extraídos (en el orden seleccionado por el usuario)
-            selectedFields.forEach(key => {
-                headers.push(FIELD_METADATA[key].label);
-                // Si la clave es 'date' Y está seleccionada, añadimos el encabezado de observación justo después
-                if (key === 'date' && hasDateSelected) {
-                    headers.push("Fecha de Observación"); // Nueva columna solo si Fecha está seleccionada
+            // Función interna para generar la fila de datos y encabezados para un solo entry
+            const getHeadersAndRowData = (entry, selectedFields, hasDateSelected, hasRecipientSelected) => {
+                
+                // --- Define Headers ---
+                const headers = [];
+                selectedFields.forEach(key => {
+                    headers.push(FIELD_METADATA[key].label);
+                    if (key === 'date' && hasDateSelected) {
+                        headers.push("Fecha de Observación"); 
+                    }
+                });
+                // El campo Destinatario es CRÍTICO para el agrupamiento, si no está en selectedFields, se añade
+                // al final del encabezado para que el usuario pueda filtrar en Excel.
+                if (!hasRecipientSelected) {
+                     headers.push(FIELD_METADATA.recipient.label); 
                 }
-            });
-            
-            // B. Campo de Agrupación (CRÍTICO para la agrupación de Excel)
-            // Se añade el campo Nombre del Destinatario (recipient) para que el usuario pueda filtrar.
-            const recipientLabel = FIELD_METADATA.recipient.label;
-            // Solo se añade si no estaba ya seleccionado por el usuario
-            if (!hasRecipientSelected) {
-                 headers.push(recipientLabel); 
-            }
+                headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
+                
+                // --- Define Row Data ---
+                const isDuplicateText = entry.isDuplicate ? "Sí" : "No";
+                const isDateExceptionText = entry.isDateException ? "Sí" : "No";
 
-            // C. Campos de metadatos (al final)
-            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
-            
-            // USAR CSV_DELIMITER (Punto y coma)
-            let csv = headers.join(CSV_DELIMITER) + '\n';
-
-            // 2. Iterar sobre las filas seleccionadas
-            checkedCheckboxes.forEach(checkbox => {
-                const index = parseInt(checkbox.getAttribute('data-index'));
-                // El allExtractedData está ordenado como se muestra, así que el índice es correcto
-                const entry = allExtractedData.find((_, i) => i === index); 
-
-                if (entry) {
-                    const isDuplicateText = entry.isDuplicate ? "Sí" : "No";
-                    const isDateExceptionText = entry.isDateException ? "Sí" : "No";
-
-                    const rowData = [];
+                const rowData = [];
+                
+                selectedFields.forEach(key => {
+                    let value = entry.data[key] || ""; 
                     
-                    // A. Datos extraídos (Asegura el orden usando selectedFields)
-                    selectedFields.forEach(key => {
-                        let value = entry.data[key] || ""; 
+                    if (key === 'date' && hasDateSelected) {
+                        // 1. Añadir la Fecha extraída (DD/MM/AAAA)
+                        value = formatDateShort(value); 
+                        rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
                         
-                        // Procesamiento de Fecha
-                        if (key === 'date' && hasDateSelected) {
-                            // 1. Añadir la Fecha extraída (DD/MM/AAAA)
-                            value = formatDateShort(value); 
-                            rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
-                            
-                            // 2. Añadir la Fecha de Observación (Manual) justo después
-                            let obsDate = '';
-                            // Solo si fue excepción de fecha, habrá una fecha de observación potencial
-                            if (entry.isDateException) { 
-                                obsDate = entry.observation_date || '';
-                                if (obsDate) {
-                                    try {
-                                        // Convierte de YYYY-MM-DD (input date) a DD/MM/AAAA (CSV)
-                                        const [year, month, day] = obsDate.split('-');
-                                        obsDate = `${day}/${month}/${year}`;
-                                    } catch (e) {
-                                        console.error("Error al formatear fecha de observación:", e);
-                                    }
+                        // 2. Añadir la Fecha de Observación (Manual) justo después
+                        let obsDate = '';
+                        if (entry.isDateException) { 
+                            obsDate = entry.observation_date || '';
+                            if (obsDate) {
+                                try {
+                                    // Convierte de YYYY-MM-DD (input date) a DD/MM/AAAA (CSV)
+                                    const [year, month, day] = obsDate.split('-');
+                                    obsDate = `${day}/${month}/${year}`;
+                                } catch (e) {
+                                    /* Ignorar error de formato de fecha */
                                 }
                             }
-                            rowData.push(`"${obsDate.replace(/"/g, '""')}"`); // Columna de Observación (vacía si no fue excepción o no se llenó)
-                        } else {
-                            // Para el resto de campos (incluyendo Destinatario si fue seleccionado)
-                            rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
                         }
-                    });
-                    
-                    // B. Campo de Agrupación (Destinatario) si NO FUE seleccionado originalmente
-                    if (!hasRecipientSelected) {
-                        const recipientValue = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
-                        rowData.push(`"${recipientValue.toString().replace(/"/g, '""')}"`);
+                        rowData.push(`"${obsDate.replace(/"/g, '""')}"`); 
+                    } else {
+                        // Para el resto de campos 
+                        rowData.push(`"${value.toString().replace(/"/g, '""')}"`);
                     }
+                });
+                
+                // C. Campo de Agrupación (Destinatario) si NO FUE seleccionado originalmente
+                if (!hasRecipientSelected) {
+                    const recipientValue = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
+                    rowData.push(`"${recipientValue.toString().replace(/"/g, '""')}"`);
+                }
 
-                    // C. Datos de metadatos (al final)
-                    rowData.push(
-                        `"${entry.fileName.replace(/"/g, '""')}"`, // Archivo
-                        `"${isDuplicateText}"`,                      // Es Duplicado
-                        `"${isDateExceptionText}"`                  // Es Excepción de Fecha
-                    );
+                // D. Datos de metadatos (al final)
+                rowData.push(
+                    `"${entry.fileName.replace(/"/g, '""')}"`, 
+                    `"${isDuplicateText}"`,                      
+                    `"${isDateExceptionText}"`                  
+                );
+                
+                return { headers, rowData };
+            };
 
-                    // Agregar la fila al CSV
-                    // USAR CSV_DELIMITER (Punto y coma)
-                    csv += rowData.join(CSV_DELIMITER) + '\n';
+
+            // 1. Obtener datos seleccionados
+            const selectedData = [];
+            checkedCheckboxes.forEach(checkbox => {
+                const index = parseInt(checkbox.getAttribute('data-index'));
+                const entry = allExtractedData.find((_, i) => i === index);
+                if (entry) {
+                    selectedData.push(entry);
                 }
             });
+            
+            // 2. Agrupar por destinatario
+            const groups = selectedData.reduce((acc, entry) => {
+                // Usar el valor extraído o un valor por defecto
+                const recipientName = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
+                // Sanitizar el nombre para usarlo como nombre de archivo/hoja
+                const safeRecipientName = recipientName
+                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar tildes
+                    .replace(/[^a-zA-Z0-9\s_]/g, '') // Quitar caracteres especiales
+                    .trim().toUpperCase() 
+                    .replace(/\s+/g, '_') // Reemplazar espacios por guiones bajos
+                    .substring(0, 30) || 'SIN_NOMBRE'; // Limitar longitud
+                
+                if (!acc[safeRecipientName]) {
+                    acc[safeRecipientName] = [];
+                }
+                acc[safeRecipientName].push(entry);
+                return acc;
+            }, {});
 
-            // 3. Descargar el archivo
-            // Se añade el BOM (Byte Order Mark) para que Excel reconozca correctamente los caracteres especiales (ñ, tildes) y el delimitador.
-            const BOM = "\uFEFF"; 
-            const finalCsv = BOM + csv;
+            // 3. Generar CSV y ZIP
+            const zip = new JSZip();
+            const BOM = "\uFEFF"; // Byte Order Mark for Excel UTF-8 compatibility
+            let groupCount = 0;
 
-            const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `comprobantes_agrupados_por_destinatario_${Date.now()}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            for (const safeRecipientName in groups) {
+                if (Object.hasOwnProperty.call(groups, safeRecipientName)) {
+                    const recipientData = groups[safeRecipientName];
+                    let csvContent = "";
+                    groupCount++;
+
+                    // Obtener la estructura de encabezados y datos
+                    const { headers } = getHeadersAndRowData(recipientData[0], selectedFields, hasDateSelected, hasRecipientSelected);
+                    csvContent += headers.join(CSV_DELIMITER) + '\n';
+
+                    recipientData.forEach(entry => {
+                        const { rowData } = getHeadersAndRowData(entry, selectedFields, hasDateSelected, hasRecipientSelected);
+                        csvContent += rowData.join(CSV_DELIMITER) + '\n';
+                    });
+
+                    const finalCsv = BOM + csvContent;
+                    // Añadir el archivo al ZIP. Usar el nombre del destinatario sanitizado.
+                    zip.file(`${safeRecipientName}.csv`, finalCsv);
+                }
+            }
+
+            // 4. Generar el ZIP y descargar
+            if (groupCount > 0) {
+                // Mostrar mensaje de carga mientras se genera el zip
+                infoMessage.textContent = `Generando ZIP con ${groupCount} grupo(s)... Esto puede tardar unos segundos.`;
+                
+                zip.generateAsync({ type: "blob" })
+                    .then(function (content) {
+                        const fileName = `comprobantes_agrupados_${Date.now()}.zip`;
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(content);
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(a.href);
+                        infoMessage.textContent = `¡Descarga de ${groupCount} archivo(s) CSV en formato ZIP completada! (Un CSV por Destinatario)`;
+                    })
+                    .catch(error => {
+                        console.error("Error al generar el archivo ZIP:", error);
+                        infoMessage.textContent = "ERROR al generar el archivo ZIP. Ver consola.";
+                        infoMessage.classList.add('text-red-600', 'font-bold');
+                    });
+            } else {
+                infoMessage.textContent = "ERROR: No hay datos seleccionados para generar el ZIP.";
+                infoMessage.classList.add('text-red-600', 'font-bold');
+            }
         });
 
     </script>
