@@ -181,7 +181,14 @@
         let auth = null;
         let userId = 'anon';
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // ** MODIFICACIÓN CLAVE: Manejo de la configuración de Firebase. **
+        // Si la configuración no existe (ejecutando desde GitHub), se usa un objeto simulado 
+        // para que la inicialización no falle, permitiendo que la app principal funcione.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: 'MOCK_KEY_FOR_STANDALONE' }; 
+            
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         // Estado del sistema
@@ -225,9 +232,12 @@
 
         // --- INICIALIZACIÓN DE FIREBASE ---
         async function initFirebase() {
-            if (!firebaseConfig) {
-                console.error("Firebase config is missing.");
-                infoMessage.textContent = "Error: Configuración de Firebase no disponible.";
+            // ** VERIFICACIÓN DE CONFIGURACIÓN MODIFICADA **
+            if (firebaseConfig.apiKey === 'MOCK_KEY_FOR_STANDALONE') {
+                console.warn("ADVERTENCIA: Configuración de Firebase no detectada. La caché de Firestore está DESACTIVADA, pero la extracción con Gemini funcionará.");
+                isAuthReady = true;
+                infoMessage.textContent = "Sistema de Extracción listo (Caché desactivada).";
+                processButton.disabled = imageUpload.files.length === 0;
                 return;
             }
 
@@ -245,12 +255,12 @@
                 userId = auth.currentUser?.uid || crypto.randomUUID();
                 isAuthReady = true;
                 console.log("Firebase y autenticación inicializados. User ID:", userId);
-                infoMessage.textContent = "Sistema listo para recibir archivos.";
+                infoMessage.textContent = "Sistema listo para recibir archivos y CACHÉ ACTIVADA.";
                 processButton.disabled = imageUpload.files.length === 0;
 
             } catch (error) {
                 console.error("Error al inicializar o autenticar Firebase:", error);
-                infoMessage.textContent = "Error de conexión con la base de datos.";
+                infoMessage.textContent = "Error de conexión con la base de datos. Caché desactivada.";
             }
         }
         
@@ -299,7 +309,7 @@
          * @returns {Promise<Object|null>} El objeto de datos extraídos o null.
          */
         async function getCachedExtraction(hash) {
-            if (!isAuthReady || !db) return null;
+            if (!isAuthReady || !db) return null; // Si Firebase no está listo o db es null (fuera de Canvas), salimos
             try {
                 const docRef = getCacheDocRef(hash);
                 const docSnap = await window.firebase.getDoc(docRef);
@@ -323,7 +333,7 @@
          * @param {Object} data Los datos JSON extraídos por la IA.
          */
         async function saveExtractionToCache(hash, data) {
-            if (!isAuthReady || !db) return;
+            if (!isAuthReady || !db) return; // Si Firebase no está listo o db es null (fuera de Canvas), salimos
             try {
                 const docRef = getCacheDocRef(hash);
                 await window.firebase.setDoc(docRef, {
@@ -438,7 +448,8 @@
         // Muestra u oculta elementos de la interfaz
         function setUIState(isLoading, isError, resultsVisible) {
             loadingArea.classList.toggle('hidden', !isLoading);
-            processButton.disabled = isLoading || imageUpload.files.length === 0 || !isAuthReady;
+            // El botón ya no depende de isAuthReady porque la inicialización tiene fallback
+            processButton.disabled = isLoading || imageUpload.files.length === 0; 
             errorArea.classList.toggle('hidden', !isError);
             resultsArea.classList.toggle('hidden', !resultsVisible);
             
@@ -496,7 +507,7 @@
                 return { data: cachedData, isCached: true };
             }
 
-            // Si falla la caché, llamar a la API
+            // Si falla la caché o no está disponible, llamar a la API
             const selectedFields = getSelectedFields();
             const base64Data = await fileToBase64(file); 
 
@@ -561,8 +572,10 @@
             
             const extractedData = JSON.parse(jsonText);
             
-            // GUARDAR en caché si la extracción fue exitosa
-            await saveExtractionToCache(hash, extractedData);
+            // GUARDAR en caché si la extracción fue exitosa Y la BD está activa
+            if (db) {
+                await saveExtractionToCache(hash, extractedData);
+            }
 
             return { data: extractedData, isCached: false };
         }
@@ -918,6 +931,7 @@
                 }
             });
             
+            // Si el destinatario no se seleccionó, se añade aquí para poder agrupar.
             if (!hasRecipientSelected) {
                 rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
             }
@@ -1036,6 +1050,7 @@
                     
                     recipientData.forEach(entry => {
                         const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
+                        rowData.push(entry.data.recipient); // Añadir el destinatario a la fila (aunque ya esté agrupado)
                         sheetData.push(rowData);
                     });
 
@@ -1142,7 +1157,8 @@
         imageUpload.addEventListener('change', () => {
             const fileCount = imageUpload.files.length;
             fileCountSpan.textContent = fileCount;
-            processButton.disabled = fileCount === 0 || !isAuthReady;
+            // Solo depende de isAuthReady si el proceso de inicialización no ha terminado
+            processButton.disabled = fileCount === 0 || !isAuthReady; 
             
             setUIState(false, false, false);
             errorArea.classList.add('hidden');
@@ -1154,7 +1170,14 @@
         // Lógica principal de extracción al hacer clic en el botón
         processButton.addEventListener('click', async () => {
             const files = Array.from(imageUpload.files);
-            if (files.length === 0 || !isAuthReady) return;
+            // El check de !isAuthReady es más importante al inicio del proceso para detenerlo si falla.
+            if (files.length === 0 || !isAuthReady) {
+                 infoMessage.textContent = "Error: El sistema no está inicializado (Base de datos desconectada) o no hay archivos.";
+                 infoMessage.classList.remove('text-gray-500');
+                 infoMessage.classList.add('text-red-600', 'font-bold');
+                 return;
+            }
+            
             const selectedFields = getSelectedFields();
             const totalFilesCount = files.length; 
 
