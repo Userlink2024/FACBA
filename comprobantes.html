@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Extractor Inteligente de Comprobantes (Libro XLSX)</title>
-    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería SheetJS (xlsx) para generar archivos de Excel de múltiples hojas -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.5/dist/xlsx.full.min.js"></script>
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -17,7 +14,6 @@
         // Variables globales para Firebase (accesibles desde el script principal)
         window.firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore, doc, getDoc, setDoc };
     </script>
-    <!-- Librería MD5 para generar hashes de las imágenes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -56,7 +52,6 @@
             Sistema de Extracción de Comprobantes (Múltiple)
         </h1>
 
-        <!-- SECCIÓN 1: Carga de Imagen -->
         <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
             <label for="imageUpload" class="block text-lg font-semibold text-blue-800 mb-2">
                 1. Adjuntar Comprobantes (Múltiples Archivos)
@@ -73,7 +68,6 @@
             </button>
         </div>
 
-        <!-- SECCIÓN 1.5: Selección de Campos -->
         <div class="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-200">
             <label class="block text-lg font-semibold text-indigo-800 mb-2">
                 1.5. Seleccionar Campos a Extraer
@@ -81,22 +75,17 @@
             <p class="text-sm text-indigo-600 mb-3 font-medium">
                 Nota: Los campos **Fecha** y **Nombre del Destinatario** son importantes para las reglas de consistencia y agrupación.
             </p>
-            <!-- Selector de todos los campos -->
             <div class="flex items-center mb-4 pb-2 border-b border-indigo-300">
                 <input type="checkbox" id="selectAllFields" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                 <label for="selectAllFields" class="ml-2 text-sm font-bold text-indigo-900 cursor-pointer">
                     Seleccionar/Deseleccionar Todos los Campos
                 </label>
             </div>
-            <!-- Fin Selector de todos los campos -->
-
             <div id="fieldSelection" class="flex flex-wrap gap-4">
-                <!-- Los checkboxes se insertan aquí por JavaScript -->
-            </div>
+                </div>
         </div>
 
 
-        <!-- SECCIÓN DE CARGA Y ERRORES -->
         <div id="loadingArea" class="hidden text-center p-4 bg-yellow-100 rounded-lg">
             <div class="flex items-center justify-center space-x-2">
                 <div class="spinner border-4 border-t-4 border-gray-200 h-6 w-6 rounded-full"></div>
@@ -107,31 +96,25 @@
             Ocurrió un error. Por favor, revisa la consola para más detalles.
         </div>
         
-        <!-- SECCIÓN 2: Resultados y Selección -->
         <div id="resultsArea" class="hidden space-y-4 bg-green-50 p-6 rounded-xl border-2 border-green-200">
             <h2 class="text-xl font-bold text-green-800 mb-4">2. Resultados Consolidados <span class="text-sm font-normal text-gray-600">(Selecciona qué filas exportar)</span></h2>
             
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 pb-2 border-b border-green-300">
-                <!-- Selector de todas las filas -->
                 <div class="flex items-center">
                     <input type="checkbox" id="selectAllResults" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer result-select-master">
                     <label for="selectAllResults" class="ml-2 text-base font-bold text-green-800 cursor-pointer">
                         Seleccionar Todas
                     </label>
                 </div>
-                <!-- Botón/Selector para Excepciones de Fecha -->
                 <button id="selectDateExceptionsButton" class="text-sm font-semibold py-1 px-3 rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200 transition duration-150 shadow-md">
                     Seleccionar Solo Excepciones de Fecha
                 </button>
             </div>
             
             <div id="dataList" class="space-y-4">
-                <!-- Los resultados por archivo se insertarán aquí, separados por duplicados -->
-            </div>
+                </div>
 
-            <!-- SECCIÓN 3: Descarga con Menú Desplegable -->
             <div id="downloadButtonContainer" class="mt-6">
-                <!-- Menú desplegable, inicialmente oculto -->
                 <div id="downloadMenu" class="hidden bg-white rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 divide-y divide-gray-100">
                     <button id="downloadGrouped" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-green-100 transition duration-150 rounded-t-lg">
                         Descargar Agrupado por Destinatario (Múltiples Hojas)
@@ -141,7 +124,6 @@
                     </button>
                 </div>
                 
-                <!-- Botón principal que activa el menú -->
                 <button id="toggleDownloadMenuButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50" disabled>
                     Descargar Libro de Excel (XLSX)
                 </button>
@@ -194,7 +176,7 @@
         // Estado del sistema
         let isAuthReady = false;
 
-        // {fileName, data, isDuplicate: boolean, isDateException: boolean, observation_date: string, isCached: boolean}
+        // {fileName, file, hash, data, isDuplicate: boolean, isDateException: boolean, observation_date: string, isCached: boolean}
         let allExtractedData = []; 
         
         // Mapeo de meses en español (para la conversión de fecha)
@@ -260,6 +242,9 @@
 
             } catch (error) {
                 console.error("Error al inicializar o autenticar Firebase:", error);
+                // Si la BD falla, desactivamos la caché pero permitimos que Gemini funcione.
+                db = null; 
+                isAuthReady = true;
                 infoMessage.textContent = "Error de conexión con la base de datos. Caché desactivada.";
             }
         }
@@ -283,6 +268,7 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
+                        // Utiliza ArrayBuffer para el cálculo del hash, que es más rápido y estándar para archivos
                         const wordBuffer = CryptoJS.lib.WordArray.create(e.target.result);
                         const hash = CryptoJS.MD5(wordBuffer).toString();
                         resolve(hash);
@@ -309,7 +295,8 @@
          * @returns {Promise<Object|null>} El objeto de datos extraídos o null.
          */
         async function getCachedExtraction(hash) {
-            if (!isAuthReady || !db) return null; // Si Firebase no está listo o db es null (fuera de Canvas), salimos
+            // Solo intentamos buscar en la caché si el DB está inicializado y listo.
+            if (!db) return null; 
             try {
                 const docRef = getCacheDocRef(hash);
                 const docSnap = await window.firebase.getDoc(docRef);
@@ -333,7 +320,8 @@
          * @param {Object} data Los datos JSON extraídos por la IA.
          */
         async function saveExtractionToCache(hash, data) {
-            if (!isAuthReady || !db) return; // Si Firebase no está listo o db es null (fuera de Canvas), salimos
+            // Solo guardamos si el DB está inicializado y listo.
+            if (!db) return; 
             try {
                 const docRef = getCacheDocRef(hash);
                 await window.firebase.setDoc(docRef, {
@@ -498,9 +486,10 @@
 
         /**
          * Procesa una sola imagen usando la API (Si no está en caché)
+         * @param {Object} fileEntry - Objeto de datos del archivo con File y Hash
          */
-        async function processSingleImageWithCache(file) {
-            const hash = await calculateFileHash(file);
+        async function processSingleImageWithCache(fileEntry) {
+            const { file, hash } = fileEntry;
             let cachedData = await getCachedExtraction(hash);
             
             if (cachedData) {
@@ -583,27 +572,27 @@
         /**
          * Procesa un array de archivos en lotes concurrentes.
          */
-        async function processInBatches(files, concurrencyLimit) {
+        async function processInBatches(filesWithMetadata, concurrencyLimit) {
             let index = 0;
             let successfulResults = [];
             let errorOccurred = false;
-            const totalFiles = files.length;
+            const totalFiles = filesWithMetadata.length;
 
             const worker = async () => {
                 while (index < totalFiles) {
                     const fileIndex = index; 
-                    const file = files[fileIndex];
+                    const fileEntry = filesWithMetadata[fileIndex];
                     index++; 
                     const fileNumber = index; 
-                    const fileName = file.name;
+                    const fileName = fileEntry.fileName;
 
                     loadingMessage.textContent = `Analizando imagen ${fileNumber} de ${totalFiles}: ${fileName}...`;
 
                     try {
-                        const { data, isCached } = await processSingleImageWithCache(file);
+                        const { data, isCached } = await processSingleImageWithCache(fileEntry);
                         
                         successfulResults.push({
-                            fileName: fileName,
+                            ...fileEntry, // Mantener file, fileName y hash
                             data: data,
                             isDuplicate: false,
                             isDateException: false,
@@ -630,6 +619,7 @@
             };
 
             const workers = [];
+            // Ajustar el límite de concurrencia para evitar bloqueos por rate limit de la API, aunque Gemini maneja bien el backoff.
             for (let i = 0; i < concurrencyLimit; i++) {
                 workers.push(worker());
             }
@@ -932,15 +922,19 @@
             });
             
             // Si el destinatario no se seleccionó, se añade aquí para poder agrupar.
-            if (!hasRecipientSelected) {
+            if (!hasRecipientSelected && selectedFields.includes('recipient')) {
+                // Esto no debería ocurrir en el flujo normal, pero lo dejo por si acaso, aunque el campo
+                // 'recipient' solo debería aparecer si está en selectedFields.
                 rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
             }
 
+            // Información de Metadatos
             rowData.push(
                 entry.fileName,
                 entry.isDuplicate ? "Sí" : "No",                      
                 entry.isDateException ? "Sí" : "No",
-                entry.isCached ? "Sí" : "No"
+                entry.isCached ? "Sí" : "No",
+                entry.hash // <--- Añadir el hash del archivo
             );
             
             return rowData;
@@ -957,10 +951,9 @@
                     headers.push("Fecha de Observación"); 
                 }
             });
-            if (!hasRecipientSelected) {
-                 headers.push(FIELD_METADATA.recipient.label); 
-            }
-            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha", "Reutilizado (Caché)");
+            // Remover la lógica de hasRecipientSelected aquí, ya que solo se añaden los campos seleccionados.
+
+            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha", "Reutilizado (Caché)", "Hash MD5 del Archivo"); // <--- Añadir encabezado del Hash
             return headers;
         }
 
@@ -984,6 +977,8 @@
             const workbook = XLSX.utils.book_new();
             const sheetData = [];
 
+            // Nota: Aquí se usa el parámetro hasRecipientSelected en getSheetHeaders aunque
+            // ya no tiene efecto de añadir un campo extra, es solo para mantener la firma.
             const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
             sheetData.push(headers);
             
@@ -1014,7 +1009,13 @@
 
             const selectedFields = getSelectedFields();
             const hasDateSelected = selectedFields.includes('date');
-            const hasRecipientSelected = selectedFields.includes('recipient');
+            const hasRecipientSelected = selectedFields.includes('recipient'); // Necesario para agrupar
+
+            if (!hasRecipientSelected) {
+                infoMessage.textContent = "ERROR: Para la descarga agrupada, el campo 'Nombre del Destinatario' debe estar seleccionado.";
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return;
+            }
 
             // 1. Agrupar por destinatario
             const groups = data.reduce((acc, entry) => {
@@ -1025,6 +1026,7 @@
                     .trim().toUpperCase() 
                     .replace(/\s+/g, '_');
                 
+                // Limitar el nombre de la hoja a 30 caracteres
                 safeRecipientName = safeRecipientName.substring(0, 30) || 'SIN_NOMBRE';
                 
                 if (!acc[safeRecipientName]) {
@@ -1050,7 +1052,7 @@
                     
                     recipientData.forEach(entry => {
                         const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
-                        rowData.push(entry.data.recipient); // Añadir el destinatario a la fila (aunque ya esté agrupado)
+                        // No es necesario añadir el destinatario de nuevo si ya está en selectedFields
                         sheetData.push(rowData);
                     });
 
@@ -1195,14 +1197,35 @@
             setUIState(true, false, false); 
             errorArea.classList.add('hidden');
             allExtractedData = []; 
-            let errorOccurred = false;
-
+            
+            // --- NUEVA LÓGICA DE PRE-PROCESAMIENTO PARA OBTENER HASHES ---
+            const filesWithMetadata = [];
+            for (const file of files) {
+                try {
+                    const hash = await calculateFileHash(file);
+                    filesWithMetadata.push({
+                        file: file,
+                        fileName: file.name,
+                        hash: hash
+                    });
+                } catch (e) {
+                    console.error(`Error al calcular hash de ${file.name}:`, e);
+                    // Si el hash falla, omitimos el archivo, o lo marcamos para no usar caché.
+                    filesWithMetadata.push({
+                        file: file,
+                        fileName: file.name,
+                        hash: null // Esto forzará el caché MISS si se llega a intentar usar
+                    });
+                }
+            }
+            
+            // --- LÓGICA CENTRAL DE EXTRACCIÓN CON CACHÉ (SIN CAMBIOS) ---
             const CONCURRENCY_LIMIT = 5; 
-            const { successfulResults, errorOccurred: batchErrorOccurred } = await processInBatches(files, CONCURRENCY_LIMIT);
+            const { successfulResults, errorOccurred: batchErrorOccurred } = await processInBatches(filesWithMetadata, CONCURRENCY_LIMIT);
             
             allExtractedData = successfulResults;
             const successCount = successfulResults.length;
-            errorOccurred = batchErrorOccurred;
+            let errorOccurred = batchErrorOccurred;
 
             let duplicationWarning = "";
             let dateLogicResult = { majorityDate: null, nonMajorityCount: 0, majorityCount: 0, totalExtracted: 0 };
