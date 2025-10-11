@@ -9,7 +9,7 @@
     <!-- Librería SheetJS (xlsx) para generar archivos de Excel de múltiples hojas -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.5/dist/xlsx.full.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        @import url('https://fonts.fonts.inter.com');
         /* Estilos generales para un aspecto limpio */
         body {
             font-family: 'Inter', sans-serif;
@@ -23,6 +23,18 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        /* Estilo para el botón con menú desplegable */
+        #downloadButtonContainer {
+            position: relative;
+        }
+        #downloadMenu {
+            position: absolute;
+            bottom: 100%; /* Coloca el menú justo encima del botón */
+            left: 0;
+            right: 0;
+            margin-bottom: 8px; /* Pequeño espacio entre botón y menú */
+            z-index: 10;
         }
     </style>
 </head>
@@ -106,10 +118,23 @@
                 <!-- Los resultados por archivo se insertarán aquí, separados por duplicados -->
             </div>
 
-            <!-- SECCIÓN 3: Descarga -->
-            <button id="downloadButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50 mt-6" disabled>
-                Descargar Libro de Excel (XLSX) Agrupado por Destinatario
-            </button>
+            <!-- SECCIÓN 3: Descarga con Menú Desplegable -->
+            <div id="downloadButtonContainer" class="mt-6">
+                <!-- Menú desplegable, inicialmente oculto -->
+                <div id="downloadMenu" class="hidden bg-white rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 divide-y divide-gray-100">
+                    <button id="downloadGrouped" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-green-100 transition duration-150 rounded-t-lg">
+                        Descargar Agrupado por Destinatario (Múltiples Hojas)
+                    </button>
+                    <button id="downloadConsolidated" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-green-100 transition duration-150 rounded-b-lg">
+                        Descargar Todo en una Sola Hoja (Consolidado)
+                    </button>
+                </div>
+                
+                <!-- Botón principal que activa el menú -->
+                <button id="toggleDownloadMenuButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50" disabled>
+                    Descargar Libro de Excel (XLSX)
+                </button>
+            </div>
         </div>
         
         <p id="infoMessage" class="text-sm text-gray-500 text-center"></p>
@@ -119,7 +144,10 @@
         // --- Variables Globales y Configuración de Gemini ---
         const imageUpload = document.getElementById('imageUpload');
         const processButton = document.getElementById('processButton');
-        const downloadButton = document.getElementById('downloadButton');
+        const toggleDownloadMenuButton = document.getElementById('toggleDownloadMenuButton');
+        const downloadMenu = document.getElementById('downloadMenu');
+        const downloadGroupedButton = document.getElementById('downloadGrouped');
+        const downloadConsolidatedButton = document.getElementById('downloadConsolidated');
         const loadingArea = document.getElementById('loadingArea');
         const loadingMessage = document.getElementById('loadingMessage');
         const errorArea = document.getElementById('errorArea');
@@ -135,11 +163,9 @@
         // *****************************************************************************
         // *** IMPORTANTE: CLAVE API INYECTADA *****************************************
         // *****************************************************************************
-        // ATENCIÓN: Se ha insertado la clave API proporcionada por el usuario para permitir el funcionamiento en dominios externos (GitHub Pages).
         const apiKey = "AIzaSyA9J-b9rH1CCMOKUmFxoI4n2B9fiY-RNv4"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
-        // allExtractedData ahora almacenará el resultado y las banderas de duplicado/excepción: 
         // {fileName, data, isDuplicate: boolean, isDateException: boolean, observation_date: string}
         let allExtractedData = []; 
         
@@ -254,7 +280,7 @@
         // Obtiene los campos seleccionados (las claves del JSON)
         function getSelectedFields() {
             const selected = [];
-            fieldSelectionDiv.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+            fieldSelectionDiv.querySelectorAll('input[type="checkbox"].field-select-item:checked').forEach(checkbox => {
                 selected.push(checkbox.value);
             });
             return selected;
@@ -292,7 +318,10 @@
             processButton.disabled = isLoading || imageUpload.files.length === 0;
             errorArea.classList.toggle('hidden', !isError);
             resultsArea.classList.toggle('hidden', !resultsVisible);
-            downloadButton.disabled = true; 
+            
+            // Si hay resultados, el botón de descarga se habilita, pero el menú se oculta por defecto
+            toggleDownloadMenuButton.disabled = !resultsVisible; 
+            downloadMenu.classList.add('hidden'); 
         }
 
         /**
@@ -345,10 +374,7 @@
          */
         async function processSingleImage(file) {
             const selectedFields = getSelectedFields();
-            if (selectedFields.length === 0) {
-                throw new Error("Debe seleccionar al menos un campo para extraer.");
-            }
-
+            
             // USAR fileToBase64 para obtener la Base64 PURA.
             const base64Data = await fileToBase64(file); 
 
@@ -358,8 +384,7 @@
             
             selectedFields.forEach(key => {
                 const metadata = FIELD_METADATA[key];
-                // Pedimos a la IA que sea lo más consistente posible con el dato, 
-                // incluso pidiendo la fecha en un formato estandar
+                
                 let description = metadata.description;
                 if (key === 'date') {
                     // CRÍTICO: Pedir la fecha en un formato específico para que el parseo sea más robusto
@@ -416,12 +441,73 @@
             
             return JSON.parse(jsonText);
         }
+        
+        // *********************************************************************************
+        // *** OPTIMIZACIÓN CLAVE: PROCESAMIENTO CONCURRENTE POR LOTES (BATCHES) ***********
+        // *********************************************************************************
 
         /**
-         * Implementa la lógica de CONSISTENCIA DE FECHA: si la fecha más común existe, 
-         * marca el resto como excepciones de fecha.
-         * @param {Array<Object>} dataArray - Array de resultados de extracciones exitosas.
-         * @returns {Object} Un objeto con los resultados del análisis de la fecha.
+         * Procesa un array de archivos en lotes concurrentes.
+         */
+        async function processInBatches(files, concurrencyLimit) {
+            let index = 0;
+            let successfulResults = [];
+            let errorOccurred = false;
+            const totalFiles = files.length;
+
+            /**
+             * Función trabajadora: toma el siguiente archivo de la cola global y lo procesa.
+             */
+            const worker = async () => {
+                while (index < totalFiles) {
+                    const fileIndex = index; // Índice que se va a procesar
+                    const file = files[fileIndex];
+                    index++; // Se incrementa inmediatamente el índice global para el siguiente trabajador
+                    const fileNumber = index; // Número de archivo actual (1-based)
+                    const fileName = file.name;
+
+                    // Actualizar UI para reflejar el progreso
+                    loadingMessage.textContent = `Analizando imagen ${fileNumber} de ${totalFiles}: ${fileName}...`;
+
+                    try {
+                        const data = await processSingleImage(file);
+                        
+                        // Si es exitoso, agregar a la lista de resultados
+                        successfulResults.push({
+                            fileName: fileName,
+                            data: data,
+                            isDuplicate: false,
+                            isDateException: false,
+                            observation_date: ''
+                        });
+                    } catch (error) {
+                        console.error(`Error al procesar ${fileName}:`, error);
+                        errorOccurred = true;
+                        // Mostrar error en la interfaz sin detener el proceso
+                        const errorText = error.message || "Error desconocido.";
+                        errorArea.innerHTML = `Ocurrió un error al procesar "${fileName}": <span class="font-normal">${errorText}</span>. Revisa la consola para más detalles.`;
+                        errorArea.classList.remove('hidden');
+                        // Se actualiza el mensaje de carga para que no se quede con el nombre del archivo fallido
+                        loadingMessage.textContent = `Analizando... (${successfulResults.length} completados de ${totalFiles})`;
+                    }
+                }
+            };
+
+            // Crear un pool de trabajadores limitado
+            const workers = [];
+            for (let i = 0; i < concurrencyLimit; i++) {
+                workers.push(worker());
+            }
+
+            // Esperar a que todos los trabajadores terminen
+            await Promise.all(workers);
+
+            return { successfulResults, errorOccurred };
+        }
+
+
+        /**
+         * Implementa la lógica de CONSISTENCIA DE FECHA.
          */
         function detectMajorityDateAndExceptions(dataArray) {
             const dateCounts = {};
@@ -435,17 +521,16 @@
                 // Añadir propiedades de control al objeto de datos
                 entry.normalizedDate = normalizedDate; 
                 entry.isDateException = false; 
-                entry.observation_date = entry.observation_date || ''; // Inicializar campo de observación vacío, manteniendo el existente si ya tiene
+                entry.observation_date = entry.observation_date || ''; // Inicializar campo de observación vacío
 
                 dateCounts[normalizedDate] = (dateCounts[normalizedDate] || 0) + 1;
             });
 
-            // Si no hay extracciones exitosas, no podemos calcular nada.
             if (dataArray.length === 0) return { majorityDate: null, nonMajorityCount: 0, totalExtracted: 0 };
 
             // 2. Encontrar la fecha mayoritaria
             let majorityDate = null;
-            let maxCount = 0; // Número de archivos exitosos que coinciden con la fecha más común.
+            let maxCount = 0; 
 
             for (const date in dateCounts) {
                 if (dateCounts[date] > maxCount) {
@@ -479,11 +564,11 @@
 
 
         /**
-         * Dibuja los resultados extraídos en la interfaz, incluyendo la separación de duplicados y excepciones de fecha.
+         * Dibuja los resultados extraídos en la interfaz.
          */
         function displayResults(dataArray, duplicationWarning = "", dateLogicResult) {
             dataList.innerHTML = ''; 
-            selectAllResultsCheckbox.checked = false; // Desmarcar el chulo principal de resultados
+            selectAllResultsCheckbox.checked = false; 
             
             if (dataArray.length === 0) {
                  infoMessage.textContent = "No se pudo extraer información de ninguna imagen.";
@@ -491,21 +576,17 @@
                  return;
             } 
             
-            // Mensaje de Información de Lógica de Fecha (Actualizado para CONTEO)
             let dateInfoText = '';
             const isDateSelected = getSelectedFields().includes('date');
             
-            // Texto para archivos totales y extraídos
             const totalFiles = imageUpload.files.length;
             const extractedFiles = dateLogicResult.totalExtracted || dataArray.length;
             
             let filesInfo = `Extracción completada para ${extractedFiles} de ${totalFiles} archivo(s).`;
 
-
             if (!isDateSelected) {
                  dateInfoText = " (ADVERTENCIA: Detección de consistencia de fecha desactivada, no se seleccionó el campo 'Fecha').";
             } else if (dateLogicResult.totalExtracted > 0) {
-                // NOTA: dateLogicResult.nonMajorityCount ya incluye fallas de parseo de fecha y las que no coinciden.
                 dateInfoText = ` (Fecha Mayoritaria: ${dateLogicResult.majorityDate}, encontrada en ${dateLogicResult.majorityCount} de ${extractedFiles} extracciones. Total de excepciones/fallas de fecha: ${dateLogicResult.nonMajorityCount}).`;
 
             } else {
@@ -528,7 +609,7 @@
                 const data = entry.data;
                 const fileName = entry.fileName;
                 const isDuplicate = entry.isDuplicate || false;
-                const isDateException = entry.isDateException || false; // CRÍTICO: Usar esta bandera
+                const isDateException = entry.isDateException || false; 
                 const isAnyException = isDuplicate || isDateException;
 
                 // Definir colores y encabezados de grupo
@@ -649,15 +730,278 @@
         // Actualiza el estado del botón de descarga basado en los chulos seleccionados
         function updateDownloadButtonState() {
             const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
-            downloadButton.disabled = checkedCheckboxes.length === 0;
+            // Habilitar el botón principal para mostrar el menú, si hay datos seleccionados
+            toggleDownloadMenuButton.disabled = checkedCheckboxes.length === 0;
             
             // Actualizar el estado del chulo principal de resultados
             const totalCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item').length;
             selectAllResultsCheckbox.checked = totalCheckboxes > 0 && checkedCheckboxes.length === totalCheckboxes;
+            
+            // Si el botón se deshabilita, asegurar que el menú se oculte
+            if (toggleDownloadMenuButton.disabled) {
+                downloadMenu.classList.add('hidden');
+            }
         }
+
+        /**
+         * Lógica central para obtener los datos seleccionados y sus metadatos.
+         * @returns {Array} Los datos seleccionados y ordenados.
+         */
+        function getSelectedAndValidatedData() {
+            const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
+            if (checkedCheckboxes.length === 0) {
+                infoMessage.textContent = "ERROR: Selecciona al menos una fila para exportar.";
+                infoMessage.classList.remove('text-gray-500');
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return [];
+            }
+            
+            const selectedFields = getSelectedFields();
+            if (selectedFields.length === 0) {
+                infoMessage.textContent = "ERROR: No hay campos seleccionados para exportar. Selecciona los campos en la sección 1.5.";
+                infoMessage.classList.remove('text-gray-500');
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return [];
+            } else {
+                 infoMessage.classList.remove('text-red-600', 'font-bold');
+                 infoMessage.classList.add('text-gray-500');
+            }
+
+            const selectedData = [];
+            checkedCheckboxes.forEach(checkbox => {
+                const index = parseInt(checkbox.getAttribute('data-index'));
+                // allExtractedData está ordenado según se mostró, así que el índice funciona
+                const entry = allExtractedData.find((_, i) => i === index); 
+                if (entry) {
+                    selectedData.push(entry);
+                }
+            });
+            
+            return selectedData;
+        }
+
+        /**
+         * Función auxiliar para generar la estructura de fila de datos para SheetJS.
+         */
+        const getSheetDataRow = (entry, selectedFields, hasDateSelected, hasRecipientSelected) => {
+            const rowData = [];
+            
+            selectedFields.forEach(key => {
+                let value = entry.data[key] || ""; 
+                
+                if (key === 'date' && hasDateSelected) {
+                    // 1. Añadir la Fecha extraída (DD/MM/AAAA)
+                    value = formatDateShort(value); 
+                    rowData.push(value); 
+                    
+                    // 2. Añadir la Fecha de Observación (Manual) justo después
+                    let obsDate = '';
+                    if (entry.isDateException && entry.observation_date) { 
+                        // Convertir de YYYY-MM-DD (input date) a DD/MM/AAAA (para Excel)
+                        try {
+                            const [year, month, day] = entry.observation_date.split('-');
+                            obsDate = `${day}/${month}/${year}`;
+                        } catch (e) {
+                            obsDate = entry.observation_date; // Fallback
+                        }
+                    }
+                    rowData.push(obsDate); 
+                } else {
+                    // Para el resto de campos (solo el valor)
+                    rowData.push(value);
+                }
+            });
+            
+            // AÑADIR DESTINATARIO COMO CAMPO EXTRA si no está seleccionado
+            if (!hasRecipientSelected) {
+                rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
+            }
+
+            // Datos de metadatos (al final)
+            rowData.push(
+                entry.fileName,
+                entry.isDuplicate ? "Sí" : "No",                      
+                entry.isDateException ? "Sí" : "No"                 
+            );
+            
+            return rowData;
+        };
+
+        /**
+         * Función auxiliar para generar los encabezados de columna.
+         */
+        const getSheetHeaders = (selectedFields, hasDateSelected, hasRecipientSelected) => {
+            const headers = [];
+            selectedFields.forEach(key => {
+                headers.push(FIELD_METADATA[key].label);
+                if (key === 'date' && hasDateSelected) {
+                    headers.push("Fecha de Observación"); 
+                }
+            });
+            if (!hasRecipientSelected) {
+                 headers.push(FIELD_METADATA.recipient.label); 
+            }
+            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
+            return headers;
+        }
+
+
+        /**
+         * Exporta los datos seleccionados en una sola hoja consolidada.
+         */
+        function exportConsolidated(data) {
+            infoMessage.textContent = `Generando libro de Excel consolidado...`;
+            
+            const selectedFields = getSelectedFields();
+            const hasDateSelected = selectedFields.includes('date');
+            const hasRecipientSelected = selectedFields.includes('recipient');
+
+            // Ordenar por destinatario para que quede "bien organizado"
+            data.sort((a, b) => {
+                const nameA = (a.data.recipient || 'z').toUpperCase();
+                const nameB = (b.data.recipient || 'z').toUpperCase();
+                return nameA < nameB ? -1 : (nameA > nameB ? 1 : 0);
+            });
+
+            const workbook = XLSX.utils.book_new();
+            const sheetData = [];
+
+            // 1. Añadir Encabezados
+            const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
+            sheetData.push(headers);
+            
+            // 2. Añadir Filas de Datos
+            data.forEach(entry => {
+                const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
+                sheetData.push(rowData);
+            });
+
+            // 3. Crear Worksheet
+            const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+            
+            // 4. Añadir Worksheet al Workbook
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Consolidado");
+
+            // 5. Escribir el Workbook y descargar
+            try {
+                XLSX.writeFile(workbook, `comprobantes_consolidados_${Date.now()}.xlsx`);
+                infoMessage.textContent = `¡Descarga del libro de Excel (.xlsx) en una sola hoja completada!`;
+            } catch (error) {
+                console.error("Error al generar el archivo XLSX consolidado:", error);
+                infoMessage.textContent = "ERROR al generar el archivo XLSX consolidado. Ver consola.";
+                infoMessage.classList.add('text-red-600', 'font-bold');
+            }
+        }
+
+        /**
+         * Exporta los datos seleccionados agrupados por destinatario (múltiples hojas).
+         */
+        function exportGrouped(data) {
+            infoMessage.textContent = `Generando libro de Excel agrupado por destinatario...`;
+
+            const selectedFields = getSelectedFields();
+            const hasDateSelected = selectedFields.includes('date');
+            const hasRecipientSelected = selectedFields.includes('recipient');
+
+            // 1. Agrupar por destinatario
+            const groups = data.reduce((acc, entry) => {
+                const recipientName = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
+                // Sanitizar el nombre para usarlo como nombre de pestaña (max 31 chars, sin caracteres inválidos)
+                let safeRecipientName = recipientName
+                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar tildes
+                    .replace(/[\\/?*[\]:]/g, '_') // Quitar caracteres inválidos para nombre de hoja de Excel
+                    .trim().toUpperCase() 
+                    .replace(/\s+/g, '_'); // Reemplazar espacios por guiones bajos
+                
+                safeRecipientName = safeRecipientName.substring(0, 30) || 'SIN_NOMBRE';
+                
+                if (!acc[safeRecipientName]) {
+                    acc[safeRecipientName] = [];
+                }
+                acc[safeRecipientName].push(entry);
+                return acc;
+            }, {});
+
+            // 2. Generar Libro de Excel (Workbook)
+            const workbook = XLSX.utils.book_new();
+            let groupCount = 0;
+
+            for (const safeRecipientName in groups) {
+                if (Object.hasOwnProperty.call(groups, safeRecipientName)) {
+                    const recipientData = groups[safeRecipientName];
+                    groupCount++;
+
+                    const sheetData = [];
+
+                    // 1. Añadir Encabezados
+                    const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
+                    sheetData.push(headers);
+                    
+                    // 2. Añadir Filas de Datos
+                    recipientData.forEach(entry => {
+                        const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
+                        sheetData.push(rowData);
+                    });
+
+                    // 3. Crear Worksheet a partir del array de arrays
+                    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                    
+                    // 4. Añadir Worksheet al Workbook
+                    XLSX.utils.book_append_sheet(workbook, worksheet, safeRecipientName);
+                }
+            }
+
+            // 3. Escribir el Workbook y descargar
+            if (groupCount > 0) {
+                try {
+                    XLSX.writeFile(workbook, `comprobantes_agrupados_${Date.now()}.xlsx`);
+                    infoMessage.textContent = `¡Descarga del libro de Excel (.xlsx) con ${groupCount} hojas (una por destinatario) completada!`;
+                } catch (error) {
+                    console.error("Error al generar el archivo XLSX:", error);
+                    infoMessage.textContent = "ERROR al generar el archivo XLSX. Ver consola.";
+                    infoMessage.classList.add('text-red-600', 'font-bold');
+                }
+            } else {
+                infoMessage.textContent = "ERROR: No hay datos agrupables seleccionados para generar el libro XLSX.";
+                infoMessage.classList.add('text-red-600', 'font-bold');
+            }
+        }
+
 
         // --- Manejadores de Eventos ---
 
+        // Toggle del menú de descarga
+        toggleDownloadMenuButton.addEventListener('click', () => {
+            if (!toggleDownloadMenuButton.disabled) {
+                downloadMenu.classList.toggle('hidden');
+            }
+        });
+        
+        // Cierra el menú si se hace click fuera
+        document.addEventListener('click', (e) => {
+            if (!downloadButtonContainer.contains(e.target) && !downloadMenu.classList.contains('hidden')) {
+                downloadMenu.classList.add('hidden');
+            }
+        });
+
+        // Evento para Descarga Agrupada
+        downloadGroupedButton.addEventListener('click', () => {
+            const data = getSelectedAndValidatedData();
+            if (data.length > 0) {
+                exportGrouped(data);
+                downloadMenu.classList.add('hidden');
+            }
+        });
+
+        // Evento para Descarga Consolidada
+        downloadConsolidatedButton.addEventListener('click', () => {
+            const data = getSelectedAndValidatedData();
+            if (data.length > 0) {
+                exportConsolidated(data);
+                downloadMenu.classList.add('hidden');
+            }
+        });
+        
         // Selector/Deselector de todos los CAMPOS
         selectAllFieldsCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
@@ -677,16 +1021,12 @@
         
         // Seleccionar solo las excepciones de fecha
         selectDateExceptionsButton.addEventListener('click', () => {
-            // Deseleccionar todo primero
             dataList.querySelectorAll('input[type="checkbox"].result-select-item').forEach(checkbox => {
                 checkbox.checked = false;
             });
 
-            // Iterar sobre los datos internos (que ya están ordenados y tienen las banderas)
             allExtractedData.forEach((entry, index) => {
                 if (entry.isDateException) {
-                    // Buscar el checkbox correspondiente por índice
-                    // Nota: Usamos `data-index` que corresponde a la posición en allExtractedData
                     const checkbox = document.querySelector(`input[type="checkbox"].result-select-item[data-index="${index}"]`);
                     if (checkbox) {
                         checkbox.checked = true;
@@ -722,7 +1062,7 @@
             const files = Array.from(imageUpload.files);
             if (files.length === 0) return;
             const selectedFields = getSelectedFields();
-            const totalFilesCount = files.length; // Total de archivos subidos
+            const totalFilesCount = files.length; 
 
             // Validación de campos seleccionados
             if (selectedFields.length === 0) {
@@ -739,37 +1079,16 @@
             setUIState(true, false, false); 
             errorArea.classList.add('hidden');
             allExtractedData = []; 
-            let successCount = 0;
             let errorOccurred = false;
 
-            // Procesamiento secuencial
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                loadingMessage.textContent = `Analizando imagen ${i + 1} de ${files.length}: ${file.name}...`;
-
-                try {
-                    const data = await processSingleImage(file);
-                    
-                    // Almacenar el resultado exitoso e inicializar banderas/campos
-                    allExtractedData.push({
-                        fileName: file.name,
-                        data: data,
-                        isDuplicate: false, // Inicializado
-                        isDateException: false, // Inicializado
-                        observation_date: '' // Inicializado
-                    });
-                    successCount++;
-
-                } catch (error) {
-                    console.error(`Error al procesar ${file.name}:`, error);
-                    errorOccurred = true;
-                    // Mostrar error en la interfaz sin detener el proceso
-                    const errorText = error.message || "Error desconocido.";
-                    errorArea.innerHTML = `Ocurrió un error al procesar "${file.name}": <span class="font-normal">${errorText}</span>. Revisa la consola para más detalles.`;
-                    errorArea.classList.remove('hidden');
-                }
-            }
+            // Procesamiento concurrente de 5 archivos a la vez
+            const CONCURRENCY_LIMIT = 5; 
+            const { successfulResults, errorOccurred: batchErrorOccurred } = await processInBatches(files, CONCURRENCY_LIMIT);
             
+            allExtractedData = successfulResults;
+            const successCount = successfulResults.length;
+            errorOccurred = batchErrorOccurred;
+
             let duplicationWarning = "";
             let dateLogicResult = { majorityDate: null, nonMajorityCount: 0, majorityCount: 0, totalExtracted: 0 };
 
@@ -797,7 +1116,6 @@
 
                 // --- LÓGICA DE DETECCIÓN DE CONSISTENCIA POR FECHA (BASADA EN CONTEO) ---
                 if (selectedFields.includes('date')) {
-                    // Solo enviamos los archivos que se extrajeron exitosamente
                     dateLogicResult = detectMajorityDateAndExceptions(allExtractedData);
                 }
                 // --- FIN LÓGICA DE FECHA ---
@@ -811,174 +1129,6 @@
             }
             // Asegurarse de quitar el estado de carga después de todo.
             setUIState(false, errorOccurred, allExtractedData.length > 0);
-        });
-
-        // --- Lógica de Descarga de Libro XLSX Agrupado por Destinatario ---
-        downloadButton.addEventListener('click', () => {
-            const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
-            if (checkedCheckboxes.length === 0) {
-                infoMessage.textContent = "ERROR: Selecciona al menos una fila para exportar.";
-                infoMessage.classList.remove('text-gray-500');
-                infoMessage.classList.add('text-red-600', 'font-bold');
-                return;
-            }
-
-            const selectedFields = getSelectedFields(); 
-            const hasDateSelected = selectedFields.includes('date');
-            const hasRecipientSelected = selectedFields.includes('recipient');
-
-            if (selectedFields.length === 0) {
-                infoMessage.textContent = "ERROR: No hay campos seleccionados para exportar. Selecciona los campos en la sección 1.5.";
-                infoMessage.classList.remove('text-gray-500');
-                infoMessage.classList.add('text-red-600', 'font-bold');
-                return;
-            } else {
-                 infoMessage.classList.remove('text-red-600', 'font-bold');
-                 infoMessage.classList.add('text-gray-500');
-            }
-            
-            // Función interna para obtener la estructura de datos para SheetJS (Array of Arrays)
-            const getSheetDataRow = (entry, selectedFields, hasDateSelected, hasRecipientSelected) => {
-                
-                const rowData = [];
-                
-                selectedFields.forEach(key => {
-                    let value = entry.data[key] || ""; 
-                    
-                    if (key === 'date' && hasDateSelected) {
-                        // 1. Añadir la Fecha extraída (DD/MM/AAAA)
-                        value = formatDateShort(value); 
-                        rowData.push(value); // Fecha extraída (formateada)
-                        
-                        // 2. Añadir la Fecha de Observación (Manual) justo después
-                        let obsDate = '';
-                        if (entry.isDateException && entry.observation_date) { 
-                            // Convertir de YYYY-MM-DD (input date) a DD/MM/AAAA (para Excel)
-                            try {
-                                const [year, month, day] = entry.observation_date.split('-');
-                                obsDate = `${day}/${month}/${year}`;
-                            } catch (e) {
-                                obsDate = entry.observation_date; // Fallback
-                            }
-                        }
-                        rowData.push(obsDate); 
-                    } else {
-                        // Para el resto de campos (solo el valor)
-                        rowData.push(value);
-                    }
-                });
-                
-                // C. Campo de Agrupación (Destinatario) si NO FUE seleccionado originalmente
-                if (!hasRecipientSelected) {
-                    rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
-                }
-
-                // D. Datos de metadatos (al final)
-                rowData.push(
-                    entry.fileName,
-                    entry.isDuplicate ? "Sí" : "No",                      
-                    entry.isDateException ? "Sí" : "No"                 
-                );
-                
-                return rowData;
-            };
-
-            // Función para obtener los encabezados
-            const getSheetHeaders = (selectedFields, hasDateSelected, hasRecipientSelected) => {
-                const headers = [];
-                selectedFields.forEach(key => {
-                    headers.push(FIELD_METADATA[key].label);
-                    if (key === 'date' && hasDateSelected) {
-                        // CRÍTICO: Añadir encabezado para el campo de observación
-                        headers.push("Fecha de Observación"); 
-                    }
-                });
-                if (!hasRecipientSelected) {
-                     headers.push(FIELD_METADATA.recipient.label); 
-                }
-                headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
-                return headers;
-            }
-
-
-            // 1. Obtener datos seleccionados
-            const selectedData = [];
-            checkedCheckboxes.forEach(checkbox => {
-                const index = parseInt(checkbox.getAttribute('data-index'));
-                const entry = allExtractedData.find((_, i) => i === index);
-                if (entry) {
-                    selectedData.push(entry);
-                }
-            });
-            
-            // 2. Agrupar por destinatario
-            const groups = selectedData.reduce((acc, entry) => {
-                // Usar el valor extraído o un valor por defecto
-                const recipientName = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
-                // Sanitizar el nombre para usarlo como nombre de pestaña (max 31 chars, sin caracteres inválidos)
-                let safeRecipientName = recipientName
-                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar tildes
-                    .replace(/[\\/?*[\]:]/g, '_') // Quitar caracteres inválidos para nombre de hoja de Excel
-                    .trim().toUpperCase() 
-                    .replace(/\s+/g, '_'); // Reemplazar espacios por guiones bajos
-                
-                // Limitar la longitud a 30 caracteres (Excel tiene un límite de 31)
-                safeRecipientName = safeRecipientName.substring(0, 30) || 'SIN_NOMBRE';
-                
-                if (!acc[safeRecipientName]) {
-                    acc[safeRecipientName] = [];
-                }
-                acc[safeRecipientName].push(entry);
-                return acc;
-            }, {});
-
-            // 3. Generar Libro de Excel (Workbook)
-            const workbook = XLSX.utils.book_new();
-            let groupCount = 0;
-
-            for (const safeRecipientName in groups) {
-                if (Object.hasOwnProperty.call(groups, safeRecipientName)) {
-                    const recipientData = groups[safeRecipientName];
-                    groupCount++;
-
-                    // Prepara el array de arrays (AoA) para SheetJS
-                    const sheetData = [];
-
-                    // 1. Añadir Encabezados
-                    const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
-                    sheetData.push(headers);
-                    
-                    // 2. Añadir Filas de Datos
-                    recipientData.forEach(entry => {
-                        const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
-                        sheetData.push(rowData);
-                    });
-
-                    // 3. Crear Worksheet a partir del array de arrays
-                    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-                    
-                    // 4. Añadir Worksheet al Workbook
-                    XLSX.utils.book_append_sheet(workbook, worksheet, safeRecipientName);
-                }
-            }
-
-            // 4. Escribir el Workbook y descargar
-            if (groupCount > 0) {
-                infoMessage.textContent = `Generando libro de Excel con ${groupCount} hoja(s)...`;
-                
-                try {
-                    // Esta función maneja la conversión a XLSX y la descarga automáticamente
-                    XLSX.writeFile(workbook, `comprobantes_agrupados_${Date.now()}.xlsx`);
-                    infoMessage.textContent = `¡Descarga del libro de Excel (.xlsx) con ${groupCount} hojas (una por destinatario) completada!`;
-                } catch (error) {
-                    console.error("Error al generar el archivo XLSX:", error);
-                    infoMessage.textContent = "ERROR al generar el archivo XLSX. Ver consola.";
-                    infoMessage.classList.add('text-red-600', 'font-bold');
-                }
-            } else {
-                infoMessage.textContent = "ERROR: No hay datos seleccionados para generar el libro XLSX.";
-                infoMessage.classList.add('text-red-600', 'font-bold');
-            }
         });
 
     </script>
