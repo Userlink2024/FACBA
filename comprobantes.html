@@ -8,6 +8,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Librería SheetJS (xlsx) para generar archivos de Excel de múltiples hojas -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.5/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Variables globales para Firebase (accesibles desde el script principal)
+        window.firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore, doc, getDoc, setDoc };
+    </script>
+    <!-- Librería MD5 para generar hashes de las imágenes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         /* Estilos generales para un aspecto limpio */
@@ -23,6 +34,18 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        /* Estilo para el botón con menú desplegable */
+        #downloadButtonContainer {
+            position: relative;
+        }
+        #downloadMenu {
+            position: absolute;
+            bottom: 100%; /* Coloca el menú justo encima del botón */
+            left: 0;
+            right: 0;
+            margin-bottom: 8px; /* Pequeño espacio entre botón y menú */
+            z-index: 10;
         }
     </style>
 </head>
@@ -77,7 +100,7 @@
         <div id="loadingArea" class="hidden text-center p-4 bg-yellow-100 rounded-lg">
             <div class="flex items-center justify-center space-x-2">
                 <div class="spinner border-4 border-t-4 border-gray-200 h-6 w-6 rounded-full"></div>
-                <span id="loadingMessage" class="text-yellow-800 font-medium">Analizando imagen con IA...</span></span>
+                <span id="loadingMessage" class="text-yellow-800 font-medium">Iniciando sistema...</span></span>
             </div>
         </div>
         <div id="errorArea" class="hidden text-center p-4 bg-red-100 text-red-700 rounded-lg font-medium">
@@ -106,20 +129,36 @@
                 <!-- Los resultados por archivo se insertarán aquí, separados por duplicados -->
             </div>
 
-            <!-- SECCIÓN 3: Descarga -->
-            <button id="downloadButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50 mt-6" disabled>
-                Descargar Libro de Excel (XLSX) Agrupado por Destinatario
-            </button>
+            <!-- SECCIÓN 3: Descarga con Menú Desplegable -->
+            <div id="downloadButtonContainer" class="mt-6">
+                <!-- Menú desplegable, inicialmente oculto -->
+                <div id="downloadMenu" class="hidden bg-white rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 divide-y divide-gray-100">
+                    <button id="downloadGrouped" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-green-100 transition duration-150 rounded-t-lg">
+                        Descargar Agrupado por Destinatario (Múltiples Hojas)
+                    </button>
+                    <button id="downloadConsolidated" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-green-100 transition duration-150 rounded-b-lg">
+                        Descargar Todo en una Sola Hoja (Consolidado)
+                    </button>
+                </div>
+                
+                <!-- Botón principal que activa el menú -->
+                <button id="toggleDownloadMenuButton" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-lg disabled:opacity-50" disabled>
+                    Descargar Libro de Excel (XLSX)
+                </button>
+            </div>
         </div>
         
-        <p id="infoMessage" class="text-sm text-gray-500 text-center"></p>
+        <p id="infoMessage" class="text-sm text-gray-500 text-center">Inicializando base de datos...</p>
     </div>
 
     <script>
-        // --- Variables Globales y Configuración de Gemini ---
+        // --- Variables Globales y Configuración de Gemini / Firebase ---
         const imageUpload = document.getElementById('imageUpload');
         const processButton = document.getElementById('processButton');
-        const downloadButton = document.getElementById('downloadButton');
+        const toggleDownloadMenuButton = document.getElementById('toggleDownloadMenuButton');
+        const downloadMenu = document.getElementById('downloadMenu');
+        const downloadGroupedButton = document.getElementById('downloadGrouped');
+        const downloadConsolidatedButton = document.getElementById('downloadConsolidated');
         const loadingArea = document.getElementById('loadingArea');
         const loadingMessage = document.getElementById('loadingMessage');
         const errorArea = document.getElementById('errorArea');
@@ -133,14 +172,22 @@
         const selectDateExceptionsButton = document.getElementById('selectDateExceptionsButton');
         
         // *****************************************************************************
-        // *** IMPORTANTE: CLAVE API INYECTADA *****************************************
+        // *** CONFIGURACIÓN MANDATORIA ************************************************
         // *****************************************************************************
-        // ATENCIÓN: Se ha insertado la clave API proporcionada por el usuario para permitir el funcionamiento en dominios externos (GitHub Pages).
-        const apiKey = "AIzaSyA9J-b9rH1CCMOKUmFxoI4n2B9fiY-RNv4"; 
+        const apiKey = "AIzaSyBZ37K5guckjv-I-OgpRFH5v_jj8nsTyH8"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
-        // allExtractedData ahora almacenará el resultado y las banderas de duplicado/excepción: 
-        // {fileName, data, isDuplicate: boolean, isDateException: boolean, observation_date: string}
+        let db = null;
+        let auth = null;
+        let userId = 'anon';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Estado del sistema
+        let isAuthReady = false;
+
+        // {fileName, data, isDuplicate: boolean, isDateException: boolean, observation_date: string, isCached: boolean}
         let allExtractedData = []; 
         
         // Mapeo de meses en español (para la conversión de fecha)
@@ -176,41 +223,147 @@
             }
         };
 
-        // --- Funciones de Utilidad ---
+        // --- INICIALIZACIÓN DE FIREBASE ---
+        async function initFirebase() {
+            if (!firebaseConfig) {
+                console.error("Firebase config is missing.");
+                infoMessage.textContent = "Error: Configuración de Firebase no disponible.";
+                return;
+            }
+
+            try {
+                const app = window.firebase.initializeApp(firebaseConfig);
+                db = window.firebase.getFirestore(app);
+                auth = window.firebase.getAuth(app);
+
+                if (initialAuthToken) {
+                    await window.firebase.signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await window.firebase.signInAnonymously(auth);
+                }
+
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                isAuthReady = true;
+                console.log("Firebase y autenticación inicializados. User ID:", userId);
+                infoMessage.textContent = "Sistema listo para recibir archivos.";
+                processButton.disabled = imageUpload.files.length === 0;
+
+            } catch (error) {
+                console.error("Error al inicializar o autenticar Firebase:", error);
+                infoMessage.textContent = "Error de conexión con la base de datos.";
+            }
+        }
+        
+        // Llamada a la inicialización al cargar la página
+        window.onload = () => {
+             initFirebase();
+             initFieldSelection(); 
+        };
+        // --- FIN INICIALIZACIÓN DE FIREBASE ---
+
+        // --- FUNCIONES DE CACHÉ FIREBASE ---
+
+        /**
+         * Calcula el hash MD5 de un archivo para usarlo como clave de caché.
+         * @param {File} file El objeto File.
+         * @returns {Promise<string>} El hash MD5.
+         */
+        function calculateFileHash(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const wordBuffer = CryptoJS.lib.WordArray.create(e.target.result);
+                        const hash = CryptoJS.MD5(wordBuffer).toString();
+                        resolve(hash);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        /**
+         * Ruta de la colección de caché (datos públicos para este app)
+         */
+        function getCacheDocRef(hash) {
+            // Utilizamos la ruta pública /artifacts/{appId}/public/data/extraction_cache
+            return window.firebase.doc(db, "artifacts", appId, "public", "data", "extraction_cache", hash);
+        }
+
+        /**
+         * Busca la extracción de un archivo en la caché de Firestore.
+         * @param {string} hash El hash MD5 del archivo.
+         * @returns {Promise<Object|null>} El objeto de datos extraídos o null.
+         */
+        async function getCachedExtraction(hash) {
+            if (!isAuthReady || !db) return null;
+            try {
+                const docRef = getCacheDocRef(hash);
+                const docSnap = await window.firebase.getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    console.log(`[CACHÉ HIT] Extracción encontrada para hash: ${hash}`);
+                    return docSnap.data().extractionData;
+                } else {
+                    console.log(`[CACHÉ MISS] No hay extracción para hash: ${hash}`);
+                    return null;
+                }
+            } catch (error) {
+                console.error("Error al buscar en caché:", error);
+                return null;
+            }
+        }
+
+        /**
+         * Guarda una extracción de la IA en la caché de Firestore.
+         * @param {string} hash El hash MD5 del archivo.
+         * @param {Object} data Los datos JSON extraídos por la IA.
+         */
+        async function saveExtractionToCache(hash, data) {
+            if (!isAuthReady || !db) return;
+            try {
+                const docRef = getCacheDocRef(hash);
+                await window.firebase.setDoc(docRef, {
+                    hash: hash,
+                    extractionData: data,
+                    timestamp: new Date().toISOString()
+                }, { merge: true });
+                console.log(`[CACHÉ WRITE] Extracción guardada para hash: ${hash}`);
+            } catch (error) {
+                console.error("Error al guardar en caché:", error);
+            }
+        }
+
+        // --- FIN FUNCIONES DE CACHÉ FIREBASE ---
 
         /**
          * Intenta convertir una cadena de fecha extraída (ej: '10 Oct 2025' o '7-oct-25') 
          * a formato corto DD/MM/AAAA (ej: '10/10/2025').
-         * @param {string} dateString La cadena de fecha extraída por la IA.
-         * @returns {string} La fecha formateada (DD/MM/AAAA) o la cadena original, o 'FECHA_NO_ENCONTRADA' si es nula.
          */
         function formatDateShort(dateString) {
             if (!dateString) return "FECHA_NO_ENCONTRADA";
             
-            // Intenta encontrar el patrón DD [MES] AA(AA)
             const parts = dateString.trim().split(/[\s\-/]+/);
             
-            if (parts.length < 3) return dateString; // No tiene suficientes partes
+            if (parts.length < 3) return dateString; 
 
             let day = parseInt(parts[0]);
             let monthStr = parts[1].toLowerCase().substring(0, 3);
             let year = parseInt(parts[2]);
 
-            // Buscar el índice del mes (0-11)
             const monthIndex = MONTH_MAP[monthStr];
 
             if (isNaN(day) || monthIndex === undefined || isNaN(year)) {
-                // Si no se puede parsear, devolvemos la cadena original
                 return dateString;
             }
 
-            // Normalizar el año de 2 dígitos a 4 dígitos (ej: 25 -> 2025)
             if (year < 100) {
-                // Asumimos años del 2000 en adelante
                 year = 2000 + year; 
             }
 
-            // Convertir a formato DD/MM/AAAA
             const formattedDay = String(day).padStart(2, '0');
             const formattedMonth = String(monthIndex + 1).padStart(2, '0');
             
@@ -220,7 +373,6 @@
         // Inicializa los checkboxes de selección de campos (Marcar Fecha, Comprobante y Destinatario por defecto)
         function initFieldSelection() {
             fieldSelectionDiv.innerHTML = '';
-            // Marcar 'Fecha', 'Nº Comprobante' y 'Nombre del Destinatario' por defecto
             const defaultCheckedFields = ['date', 'receipt_number', 'recipient']; 
             
             Object.keys(FIELD_METADATA).forEach(key => {
@@ -245,16 +397,14 @@
                 wrapper.appendChild(label);
                 fieldSelectionDiv.appendChild(wrapper);
             });
-            // Asegurar que el checkbox principal de campos esté desmarcado al inicio si no todos están marcados
             const allItems = Object.keys(FIELD_METADATA).length;
             selectAllFieldsCheckbox.checked = allItems === defaultCheckedFields.length; 
         }
-        initFieldSelection(); 
 
         // Obtiene los campos seleccionados (las claves del JSON)
         function getSelectedFields() {
             const selected = [];
-            fieldSelectionDiv.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+            fieldSelectionDiv.querySelectorAll('input[type="checkbox"].field-select-item:checked').forEach(checkbox => {
                 selected.push(checkbox.value);
             });
             return selected;
@@ -269,7 +419,6 @@
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
-                // ESTA ES LA CLAVE: extraer solo la parte después de la coma.
                 reader.onload = () => {
                     try {
                         const base64Data = reader.result.split(',')[1];
@@ -289,10 +438,12 @@
         // Muestra u oculta elementos de la interfaz
         function setUIState(isLoading, isError, resultsVisible) {
             loadingArea.classList.toggle('hidden', !isLoading);
-            processButton.disabled = isLoading || imageUpload.files.length === 0;
+            processButton.disabled = isLoading || imageUpload.files.length === 0 || !isAuthReady;
             errorArea.classList.toggle('hidden', !isError);
             resultsArea.classList.toggle('hidden', !resultsVisible);
-            downloadButton.disabled = true; 
+            
+            toggleDownloadMenuButton.disabled = !resultsVisible; 
+            downloadMenu.classList.add('hidden'); 
         }
 
         /**
@@ -319,12 +470,6 @@
                     if (!response.ok) {
                         const errorBody = await response.json().catch(() => ({}));
                         const errorMessage = errorBody.error?.message || response.statusText;
-                        
-                        // Si es un error de Base64, dar un mensaje más claro
-                        if (errorMessage.includes("Unsupported content") || errorMessage.includes("Invalid content")) {
-                            throw new Error(`Error de contenido de imagen. Asegúrese de que el archivo es una imagen válida (JPEG, PNG). Detalle: ${errorMessage}`);
-                        }
-                        
                         throw new Error(`Error en la API: ${response.status} - ${errorMessage}`);
                     }
                     
@@ -341,15 +486,18 @@
         }
 
         /**
-         * Procesa una sola imagen usando la API
+         * Procesa una sola imagen usando la API (Si no está en caché)
          */
-        async function processSingleImage(file) {
-            const selectedFields = getSelectedFields();
-            if (selectedFields.length === 0) {
-                throw new Error("Debe seleccionar al menos un campo para extraer.");
+        async function processSingleImageWithCache(file) {
+            const hash = await calculateFileHash(file);
+            let cachedData = await getCachedExtraction(hash);
+            
+            if (cachedData) {
+                return { data: cachedData, isCached: true };
             }
 
-            // USAR fileToBase64 para obtener la Base64 PURA.
+            // Si falla la caché, llamar a la API
+            const selectedFields = getSelectedFields();
             const base64Data = await fileToBase64(file); 
 
             // 1. Construcción dinámica de Prompts y Schema
@@ -358,11 +506,9 @@
             
             selectedFields.forEach(key => {
                 const metadata = FIELD_METADATA[key];
-                // Pedimos a la IA que sea lo más consistente posible con el dato, 
-                // incluso pidiendo la fecha en un formato estandar
+                
                 let description = metadata.description;
                 if (key === 'date') {
-                    // CRÍTICO: Pedir la fecha en un formato específico para que el parseo sea más robusto
                     description += " Devuélvela en el formato DD MES AAAA (ej: 07 Oct 2025)";
                 }
 
@@ -388,7 +534,6 @@
                             { text: userPrompt },
                             {
                                 inlineData: {
-                                    // USAR file.type AQUÍ (Tipo MIME del archivo original)
                                     mimeType: file.type, 
                                     data: base64Data
                                 }
@@ -414,38 +559,95 @@
             const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!jsonText) throw new Error("Respuesta de la IA vacía o mal formada.");
             
-            return JSON.parse(jsonText);
+            const extractedData = JSON.parse(jsonText);
+            
+            // GUARDAR en caché si la extracción fue exitosa
+            await saveExtractionToCache(hash, extractedData);
+
+            return { data: extractedData, isCached: false };
+        }
+        
+        /**
+         * Procesa un array de archivos en lotes concurrentes.
+         */
+        async function processInBatches(files, concurrencyLimit) {
+            let index = 0;
+            let successfulResults = [];
+            let errorOccurred = false;
+            const totalFiles = files.length;
+
+            const worker = async () => {
+                while (index < totalFiles) {
+                    const fileIndex = index; 
+                    const file = files[fileIndex];
+                    index++; 
+                    const fileNumber = index; 
+                    const fileName = file.name;
+
+                    loadingMessage.textContent = `Analizando imagen ${fileNumber} de ${totalFiles}: ${fileName}...`;
+
+                    try {
+                        const { data, isCached } = await processSingleImageWithCache(file);
+                        
+                        successfulResults.push({
+                            fileName: fileName,
+                            data: data,
+                            isDuplicate: false,
+                            isDateException: false,
+                            observation_date: '',
+                            isCached: isCached 
+                        });
+                        
+                        // Mensaje de éxito específico
+                        if (isCached) {
+                            console.log(`Extracción de ${fileName} cargada desde la CACHÉ. (No se gastó cuota).`);
+                        } else {
+                            console.log(`Extracción de ${fileName} realizada con la API y guardada en caché.`);
+                        }
+
+                    } catch (error) {
+                        console.error(`Error al procesar ${fileName}:`, error);
+                        errorOccurred = true;
+                        const errorText = error.message || "Error desconocido.";
+                        errorArea.innerHTML = `Ocurrió un error al procesar "${fileName}": <span class="font-normal">${errorText}</span>. Revisa la consola para más detalles.`;
+                        errorArea.classList.remove('hidden');
+                        loadingMessage.textContent = `Analizando... (${successfulResults.length} completados de ${totalFiles})`;
+                    }
+                }
+            };
+
+            const workers = [];
+            for (let i = 0; i < concurrencyLimit; i++) {
+                workers.push(worker());
+            }
+
+            await Promise.all(workers);
+
+            return { successfulResults, errorOccurred };
         }
 
+
         /**
-         * Implementa la lógica de CONSISTENCIA DE FECHA: si la fecha más común existe, 
-         * marca el resto como excepciones de fecha.
-         * @param {Array<Object>} dataArray - Array de resultados de extracciones exitosas.
-         * @returns {Object} Un objeto con los resultados del análisis de la fecha.
+         * Implementa la lógica de CONSISTENCIA DE FECHA.
          */
         function detectMajorityDateAndExceptions(dataArray) {
             const dateCounts = {};
 
-            // 1. Contar frecuencias de fechas (usando el formato normalizado DD/MM/AAAA)
             dataArray.forEach(entry => {
                 const extractedDate = entry.data.date;
-                // 'FECHA_NO_ENCONTRADA' si el campo 'date' no existe o está vacío
                 const normalizedDate = extractedDate ? formatDateShort(extractedDate) : 'FECHA_NO_ENCONTRADA';
                 
-                // Añadir propiedades de control al objeto de datos
                 entry.normalizedDate = normalizedDate; 
                 entry.isDateException = false; 
-                entry.observation_date = entry.observation_date || ''; // Inicializar campo de observación vacío, manteniendo el existente si ya tiene
+                entry.observation_date = entry.observation_date || ''; 
 
                 dateCounts[normalizedDate] = (dateCounts[normalizedDate] || 0) + 1;
             });
 
-            // Si no hay extracciones exitosas, no podemos calcular nada.
             if (dataArray.length === 0) return { majorityDate: null, nonMajorityCount: 0, totalExtracted: 0 };
 
-            // 2. Encontrar la fecha mayoritaria
             let majorityDate = null;
-            let maxCount = 0; // Número de archivos exitosos que coinciden con la fecha más común.
+            let maxCount = 0; 
 
             for (const date in dateCounts) {
                 if (dateCounts[date] > maxCount) {
@@ -454,12 +656,10 @@
                 }
             }
 
-            // 3. Marcar excepciones y contar las que no coinciden con la mayoría
             let nonMajorityCount = 0;
             
             if (majorityDate) {
                 dataArray.forEach(entry => {
-                    // Si la fecha normalizada NO coincide con la fecha mayoritaria O si la fecha es 'FECHA_NO_ENCONTRADA'
                     if (entry.normalizedDate !== majorityDate) {
                         entry.isDateException = true;
                         nonMajorityCount++;
@@ -479,11 +679,11 @@
 
 
         /**
-         * Dibuja los resultados extraídos en la interfaz, incluyendo la separación de duplicados y excepciones de fecha.
+         * Dibuja los resultados extraídos en la interfaz.
          */
         function displayResults(dataArray, duplicationWarning = "", dateLogicResult) {
             dataList.innerHTML = ''; 
-            selectAllResultsCheckbox.checked = false; // Desmarcar el chulo principal de resultados
+            selectAllResultsCheckbox.checked = false; 
             
             if (dataArray.length === 0) {
                  infoMessage.textContent = "No se pudo extraer información de ninguna imagen.";
@@ -491,21 +691,17 @@
                  return;
             } 
             
-            // Mensaje de Información de Lógica de Fecha (Actualizado para CONTEO)
             let dateInfoText = '';
             const isDateSelected = getSelectedFields().includes('date');
             
-            // Texto para archivos totales y extraídos
             const totalFiles = imageUpload.files.length;
             const extractedFiles = dateLogicResult.totalExtracted || dataArray.length;
             
             let filesInfo = `Extracción completada para ${extractedFiles} de ${totalFiles} archivo(s).`;
 
-
             if (!isDateSelected) {
                  dateInfoText = " (ADVERTENCIA: Detección de consistencia de fecha desactivada, no se seleccionó el campo 'Fecha').";
             } else if (dateLogicResult.totalExtracted > 0) {
-                // NOTA: dateLogicResult.nonMajorityCount ya incluye fallas de parseo de fecha y las que no coinciden.
                 dateInfoText = ` (Fecha Mayoritaria: ${dateLogicResult.majorityDate}, encontrada en ${dateLogicResult.majorityCount} de ${extractedFiles} extracciones. Total de excepciones/fallas de fecha: ${dateLogicResult.nonMajorityCount}).`;
 
             } else {
@@ -528,7 +724,8 @@
                 const data = entry.data;
                 const fileName = entry.fileName;
                 const isDuplicate = entry.isDuplicate || false;
-                const isDateException = entry.isDateException || false; // CRÍTICO: Usar esta bandera
+                const isDateException = entry.isDateException || false; 
+                const isCached = entry.isCached || false;
                 const isAnyException = isDuplicate || isDateException;
 
                 // Definir colores y encabezados de grupo
@@ -565,13 +762,16 @@
                 checkbox.id = `file-entry-${index}`;
                 checkbox.checked = !isAnyException; // Marcar únicos/normales por defecto
                 checkbox.className = 'w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer result-select-item';
-                checkbox.setAttribute('data-index', index); // Index corresponde a la posición en el array ORDENADO
+                checkbox.setAttribute('data-index', index); 
 
                 const label = document.createElement('label');
                 label.htmlFor = `file-entry-${index}`;
                 
-                // Indicadores de Excepción
+                // Indicadores de Estado y Excepción
                 let indicators = '';
+                if (isCached) {
+                    indicators += `<span class="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded mr-2">CACHÉ/REUTILIZADO</span>`;
+                }
                 if (isDuplicate) {
                     indicators += `<span class="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded mr-2">DUPLICADO</span>`;
                 }
@@ -594,7 +794,6 @@
                     const labelText = FIELD_METADATA[key] ? FIELD_METADATA[key].label : key; 
                     let value = data[key];
 
-                    // Formatear la fecha para la visualización en la interfaz también
                     if (key === 'date') {
                         value = formatDateShort(value);
                     }
@@ -606,7 +805,7 @@
 
                 fileCard.appendChild(contentDiv);
                 
-                // --- CAMPO DE ENTRADA DE FECHA DE OBSERVACIÓN (SOLO SI ES EXCEPCIÓN DE FECHA) ---
+                // --- CAMPO DE ENTRADA DE FECHA DE OBSERVACIÓN ---
                 if (isDateException) {
                     const manualDateDiv = document.createElement('div');
                     manualDateDiv.className = 'mt-4 pt-3 border-t border-yellow-200 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4';
@@ -617,17 +816,15 @@
                     dateLabel.textContent = 'Fecha de Observación (Manual):';
                     
                     const dateInput = document.createElement('input');
-                    dateInput.type = 'date'; // Usar input type="date" para formato YYYY-MM-DD
+                    dateInput.type = 'date'; 
                     dateInput.id = `obs-date-${index}`;
                     dateInput.className = 'p-2 border border-yellow-500 bg-yellow-50 rounded-md shadow-sm text-sm w-full sm:w-auto';
                     
-                    // Si ya teníamos una fecha guardada (por re-renderizado), la cargamos
                     if (entry.observation_date) {
                         dateInput.value = entry.observation_date; 
                     }
                     
                     dateInput.addEventListener('change', (e) => {
-                        // Guardar la fecha en formato YYYY-MM-DD (estándar de input type="date")
                         entry.observation_date = e.target.value; 
                     });
 
@@ -640,24 +837,265 @@
                 dataList.appendChild(fileCard);
             });
 
-            // Agregar listener para habilitar/deshabilitar el botón de descarga
             dataList.addEventListener('change', updateDownloadButtonState);
             updateDownloadButtonState();
-            setUIState(false, false, true); // Oculta carga, muestra resultados
+            setUIState(false, false, true); 
         }
 
         // Actualiza el estado del botón de descarga basado en los chulos seleccionados
         function updateDownloadButtonState() {
             const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
-            downloadButton.disabled = checkedCheckboxes.length === 0;
+            toggleDownloadMenuButton.disabled = checkedCheckboxes.length === 0;
             
-            // Actualizar el estado del chulo principal de resultados
             const totalCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item').length;
             selectAllResultsCheckbox.checked = totalCheckboxes > 0 && checkedCheckboxes.length === totalCheckboxes;
+            
+            if (toggleDownloadMenuButton.disabled) {
+                downloadMenu.classList.add('hidden');
+            }
         }
+
+        /**
+         * Lógica central para obtener los datos seleccionados y sus metadatos.
+         */
+        function getSelectedAndValidatedData() {
+            const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
+            if (checkedCheckboxes.length === 0) {
+                infoMessage.textContent = "ERROR: Selecciona al menos una fila para exportar.";
+                infoMessage.classList.remove('text-gray-500');
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return [];
+            }
+            
+            const selectedFields = getSelectedFields();
+            if (selectedFields.length === 0) {
+                infoMessage.textContent = "ERROR: No hay campos seleccionados para exportar. Selecciona los campos en la sección 1.5.";
+                infoMessage.classList.remove('text-gray-500');
+                infoMessage.classList.add('text-red-600', 'font-bold');
+                return [];
+            } else {
+                 infoMessage.classList.remove('text-red-600', 'font-bold');
+                 infoMessage.classList.add('text-gray-500');
+            }
+
+            const selectedData = [];
+            checkedCheckboxes.forEach(checkbox => {
+                const index = parseInt(checkbox.getAttribute('data-index'));
+                const entry = allExtractedData.find((_, i) => i === index); 
+                if (entry) {
+                    selectedData.push(entry);
+                }
+            });
+            
+            return selectedData;
+        }
+
+        /**
+         * Función auxiliar para generar la estructura de fila de datos para SheetJS.
+         */
+        const getSheetDataRow = (entry, selectedFields, hasDateSelected, hasRecipientSelected) => {
+            const rowData = [];
+            
+            selectedFields.forEach(key => {
+                let value = entry.data[key] || ""; 
+                
+                if (key === 'date' && hasDateSelected) {
+                    value = formatDateShort(value); 
+                    rowData.push(value); 
+                    
+                    let obsDate = '';
+                    if (entry.isDateException && entry.observation_date) { 
+                        try {
+                            const [year, month, day] = entry.observation_date.split('-');
+                            obsDate = `${day}/${month}/${year}`;
+                        } catch (e) {
+                            obsDate = entry.observation_date; 
+                        }
+                    }
+                    rowData.push(obsDate); 
+                } else {
+                    rowData.push(value);
+                }
+            });
+            
+            if (!hasRecipientSelected) {
+                rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
+            }
+
+            rowData.push(
+                entry.fileName,
+                entry.isDuplicate ? "Sí" : "No",                      
+                entry.isDateException ? "Sí" : "No",
+                entry.isCached ? "Sí" : "No"
+            );
+            
+            return rowData;
+        };
+
+        /**
+         * Función auxiliar para generar los encabezados de columna.
+         */
+        const getSheetHeaders = (selectedFields, hasDateSelected, hasRecipientSelected) => {
+            const headers = [];
+            selectedFields.forEach(key => {
+                headers.push(FIELD_METADATA[key].label);
+                if (key === 'date' && hasDateSelected) {
+                    headers.push("Fecha de Observación"); 
+                }
+            });
+            if (!hasRecipientSelected) {
+                 headers.push(FIELD_METADATA.recipient.label); 
+            }
+            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha", "Reutilizado (Caché)");
+            return headers;
+        }
+
+
+        /**
+         * Exporta los datos seleccionados en una sola hoja consolidada.
+         */
+        function exportConsolidated(data) {
+            infoMessage.textContent = `Generando libro de Excel consolidado...`;
+            
+            const selectedFields = getSelectedFields();
+            const hasDateSelected = selectedFields.includes('date');
+            const hasRecipientSelected = selectedFields.includes('recipient');
+
+            data.sort((a, b) => {
+                const nameA = (a.data.recipient || 'z').toUpperCase();
+                const nameB = (b.data.recipient || 'z').toUpperCase();
+                return nameA < nameB ? -1 : (nameA > nameB ? 1 : 0);
+            });
+
+            const workbook = XLSX.utils.book_new();
+            const sheetData = [];
+
+            const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
+            sheetData.push(headers);
+            
+            data.forEach(entry => {
+                const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
+                sheetData.push(rowData);
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Consolidado");
+
+            try {
+                XLSX.writeFile(workbook, `comprobantes_consolidados_${Date.now()}.xlsx`);
+                infoMessage.textContent = `¡Descarga del libro de Excel (.xlsx) en una sola hoja completada!`;
+                infoMessage.classList.remove('text-red-600', 'font-bold');
+            } catch (error) {
+                console.error("Error al generar el archivo XLSX consolidado:", error);
+                infoMessage.textContent = "ERROR al generar el archivo XLSX consolidado. Ver consola.";
+                infoMessage.classList.add('text-red-600', 'font-bold');
+            }
+        }
+
+        /**
+         * Exporta los datos seleccionados agrupados por destinatario (múltiples hojas).
+         */
+        function exportGrouped(data) {
+            infoMessage.textContent = `Generando libro de Excel agrupado por destinatario...`;
+
+            const selectedFields = getSelectedFields();
+            const hasDateSelected = selectedFields.includes('date');
+            const hasRecipientSelected = selectedFields.includes('recipient');
+
+            // 1. Agrupar por destinatario
+            const groups = data.reduce((acc, entry) => {
+                const recipientName = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
+                let safeRecipientName = recipientName
+                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+                    .replace(/[\\/?*[\]:]/g, '_') 
+                    .trim().toUpperCase() 
+                    .replace(/\s+/g, '_');
+                
+                safeRecipientName = safeRecipientName.substring(0, 30) || 'SIN_NOMBRE';
+                
+                if (!acc[safeRecipientName]) {
+                    acc[safeRecipientName] = [];
+                }
+                acc[safeRecipientName].push(entry);
+                return acc;
+            }, {});
+
+            // 2. Generar Libro de Excel (Workbook)
+            const workbook = XLSX.utils.book_new();
+            let groupCount = 0;
+
+            for (const safeRecipientName in groups) {
+                if (Object.hasOwnProperty.call(groups, safeRecipientName)) {
+                    const recipientData = groups[safeRecipientName];
+                    groupCount++;
+
+                    const sheetData = [];
+
+                    const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
+                    sheetData.push(headers);
+                    
+                    recipientData.forEach(entry => {
+                        const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
+                        sheetData.push(rowData);
+                    });
+
+                    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                    XLSX.utils.book_append_sheet(workbook, worksheet, safeRecipientName);
+                }
+            }
+
+            // 3. Escribir el Workbook y descargar
+            if (groupCount > 0) {
+                try {
+                    XLSX.writeFile(workbook, `comprobantes_agrupados_${Date.now()}.xlsx`);
+                    infoMessage.textContent = `¡Descarga del libro de Excel (.xlsx) con ${groupCount} hojas (una por destinatario) completada!`;
+                    infoMessage.classList.remove('text-red-600', 'font-bold');
+                } catch (error) {
+                    console.error("Error al generar el archivo XLSX:", error);
+                    infoMessage.textContent = "ERROR al generar el archivo XLSX. Ver consola.";
+                    infoMessage.classList.add('text-red-600', 'font-bold');
+                }
+            } else {
+                infoMessage.textContent = "ERROR: No hay datos agrupables seleccionados para generar el libro XLSX.";
+                infoMessage.classList.add('text-red-600', 'font-bold');
+            }
+        }
+
 
         // --- Manejadores de Eventos ---
 
+        // Toggle del menú de descarga
+        toggleDownloadMenuButton.addEventListener('click', () => {
+            if (!toggleDownloadMenuButton.disabled) {
+                downloadMenu.classList.toggle('hidden');
+            }
+        });
+        
+        // Cierra el menú si se hace click fuera
+        document.addEventListener('click', (e) => {
+            if (!downloadButtonContainer.contains(e.target) && !downloadMenu.classList.contains('hidden')) {
+                downloadMenu.classList.add('hidden');
+            }
+        });
+
+        // Evento para Descarga Agrupada
+        downloadGroupedButton.addEventListener('click', () => {
+            const data = getSelectedAndValidatedData();
+            if (data.length > 0) {
+                exportGrouped(data);
+                downloadMenu.classList.add('hidden');
+            }
+        });
+
+        // Evento para Descarga Consolidada
+        downloadConsolidatedButton.addEventListener('click', () => {
+            const data = getSelectedAndValidatedData();
+            if (data.length > 0) {
+                exportConsolidated(data);
+                downloadMenu.classList.add('hidden');
+            }
+        });
+        
         // Selector/Deselector de todos los CAMPOS
         selectAllFieldsCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
@@ -672,21 +1110,17 @@
             dataList.querySelectorAll('input[type="checkbox"].result-select-item').forEach(checkbox => {
                 checkbox.checked = isChecked;
             });
-            updateDownloadButtonState(); // Actualizar el estado del botón de descarga
+            updateDownloadButtonState();
         });
         
         // Seleccionar solo las excepciones de fecha
         selectDateExceptionsButton.addEventListener('click', () => {
-            // Deseleccionar todo primero
             dataList.querySelectorAll('input[type="checkbox"].result-select-item').forEach(checkbox => {
                 checkbox.checked = false;
             });
 
-            // Iterar sobre los datos internos (que ya están ordenados y tienen las banderas)
             allExtractedData.forEach((entry, index) => {
                 if (entry.isDateException) {
-                    // Buscar el checkbox correspondiente por índice
-                    // Nota: Usamos `data-index` que corresponde a la posición en allExtractedData
                     const checkbox = document.querySelector(`input[type="checkbox"].result-select-item[data-index="${index}"]`);
                     if (checkbox) {
                         checkbox.checked = true;
@@ -699,7 +1133,6 @@
 
         // Listener para los chulos individuales de campos
         fieldSelectionDiv.addEventListener('change', () => {
-             // Actualizar el chulo principal de campos
             const allItems = fieldSelectionDiv.querySelectorAll('input[type="checkbox"]').length;
             const checkedItems = fieldSelectionDiv.querySelectorAll('input[type="checkbox"]:checked').length;
             selectAllFieldsCheckbox.checked = allItems > 0 && checkedItems === allItems;
@@ -709,22 +1142,22 @@
         imageUpload.addEventListener('change', () => {
             const fileCount = imageUpload.files.length;
             fileCountSpan.textContent = fileCount;
-            processButton.disabled = fileCount === 0;
+            processButton.disabled = fileCount === 0 || !isAuthReady;
             
             setUIState(false, false, false);
             errorArea.classList.add('hidden');
-            allExtractedData = []; // Resetear datos
-            infoMessage.textContent = fileCount > 0 ? "Listo para procesar." : "";
+            allExtractedData = []; 
+            infoMessage.textContent = fileCount > 0 ? "Listo para procesar." : "Sistema listo para recibir archivos.";
+            infoMessage.classList.remove('text-red-600', 'font-bold');
         });
 
         // Lógica principal de extracción al hacer clic en el botón
         processButton.addEventListener('click', async () => {
             const files = Array.from(imageUpload.files);
-            if (files.length === 0) return;
+            if (files.length === 0 || !isAuthReady) return;
             const selectedFields = getSelectedFields();
-            const totalFilesCount = files.length; // Total de archivos subidos
+            const totalFilesCount = files.length; 
 
-            // Validación de campos seleccionados
             if (selectedFields.length === 0) {
                 infoMessage.textContent = "ERROR: Por favor, selecciona al menos un campo a extraer.";
                 infoMessage.classList.remove('text-gray-500');
@@ -739,49 +1172,25 @@
             setUIState(true, false, false); 
             errorArea.classList.add('hidden');
             allExtractedData = []; 
-            let successCount = 0;
             let errorOccurred = false;
 
-            // Procesamiento secuencial
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                loadingMessage.textContent = `Analizando imagen ${i + 1} de ${files.length}: ${file.name}...`;
-
-                try {
-                    const data = await processSingleImage(file);
-                    
-                    // Almacenar el resultado exitoso e inicializar banderas/campos
-                    allExtractedData.push({
-                        fileName: file.name,
-                        data: data,
-                        isDuplicate: false, // Inicializado
-                        isDateException: false, // Inicializado
-                        observation_date: '' // Inicializado
-                    });
-                    successCount++;
-
-                } catch (error) {
-                    console.error(`Error al procesar ${file.name}:`, error);
-                    errorOccurred = true;
-                    // Mostrar error en la interfaz sin detener el proceso
-                    const errorText = error.message || "Error desconocido.";
-                    errorArea.innerHTML = `Ocurrió un error al procesar "${file.name}": <span class="font-normal">${errorText}</span>. Revisa la consola para más detalles.`;
-                    errorArea.classList.remove('hidden');
-                }
-            }
+            const CONCURRENCY_LIMIT = 5; 
+            const { successfulResults, errorOccurred: batchErrorOccurred } = await processInBatches(files, CONCURRENCY_LIMIT);
             
+            allExtractedData = successfulResults;
+            const successCount = successfulResults.length;
+            errorOccurred = batchErrorOccurred;
+
             let duplicationWarning = "";
             let dateLogicResult = { majorityDate: null, nonMajorityCount: 0, majorityCount: 0, totalExtracted: 0 };
 
             if (successCount > 0) {
                 
-                // --- LÓGICA DE DETECCIÓN DE DUPLICADOS (Nº Comprobante) ---
                 const CHECK_FIELD_KEY_DUP = 'receipt_number';
                 const isDuplicationCheckPossible = selectedFields.includes(CHECK_FIELD_KEY_DUP);
 
                 if (isDuplicationCheckPossible) {
                     const receiptNumbers = new Set();
-                    // Primero identificar duplicados
                     allExtractedData.forEach(entry => {
                         const receiptNumber = entry.data[CHECK_FIELD_KEY_DUP];
                         if (receiptNumber && receiptNumbers.has(receiptNumber)) {
@@ -793,192 +1202,18 @@
                 } else {
                     duplicationWarning = " (ADVERTENCIA: No se verificó duplicidad porque el 'Nº Comprobante' no fue seleccionado).";
                 }
-                // --- FIN LÓGICA DE DUPLICADOS ---
 
-                // --- LÓGICA DE DETECCIÓN DE CONSISTENCIA POR FECHA (BASADA EN CONTEO) ---
                 if (selectedFields.includes('date')) {
-                    // Solo enviamos los archivos que se extrajeron exitosamente
                     dateLogicResult = detectMajorityDateAndExceptions(allExtractedData);
                 }
-                // --- FIN LÓGICA DE FECHA ---
             }
-
 
             if (successCount === 0) {
                 setUIState(false, true, false); 
             } else {
                 displayResults(allExtractedData, duplicationWarning, dateLogicResult);
             }
-            // Asegurarse de quitar el estado de carga después de todo.
             setUIState(false, errorOccurred, allExtractedData.length > 0);
-        });
-
-        // --- Lógica de Descarga de Libro XLSX Agrupado por Destinatario ---
-        downloadButton.addEventListener('click', () => {
-            const checkedCheckboxes = dataList.querySelectorAll('input[type="checkbox"].result-select-item:checked');
-            if (checkedCheckboxes.length === 0) {
-                infoMessage.textContent = "ERROR: Selecciona al menos una fila para exportar.";
-                infoMessage.classList.remove('text-gray-500');
-                infoMessage.classList.add('text-red-600', 'font-bold');
-                return;
-            }
-
-            const selectedFields = getSelectedFields(); 
-            const hasDateSelected = selectedFields.includes('date');
-            const hasRecipientSelected = selectedFields.includes('recipient');
-
-            if (selectedFields.length === 0) {
-                infoMessage.textContent = "ERROR: No hay campos seleccionados para exportar. Selecciona los campos en la sección 1.5.";
-                infoMessage.classList.remove('text-gray-500');
-                infoMessage.classList.add('text-red-600', 'font-bold');
-                return;
-            } else {
-                 infoMessage.classList.remove('text-red-600', 'font-bold');
-                 infoMessage.classList.add('text-gray-500');
-            }
-            
-            // Función interna para obtener la estructura de datos para SheetJS (Array of Arrays)
-            const getSheetDataRow = (entry, selectedFields, hasDateSelected, hasRecipientSelected) => {
-                
-                const rowData = [];
-                
-                selectedFields.forEach(key => {
-                    let value = entry.data[key] || ""; 
-                    
-                    if (key === 'date' && hasDateSelected) {
-                        // 1. Añadir la Fecha extraída (DD/MM/AAAA)
-                        value = formatDateShort(value); 
-                        rowData.push(value); // Fecha extraída (formateada)
-                        
-                        // 2. Añadir la Fecha de Observación (Manual) justo después
-                        let obsDate = '';
-                        if (entry.isDateException && entry.observation_date) { 
-                            // Convertir de YYYY-MM-DD (input date) a DD/MM/AAAA (para Excel)
-                            try {
-                                const [year, month, day] = entry.observation_date.split('-');
-                                obsDate = `${day}/${month}/${year}`;
-                            } catch (e) {
-                                obsDate = entry.observation_date; // Fallback
-                            }
-                        }
-                        rowData.push(obsDate); 
-                    } else {
-                        // Para el resto de campos (solo el valor)
-                        rowData.push(value);
-                    }
-                });
-                
-                // C. Campo de Agrupación (Destinatario) si NO FUE seleccionado originalmente
-                if (!hasRecipientSelected) {
-                    rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
-                }
-
-                // D. Datos de metadatos (al final)
-                rowData.push(
-                    entry.fileName,
-                    entry.isDuplicate ? "Sí" : "No",                      
-                    entry.isDateException ? "Sí" : "No"                 
-                );
-                
-                return rowData;
-            };
-
-            // Función para obtener los encabezados
-            const getSheetHeaders = (selectedFields, hasDateSelected, hasRecipientSelected) => {
-                const headers = [];
-                selectedFields.forEach(key => {
-                    headers.push(FIELD_METADATA[key].label);
-                    if (key === 'date' && hasDateSelected) {
-                        // CRÍTICO: Añadir encabezado para el campo de observación
-                        headers.push("Fecha de Observación"); 
-                    }
-                });
-                if (!hasRecipientSelected) {
-                     headers.push(FIELD_METADATA.recipient.label); 
-                }
-                headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha");
-                return headers;
-            }
-
-
-            // 1. Obtener datos seleccionados
-            const selectedData = [];
-            checkedCheckboxes.forEach(checkbox => {
-                const index = parseInt(checkbox.getAttribute('data-index'));
-                const entry = allExtractedData.find((_, i) => i === index);
-                if (entry) {
-                    selectedData.push(entry);
-                }
-            });
-            
-            // 2. Agrupar por destinatario
-            const groups = selectedData.reduce((acc, entry) => {
-                // Usar el valor extraído o un valor por defecto
-                const recipientName = entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO';
-                // Sanitizar el nombre para usarlo como nombre de pestaña (max 31 chars, sin caracteres inválidos)
-                let safeRecipientName = recipientName
-                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar tildes
-                    .replace(/[\\/?*[\]:]/g, '_') // Quitar caracteres inválidos para nombre de hoja de Excel
-                    .trim().toUpperCase() 
-                    .replace(/\s+/g, '_'); // Reemplazar espacios por guiones bajos
-                
-                // Limitar la longitud a 30 caracteres (Excel tiene un límite de 31)
-                safeRecipientName = safeRecipientName.substring(0, 30) || 'SIN_NOMBRE';
-                
-                if (!acc[safeRecipientName]) {
-                    acc[safeRecipientName] = [];
-                }
-                acc[safeRecipientName].push(entry);
-                return acc;
-            }, {});
-
-            // 3. Generar Libro de Excel (Workbook)
-            const workbook = XLSX.utils.book_new();
-            let groupCount = 0;
-
-            for (const safeRecipientName in groups) {
-                if (Object.hasOwnProperty.call(groups, safeRecipientName)) {
-                    const recipientData = groups[safeRecipientName];
-                    groupCount++;
-
-                    // Prepara el array de arrays (AoA) para SheetJS
-                    const sheetData = [];
-
-                    // 1. Añadir Encabezados
-                    const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
-                    sheetData.push(headers);
-                    
-                    // 2. Añadir Filas de Datos
-                    recipientData.forEach(entry => {
-                        const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
-                        sheetData.push(rowData);
-                    });
-
-                    // 3. Crear Worksheet a partir del array de arrays
-                    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-                    
-                    // 4. Añadir Worksheet al Workbook
-                    XLSX.utils.book_append_sheet(workbook, worksheet, safeRecipientName);
-                }
-            }
-
-            // 4. Escribir el Workbook y descargar
-            if (groupCount > 0) {
-                infoMessage.textContent = `Generando libro de Excel con ${groupCount} hoja(s)...`;
-                
-                try {
-                    // Esta función maneja la conversión a XLSX y la descarga automáticamente
-                    XLSX.writeFile(workbook, `comprobantes_agrupados_${Date.now()}.xlsx`);
-                    infoMessage.textContent = `¡Descarga del libro de Excel (.xlsx) con ${groupCount} hojas (una por destinatario) completada!`;
-                } catch (error) {
-                    console.error("Error al generar el archivo XLSX:", error);
-                    infoMessage.textContent = "ERROR al generar el archivo XLSX. Ver consola.";
-                    infoMessage.classList.add('text-red-600', 'font-bold');
-                }
-            } else {
-                infoMessage.textContent = "ERROR: No hay datos seleccionados para generar el libro XLSX.";
-                infoMessage.classList.add('text-red-600', 'font-bold');
-            }
         });
 
     </script>
