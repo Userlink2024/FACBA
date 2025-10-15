@@ -234,7 +234,7 @@
             if (firebaseConfig.apiKey === 'MOCK_KEY_FOR_STANDALONE') {
                 console.warn("ADVERTENCIA: Configuración de Firebase no detectada. La caché de Firestore está DESACTIVADA, pero la extracción con Gemini funcionará.");
                 isAuthReady = true;
-                infoMessage.textContent = "Sistema de Extracción listo (Caché desactivada).";
+                infoMessage.textContent = "";
                 processButton.disabled = imageUpload.files.length === 0;
                 return;
             }
