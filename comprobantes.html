@@ -154,19 +154,35 @@
         const selectDateExceptionsButton = document.getElementById('selectDateExceptionsButton');
         
         // *****************************************************************************
-        // *** CONFIGURACIÓN MANDATORIA ************************************************
+        // *** CONFIGURACIÓN MANDATORIA DE API KEYS Y URL BASE *************************
         // *****************************************************************************
-        const apiKey = "AIzaSyBZ37K5guckjv-I-OgpRFH5v_jj8nsTyH8"; 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const apiKeys = [
+            "AIzaSyBZ37K5guckjv-I-OgpRFH5v_jj8nsTyH8", 
+            "AIzaSyA9J-b9rH1CCMOKUmFxoI4n2B9fiY-RNv4" // Nueva clave secundaria
+        ];
+        let currentKeyIndex = 0;
+        const apiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
+
+        // Función para obtener la URL actual con la clave activa
+        function getCurrentApiUrl() {
+            const key = apiKeys[currentKeyIndex];
+            return `${apiBaseUrl}?key=${key}`;
+        }
+        
+        // Función para rotar a la siguiente clave
+        function switchApiKey() {
+            const oldIndex = currentKeyIndex;
+            currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+            console.warn(`[API KEY ROTATION] La clave en el índice ${oldIndex} falló o está agotada. Cambiando a la clave en el índice ${currentKeyIndex}.`);
+        }
+        // *****************************************************************************
+        // *****************************************************************************
 
         let db = null;
         let auth = null;
         let userId = 'anon';
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
-        // ** MODIFICACIÓN CLAVE: Manejo de la configuración de Firebase. **
-        // Si la configuración no existe (ejecutando desde GitHub), se usa un objeto simulado 
-        // para que la inicialización no falle, permitiendo que la app principal funcione.
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : { apiKey: 'MOCK_KEY_FOR_STANDALONE' }; 
@@ -446,42 +462,72 @@
         }
 
         /**
-         * Llama a la API de Gemini con lógica de reintento (backoff)
+         * Llama a la API de Gemini con lógica de reintento (backoff) Y rotación de claves.
+         * Es la nueva función principal para hacer llamadas a la API.
          */
-        async function fetchWithRetry(url, payload, maxRetries = 5) {
-            let delay = 1000;
+        async function fetchWithKeyRotation(payload) {
+            const maxKeyAttempts = apiKeys.length; 
             
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            for (let k = 0; k < maxKeyAttempts; k++) {
+                const currentApiUrl = getCurrentApiUrl();
+                let delay = 1000;
+                const maxRetriesPerKey = 3; 
+                
+                for (let i = 0; i < maxRetriesPerKey; i++) {
+                    try {
+                        const response = await fetch(currentApiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
 
-                    if (response.status === 429 && i < maxRetries - 1) { 
-                        console.warn(`Tasa límite alcanzada. Reintentando en ${delay / 1000}s...`);
+                        // 1. ÉXITO
+                        if (response.ok) {
+                            return response.json();
+                        }
+
+                        // 2. TASA LÍMITE (429) - Reintento con la misma clave (Backoff)
+                        if (response.status === 429 && i < maxRetriesPerKey - 1) { 
+                            console.warn(`[API - 429] Tasa límite alcanzada para la clave actual (Intento ${i + 1}/${maxRetriesPerKey}). Reintentando en ${delay / 1000}s...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2; 
+                            continue; 
+                        }
+                        
+                        // 3. FALLA NO RECUPERABLE O ÚLTIMO INTENTO
+                        // Si es 403 (Forbidden/API Key Inválida/Agotada), 400 (Bad Request), 5xx (Server Error), 
+                        // O es el último intento de reintento.
+                        if (response.status === 403 || response.status === 400 || response.status >= 500 || i === maxRetriesPerKey - 1) {
+                            const errorBody = await response.json().catch(() => ({}));
+                            const errorMessage = errorBody.error?.message || response.statusText;
+                            throw new Error(`Error no recuperable con clave actual (Estado: ${response.status}): ${errorMessage}`);
+                        }
+                        
+                        // 4. ERROR TEMPORAL (Ej: 503, etc., pero no el último intento) - Backoff y reintento
+                        console.error(`Error temporal (${response.status}). Reintentando con la misma clave...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2; 
-                        continue;
-                    }
+                        delay *= 2;
 
-                    if (!response.ok) {
-                        const errorBody = await response.json().catch(() => ({}));
-                        const errorMessage = errorBody.error?.message || response.statusText;
-                        throw new Error(`Error en la API: ${response.status} - ${errorMessage}`);
+                    } catch (error) {
+                        // Error de red/conexión. Reintentar con la misma clave (si no es el último intento).
+                        if (i < maxRetriesPerKey - 1) {
+                            console.error("Error de conexión o temporal. Reintentando...", error.message);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2;
+                        } else {
+                            // Error fatal, lanzar para que la clave rote
+                            throw error;
+                        }
                     }
-                    
-                    return response.json();
-
-                } catch (error) {
-                    if (i === maxRetries - 1) throw error;
-                    console.error("Error temporal. Reintentando...", error);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2;
+                }
+                
+                // Si llegamos aquí, el bucle interno de reintentos falló. Intentar con la siguiente clave si existe.
+                if (k < maxKeyAttempts - 1) {
+                    switchApiKey();
                 }
             }
-            throw new Error("Fallo en la llamada a la API después de múltiples reintentos.");
+            
+            throw new Error("Fallo en la llamada a la API después de intentar con todas las claves. Por favor, revisa la consola.");
         }
 
         /**
@@ -554,7 +600,8 @@
                 }
             };
 
-            const result = await fetchWithRetry(apiUrl, payload);
+            // *** LLAMADA CON ROTACIÓN DE CLAVES ***
+            const result = await fetchWithKeyRotation(payload);
             
             const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!jsonText) throw new Error("Respuesta de la IA vacía o mal formada.");
@@ -921,10 +968,7 @@
                 }
             });
             
-            // Si el destinatario no se seleccionó, se añade aquí para poder agrupar.
             if (!hasRecipientSelected && selectedFields.includes('recipient')) {
-                // Esto no debería ocurrir en el flujo normal, pero lo dejo por si acaso, aunque el campo
-                // 'recipient' solo debería aparecer si está en selectedFields.
                 rowData.push(entry.data.recipient || 'DESTINATARIO_NO_EXTRAÍDO');
             }
 
@@ -934,7 +978,7 @@
                 entry.isDuplicate ? "Sí" : "No",                      
                 entry.isDateException ? "Sí" : "No",
                 entry.isCached ? "Sí" : "No",
-                entry.hash // <--- Añadir el hash del archivo
+                entry.hash 
             );
             
             return rowData;
@@ -951,9 +995,8 @@
                     headers.push("Fecha de Observación"); 
                 }
             });
-            // Remover la lógica de hasRecipientSelected aquí, ya que solo se añaden los campos seleccionados.
 
-            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha", "Reutilizado (Caché)", "Hash MD5 del Archivo"); // <--- Añadir encabezado del Hash
+            headers.push("Archivo", "Es Duplicado", "Es Excepción de Fecha", "Reutilizado (Caché)", "Hash MD5 del Archivo"); 
             return headers;
         }
 
@@ -977,8 +1020,6 @@
             const workbook = XLSX.utils.book_new();
             const sheetData = [];
 
-            // Nota: Aquí se usa el parámetro hasRecipientSelected en getSheetHeaders aunque
-            // ya no tiene efecto de añadir un campo extra, es solo para mantener la firma.
             const headers = getSheetHeaders(selectedFields, hasDateSelected, hasRecipientSelected);
             sheetData.push(headers);
             
@@ -1009,7 +1050,7 @@
 
             const selectedFields = getSelectedFields();
             const hasDateSelected = selectedFields.includes('date');
-            const hasRecipientSelected = selectedFields.includes('recipient'); // Necesario para agrupar
+            const hasRecipientSelected = selectedFields.includes('recipient'); 
 
             if (!hasRecipientSelected) {
                 infoMessage.textContent = "ERROR: Para la descarga agrupada, el campo 'Nombre del Destinatario' debe estar seleccionado.";
@@ -1052,7 +1093,6 @@
                     
                     recipientData.forEach(entry => {
                         const rowData = getSheetDataRow(entry, selectedFields, hasDateSelected, hasRecipientSelected);
-                        // No es necesario añadir el destinatario de nuevo si ya está en selectedFields
                         sheetData.push(rowData);
                     });
 
@@ -1198,7 +1238,7 @@
             errorArea.classList.add('hidden');
             allExtractedData = []; 
             
-            // --- NUEVA LÓGICA DE PRE-PROCESAMIENTO PARA OBTENER HASHES ---
+            // --- LÓGICA DE PRE-PROCESAMIENTO PARA OBTENER HASHES ---
             const filesWithMetadata = [];
             for (const file of files) {
                 try {
@@ -1210,16 +1250,15 @@
                     });
                 } catch (e) {
                     console.error(`Error al calcular hash de ${file.name}:`, e);
-                    // Si el hash falla, omitimos el archivo, o lo marcamos para no usar caché.
                     filesWithMetadata.push({
                         file: file,
                         fileName: file.name,
-                        hash: null // Esto forzará el caché MISS si se llega a intentar usar
+                        hash: null 
                     });
                 }
             }
             
-            // --- LÓGICA CENTRAL DE EXTRACCIÓN CON CACHÉ (SIN CAMBIOS) ---
+            // --- LÓGICA CENTRAL DE EXTRACCIÓN CON CACHÉ Y ROTACIÓN DE CLAVES ---
             const CONCURRENCY_LIMIT = 5; 
             const { successfulResults, errorOccurred: batchErrorOccurred } = await processInBatches(filesWithMetadata, CONCURRENCY_LIMIT);
             
