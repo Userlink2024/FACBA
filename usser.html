@@ -36,6 +36,7 @@ function iniciarFirebase() {
     }
   });
 
+  // 🔹 Listener de conexiones en tiempo real
   onValue(connectionsRef, (snap) => {
     const data = snap.val();
     const count = data ? Object.keys(data).length : 0;
@@ -43,11 +44,14 @@ function iniciarFirebase() {
   });
 
   const visitasRef = ref(db, "/visitas");
+
+  // 🔹 Registrar cada visita
   push(visitasRef, { 
     timestamp: serverTimestamp(),
     fecha: new Date().toLocaleString()
   });
 
+  // 🔹 Listener de visitas en tiempo real
   onValue(visitasRef, (snap) => {
     const data = snap.val();
     const total = data ? Object.keys(data).length : 0;
@@ -71,7 +75,6 @@ window.mostrarPanel = function() {
   if(clave === "170518") {
     document.getElementById("cargando").style.display = "none";
     document.getElementById("panel").style.display = "block";
-    iniciarFirebase();
 
     // Crear botón de borrar historial dentro de la tuerca
     if(!document.getElementById("btnBorrar")) {
@@ -93,8 +96,9 @@ window.mostrarPanel = function() {
   }
 };
 
-// 🔹 Asignamos el evento a la tuerca
+// 🔹 Inicializamos Firebase desde el inicio
 document.addEventListener("DOMContentLoaded", () => {
+  iniciarFirebase();
   document.getElementById("tuerca").addEventListener("click", mostrarPanel);
 });
 </script>
