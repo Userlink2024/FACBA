@@ -8,7 +8,7 @@
     import { getDatabase, ref, onValue, onDisconnect, set, push, serverTimestamp } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // 🔥 Configuración Firebase
+    // 🔥 Configuración de tu Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCimRCv6S5u0FhsfWrW_3A0dQJy0uAKVro",
       authDomain: "facba-69d41.firebaseapp.com",
@@ -33,7 +33,7 @@
       if (snap.val() === true) {
         const con = push(connectionsRef);
         set(con, { connectedAt: serverTimestamp() });
-        onDisconnect(con).remove(); // se borra al salir
+        onDisconnect(con).remove();
       }
     });
 
@@ -47,12 +47,26 @@
     // 2️⃣ Historial de visitas
     // ==========================
     const visitasRef = ref(db, "/visitas");
-    push(visitasRef, { timestamp: serverTimestamp() }); // cada ingreso queda registrado
+    const nuevaVisitaRef = push(visitasRef, { 
+      timestamp: serverTimestamp(),
+      fecha: new Date().toLocaleString()
+    });
 
     onValue(visitasRef, (snap) => {
       const data = snap.val();
       const total = data ? Object.keys(data).length : 0;
       document.getElementById("totalVisitas").textContent = total;
+
+      // Mostrar últimas visitas
+      const ul = document.getElementById("listaVisitas");
+      ul.innerHTML = '';
+      if (data) {
+        Object.values(data).slice(-10).reverse().forEach(v => { // últimas 10
+          const li = document.createElement('li');
+          li.textContent = v.fecha;
+          ul.appendChild(li);
+        });
+      }
     });
 
   </script>
@@ -66,8 +80,9 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
       text-align: center;
+      padding: 20px;
     }
     h1 { color: #ffd700; margin-bottom: 10px; }
     p { color: #ffd700; font-size: 1.2em; margin-bottom: 25px; }
@@ -79,6 +94,18 @@
       font-size: 1.1em;
       margin: 5px 0;
     }
+    ul {
+      list-style: none;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      text-align: left;
+      color: #ffd700;
+    }
+    li {
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
   </style>
 </head>
 <body>
@@ -87,5 +114,8 @@
 
   <div class="contador">👁️ Personas conectadas ahora: <span id="onlineCount">0</span></div>
   <div class="contador">📖 Total de visitas: <span id="totalVisitas">0</span></div>
+
+  <h3>Últimas visitas:</h3>
+  <ul id="listaVisitas"></ul>
 </body>
 </html>
