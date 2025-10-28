@@ -5,10 +5,10 @@
 <title>🔒 Pantalla Secreta</title>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getDatabase, ref, onValue, onDisconnect, set, push, serverTimestamp } 
+import { getDatabase, ref, onValue, onDisconnect, set, push, serverTimestamp, remove } 
   from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-// 🔥 Configuración Firebase
+// 🔹 Configuración Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyCimRCv6S5u0FhsfWrW_3A0dQJy0uAKVro",
   authDomain: "facba-69d41.firebaseapp.com",
@@ -23,8 +23,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// 🔹 Función para iniciar Firebase y registrar visitas/conexiones
 function iniciarFirebase() {
-  // Conexiones activas
   const connectionsRef = ref(db, "/connections");
   const connectedRef = ref(db, ".info/connected");
 
@@ -42,7 +42,6 @@ function iniciarFirebase() {
     document.getElementById("onlineCount").textContent = count;
   });
 
-  // Historial de visitas
   const visitasRef = ref(db, "/visitas");
   push(visitasRef, { 
     timestamp: serverTimestamp(),
@@ -66,17 +65,38 @@ function iniciarFirebase() {
   });
 }
 
-// Función para mostrar panel solo si clave correcta
-function mostrarPanel() {
+// 🔹 Función global para mostrar el panel secreto
+window.mostrarPanel = function() {
   const clave = prompt("Ingresa la clave:");
   if(clave === "170518") {
     document.getElementById("cargando").style.display = "none";
     document.getElementById("panel").style.display = "block";
     iniciarFirebase();
+
+    // Crear botón de borrar historial dentro de la tuerca
+    if(!document.getElementById("btnBorrar")) {
+      const btnBorrar = document.createElement("button");
+      btnBorrar.id = "btnBorrar";
+      btnBorrar.textContent = "Eliminar historial";
+      btnBorrar.style.marginLeft = "10px";
+      btnBorrar.style.padding = "5px 10px";
+      btnBorrar.style.cursor = "pointer";
+      btnBorrar.onclick = () => {
+        if(confirm("¿Seguro que quieres eliminar todo el historial?")) {
+          remove(ref(db, "/visitas")).then(() => alert("Historial eliminado"));
+        }
+      };
+      document.getElementById("tuerca").appendChild(btnBorrar);
+    }
   } else {
     alert("Clave incorrecta 🔒");
   }
-}
+};
+
+// 🔹 Asignamos el evento a la tuerca
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("tuerca").addEventListener("click", mostrarPanel);
+});
 </script>
 
 <style>
@@ -102,10 +122,13 @@ body {
   cursor: pointer;
   user-select: none;
   color: #ffd700;
+  display: flex;
+  align-items: center;
 }
 
 h1 { color: #ffd700; margin-bottom: 10px; }
 p { color: #ffd700; font-size: 1.2em; margin-bottom: 25px; }
+
 .contador {
   background: rgba(255,255,255,0.1);
   padding: 10px 20px;
@@ -114,6 +137,7 @@ p { color: #ffd700; font-size: 1.2em; margin-bottom: 25px; }
   font-size: 1.1em;
   margin: 5px 0;
 }
+
 ul {
   list-style: none;
   padding: 0;
@@ -126,10 +150,20 @@ li {
   padding: 3px 0;
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
+button {
+  background-color: #222;
+  color: #ffd700;
+  border: 1px solid #ffd700;
+  border-radius: 5px;
+}
+button:hover {
+  background-color: #444;
+}
 </style>
 </head>
 <body>
-<div id="tuerca" onclick="mostrarPanel()">⚙️</div>
+
+<div id="tuerca">⚙️</div>
 
 <div id="cargando">
   <h1>Cargando...</h1>
@@ -144,5 +178,6 @@ li {
   <h3>Últimas visitas:</h3>
   <ul id="listaVisitas"></ul>
 </div>
+
 </body>
 </html>
