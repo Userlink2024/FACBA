@@ -4,12 +4,11 @@
   <meta charset="UTF-8">
   <title>🌠 El siguiente paso 🌠</title>
   <script type="module">
-    // Importar desde Firebase (versión modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getDatabase, ref, onValue, onDisconnect, set, push, serverTimestamp } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // Tu configuración de Firebase (la que ya creaste)
+    // 🔥 Configuración Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCimRCv6S5u0FhsfWrW_3A0dQJy0uAKVro",
       authDomain: "facba-69d41.firebaseapp.com",
@@ -21,30 +20,41 @@
       measurementId: "G-NL7Y6NDH99"
     };
 
-    // Inicializar Firebase y base de datos
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Referencias para conexiones activas
+    // ==========================
+    // 1️⃣ Conexiones activas
+    // ==========================
     const connectionsRef = ref(db, "/connections");
     const connectedRef = ref(db, ".info/connected");
 
-    // Cuando alguien entra:
     onValue(connectedRef, (snap) => {
       if (snap.val() === true) {
         const con = push(connectionsRef);
         set(con, { connectedAt: serverTimestamp() });
-        // Eliminar cuando se desconecte
-        onDisconnect(con).remove();
+        onDisconnect(con).remove(); // se borra al salir
       }
     });
 
-    // Escuchar cuántos están conectados en tiempo real
     onValue(connectionsRef, (snap) => {
       const data = snap.val();
       const count = data ? Object.keys(data).length : 0;
       document.getElementById("onlineCount").textContent = count;
     });
+
+    // ==========================
+    // 2️⃣ Historial de visitas
+    // ==========================
+    const visitasRef = ref(db, "/visitas");
+    push(visitasRef, { timestamp: serverTimestamp() }); // cada ingreso queda registrado
+
+    onValue(visitasRef, (snap) => {
+      const data = snap.val();
+      const total = data ? Object.keys(data).length : 0;
+      document.getElementById("totalVisitas").textContent = total;
+    });
+
   </script>
 
   <style>
@@ -61,18 +71,21 @@
     }
     h1 { color: #ffd700; margin-bottom: 10px; }
     p { color: #ffd700; font-size: 1.2em; margin-bottom: 25px; }
-    #contador {
+    .contador {
       background: rgba(255,255,255,0.1);
       padding: 10px 20px;
       border-radius: 15px;
       color: #ccc;
-      font-size: 1em;
+      font-size: 1.1em;
+      margin: 5px 0;
     }
   </style>
 </head>
 <body>
   <h1>✨ El siguiente paso ✨</h1>
   <p>A veces solo hace falta un paso más 🌙</p>
-  <div id="contador">👁️ Personas mirando ahora: <span id="onlineCount">0</span></div>
+
+  <div class="contador">👁️ Personas conectadas ahora: <span id="onlineCount">0</span></div>
+  <div class="contador">📖 Total de visitas: <span id="totalVisitas">0</span></div>
 </body>
 </html>
