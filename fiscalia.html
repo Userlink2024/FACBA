@@ -175,8 +175,9 @@
         
         <div class="warning-text">
             🔒 DISPOSITIVO COMPLETAMENTE BLOQUEADO 🔒<br>
-            <small>Sistema • Apps • Botones • Gestos • DESHABILITADOS</small><br>
-            <small style="color: #ff6b6b;">⚠️ INTENTAR CERRAR REINICIARÁ EL PROCESO ⚠️</small>
+            <small>Sistema • Apps • Botones • Gestos • Chrome • DESHABILITADOS</small><br>
+            <small style="color: #ff6b6b;">⚠️ NAVEGACIÓN POR GESTOS BLOQUEADA ⚠️</small><br>
+            <small style="color: #ffeb3b;">Swipes desde bordes no funcionarán</small>
         </div>
     </div>
 
@@ -465,6 +466,151 @@
         document.addEventListener('touchmove', function(e) {
             e.preventDefault();
         }, { passive: false });
+
+        // BLOQUEO ESPECÍFICO PARA NAVEGACIÓN POR GESTOS DE ANDROID
+        let gestureStartX = 0;
+        let gestureStartY = 0;
+        let gestureStartTime = 0;
+        let edgeThreshold = 50; // Píxeles desde el borde para detectar gestos
+
+        // Detectar y bloquear gestos de navegación de Android
+        document.addEventListener('touchstart', function(e) {
+            if (isLocked && e.touches.length === 1) {
+                const touch = e.touches[0];
+                gestureStartX = touch.clientX;
+                gestureStartY = touch.clientY;
+                gestureStartTime = Date.now();
+                
+                // Detectar si el toque inicia cerca de los bordes (gestos de sistema)
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                
+                // Gesto desde borde izquierdo (atrás)
+                if (gestureStartX < edgeThreshold) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showGestureWarning('GESTO ATRÁS BLOQUEADO');
+                    return false;
+                }
+                
+                // Gesto desde borde derecho (cambiar apps)
+                if (gestureStartX > screenWidth - edgeThreshold) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showGestureWarning('CAMBIO DE APPS BLOQUEADO');
+                    return false;
+                }
+                
+                // Gesto desde borde inferior (home/recientes)
+                if (gestureStartY > screenHeight - edgeThreshold) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showGestureWarning('GESTO HOME BLOQUEADO');
+                    return false;
+                }
+                
+                // Gesto desde borde superior (notificaciones)
+                if (gestureStartY < edgeThreshold) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showGestureWarning('NOTIFICACIONES BLOQUEADAS');
+                    return false;
+                }
+            }
+        }, { passive: false, capture: true });
+
+        // Interceptar movimientos de gestos
+        document.addEventListener('touchmove', function(e) {
+            if (isLocked && e.touches.length === 1) {
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - gestureStartX;
+                const deltaY = touch.clientY - gestureStartY;
+                const deltaTime = Date.now() - gestureStartTime;
+                
+                // Detectar swipe rápido desde bordes
+                if (deltaTime < 500) { // Gestos rápidos
+                    // Swipe desde izquierda (atrás)
+                    if (gestureStartX < edgeThreshold && deltaX > 100) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning('NAVEGACIÓN ATRÁS BLOQUEADA');
+                        return false;
+                    }
+                    
+                    // Swipe desde derecha (cambiar apps)
+                    if (gestureStartX > window.innerWidth - edgeThreshold && deltaX < -100) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning('CAMBIO DE APPS BLOQUEADO');
+                        return false;
+                    }
+                    
+                    // Swipe hacia arriba desde abajo (home/recientes)
+                    if (gestureStartY > window.innerHeight - edgeThreshold && deltaY < -100) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning('GESTO HOME BLOQUEADO');
+                        return false;
+                    }
+                    
+                    // Swipe hacia abajo desde arriba (notificaciones)
+                    if (gestureStartY < edgeThreshold && deltaY > 100) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning('NOTIFICACIONES BLOQUEADAS');
+                        return false;
+                    }
+                }
+                
+                // Bloquear cualquier movimiento que inicie desde los bordes
+                if (gestureStartX < edgeThreshold || 
+                    gestureStartX > window.innerWidth - edgeThreshold ||
+                    gestureStartY < edgeThreshold || 
+                    gestureStartY > window.innerHeight - edgeThreshold) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            }
+        }, { passive: false, capture: true });
+
+        // Función específica para mostrar advertencias de gestos
+        function showGestureWarning(message) {
+            const warningDiv = document.createElement('div');
+            warningDiv.style.cssText = `
+                position: fixed;
+                top: 20%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #ff1744;
+                color: white;
+                padding: 15px 25px;
+                border-radius: 25px;
+                z-index: 10002;
+                text-align: center;
+                font-weight: bold;
+                font-size: 0.9rem;
+                box-shadow: 0 0 30px rgba(255, 23, 68, 0.8);
+                border: 2px solid #fff;
+            `;
+            warningDiv.innerHTML = `🚫 ${message} 🚫`;
+            document.body.appendChild(warningDiv);
+            
+            setTimeout(() => {
+                if (warningDiv.parentNode) {
+                    warningDiv.parentNode.removeChild(warningDiv);
+                }
+            }, 1500);
+        }
 
         // Inicializar sistema completo al cargar
         window.addEventListener('load', function() {
@@ -840,6 +986,129 @@
             }, true);
         }
 
+        // Bloquear gestos específicos de Android
+        function blockAndroidGestures() {
+            // Crear zonas invisibles en los bordes para interceptar gestos
+            const edges = ['top', 'bottom', 'left', 'right'];
+            
+            edges.forEach(edge => {
+                const edgeZone = document.createElement('div');
+                edgeZone.style.cssText = `
+                    position: fixed;
+                    z-index: 999998;
+                    background: transparent;
+                    pointer-events: auto;
+                `;
+                
+                switch(edge) {
+                    case 'top':
+                        edgeZone.style.cssText += `
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 60px;
+                        `;
+                        break;
+                    case 'bottom':
+                        edgeZone.style.cssText += `
+                            bottom: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 60px;
+                        `;
+                        break;
+                    case 'left':
+                        edgeZone.style.cssText += `
+                            top: 0;
+                            left: 0;
+                            width: 60px;
+                            height: 100%;
+                        `;
+                        break;
+                    case 'right':
+                        edgeZone.style.cssText += `
+                            top: 0;
+                            right: 0;
+                            width: 60px;
+                            height: 100%;
+                        `;
+                        break;
+                }
+                
+                // Interceptar todos los eventos táctiles en las zonas de borde
+                edgeZone.addEventListener('touchstart', function(e) {
+                    if (isLocked) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning(`GESTO ${edge.toUpperCase()} BLOQUEADO`);
+                        return false;
+                    }
+                }, { passive: false, capture: true });
+                
+                edgeZone.addEventListener('touchmove', function(e) {
+                    if (isLocked) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        return false;
+                    }
+                }, { passive: false, capture: true });
+                
+                edgeZone.addEventListener('touchend', function(e) {
+                    if (isLocked) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        return false;
+                    }
+                }, { passive: false, capture: true });
+                
+                document.body.appendChild(edgeZone);
+            });
+            
+            // Interceptar eventos de orientación y movimiento del dispositivo
+            window.addEventListener('deviceorientation', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            window.addEventListener('devicemotion', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            // Bloquear gestos de pellizco y zoom
+            document.addEventListener('gesturestart', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showGestureWarning('ZOOM BLOQUEADO');
+                    return false;
+                }
+            }, { passive: false, capture: true });
+            
+            document.addEventListener('gesturechange', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, { passive: false, capture: true });
+            
+            document.addEventListener('gestureend', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, { passive: false, capture: true });
+        }
+
         // Crear overlay invisible para capturar todos los clics
         function createInvisibleOverlay() {
             const overlay = document.createElement('div');
@@ -892,6 +1161,7 @@
             blockSystemNotifications();
             blockChromeInterface();
             blockNewWindows();
+            blockAndroidGestures();
             createInvisibleOverlay();
             
             // Forzar foco inicial
