@@ -1066,20 +1066,25 @@
                 const proveedor = row.cells[6].textContent.toLowerCase(); // Columna Proveedor (index adjusted)
 
                 if (referencia.includes(searchTerm) || color.includes(searchTerm) || proveedor.includes(searchTerm)) {
-                    row.style.display = ''; // Mostrar fila si coincide
+                    row.dataset.hiddenByFilter = '0';
                 } else {
-                    row.style.display = 'none'; // Ocultar fila si no coincide
+                    row.dataset.hiddenByFilter = '1';
                 }
             });
 
             paginateInventario();
         }
 
-        function getVisibleDataRows(tbody, colspanValue){
+        function getDataRows(tbody, colspanValue){
             const rows = Array.from(tbody.querySelectorAll('tr'));
-            return rows.filter(r => {
-                if (r.querySelector(`td[colspan="${colspanValue}"]`)) return false;
-                return r.style.display !== 'none';
+            return rows.filter(r => !r.querySelector(`td[colspan="${colspanValue}"]`));
+        }
+
+        function applyRowVisibility(rows){
+            rows.forEach(r => {
+                const hiddenByFilter = r.dataset.hiddenByFilter === '1';
+                const hiddenByPage = r.dataset.hiddenByPage === '1';
+                r.style.display = (hiddenByFilter || hiddenByPage) ? 'none' : '';
             });
         }
 
@@ -1089,19 +1094,21 @@
             const prev = document.getElementById('btnInvPrev');
             const next = document.getElementById('btnInvNext');
 
-            const visibleRows = getVisibleDataRows(tablaInventario, 8);
-            const total = visibleRows.length;
+            const rows = getDataRows(tablaInventario, 8);
+            const filteredRows = rows.filter(r => r.dataset.hiddenByFilter !== '1');
+            const total = filteredRows.length;
             const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
             if (invCurrentPage > totalPages) invCurrentPage = totalPages;
             if (invCurrentPage < 1) invCurrentPage = 1;
 
-            visibleRows.forEach(r => { r.style.display = ''; });
-
+            rows.forEach(r => { r.dataset.hiddenByPage = '0'; });
             const start = (invCurrentPage - 1) * PAGE_SIZE;
             const end = start + PAGE_SIZE;
-            visibleRows.forEach((r, i) => {
-                if (i < start || i >= end) r.style.display = 'none';
+            filteredRows.forEach((r, i) => {
+                if (i < start || i >= end) r.dataset.hiddenByPage = '1';
             });
+
+            applyRowVisibility(rows);
 
             if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
             if (label) label.textContent = `Página ${invCurrentPage} de ${totalPages} (${total} registros)`;
@@ -1252,10 +1259,9 @@
                  const saldoPendiente = row.cells[6].textContent.toLowerCase(); // Columna Saldo Pendiente
 
                 if (codigoRegistro.includes(searchTerm) || cliente.includes(searchTerm) || tipoPago.includes(searchTerm) || productos.includes(searchTerm) || saldoPendiente.includes(searchTerm)) {
-                    row.style.display = ''; // Mostrar fila si coincide
+                    row.dataset.hiddenByFilter = '0';
                 } else {
-                    row.style.display = 'none'; // Ocultar fila si no coincide
-                     // Ya no necesitamos ocultar la fila de abonos, ya que está en un modal
+                    row.dataset.hiddenByFilter = '1';
                 }
             });
 
@@ -1268,19 +1274,22 @@
             const prev = document.getElementById('btnFacPrev');
             const next = document.getElementById('btnFacNext');
 
-            const visibleRows = getVisibleDataRows(tablaFacturas, 8);
-            const total = visibleRows.length;
+            const rows = getDataRows(tablaFacturas, 8);
+            const filteredRows = rows.filter(r => r.dataset.hiddenByFilter !== '1');
+            const total = filteredRows.length;
             const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
             if (facCurrentPage > totalPages) facCurrentPage = totalPages;
             if (facCurrentPage < 1) facCurrentPage = 1;
 
-            visibleRows.forEach(r => { r.style.display = ''; });
-
+            rows.forEach(r => { r.dataset.hiddenByPage = '0'; });
             const start = (facCurrentPage - 1) * PAGE_SIZE;
             const end = start + PAGE_SIZE;
-            visibleRows.forEach((r, i) => {
-                if (i < start || i >= end) r.style.display = 'none';
+
+            filteredRows.forEach((r, i) => {
+                if (i < start || i >= end) r.dataset.hiddenByPage = '1';
             });
+
+            applyRowVisibility(rows);
 
             if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
             if (label) label.textContent = `Página ${facCurrentPage} de ${totalPages} (${total} registros)`;
