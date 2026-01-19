@@ -373,6 +373,11 @@
                 <div class="mt-4 flex justify-end space-x-2">
                     <button id="btnExportarInventario" class="btn btn-primary">Exportar Inventario</button>
                 </div>
+                <div id="inventarioPager" class="mt-4 flex justify-between items-center space-x-2" style="display:none;">
+                    <button id="btnInvPrev" class="btn btn-secondary btn-sm">Anterior</button>
+                    <div id="invPageLabel" class="text-sm text-gray-600" style="flex:1;text-align:center;"></div>
+                    <button id="btnInvNext" class="btn btn-secondary btn-sm">Siguiente</button>
+                </div>
             </div>
         </div>
 
@@ -520,6 +525,11 @@
                 </div>
                  <div class="mt-4 flex justify-end space-x-2">
                      <button id="btnExportarFacturas" class="btn btn-primary">Exportar Facturas (CSV)</button>
+                 </div>
+                 <div id="facturasPager" class="mt-4 flex justify-between items-center space-x-2" style="display:none;">
+                     <button id="btnFacPrev" class="btn btn-secondary btn-sm">Anterior</button>
+                     <div id="facPageLabel" class="text-sm text-gray-600" style="flex:1;text-align:center;"></div>
+                     <button id="btnFacNext" class="btn btn-secondary btn-sm">Siguiente</button>
                  </div>
             </div>
         </div>
@@ -785,6 +795,10 @@
 
         // --- Variables de estado ---
         let productosEnFactura = []; // Array para almacenar los productos de la factura actual
+
+        const PAGE_SIZE = 50;
+        let invCurrentPage = 1;
+        let facCurrentPage = 1;
 
 
         // --- Funciones de Utilidad ---
@@ -1057,6 +1071,42 @@
                     row.style.display = 'none'; // Ocultar fila si no coincide
                 }
             });
+
+            paginateInventario();
+        }
+
+        function getVisibleDataRows(tbody, colspanValue){
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            return rows.filter(r => {
+                if (r.querySelector(`td[colspan="${colspanValue}"]`)) return false;
+                return r.style.display !== 'none';
+            });
+        }
+
+        function paginateInventario(){
+            const pager = document.getElementById('inventarioPager');
+            const label = document.getElementById('invPageLabel');
+            const prev = document.getElementById('btnInvPrev');
+            const next = document.getElementById('btnInvNext');
+
+            const visibleRows = getVisibleDataRows(tablaInventario, 8);
+            const total = visibleRows.length;
+            const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+            if (invCurrentPage > totalPages) invCurrentPage = totalPages;
+            if (invCurrentPage < 1) invCurrentPage = 1;
+
+            visibleRows.forEach(r => { r.style.display = ''; });
+
+            const start = (invCurrentPage - 1) * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            visibleRows.forEach((r, i) => {
+                if (i < start || i >= end) r.style.display = 'none';
+            });
+
+            if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
+            if (label) label.textContent = `Página ${invCurrentPage} de ${totalPages} (${total} registros)`;
+            if (prev) prev.disabled = invCurrentPage <= 1;
+            if (next) next.disabled = invCurrentPage >= totalPages;
         }
 
 
@@ -1186,7 +1236,7 @@
          // Función para filtrar la tabla de facturas
         function filtrarFacturas() {
             const searchTerm = inputBuscarFacturas.value.toLowerCase().trim();
-            const rows = tablaFacturas.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
+            const rows = tablaFacturas.querySelectorAll("tr"); // Seleccionar filas del tbody
 
             rows.forEach(row => {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
@@ -1208,6 +1258,34 @@
                      // Ya no necesitamos ocultar la fila de abonos, ya que está en un modal
                 }
             });
+
+            paginateFacturas();
+        }
+
+        function paginateFacturas(){
+            const pager = document.getElementById('facturasPager');
+            const label = document.getElementById('facPageLabel');
+            const prev = document.getElementById('btnFacPrev');
+            const next = document.getElementById('btnFacNext');
+
+            const visibleRows = getVisibleDataRows(tablaFacturas, 8);
+            const total = visibleRows.length;
+            const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+            if (facCurrentPage > totalPages) facCurrentPage = totalPages;
+            if (facCurrentPage < 1) facCurrentPage = 1;
+
+            visibleRows.forEach(r => { r.style.display = ''; });
+
+            const start = (facCurrentPage - 1) * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            visibleRows.forEach((r, i) => {
+                if (i < start || i >= end) r.style.display = 'none';
+            });
+
+            if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
+            if (label) label.textContent = `Página ${facCurrentPage} de ${totalPages} (${total} registros)`;
+            if (prev) prev.disabled = facCurrentPage <= 1;
+            if (next) next.disabled = facCurrentPage >= totalPages;
         }
 
 
@@ -1241,7 +1319,7 @@
             csvContent += headers.join(";") + "\r\n"; // Usar ; como separador
 
             // Datos de la tabla (solo filas visibles después del filtro)
-            const rows = tablaFacturas.querySelectorAll("tbody tr"); // Seleccionar solo filas del tbody
+            const rows = tablaFacturas.querySelectorAll("tr"); // Seleccionar filas del tbody
 
             rows.forEach(function(row) {
                 // Saltar la fila de "Cargando facturas..." o "No hay facturas..."
@@ -2238,8 +2316,18 @@
          });
 
         inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
-        inputBuscarInventario.addEventListener('input', filtrarInventario);
-        inputBuscarFacturas.addEventListener('input', filtrarFacturas);
+        inputBuscarInventario.addEventListener('input', () => { invCurrentPage = 1; filtrarInventario(); });
+        inputBuscarFacturas.addEventListener('input', () => { facCurrentPage = 1; filtrarFacturas(); });
+
+        const btnInvPrev = document.getElementById('btnInvPrev');
+        const btnInvNext = document.getElementById('btnInvNext');
+        if (btnInvPrev) btnInvPrev.addEventListener('click', () => { if (invCurrentPage > 1) { invCurrentPage--; paginateInventario(); } });
+        if (btnInvNext) btnInvNext.addEventListener('click', () => { invCurrentPage++; paginateInventario(); });
+
+        const btnFacPrev = document.getElementById('btnFacPrev');
+        const btnFacNext = document.getElementById('btnFacNext');
+        if (btnFacPrev) btnFacPrev.addEventListener('click', () => { if (facCurrentPage > 1) { facCurrentPage--; paginateFacturas(); } });
+        if (btnFacNext) btnFacNext.addEventListener('click', () => { facCurrentPage++; paginateFacturas(); });
 
         btnAgregarProductoFactura.addEventListener('click', agregarProductoAListaFactura); // Evento para agregar a la lista
         btnCrearFactura.addEventListener('click', crearFactura); // Evento para crear la factura final
