@@ -393,6 +393,10 @@
                     <label for="facCliente" class="form-label">Cliente:</label>
                     <input type="text" id="facCliente" class="form-input" required>
                 </div>
+                <div>
+                    <label for="facNumeroFactura" class="form-label">Número de Factura:</label>
+                    <input type="text" id="facNumeroFactura" class="form-input" placeholder="Ej: 001 (opcional, se genera automático si está vacío)">
+                </div>
                 <div class="md:col-span-2">
                     <label class="form-label mb-2">Tipo de Pago:</label>
                     <div class="flex items-center space-x-4">
@@ -405,6 +409,19 @@
                             Credito
                         </label>
                     </div>
+                    <div id="subTipoContado" class="mt-2 hidden">
+                        <label class="form-label mb-1">Método de pago:</label>
+                        <div class="flex items-center space-x-4">
+                            <label>
+                                <input type="radio" name="metodoPago" value="efectivo" id="radioEfectivo" class="mr-1">
+                                Efectivo
+                            </label>
+                            <label>
+                                <input type="radio" name="metodoPago" value="transferencia" id="radioTransferencia" class="mr-1">
+                                Transferencia
+                            </label>
+                        </div>
+                    </div>
                 </div>
                 </form>
 
@@ -412,9 +429,10 @@
                  <h3 class="text-lg font-medium mb-3">Agregar Productos a la Factura</h3>
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div class="md:col-span-2">
-                         <label for="facProducto" class="form-label">Producto:</label>
-                         <input type="text" id="facProducto" class="form-input" placeholder="Buscar producto en inventario..." readonly>
-                         <button id="btnBuscarProducto" type="button" class="btn btn-primary mt-2">Buscar Producto</button>
+                         <label for="facProductoBusqueda" class="form-label">Buscar Producto:</label>
+                         <input type="text" id="facProductoBusqueda" class="form-input" placeholder="Escribe referencia, color o proveedor..." autocomplete="off">
+                         <div id="resultadosBusquedaInline" class="border rounded max-h-48 overflow-y-auto mt-1 bg-white hidden"></div>
+                         <input type="hidden" id="facProducto">
                          <div id="detalleProductoFactura" class="mt-3 p-3 border rounded hidden bg-white">
                              <p><strong>Producto Seleccionado:</strong> <span id="prodNombreFac"></span></p>
                              <p><strong>Cantidad Disponible:</strong> <span id="prodCantidadFac"></span></p>
@@ -688,6 +706,14 @@
         // Nuevas referencias para Tipo de Pago
         const radioContado = document.getElementById('radioContado');
         const radioCredito = document.getElementById('radioCredito');
+        const subTipoContado = document.getElementById('subTipoContado');
+        const radioEfectivo = document.getElementById('radioEfectivo');
+        const radioTransferencia = document.getElementById('radioTransferencia');
+        // Campo para número de factura manual
+        const facNumeroFactura = document.getElementById('facNumeroFactura');
+        // Búsqueda inline de productos
+        const facProductoBusqueda = document.getElementById('facProductoBusqueda');
+        const resultadosBusquedaInline = document.getElementById('resultadosBusquedaInline');
         // Fin Nuevas referencias
         const facProducto = document.getElementById('facProducto');
         const btnBuscarProducto = document.getElementById('btnBuscarProducto');
@@ -803,6 +829,20 @@
 
         // --- Funciones de Utilidad ---
 
+        // Función para obtener fecha de hoy en zona horaria de Colombia
+        function getTodayColombiaISO() {
+            const now = new Date();
+            // Colombia es UTC-5
+            const colombiaOffset = -5 * 60; // en minutos
+            const localOffset = now.getTimezoneOffset(); // en minutos
+            const diff = colombiaOffset - localOffset;
+            const colombiaTime = new Date(now.getTime() + diff * 60 * 1000);
+            const yyyy = colombiaTime.getFullYear();
+            const mm = String(colombiaTime.getMonth() + 1).padStart(2, '0');
+            const dd = String(colombiaTime.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
          function showStatusMessage(message, isError = false) {
              statusMessage.textContent = message;
              statusMessage.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
@@ -900,24 +940,32 @@
              radioMetros.checked = false;
              radioUnidades.checked = false;
              handleUnidadMedida();
-             if(invFechaHora) invFechaHora.value = '';
+             if(invFechaHora) invFechaHora.value = getTodayColombiaISO(); // Precargar fecha Colombia
              if(inputBuscarInventario) inputBuscarInventario.value = ''; // Limpiar búsqueda al resetear
              filtrarInventario(); // Aplicar filtro vacío
          }
 
          function resetFormFacturacion() {
              // Resetear campos de factura
-             facFechaHora.value = '';
+             facFechaHora.value = getTodayColombiaISO(); // Precargar fecha de hoy Colombia
              facCliente.value = '';
+             // Resetear número de factura
+             if(facNumeroFactura) facNumeroFactura.value = '';
              // Resetear radios de tipo de pago
              radioContado.checked = false;
              radioCredito.checked = false;
+             // Ocultar sub-opciones de contado
+             if(subTipoContado) subTipoContado.classList.add('hidden');
+             if(radioEfectivo) radioEfectivo.checked = false;
+             if(radioTransferencia) radioTransferencia.checked = false;
 
              facValorTotalDisplay.textContent = '0';
              facValorTotal.value = 0;
 
              // Resetear sección de agregar producto
              facProducto.value = '';
+             if(facProductoBusqueda) facProductoBusqueda.value = '';
+             if(resultadosBusquedaInline) resultadosBusquedaInline.classList.add('hidden');
              detalleProductoFactura.classList.add('hidden');
              facProductId.value = '';
              facProductUnit.value = '';
@@ -1177,7 +1225,11 @@
                      }
 
                      // Determinar el texto a mostrar para el tipo de pago
-                     const tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
+                    let tipoPagoDisplay = factura.tipoPago === 'credito' ? 'Credito' : 'Contado';
+                    // Si es contado, mostrar el método de pago (efectivo/transferencia)
+                    if (factura.tipoPago === 'contado' && factura.metodoPago) {
+                        tipoPagoDisplay = `Contado (${factura.metodoPago.charAt(0).toUpperCase() + factura.metodoPago.slice(1)})`;
+                    }
 
                      // --- Corrección aquí: Calcular y mostrar el saldo pendiente ---
                      let saldoPendienteDisplay;
@@ -1557,7 +1609,89 @@
         window.eliminarProducto = eliminarProducto;
 
 
-        // Función para buscar producto en Firebase para facturación
+        // Función para manejar mostrar/ocultar sub-tipo de pago Contado
+        function handleTipoPagoChange() {
+            if (radioContado && radioContado.checked) {
+                if(subTipoContado) subTipoContado.classList.remove('hidden');
+            } else {
+                if(subTipoContado) subTipoContado.classList.add('hidden');
+                if(radioEfectivo) radioEfectivo.checked = false;
+                if(radioTransferencia) radioTransferencia.checked = false;
+            }
+        }
+
+        // Función para búsqueda inline de productos (sin modal)
+        async function buscarProductoInline() {
+            const searchTerm = (facProductoBusqueda ? facProductoBusqueda.value : '').toLowerCase().trim();
+            
+            if (!resultadosBusquedaInline) return;
+            
+            if (searchTerm.length < 2) {
+                resultadosBusquedaInline.innerHTML = '';
+                resultadosBusquedaInline.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const qRef = query(inventarioCol, where("referencia", ">=", searchTerm), where("referencia", "<=", searchTerm + '\uf8ff'));
+                const qColor = query(inventarioCol, where("color", ">=", searchTerm), where("color", "<=", searchTerm + '\uf8ff'));
+                const qProveedor = query(inventarioCol, where("proveedor", ">=", searchTerm), where("proveedor", "<=", searchTerm + '\uf8ff'));
+
+                const [snapshotRef, snapshotColor, snapshotProveedor] = await Promise.all([getDocs(qRef), getDocs(qColor), getDocs(qProveedor)]);
+
+                const uniqueProductIds = new Set();
+                const uniqueProducts = [];
+
+                [snapshotRef, snapshotColor, snapshotProveedor].forEach(snapshot => {
+                    snapshot.forEach(doc => {
+                        if (!uniqueProductIds.has(doc.id)) {
+                            uniqueProductIds.add(doc.id);
+                            uniqueProducts.push({ id: doc.id, ...doc.data() });
+                        }
+                    });
+                });
+
+                resultadosBusquedaInline.innerHTML = '';
+                
+                if (uniqueProducts.length === 0) {
+                    resultadosBusquedaInline.innerHTML = '<p class="text-center py-2 text-gray-500">No se encontraron productos.</p>';
+                    resultadosBusquedaInline.classList.remove('hidden');
+                    return;
+                }
+
+                uniqueProducts.forEach(producto => {
+                    const resultadoDiv = document.createElement('div');
+                    resultadoDiv.classList.add('p-2', 'border-b', 'cursor-pointer', 'hover:bg-blue-50', 'text-sm');
+
+                    let cantidadDisplay = '';
+                    if (producto.unidadMedida === 'metros') {
+                        const metros = producto.metros || 0;
+                        const centimetros = producto.centimetros || 0;
+                        cantidadDisplay = `${metros}.${centimetros.toString().padStart(2, '0')} Metros`;
+                    } else if (producto.unidadMedida === 'unidades') {
+                        cantidadDisplay = `${producto.unidades || 0} Unidades`;
+                    }
+
+                    const proveedorDisplay = producto.proveedor ? ` [${producto.proveedor}]` : '';
+
+                    resultadoDiv.innerHTML = `<strong>${producto.referencia} - ${producto.color}</strong> (${cantidadDisplay})${proveedorDisplay}`;
+                    resultadoDiv.onclick = () => {
+                        seleccionarProductoParaFactura(producto);
+                        resultadosBusquedaInline.classList.add('hidden');
+                        if(facProductoBusqueda) facProductoBusqueda.value = '';
+                    };
+                    resultadosBusquedaInline.appendChild(resultadoDiv);
+                });
+                resultadosBusquedaInline.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error buscando producto inline:", error);
+                resultadosBusquedaInline.innerHTML = '<p class="text-center py-2 text-red-500">Error buscando productos.</p>';
+                resultadosBusquedaInline.classList.remove('hidden');
+            }
+        }
+
+        // Función para buscar producto en Firebase para facturación (modal - mantener por compatibilidad)
         async function buscarProductoParaFacturacion() {
             console.log('DEBUG: Iniciando búsqueda de producto para facturación...');
             const searchTerm = inputBuscarProducto.value.toLowerCase().trim();
@@ -1949,6 +2083,8 @@
             const cliente = facCliente.value.trim();
             const fechaHora = facFechaHora.value.trim();
             const tipoPago = document.querySelector('input[name="tipoPago"]:checked')?.value; // Obtener el tipo de pago seleccionado
+            const metodoPago = document.querySelector('input[name="metodoPago"]:checked')?.value || null; // Obtener método de pago (efectivo/transferencia)
+            const numeroFacturaManual = facNumeroFactura ? facNumeroFactura.value.trim() : '';
 
             if (!fechaHora) {
                  showStatusMessage("La fecha es obligatoria.", true);
@@ -1965,6 +2101,12 @@
                  return;
             }
 
+            // Validar método de pago si es contado
+            if (tipoPago === 'contado' && !metodoPago) {
+                showStatusMessage("Debe seleccionar el método de pago (Efectivo o Transferencia).", true);
+                return;
+            }
+
 
             if (productosEnFactura.length === 0) {
                  showStatusMessage("Debe agregar al menos un producto a la factura.", true);
@@ -1975,7 +2117,12 @@
 
             // --- Generar Código de Registro Único ---
             const now = new Date();
-            const codigoRegistro = `${now.getFullYear()}${('0' + (now.getMonth() + 1)).slice(-2)}${('0' + now.getDate()).slice(-2)}${('0' + now.getHours()).slice(-2)}${('0' + now.getMinutes()).slice(-2)}${('0' + now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
+            let codigoRegistro;
+            if (numeroFacturaManual) {
+                codigoRegistro = numeroFacturaManual; // Usar número manual si se proporcionó
+            } else {
+                codigoRegistro = `${now.getFullYear()}${('0' + (now.getMonth() + 1)).slice(-2)}${('0' + now.getDate()).slice(-2)}${('0' + now.getHours()).slice(-2)}${('0' + now.getMinutes()).slice(-2)}${('0' + now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
+            }
             console.log('DEBUG: Código de Registro Generado:', codigoRegistro);
             // --- Fin Generar Código de Registro Único ---
 
@@ -1985,9 +2132,10 @@
                 fechaHora: fechaHora,
                 cliente: cliente,
                 tipoPago: tipoPago, // Añadir el tipo de pago a los datos de la factura
+                metodoPago: metodoPago, // Añadir método de pago (efectivo/transferencia) - null si es crédito
                 productos: productosEnFactura, // Guardar el array de productos (ahora incluye proveedor)
                 valorTotal: valorTotal,
-                 saldoPendiente: valorTotal, // Inicializar saldo pendiente con el valor total (se ajusta al mostrar si es contado)
+                 saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, // Si es contado, saldo es 0
                 abonos: [], // Inicializar array de abonos
                 createdAt: new Date() // Opcional: añadir timestamp de creación
             };
@@ -2292,6 +2440,21 @@
         radioMetros.addEventListener('change', handleUnidadMedida);
         radioUnidades.addEventListener('change', handleUnidadMedida);
 
+        // Event listeners para tipo de pago
+        if(radioContado) radioContado.addEventListener('change', handleTipoPagoChange);
+        if(radioCredito) radioCredito.addEventListener('change', handleTipoPagoChange);
+
+        // Event listener para búsqueda inline de productos
+        if(facProductoBusqueda) {
+            facProductoBusqueda.addEventListener('input', buscarProductoInline);
+            // Cerrar resultados al hacer clic fuera
+            document.addEventListener('click', (e) => {
+                if (resultadosBusquedaInline && !facProductoBusqueda.contains(e.target) && !resultadosBusquedaInline.contains(e.target)) {
+                    resultadosBusquedaInline.classList.add('hidden');
+                }
+            });
+        }
+
         formInventario.addEventListener('submit', guardarProducto);
 
         btnCancelarEdicion.addEventListener('click', resetFormInventario);
@@ -2300,12 +2463,14 @@
         btnExportarFacturas.addEventListener('click', exportarFacturasAExcel);
 
 
-        btnBuscarProducto.addEventListener('click', () => {
-            moduloBuscarProducto.style.display = 'block';
-             inputBuscarProducto.value = '';
-             resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe para buscar...</p>';
-             inputBuscarProducto.focus();
-        });
+        if(btnBuscarProducto) {
+            btnBuscarProducto.addEventListener('click', () => {
+                moduloBuscarProducto.style.display = 'block';
+                 inputBuscarProducto.value = '';
+                 resultadosBusqueda.innerHTML = '<p class="text-center py-2">Escribe para buscar...</p>';
+                 inputBuscarProducto.focus();
+            });
+        }
 
         cerrarBuscarProducto.addEventListener('click', () => {
             moduloBuscarProducto.style.display = 'none';
@@ -2398,11 +2563,11 @@
              handleUnidadMedida();
              handleCamposDescuento('');
 
-             // Establecer la fecha actual en los campos de fecha al cargar
-             const today = new Date().toISOString().split('T')[0];
-             if(invFechaHora) invFechaHora.value = today;
-             if(facFechaHora) facFechaHora.value = today;
-             if(abonoFecha) abonoFecha.value = today;
+             // Establecer la fecha actual (Colombia) en los campos de fecha al cargar
+             const todayColombia = getTodayColombiaISO();
+             if(invFechaHora) invFechaHora.value = todayColombia;
+             if(facFechaHora) facFechaHora.value = todayColombia;
+             if(abonoFecha) abonoFecha.value = todayColombia;
 
 
              console.log('DEBUG: Inicialización completada.');
