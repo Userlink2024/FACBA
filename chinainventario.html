@@ -839,16 +839,11 @@
 
         // Función para obtener fecha de hoy en zona horaria de Colombia
         function getTodayColombiaISO() {
+            // Usar toLocaleString con zona horaria de Colombia para mayor precisión
             const now = new Date();
-            // Colombia es UTC-5
-            const colombiaOffset = -5 * 60; // en minutos
-            const localOffset = now.getTimezoneOffset(); // en minutos
-            const diff = colombiaOffset - localOffset;
-            const colombiaTime = new Date(now.getTime() + diff * 60 * 1000);
-            const yyyy = colombiaTime.getFullYear();
-            const mm = String(colombiaTime.getMonth() + 1).padStart(2, '0');
-            const dd = String(colombiaTime.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
+            const colombiaDateStr = now.toLocaleString('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' });
+            // en-CA devuelve formato YYYY-MM-DD
+            return colombiaDateStr;
         }
 
          function showStatusMessage(message, isError = false) {
