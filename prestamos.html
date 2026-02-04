@@ -518,9 +518,15 @@
                                             <small class="text-muted">Caja Inicial: <span id="cajaInicialLabel">$0</span></small>
                                         </div>
                                     </div>
-                                    <button class="btn btn-outline-primary btn-sm" onclick="editarCajaInicial()">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-gear"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" onclick="editarCajaInicial(); return false;"><i class="bi bi-pencil me-2"></i>Editar Caja Inicial</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="aumentarCapital(); return false;"><i class="bi bi-plus-circle me-2"></i>Aumento de Capital</a></li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -767,6 +773,28 @@
         </div>
     </div>
 
+    <!-- Modal Aumento de Capital -->
+    <div class="modal fade" id="aumentoCapitalModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Aumento de Capital</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Ingresa el monto que el socio desea inyectar. Este valor se sumará a la Caja Inicial.</p>
+                    <label class="form-label">Monto a inyectar</label>
+                    <input type="text" id="aumentoCapitalInput" class="form-control" inputmode="numeric" placeholder="Ej: 1000000" oninput="formatearMoneda(this)">
+                    <div id="aumentoCapitalError" class="text-danger mt-2" style="display:none;">Valor inválido.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="aumentoCapitalOkBtn">Inyectar Capital</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Configurar Fechas Mensuales -->
     <div class="modal fade" id="manualCuotasModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -833,6 +861,7 @@
         window.eliminarPrestamo = eliminarPrestamo;
         window.editarCajaInicial = editarCajaInicial;
         window.abrirConfigFechasMensuales = abrirConfigFechasMensuales;
+        window.aumentarCapital = aumentarCapital;
 
         // PIN Verification
         function verificarPIN() {
@@ -1235,6 +1264,78 @@
                 playBeep('error');
             }
             showLoading(false);
+        }
+
+        async function aumentarCapital() {
+            const monto = await showAumentoCapitalModal();
+            if (monto === null || monto <= 0) return;
+
+            showLoading(true);
+            try {
+                const nuevaCaja = (cajaInicial || 0) + monto;
+                const cajaRef = ref(db, `${BASE_PATH}/config/cajaInicial`);
+                await set(cajaRef, nuevaCaja);
+                showAlert(`Capital aumentado en ${formatMoney(monto)}. Nueva Caja Inicial: ${formatMoney(nuevaCaja)}`, 'success');
+                playBeep('success');
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('No se pudo registrar el aumento de capital. Verifica tu conexión.', 'danger');
+                playBeep('error');
+            }
+            showLoading(false);
+        }
+
+        function showAumentoCapitalModal() {
+            return new Promise((resolve) => {
+                const modalEl = document.getElementById('aumentoCapitalModal');
+                const inputEl = document.getElementById('aumentoCapitalInput');
+                const errorEl = document.getElementById('aumentoCapitalError');
+                const okBtn = document.getElementById('aumentoCapitalOkBtn');
+
+                inputEl.value = '';
+                errorEl.style.display = 'none';
+
+                const modal = getBsModal('aumentoCapitalModal');
+
+                const onHidden = () => {
+                    cleanup();
+                    resolve(null);
+                };
+
+                const onOk = () => {
+                    const monto = parseMoney(inputEl.value);
+                    if (!Number.isFinite(monto) || monto <= 0) {
+                        errorEl.style.display = 'block';
+                        playBeep('error');
+                        inputEl.focus();
+                        inputEl.select();
+                        return;
+                    }
+                    cleanup();
+                    modal.hide();
+                    resolve(monto);
+                };
+
+                const onKey = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onOk();
+                    }
+                };
+
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                    inputEl.removeEventListener('keydown', onKey);
+                    modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                }
+
+                okBtn.addEventListener('click', onOk);
+                inputEl.addEventListener('keydown', onKey);
+                modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+                modal.show();
+
+                setTimeout(() => inputEl.focus(), 250);
+            });
         }
 
         // Format money for display
