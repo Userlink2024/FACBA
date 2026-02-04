@@ -613,18 +613,20 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Valor del Préstamo</label>
-                            <input type="text" class="form-control" id="valorPrestamo" required placeholder="Ej: 500000" oninput="formatearMoneda(this); calcularPreview();">
+                            <input type="text" class="form-control" id="valorPrestamo" required placeholder="Ej: 1000000" inputmode="numeric" oninput="formatearMoneda(this); calcularPreview();">
                         </div>
+
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label class="form-label">% Interés</label>
-                                <input type="number" class="form-control" id="porcentajeInteres" required placeholder="Ej: 10" min="1" max="100" onchange="calcularPreview();">
+                                <input type="text" class="form-control" id="porcentajeInteres" required placeholder="Ej: 2,5" inputmode="decimal" onchange="calcularPreview();">
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="form-label">Número de Cuotas</label>
-                                <input type="number" class="form-control" id="numeroCuotas" required placeholder="Ej: 12" min="1" max="365" onchange="calcularPreview();">
+                                <input type="number" class="form-control" id="numeroCuotas" required placeholder="Ej: 12" min="1" onchange="calcularPreview();">
                             </div>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label">Frecuencia de Pago</label>
                             <select class="form-select" id="frecuenciaPago" required onchange="calcularPreview();">
@@ -1684,10 +1686,18 @@
             return `$ ${v.toLocaleString('es-CO')}`;
         }
 
+        function parsePercent(value) {
+            const raw = String(value ?? '').trim();
+            if (!raw) return 0;
+            const cleaned = raw.replace(/%/g, '').replace(/\s+/g, '').replace(/,/g, '.');
+            const num = parseFloat(cleaned);
+            return Number.isFinite(num) ? num : 0;
+        }
+
         // Calculate Preview
         function calcularPreview() {
             const capital = parseMoney(document.getElementById('valorPrestamo').value);
-            const interes = parseFloat(document.getElementById('porcentajeInteres').value) || 0;
+            const interes = parsePercent(document.getElementById('porcentajeInteres').value);
             const cuotas = parseInt(document.getElementById('numeroCuotas').value) || 0;
             const frecuencia = parseInt(document.getElementById('frecuenciaPago').value) || 0;
             const fechaAperturaStr = document.getElementById('fechaApertura')?.value || '';
@@ -1756,9 +1766,16 @@
                 const nombre = document.getElementById('clienteNombre').value.trim();
                 const celular = document.getElementById('clienteCelular').value.trim();
                 const capital = parseMoney(document.getElementById('valorPrestamo').value);
-                const interes = parseFloat(document.getElementById('porcentajeInteres').value);
+                const interes = parsePercent(document.getElementById('porcentajeInteres').value);
                 const cuotas = parseInt(document.getElementById('numeroCuotas').value);
                 const frecuencia = parseInt(document.getElementById('frecuenciaPago').value);
+
+                if (!Number.isFinite(interes) || interes <= 0) {
+                    showAlert('Porcentaje de interés inválido. Puedes escribir 2,5 o 2.5', 'danger');
+                    playBeep('error');
+                    showLoading(false);
+                    return;
+                }
 
                 const usarManualFechas = Array.isArray(manualCuotasFechas) && manualCuotasFechas.length === cuotas;
 
