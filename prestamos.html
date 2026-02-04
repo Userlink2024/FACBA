@@ -906,6 +906,40 @@
         </div>
     </div>
 
+    <!-- Modal Registrar Abono -->
+    <div class="modal fade" id="abonoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Registrar Abono</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Aplicar abono a</label>
+                        <select class="form-select" id="abonoTipo">
+                            <option value="capital">Capital</option>
+                            <option value="interes">Interés</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto del abono</label>
+                        <input type="text" class="form-control" id="abonoMonto" inputmode="numeric" placeholder="Ej: 200000" oninput="formatearMoneda(this)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha del abono</label>
+                        <input type="date" class="form-control" id="abonoFecha">
+                    </div>
+                    <div id="abonoModalError" class="text-danger" style="display:none;">Revisa los datos del abono.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="abonoModalOkBtn">Guardar Abono</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Configurar Fechas de Cuotas -->
     <div class="modal fade" id="manualCuotasModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1012,6 +1046,7 @@
         window.gestionarBancos = gestionarBancos;
         window.agregarBanco = agregarBanco;
         window.eliminarBanco = eliminarBanco;
+        window.registrarAbono = registrarAbono;
 
         // PIN Verification
         function verificarPIN() {
@@ -1421,6 +1456,100 @@
                 playBeep('error');
             }
             showLoading(false);
+        }
+
+        async function registrarAbono(prestamoId) {
+            const data = await showAbonoModal();
+            if (!data) return;
+
+            showLoading(true);
+            try {
+                const prestamo = prestamos.find(p => p.id === prestamoId);
+                if (!prestamo) throw new Error('Préstamo no encontrado');
+
+                const abono = {
+                    tipo: data.tipo,
+                    monto: data.monto,
+                    fecha: data.fecha,
+                    fechaCreacion: new Date().toISOString()
+                };
+
+                const abonos = Array.isArray(prestamo.abonos) ? [...prestamo.abonos, abono] : [abono];
+                prestamo.abonos = abonos;
+
+                const prestamoRef = ref(db, `${BASE_PATH}/prestamos/${prestamoId}`);
+                await update(prestamoRef, { abonos });
+
+                showAlert('Abono registrado exitosamente.', 'success');
+                playBeep('success');
+                verDetalle(prestamoId);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error al registrar el abono. Verifica tu conexión.', 'danger');
+                playBeep('error');
+            }
+            showLoading(false);
+        }
+
+        function showAbonoModal() {
+            return new Promise((resolve) => {
+                const modalEl = document.getElementById('abonoModal');
+                const tipoEl = document.getElementById('abonoTipo');
+                const montoEl = document.getElementById('abonoMonto');
+                const fechaEl = document.getElementById('abonoFecha');
+                const errorEl = document.getElementById('abonoModalError');
+                const okBtn = document.getElementById('abonoModalOkBtn');
+
+                tipoEl.value = 'capital';
+                montoEl.value = '';
+                fechaEl.value = toISODateLocal(new Date());
+                errorEl.style.display = 'none';
+
+                const modal = getBsModal('abonoModal');
+
+                const onHidden = () => {
+                    cleanup();
+                    resolve(null);
+                };
+
+                const onOk = () => {
+                    const tipo = (tipoEl.value || 'capital').trim();
+                    const monto = parseMoney(montoEl.value);
+                    const fecha = (fechaEl.value || '').trim();
+
+                    const d = new Date(`${fecha}T00:00:00`);
+                    if (!monto || monto <= 0 || !fecha || Number.isNaN(d.getTime())) {
+                        errorEl.style.display = 'block';
+                        playBeep('error');
+                        return;
+                    }
+
+                    cleanup();
+                    modal.hide();
+                    resolve({ tipo, monto, fecha });
+                };
+
+                const onKey = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onOk();
+                    }
+                };
+
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                    montoEl.removeEventListener('keydown', onKey);
+                    modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                }
+
+                okBtn.addEventListener('click', onOk);
+                montoEl.addEventListener('keydown', onKey);
+                modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+                modal.show();
+
+                setTimeout(() => montoEl.focus(), 250);
+            });
         }
 
         async function aumentarCapital() {
@@ -1893,6 +2022,12 @@
                         }
                     });
                 }
+
+                if (Array.isArray(p.abonos)) {
+                    p.abonos.forEach(ab => {
+                        totalRecaudado += ab?.monto || 0;
+                    });
+                }
             });
 
             return { totalCapitalActivo, totalRecaudado };
@@ -1915,6 +2050,8 @@
                     totalCapital += p.capital;
                     
                     let pagosRealizados = 0;
+                    let abonosCapital = 0;
+                    let abonosInteres = 0;
                     let diasMora = 0;
 
                     p.pagos.forEach(pago => {
@@ -1928,12 +2065,26 @@
                         }
                     });
 
-                    totalRecaudado += pagosRealizados;
+                    if (Array.isArray(p.abonos)) {
+                        p.abonos.forEach(ab => {
+                            const monto = ab?.monto || 0;
+                            if ((ab?.tipo || '').toLowerCase() === 'interes') {
+                                abonosInteres += monto;
+                            } else {
+                                abonosCapital += monto;
+                            }
+                        });
+                    }
+
+                    const totalRecaudadoPrestamo = pagosRealizados + abonosCapital + abonosInteres;
+
+                    totalRecaudado += totalRecaudadoPrestamo;
 
                     // Calcular ganancias (solo del interés recaudado)
-                    const porcentajeRecaudado = pagosRealizados / p.totalPagar;
-                    const gananciaEstimada = p.valorInteres * porcentajeRecaudado;
-                    totalGanancias += gananciaEstimada;
+                    const ratioInteresCuotas = (p.totalPagar > 0) ? (p.valorInteres / p.totalPagar) : 0;
+                    const interesRecaudadoPorCuotas = pagosRealizados * ratioInteresCuotas;
+                    const interesRecaudadoTotal = interesRecaudadoPorCuotas + abonosInteres;
+                    totalGanancias += Math.min(p.valorInteres || 0, interesRecaudadoTotal);
 
                     // Clasificar cliente
                     if (diasMora > 7) {
@@ -2048,7 +2199,9 @@
             if (!cliente) return;
 
             const cuotasPagadas = cliente.pagos.filter(p => p.pagada).length;
-            const totalPagado = cliente.pagos.filter(p => p.pagada).reduce((sum, p) => sum + p.valor, 0);
+            const totalPagadoCuotas = cliente.pagos.filter(p => p.pagada).reduce((sum, p) => sum + p.valor, 0);
+            const totalAbonos = Array.isArray(cliente.abonos) ? cliente.abonos.reduce((sum, a) => sum + (a?.monto || 0), 0) : 0;
+            const totalPagado = totalPagadoCuotas + totalAbonos;
             const pendiente = cliente.totalPagar - totalPagado;
 
             const hoy = new Date();
@@ -2099,6 +2252,34 @@
 
                 <div class="p-3">
                     ${desembolsoHTML}
+
+                    <div class="mb-3">
+                        <button class="btn btn-warning w-100" onclick="registrarAbono('${id}')">
+                            <i class="bi bi-cash-coin me-2"></i>Registrar Abono
+                        </button>
+                        <small class="text-muted d-block mt-2">El abono se puede aplicar a capital o interés.</small>
+                    </div>
+
+                    ${Array.isArray(cliente.abonos) && cliente.abonos.length ? `
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="mb-3"><i class="bi bi-list-ul me-2"></i>Historial de Abonos</h6>
+                                ${cliente.abonos
+                                    .slice()
+                                    .sort((a, b) => String(b?.fecha || '').localeCompare(String(a?.fecha || '')))
+                                    .map((ab) => `
+                                        <div class="d-flex justify-content-between align-items-start border-bottom py-2">
+                                            <div>
+                                                <div class="fw-semibold">${(ab?.tipo || 'capital') === 'interes' ? 'Abono a Interés' : 'Abono a Capital'}</div>
+                                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${ab?.fecha ? new Date(ab.fecha).toLocaleDateString('es-CO') : '-'}</small>
+                                            </div>
+                                            <div class="fw-bold text-success">${formatMoney(ab?.monto || 0)}</div>
+                                        </div>
+                                    `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
                     <h6 class="mb-3"><i class="bi bi-calendar-check me-2"></i>Calendario de Pagos</h6>
                     ${cliente.pagos.map((pago, index) => {
                         const fechaPago = new Date(pago.fecha);
