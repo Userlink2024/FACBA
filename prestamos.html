@@ -883,6 +883,27 @@
         </div>
     </div>
 
+    <!-- Modal Fecha de Pago -->
+    <div class="modal fade" id="fechaPagoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-calendar-check me-2"></i>Fecha de Pago</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Selecciona la fecha en la que se realizó el pago</label>
+                    <input type="date" class="form-control" id="fechaPagoModalInput">
+                    <div id="fechaPagoModalError" class="text-danger mt-2" style="display:none;">Fecha inválida.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="fechaPagoModalOkBtn">Guardar Fecha</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Configurar Fechas de Cuotas -->
     <div class="modal fade" id="manualCuotasModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1605,6 +1626,58 @@
             showLoading(false);
         }
 
+        function showFechaPagoModal({ initialDate = '' } = {}) {
+            return new Promise((resolve) => {
+                const modalEl = document.getElementById('fechaPagoModal');
+                const inputEl = document.getElementById('fechaPagoModalInput');
+                const errorEl = document.getElementById('fechaPagoModalError');
+                const okBtn = document.getElementById('fechaPagoModalOkBtn');
+
+                inputEl.value = initialDate || toISODateLocal(new Date());
+                errorEl.style.display = 'none';
+
+                const modal = getBsModal('fechaPagoModal');
+
+                const onHidden = () => {
+                    cleanup();
+                    resolve(null);
+                };
+
+                const onOk = () => {
+                    const v = (inputEl.value || '').trim();
+                    const d = new Date(`${v}T00:00:00`);
+                    if (!v || Number.isNaN(d.getTime())) {
+                        errorEl.style.display = 'block';
+                        playBeep('error');
+                        inputEl.focus();
+                        return;
+                    }
+                    cleanup();
+                    modal.hide();
+                    resolve(v);
+                };
+
+                const onKey = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onOk();
+                    }
+                };
+
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                    inputEl.removeEventListener('keydown', onKey);
+                    modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                }
+
+                okBtn.addEventListener('click', onOk);
+                inputEl.addEventListener('keydown', onKey);
+                modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+                modal.show();
+                setTimeout(() => inputEl.focus(), 250);
+            });
+        }
+
         // Format money for display
         function formatMoney(value) {
             const v = Math.round(Number(value) || 0);
@@ -2058,6 +2131,9 @@
 
         // Mark payment as paid
         async function marcarPagada(prestamoId, pagoIndex) {
+            const fechaPagoStr = await showFechaPagoModal({ initialDate: toISODateLocal(new Date()) });
+            if (!fechaPagoStr) return;
+
             showLoading(true);
 
             try {
@@ -2065,7 +2141,7 @@
                 if (!prestamo) throw new Error('Préstamo no encontrado');
 
                 prestamo.pagos[pagoIndex].pagada = true;
-                prestamo.pagos[pagoIndex].fechaPago = new Date().toISOString();
+                prestamo.pagos[pagoIndex].fechaPago = new Date(`${fechaPagoStr}T00:00:00`).toISOString();
 
                 // Check if all payments are done
                 const todasPagadas = prestamo.pagos.every(p => p.pagada);
