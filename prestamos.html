@@ -750,7 +750,7 @@
                 </div>
                 <div class="modal-body">
                     <label class="form-label">Caja Inicial (capital disponible para invertir)</label>
-                    <input type="text" id="cajaModalInput" class="form-control" inputmode="numeric" placeholder="Ej: 5000000">
+                    <input type="text" id="cajaModalInput" class="form-control" inputmode="numeric" placeholder="Ej: 5000000" oninput="formatearMoneda(this)">
                     <div id="cajaModalError" class="text-danger mt-2" style="display:none;">Valor inválido.</div>
                 </div>
                 <div class="modal-footer">
@@ -1012,6 +1012,7 @@
                 const okBtn = document.getElementById('cajaModalOkBtn');
 
                 inputEl.value = String(initialValue || 0);
+                formatearMoneda(inputEl);
                 errorEl.style.display = 'none';
 
                 const modal = getBsModal('cajaModal');
@@ -1082,7 +1083,8 @@
 
         // Format money for display
         function formatMoney(value) {
-            return '$' + parseInt(value).toLocaleString('es-CO');
+            const v = Math.round(Number(value) || 0);
+            return `$ ${v.toLocaleString('es-CO')}`;
         }
 
         // Calculate Preview
