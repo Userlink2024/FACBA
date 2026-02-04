@@ -726,6 +726,8 @@
         // Base path for all data
         const BASE_PATH = 'prestamos_app';
 
+        const ACCESS_PIN = '1705';
+
         // Global variables
         let prestamos = [];
         let currentClienteId = null;
@@ -746,7 +748,7 @@
         // PIN Verification
         function verificarPIN() {
             const pin = document.getElementById('pinInput').value;
-            if (pin === '1705') {
+            if (pin === ACCESS_PIN) {
                 document.getElementById('pinScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'block';
                 cargarDatos();
@@ -815,6 +817,42 @@
             return parseInt(String(value).replace(/[^0-9]/g, '')) || 0;
         }
 
+        function playBeep(type = 'success') {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.value = type === 'error' ? 220 : 880;
+                gain.gain.value = 0.06;
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                setTimeout(() => {
+                    osc.stop();
+                    ctx.close().catch(() => {});
+                }, type === 'error' ? 220 : 140);
+            } catch (e) {
+                // Silencioso si el navegador bloquea audio
+            }
+        }
+
+        function solicitarPinAccion(mensaje = 'Confirma con PIN para continuar:') {
+            const pin = prompt(mensaje);
+            if (pin === null) return false;
+            const ok = pin === ACCESS_PIN;
+            if (!ok) {
+                showAlert('PIN incorrecto.', 'danger');
+                playBeep('error');
+            }
+            return ok;
+        }
+
         function calcularCajaDisponible(totalCapitalActivo, totalRecaudado) {
             return Math.max(0, (cajaInicial || 0) - (totalCapitalActivo || 0) + (totalRecaudado || 0));
         }
@@ -835,9 +873,11 @@
                 const cajaRef = ref(db, `${BASE_PATH}/config/cajaInicial`);
                 await set(cajaRef, nuevoValor);
                 showAlert('Caja Inicial actualizada.', 'success');
+                playBeep('success');
             } catch (error) {
                 console.error('Error:', error);
                 showAlert('No se pudo guardar la Caja Inicial. Verifica tu conexión.', 'danger');
+                playBeep('error');
             }
             showLoading(false);
         }
@@ -959,6 +999,7 @@
                 await push(prestamosRef, prestamo);
 
                 showAlert('Préstamo registrado exitosamente', 'success');
+                playBeep('success');
                 document.getElementById('loanForm').reset();
                 document.getElementById('previewCard').style.display = 'none';
                 showView('clients');
@@ -966,6 +1007,7 @@
             } catch (error) {
                 console.error('Error:', error);
                 showAlert('Error al guardar. Verifica tu conexión a internet.', 'danger');
+                playBeep('error');
             }
 
             showLoading(false);
@@ -1285,11 +1327,13 @@
                 });
 
                 showAlert('¡Pago registrado exitosamente!', 'success');
+                playBeep('success');
                 verDetalle(prestamoId);
 
             } catch (error) {
                 console.error('Error:', error);
                 showAlert('Error al registrar el pago. Verifica tu conexión.', 'danger');
+                playBeep('error');
             }
 
             showLoading(false);
@@ -1301,6 +1345,10 @@
                 return;
             }
 
+            if (!solicitarPinAccion('Ingresa el PIN para eliminar este préstamo:')) {
+                return;
+            }
+
             showLoading(true);
 
             try {
@@ -1308,11 +1356,13 @@
                 await remove(prestamoRef);
 
                 showAlert('Préstamo eliminado', 'success');
+                playBeep('success');
                 showView('clients');
 
             } catch (error) {
                 console.error('Error:', error);
                 showAlert('Error al eliminar. Verifica tu conexión.', 'danger');
+                playBeep('error');
             }
 
             showLoading(false);
