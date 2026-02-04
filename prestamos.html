@@ -661,11 +661,32 @@
                                 <span>Última Cuota:</span>
                                 <strong id="previewUltimaCuota">-</strong>
                             </div>
-                            <div class="mt-3" id="manualMensualControls" style="display:none;">
-                                <button type="button" class="btn btn-outline-primary w-100" onclick="abrirConfigFechasMensuales()">
-                                    <i class="bi bi-calendar2-week me-2"></i>Configurar Fechas Mensuales (Opcional)
+                            <div class="mt-3" id="manualFechasControls" style="display:none;">
+                                <button type="button" class="btn btn-outline-primary w-100" onclick="abrirConfigFechas()">
+                                    <i class="bi bi-calendar2-week me-2"></i>Configurar Fechas de Cuotas (Opcional)
                                 </button>
-                                <small class="text-muted d-block mt-2" id="manualMensualStatus"></small>
+                                <small class="text-muted d-block mt-2" id="manualFechasStatus"></small>
+                            </div>
+                        </div>
+
+                        <!-- Desembolso -->
+                        <div class="card mt-3 border-info">
+                            <div class="card-body">
+                                <h6 class="card-title text-info"><i class="bi bi-bank me-2"></i>Estado de Desembolso</h6>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="desembolsadoCheck" onchange="toggleDesembolsoFields()">
+                                    <label class="form-check-label" for="desembolsadoCheck">Ya fue desembolsado</label>
+                                </div>
+                                <div id="desembolsoFields" style="display:none;">
+                                    <div class="mb-2">
+                                        <label class="form-label">Número de Cuenta</label>
+                                        <input type="text" class="form-control" id="numeroCuenta" placeholder="Ej: 123456789">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Fecha de Desembolso</label>
+                                        <input type="date" class="form-control" id="fechaDesembolso">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -795,12 +816,12 @@
         </div>
     </div>
 
-    <!-- Modal Configurar Fechas Mensuales -->
+    <!-- Modal Configurar Fechas de Cuotas -->
     <div class="modal fade" id="manualCuotasModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Configurar Fechas de Cuotas (Mensual)</h5>
+                    <h5 class="modal-title">Configurar Fechas de Cuotas</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -847,7 +868,7 @@
         let prestamos = [];
         let currentClienteId = null;
         let cajaInicial = 0;
-        let manualCuotasMensuales = null;
+        let manualCuotasFechas = null;
 
         // Make functions available globally
         window.verificarPIN = verificarPIN;
@@ -860,8 +881,10 @@
         window.marcarPagada = marcarPagada;
         window.eliminarPrestamo = eliminarPrestamo;
         window.editarCajaInicial = editarCajaInicial;
-        window.abrirConfigFechasMensuales = abrirConfigFechasMensuales;
+        window.abrirConfigFechas = abrirConfigFechas;
         window.aumentarCapital = aumentarCapital;
+        window.toggleDesembolsoFields = toggleDesembolsoFields;
+        window.marcarDesembolsado = marcarDesembolsado;
 
         // PIN Verification
         function verificarPIN() {
@@ -1101,19 +1124,25 @@
             return pagos;
         }
 
-        async function abrirConfigFechasMensuales() {
+        function toggleDesembolsoFields() {
+            const check = document.getElementById('desembolsadoCheck');
+            const fields = document.getElementById('desembolsoFields');
+            fields.style.display = check.checked ? 'block' : 'none';
+        }
+
+        async function abrirConfigFechas() {
             const cuotas = parseInt(document.getElementById('numeroCuotas').value) || 0;
             const frecuencia = parseInt(document.getElementById('frecuenciaPago').value) || 0;
             const fechaAperturaStr = document.getElementById('fechaApertura')?.value || '';
 
-            if (frecuencia !== 30 || !cuotas || !fechaAperturaStr) return;
+            if (!frecuencia || !cuotas || !fechaAperturaStr) return;
 
             const fechaApertura = new Date(`${fechaAperturaStr}T00:00:00`);
             if (Number.isNaN(fechaApertura.getTime())) return;
 
             const valorCuotaFake = 1;
             const automatico = generarCalendarioPagos(fechaApertura, frecuencia, cuotas, valorCuotaFake).map(p => p.fecha);
-            const fechas = Array.isArray(manualCuotasMensuales) && manualCuotasMensuales.length === cuotas ? manualCuotasMensuales : automatico;
+            const fechas = Array.isArray(manualCuotasFechas) && manualCuotasFechas.length === cuotas ? manualCuotasFechas : automatico;
 
             const container = document.getElementById('manualCuotasContainer');
             const errorEl = document.getElementById('manualCuotasError');
@@ -1146,8 +1175,8 @@
                     playBeep('error');
                     return;
                 }
-                manualCuotasMensuales = newDates;
-                actualizarEstadoManualMensual();
+                manualCuotasFechas = newDates;
+                actualizarEstadoManualFechas();
                 calcularPreview();
                 okCleanup();
                 modal.hide();
@@ -1155,8 +1184,8 @@
             };
 
             const onReset = () => {
-                manualCuotasMensuales = null;
-                actualizarEstadoManualMensual();
+                manualCuotasFechas = null;
+                actualizarEstadoManualFechas();
                 calcularPreview();
                 okCleanup();
                 modal.hide();
@@ -1179,11 +1208,11 @@
             modal.show();
         }
 
-        function actualizarEstadoManualMensual() {
-            const status = document.getElementById('manualMensualStatus');
+        function actualizarEstadoManualFechas() {
+            const status = document.getElementById('manualFechasStatus');
             if (!status) return;
-            if (Array.isArray(manualCuotasMensuales) && manualCuotasMensuales.length) {
-                status.textContent = 'Fechas mensuales configuradas manualmente.';
+            if (Array.isArray(manualCuotasFechas) && manualCuotasFechas.length) {
+                status.textContent = 'Fechas de cuotas configuradas manualmente.';
             } else {
                 status.textContent = 'Usando calendario automático.';
             }
@@ -1367,12 +1396,11 @@
                 let primeraCuota;
                 let ultimaCuota;
 
-                const isMensual = frecuencia === 30;
-                const tieneManualMensual = isMensual && Array.isArray(manualCuotasMensuales) && manualCuotasMensuales.length === cuotas;
+                const tieneManualFechas = Array.isArray(manualCuotasFechas) && manualCuotasFechas.length === cuotas;
 
-                if (tieneManualMensual) {
-                    primeraCuota = new Date(`${manualCuotasMensuales[0]}T00:00:00`);
-                    ultimaCuota = new Date(`${manualCuotasMensuales[manualCuotasMensuales.length - 1]}T00:00:00`);
+                if (tieneManualFechas) {
+                    primeraCuota = new Date(`${manualCuotasFechas[0]}T00:00:00`);
+                    ultimaCuota = new Date(`${manualCuotasFechas[manualCuotasFechas.length - 1]}T00:00:00`);
                 } else {
                     primeraCuota = new Date(fechaApertura);
                     primeraCuota.setDate(primeraCuota.getDate() + frecuencia);
@@ -1390,10 +1418,10 @@
 
                 document.getElementById('previewCard').style.display = 'block';
 
-                const controls = document.getElementById('manualMensualControls');
+                const controls = document.getElementById('manualFechasControls');
                 if (controls) {
-                    controls.style.display = (frecuencia === 30) ? 'block' : 'none';
-                    actualizarEstadoManualMensual();
+                    controls.style.display = 'block';
+                    actualizarEstadoManualFechas();
                 }
             } else {
                 document.getElementById('previewCard').style.display = 'none';
@@ -1421,7 +1449,7 @@
                 const cuotas = parseInt(document.getElementById('numeroCuotas').value);
                 const frecuencia = parseInt(document.getElementById('frecuenciaPago').value);
 
-                const usarManualMensual = (frecuencia === 30) && Array.isArray(manualCuotasMensuales) && manualCuotasMensuales.length === cuotas;
+                const usarManualFechas = Array.isArray(manualCuotasFechas) && manualCuotasFechas.length === cuotas;
 
                 const { totalCapitalActivo, totalRecaudado } = calcularTotales();
                 const cajaDisponible = calcularCajaDisponible(totalCapitalActivo, totalRecaudado);
@@ -1435,6 +1463,11 @@
                 const totalPagar = capital + valorInteres;
                 const valorCuota = Math.ceil(totalPagar / cuotas);
 
+                // Datos de desembolso
+                const desembolsado = document.getElementById('desembolsadoCheck').checked;
+                const numeroCuenta = document.getElementById('numeroCuenta').value.trim();
+                const fechaDesembolso = document.getElementById('fechaDesembolso').value;
+
                 const prestamo = {
                     fechaApertura: fechaAperturaStr,
                     nombre,
@@ -1447,8 +1480,13 @@
                     frecuencia,
                     valorCuota,
                     fechaCreacion: new Date().toISOString(),
-                    pagos: generarCalendarioPagos(fechaAperturaDate, frecuencia, cuotas, valorCuota, usarManualMensual ? manualCuotasMensuales : null),
-                    activo: true
+                    pagos: generarCalendarioPagos(fechaAperturaDate, frecuencia, cuotas, valorCuota, usarManualFechas ? manualCuotasFechas : null),
+                    activo: true,
+                    desembolso: {
+                        desembolsado,
+                        numeroCuenta: desembolsado ? numeroCuenta : '',
+                        fechaDesembolso: desembolsado ? fechaDesembolso : ''
+                    }
                 };
 
                 const prestamosRef = ref(db, `${BASE_PATH}/prestamos`);
@@ -1458,8 +1496,9 @@
                 playBeep('success');
                 document.getElementById('loanForm').reset();
                 document.getElementById('previewCard').style.display = 'none';
-                manualCuotasMensuales = null;
-                actualizarEstadoManualMensual();
+                document.getElementById('desembolsoFields').style.display = 'none';
+                manualCuotasFechas = null;
+                actualizarEstadoManualFechas();
                 showView('clients');
 
             } catch (error) {
@@ -1685,6 +1724,20 @@
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
 
+            // Datos de desembolso
+            const desembolso = cliente.desembolso || {};
+            const desembolsado = desembolso.desembolsado || false;
+            const desembolsoHTML = desembolsado 
+                ? `<div class="alert alert-success mb-3">
+                    <i class="bi bi-check-circle me-2"></i><strong>Desembolsado</strong>
+                    ${desembolso.numeroCuenta ? `<br><small>Cuenta: ${desembolso.numeroCuenta}</small>` : ''}
+                    ${desembolso.fechaDesembolso ? `<br><small>Fecha: ${new Date(desembolso.fechaDesembolso).toLocaleDateString('es-CO')}</small>` : ''}
+                   </div>`
+                : `<div class="alert alert-warning mb-3">
+                    <i class="bi bi-clock me-2"></i><strong>Pendiente por desembolso</strong>
+                    <button class="btn btn-sm btn-success ms-2" onclick="marcarDesembolsado('${cliente.id}')">Marcar Desembolsado</button>
+                   </div>`;
+
             const content = document.getElementById('clientDetailContent');
             content.innerHTML = `
                 <div class="resumen-cliente">
@@ -1714,6 +1767,7 @@
                 </div>
 
                 <div class="p-3">
+                    ${desembolsoHTML}
                     <h6 class="mb-3"><i class="bi bi-calendar-check me-2"></i>Calendario de Pagos</h6>
                     ${cliente.pagos.map((pago, index) => {
                         const fechaPago = new Date(pago.fecha);
@@ -1794,6 +1848,37 @@
                 playBeep('error');
             }
 
+            showLoading(false);
+        }
+
+        // Marcar como desembolsado
+        async function marcarDesembolsado(prestamoId) {
+            const numeroCuenta = prompt('Ingresa el número de cuenta donde se desembolsó:');
+            if (numeroCuenta === null) return;
+
+            const fechaDesembolso = prompt('Ingresa la fecha de desembolso (YYYY-MM-DD):', toISODateLocal(new Date()));
+            if (fechaDesembolso === null) return;
+
+            showLoading(true);
+            try {
+                const prestamoRef = ref(db, `${BASE_PATH}/prestamos/${prestamoId}`);
+                await update(prestamoRef, {
+                    desembolso: {
+                        desembolsado: true,
+                        numeroCuenta: numeroCuenta.trim(),
+                        fechaDesembolso: fechaDesembolso.trim()
+                    }
+                });
+
+                showAlert('Préstamo marcado como desembolsado.', 'success');
+                playBeep('success');
+                verDetalle(prestamoId);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error al actualizar el desembolso. Verifica tu conexión.', 'danger');
+                playBeep('error');
+            }
             showLoading(false);
         }
 
