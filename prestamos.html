@@ -507,6 +507,25 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="dashboard-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <div class="card-icon recaudado me-3">
+                                            <i class="bi bi-safe2"></i>
+                                        </div>
+                                        <div>
+                                            <div class="card-value" id="cajaDisponible">$0</div>
+                                            <div class="card-label">Caja Disponible</div>
+                                            <small class="text-muted">Caja Inicial: <span id="cajaInicialLabel">$0</span></small>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="editarCajaInicial()">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="dashboard-card">
                                 <div class="d-flex align-items-center">
                                     <div class="card-icon capital me-3">
                                         <i class="bi bi-wallet2"></i>
@@ -572,6 +591,10 @@
                 <div class="form-container">
                     <h5 class="mb-4"><i class="bi bi-plus-circle me-2"></i>Nuevo Préstamo</h5>
                     <form id="loanForm">
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de Apertura</label>
+                            <input type="date" class="form-control" id="fechaApertura" required onchange="calcularPreview();">
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Nombre del Cliente</label>
                             <input type="text" class="form-control" id="clienteNombre" required placeholder="Nombre completo">
@@ -706,6 +729,7 @@
         // Global variables
         let prestamos = [];
         let currentClienteId = null;
+        let cajaInicial = 0;
 
         // Make functions available globally
         window.verificarPIN = verificarPIN;
@@ -717,6 +741,7 @@
         window.volverAClientes = volverAClientes;
         window.marcarPagada = marcarPagada;
         window.eliminarPrestamo = eliminarPrestamo;
+        window.editarCajaInicial = editarCajaInicial;
 
         // PIN Verification
         function verificarPIN() {
@@ -725,6 +750,7 @@
                 document.getElementById('pinScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'block';
                 cargarDatos();
+                cargarCaja();
             } else {
                 document.getElementById('pinError').style.display = 'block';
                 document.getElementById('pinInput').value = '';
@@ -738,6 +764,17 @@
                 verificarPIN();
             }
         });
+
+        // Default Fecha de Apertura = hoy
+        (function setDefaultFechaApertura() {
+            const el = document.getElementById('fechaApertura');
+            if (!el) return;
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            el.value = `${yyyy}-${mm}-${dd}`;
+        })();
 
         // Show View
         function showView(view) {
@@ -778,6 +815,33 @@
             return parseInt(String(value).replace(/[^0-9]/g, '')) || 0;
         }
 
+        function calcularCajaDisponible(totalCapitalActivo, totalRecaudado) {
+            return Math.max(0, (cajaInicial || 0) - (totalCapitalActivo || 0) + (totalRecaudado || 0));
+        }
+
+        async function editarCajaInicial() {
+            const actual = cajaInicial || 0;
+            const input = prompt('Ingresa la Caja Inicial (capital disponible para invertir):', String(actual));
+            if (input === null) return;
+
+            const nuevoValor = parseMoney(input);
+            if (!Number.isFinite(nuevoValor) || nuevoValor < 0) {
+                showAlert('Valor inválido para Caja Inicial.', 'danger');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const cajaRef = ref(db, `${BASE_PATH}/config/cajaInicial`);
+                await set(cajaRef, nuevoValor);
+                showAlert('Caja Inicial actualizada.', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('No se pudo guardar la Caja Inicial. Verifica tu conexión.', 'danger');
+            }
+            showLoading(false);
+        }
+
         // Format money for display
         function formatMoney(value) {
             return '$' + parseInt(value).toLocaleString('es-CO');
@@ -789,17 +853,24 @@
             const interes = parseFloat(document.getElementById('porcentajeInteres').value) || 0;
             const cuotas = parseInt(document.getElementById('numeroCuotas').value) || 0;
             const frecuencia = parseInt(document.getElementById('frecuenciaPago').value) || 0;
+            const fechaAperturaStr = document.getElementById('fechaApertura')?.value || '';
 
-            if (capital > 0 && interes > 0 && cuotas > 0 && frecuencia > 0) {
+            if (capital > 0 && interes > 0 && cuotas > 0 && frecuencia > 0 && fechaAperturaStr) {
                 const valorInteres = capital * (interes / 100);
                 const totalPagar = capital + valorInteres;
                 const valorCuota = Math.ceil(totalPagar / cuotas);
 
                 const hoy = new Date();
-                const primeraCuota = new Date(hoy);
+                const fechaApertura = new Date(`${fechaAperturaStr}T00:00:00`);
+                if (Number.isNaN(fechaApertura.getTime())) {
+                    document.getElementById('previewCard').style.display = 'none';
+                    return;
+                }
+
+                const primeraCuota = new Date(fechaApertura);
                 primeraCuota.setDate(primeraCuota.getDate() + frecuencia);
                 
-                const ultimaCuota = new Date(hoy);
+                const ultimaCuota = new Date(fechaApertura);
                 ultimaCuota.setDate(ultimaCuota.getDate() + (frecuencia * cuotas));
 
                 document.getElementById('previewCapital').textContent = formatMoney(capital);
@@ -841,6 +912,14 @@
             showLoading(true);
 
             try {
+                const fechaAperturaStr = document.getElementById('fechaApertura').value;
+                const fechaAperturaDate = new Date(`${fechaAperturaStr}T00:00:00`);
+                if (Number.isNaN(fechaAperturaDate.getTime())) {
+                    showAlert('Fecha de apertura inválida.', 'danger');
+                    showLoading(false);
+                    return;
+                }
+
                 const nombre = document.getElementById('clienteNombre').value.trim();
                 const celular = document.getElementById('clienteCelular').value.trim();
                 const capital = parseMoney(document.getElementById('valorPrestamo').value);
@@ -848,11 +927,20 @@
                 const cuotas = parseInt(document.getElementById('numeroCuotas').value);
                 const frecuencia = parseInt(document.getElementById('frecuenciaPago').value);
 
+                const { totalCapitalActivo, totalRecaudado } = calcularTotales();
+                const cajaDisponible = calcularCajaDisponible(totalCapitalActivo, totalRecaudado);
+                if (capital > cajaDisponible) {
+                    showAlert(`Caja insuficiente. Disponible: ${formatMoney(cajaDisponible)}`, 'danger');
+                    showLoading(false);
+                    return;
+                }
+
                 const valorInteres = capital * (interes / 100);
                 const totalPagar = capital + valorInteres;
                 const valorCuota = Math.ceil(totalPagar / cuotas);
 
                 const prestamo = {
+                    fechaApertura: fechaAperturaStr,
                     nombre,
                     celular,
                     capital,
@@ -863,7 +951,7 @@
                     frecuencia,
                     valorCuota,
                     fechaCreacion: new Date().toISOString(),
-                    pagos: generarCalendarioPagos(new Date(), frecuencia, cuotas, valorCuota),
+                    pagos: generarCalendarioPagos(fechaAperturaDate, frecuencia, cuotas, valorCuota),
                     activo: true
                 };
 
@@ -907,6 +995,38 @@
                 showAlert('Error de conexión. Verifica tu internet.', 'danger');
                 showLoading(false);
             });
+        }
+
+        function cargarCaja() {
+            const cajaRef = ref(db, `${BASE_PATH}/config/cajaInicial`);
+            onValue(cajaRef, (snapshot) => {
+                cajaInicial = snapshot.exists() ? (snapshot.val() || 0) : 0;
+                actualizarDashboard();
+            }, (error) => {
+                console.error('Error loading caja:', error);
+                showAlert('No se pudo cargar la Caja Inicial. Verifica tu conexión.', 'danger');
+            });
+        }
+
+        function calcularTotales() {
+            let totalCapitalActivo = 0;
+            let totalRecaudado = 0;
+
+            prestamos.forEach(p => {
+                if (p.activo) {
+                    totalCapitalActivo += p.capital || 0;
+                }
+
+                if (Array.isArray(p.pagos)) {
+                    p.pagos.forEach(pg => {
+                        if (pg && pg.pagada) {
+                            totalRecaudado += pg.valor || 0;
+                        }
+                    });
+                }
+            });
+
+            return { totalCapitalActivo, totalRecaudado };
         }
 
         // Update Dashboard
@@ -963,6 +1083,10 @@
             document.getElementById('clientesActivos').textContent = activos;
             document.getElementById('clientesAlerta').textContent = enAlerta;
             document.getElementById('clientesMora').textContent = enMora;
+
+            const cajaDisponible = calcularCajaDisponible(totalCapital, totalRecaudado);
+            document.getElementById('cajaDisponible').textContent = formatMoney(cajaDisponible);
+            document.getElementById('cajaInicialLabel').textContent = formatMoney(cajaInicial || 0);
         }
 
         // Render clients list
