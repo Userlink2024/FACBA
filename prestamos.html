@@ -525,6 +525,8 @@
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><a class="dropdown-item" href="#" onclick="editarCajaInicial(); return false;"><i class="bi bi-pencil me-2"></i>Editar Caja Inicial</a></li>
                                             <li><a class="dropdown-item" href="#" onclick="aumentarCapital(); return false;"><i class="bi bi-plus-circle me-2"></i>Ampliación de Capital</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item" href="#" onclick="gestionarBancos(); return false;"><i class="bi bi-bank me-2"></i>Gestionar Bancos</a></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -679,6 +681,12 @@
                                 </div>
                                 <div id="desembolsoFields" style="display:none;">
                                     <div class="mb-2">
+                                        <label class="form-label">Banco</label>
+                                        <select class="form-select" id="bancoDesembolso">
+                                            <option value="">Seleccionar banco...</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
                                         <label class="form-label">Número de Cuenta</label>
                                         <input type="text" class="form-control" id="numeroCuenta" placeholder="Ej: 123456789">
                                     </div>
@@ -816,6 +824,65 @@
         </div>
     </div>
 
+    <!-- Modal Marcar Desembolsado -->
+    <div class="modal fade" id="desembolsoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-bank me-2"></i>Marcar como Desembolsado</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Banco</label>
+                        <select class="form-select" id="desembolsoModalBanco">
+                            <option value="">Seleccionar banco...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Número de Cuenta</label>
+                        <input type="text" class="form-control" id="desembolsoModalCuenta" placeholder="Ej: 123456789">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Desembolso</label>
+                        <input type="date" class="form-control" id="desembolsoModalFecha">
+                    </div>
+                    <div id="desembolsoModalError" class="text-danger" style="display:none;">Por favor completa todos los campos.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="desembolsoModalOkBtn">Confirmar Desembolso</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Bancos -->
+    <div class="modal fade" id="bancosModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="bi bi-bank me-2"></i>Gestionar Bancos</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="nuevoBancoInput" placeholder="Nombre del nuevo banco">
+                        <button class="btn btn-success" type="button" onclick="agregarBanco()">
+                            <i class="bi bi-plus-lg"></i> Agregar
+                        </button>
+                    </div>
+                    <div id="listaBancosContainer">
+                        <p class="text-muted text-center">Cargando bancos...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Configurar Fechas de Cuotas -->
     <div class="modal fade" id="manualCuotasModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -869,6 +936,40 @@
         let currentClienteId = null;
         let cajaInicial = 0;
         let manualCuotasFechas = null;
+        let bancos = [];
+
+        // Lista inicial de bancos de Colombia
+        const BANCOS_INICIALES = [
+            'Bancolombia',
+            'Banco de Bogotá',
+            'Davivienda',
+            'BBVA Colombia',
+            'Banco de Occidente',
+            'Banco Popular',
+            'Banco Caja Social',
+            'Banco AV Villas',
+            'Banco Agrario',
+            'Banco Pichincha',
+            'Banco Falabella',
+            'Banco Finandina',
+            'Banco GNB Sudameris',
+            'Banco Itaú',
+            'Banco Serfinanza',
+            'Bancamía',
+            'Banco W',
+            'Banco Coopcentral',
+            'Scotiabank Colpatria',
+            'Citibank',
+            'Nequi',
+            'Daviplata',
+            'Lulo Bank',
+            'Nu Colombia (Nubank)',
+            'Ualá',
+            'Rappipay',
+            'MOVii',
+            'Dale!',
+            'Pibank'
+        ];
 
         // Make functions available globally
         window.verificarPIN = verificarPIN;
@@ -885,6 +986,9 @@
         window.aumentarCapital = aumentarCapital;
         window.toggleDesembolsoFields = toggleDesembolsoFields;
         window.marcarDesembolsado = marcarDesembolsado;
+        window.gestionarBancos = gestionarBancos;
+        window.agregarBanco = agregarBanco;
+        window.eliminarBanco = eliminarBanco;
 
         // PIN Verification
         function verificarPIN() {
@@ -894,6 +998,7 @@
                 document.getElementById('appContainer').style.display = 'block';
                 cargarDatos();
                 cargarCaja();
+                cargarBancos();
             } else {
                 document.getElementById('pinError').style.display = 'block';
                 document.getElementById('pinInput').value = '';
@@ -1367,6 +1472,139 @@
             });
         }
 
+        // Cargar bancos desde Firebase
+        function cargarBancos() {
+            const bancosRef = ref(db, `${BASE_PATH}/config/bancos`);
+            onValue(bancosRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data && Array.isArray(data)) {
+                    bancos = data.sort((a, b) => a.localeCompare(b));
+                } else {
+                    // Si no hay bancos guardados, guardar los iniciales
+                    bancos = [...BANCOS_INICIALES].sort((a, b) => a.localeCompare(b));
+                    set(bancosRef, bancos);
+                }
+                actualizarSelectBancos();
+            });
+        }
+
+        // Actualizar select de bancos en el formulario
+        function actualizarSelectBancos() {
+            const selects = [
+                document.getElementById('bancoDesembolso'),
+                document.getElementById('desembolsoModalBanco')
+            ];
+            
+            selects.forEach(select => {
+                if (!select) return;
+                
+                const valorActual = select.value;
+                select.innerHTML = '<option value="">Seleccionar banco...</option>';
+                
+                bancos.forEach(banco => {
+                    const option = document.createElement('option');
+                    option.value = banco;
+                    option.textContent = banco;
+                    select.appendChild(option);
+                });
+                
+                if (valorActual && bancos.includes(valorActual)) {
+                    select.value = valorActual;
+                }
+            });
+        }
+
+        // Abrir modal de gestión de bancos
+        function gestionarBancos() {
+            renderListaBancos();
+            const modal = getBsModal('bancosModal');
+            modal.show();
+        }
+
+        // Renderizar lista de bancos en el modal
+        function renderListaBancos() {
+            const container = document.getElementById('listaBancosContainer');
+            if (bancos.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">No hay bancos registrados.</p>';
+                return;
+            }
+            
+            container.innerHTML = bancos.map(banco => `
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span><i class="bi bi-bank2 me-2 text-info"></i>${banco}</span>
+                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarBanco('${banco.replace(/'/g, "\\'")}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Agregar un nuevo banco
+        async function agregarBanco() {
+            const input = document.getElementById('nuevoBancoInput');
+            const nombre = input.value.trim();
+            
+            if (!nombre) {
+                showAlert('Ingresa el nombre del banco.', 'warning');
+                input.focus();
+                return;
+            }
+            
+            if (bancos.some(b => b.toLowerCase() === nombre.toLowerCase())) {
+                showAlert('Este banco ya existe en la lista.', 'warning');
+                input.focus();
+                input.select();
+                return;
+            }
+            
+            showLoading(true);
+            try {
+                bancos.push(nombre);
+                bancos.sort((a, b) => a.localeCompare(b));
+                const bancosRef = ref(db, `${BASE_PATH}/config/bancos`);
+                await set(bancosRef, bancos);
+                
+                input.value = '';
+                renderListaBancos();
+                actualizarSelectBancos();
+                showAlert(`Banco "${nombre}" agregado.`, 'success');
+                playBeep('success');
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error al agregar el banco.', 'danger');
+                playBeep('error');
+            }
+            showLoading(false);
+        }
+
+        // Eliminar un banco
+        async function eliminarBanco(nombre) {
+            const confirmado = await showConfirmModal({
+                title: 'Eliminar banco',
+                message: `¿Estás seguro de eliminar "${nombre}" de la lista de bancos?`,
+                okText: 'Eliminar',
+                okClass: 'btn-danger'
+            });
+            if (!confirmado) return;
+            
+            showLoading(true);
+            try {
+                bancos = bancos.filter(b => b !== nombre);
+                const bancosRef = ref(db, `${BASE_PATH}/config/bancos`);
+                await set(bancosRef, bancos);
+                
+                renderListaBancos();
+                actualizarSelectBancos();
+                showAlert(`Banco "${nombre}" eliminado.`, 'success');
+                playBeep('success');
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error al eliminar el banco.', 'danger');
+                playBeep('error');
+            }
+            showLoading(false);
+        }
+
         // Format money for display
         function formatMoney(value) {
             const v = Math.round(Number(value) || 0);
@@ -1465,6 +1703,7 @@
 
                 // Datos de desembolso
                 const desembolsado = document.getElementById('desembolsadoCheck').checked;
+                const bancoDesembolso = document.getElementById('bancoDesembolso').value;
                 const numeroCuenta = document.getElementById('numeroCuenta').value.trim();
                 const fechaDesembolso = document.getElementById('fechaDesembolso').value;
 
@@ -1484,6 +1723,7 @@
                     activo: true,
                     desembolso: {
                         desembolsado,
+                        banco: desembolsado ? bancoDesembolso : '',
                         numeroCuenta: desembolsado ? numeroCuenta : '',
                         fechaDesembolso: desembolsado ? fechaDesembolso : ''
                     }
@@ -1730,8 +1970,9 @@
             const desembolsoHTML = desembolsado 
                 ? `<div class="alert alert-success mb-3">
                     <i class="bi bi-check-circle me-2"></i><strong>Desembolsado</strong>
-                    ${desembolso.numeroCuenta ? `<br><small>Cuenta: ${desembolso.numeroCuenta}</small>` : ''}
-                    ${desembolso.fechaDesembolso ? `<br><small>Fecha: ${new Date(desembolso.fechaDesembolso).toLocaleDateString('es-CO')}</small>` : ''}
+                    ${desembolso.banco ? `<br><small><i class="bi bi-bank me-1"></i>Banco: ${desembolso.banco}</small>` : ''}
+                    ${desembolso.numeroCuenta ? `<br><small><i class="bi bi-credit-card me-1"></i>Cuenta: ${desembolso.numeroCuenta}</small>` : ''}
+                    ${desembolso.fechaDesembolso ? `<br><small><i class="bi bi-calendar me-1"></i>Fecha: ${new Date(desembolso.fechaDesembolso).toLocaleDateString('es-CO')}</small>` : ''}
                    </div>`
                 : `<div class="alert alert-warning mb-3">
                     <i class="bi bi-clock me-2"></i><strong>Pendiente por desembolso</strong>
@@ -1853,11 +2094,8 @@
 
         // Marcar como desembolsado
         async function marcarDesembolsado(prestamoId) {
-            const numeroCuenta = prompt('Ingresa el número de cuenta donde se desembolsó:');
-            if (numeroCuenta === null) return;
-
-            const fechaDesembolso = prompt('Ingresa la fecha de desembolso (YYYY-MM-DD):', toISODateLocal(new Date()));
-            if (fechaDesembolso === null) return;
+            const resultado = await showDesembolsoModal();
+            if (!resultado) return;
 
             showLoading(true);
             try {
@@ -1865,8 +2103,9 @@
                 await update(prestamoRef, {
                     desembolso: {
                         desembolsado: true,
-                        numeroCuenta: numeroCuenta.trim(),
-                        fechaDesembolso: fechaDesembolso.trim()
+                        banco: resultado.banco,
+                        numeroCuenta: resultado.cuenta,
+                        fechaDesembolso: resultado.fecha
                     }
                 });
 
@@ -1880,6 +2119,57 @@
                 playBeep('error');
             }
             showLoading(false);
+        }
+
+        // Modal para marcar desembolsado
+        function showDesembolsoModal() {
+            return new Promise((resolve) => {
+                const modalEl = document.getElementById('desembolsoModal');
+                const bancoEl = document.getElementById('desembolsoModalBanco');
+                const cuentaEl = document.getElementById('desembolsoModalCuenta');
+                const fechaEl = document.getElementById('desembolsoModalFecha');
+                const errorEl = document.getElementById('desembolsoModalError');
+                const okBtn = document.getElementById('desembolsoModalOkBtn');
+
+                // Resetear campos
+                bancoEl.value = '';
+                cuentaEl.value = '';
+                fechaEl.value = toISODateLocal(new Date());
+                errorEl.style.display = 'none';
+                actualizarSelectBancos();
+
+                const modal = getBsModal('desembolsoModal');
+
+                const onHidden = () => {
+                    cleanup();
+                    resolve(null);
+                };
+
+                const onOk = () => {
+                    const banco = bancoEl.value;
+                    const cuenta = cuentaEl.value.trim();
+                    const fecha = fechaEl.value;
+
+                    if (!banco || !cuenta || !fecha) {
+                        errorEl.style.display = 'block';
+                        playBeep('error');
+                        return;
+                    }
+
+                    cleanup();
+                    modal.hide();
+                    resolve({ banco, cuenta, fecha });
+                };
+
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                    modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                }
+
+                okBtn.addEventListener('click', onOk);
+                modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+                modal.show();
+            });
         }
 
         // Delete loan
