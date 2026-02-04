@@ -524,7 +524,7 @@
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><a class="dropdown-item" href="#" onclick="editarCajaInicial(); return false;"><i class="bi bi-pencil me-2"></i>Editar Caja Inicial</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="aumentarCapital(); return false;"><i class="bi bi-plus-circle me-2"></i>Aumento de Capital</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="aumentarCapital(); return false;"><i class="bi bi-plus-circle me-2"></i>Ampliación de Capital</a></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -778,18 +778,18 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Aumento de Capital</h5>
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Ampliación de Capital</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted">Ingresa el monto que el socio desea inyectar. Este valor se sumará a la Caja Inicial.</p>
-                    <label class="form-label">Monto a inyectar</label>
+                    <p class="text-muted">Ingresa el monto de la ampliación de capital. Este valor se sumará a la Caja Inicial.</p>
+                    <label class="form-label">Monto de ampliación</label>
                     <input type="text" id="aumentoCapitalInput" class="form-control" inputmode="numeric" placeholder="Ej: 1000000" oninput="formatearMoneda(this)">
                     <div id="aumentoCapitalError" class="text-danger mt-2" style="display:none;">Valor inválido.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" id="aumentoCapitalOkBtn">Inyectar Capital</button>
+                    <button type="button" class="btn btn-success" id="aumentoCapitalOkBtn">Ampliar Capital</button>
                 </div>
             </div>
         </div>
@@ -1275,11 +1275,11 @@
                 const nuevaCaja = (cajaInicial || 0) + monto;
                 const cajaRef = ref(db, `${BASE_PATH}/config/cajaInicial`);
                 await set(cajaRef, nuevaCaja);
-                showAlert(`Capital aumentado en ${formatMoney(monto)}. Nueva Caja Inicial: ${formatMoney(nuevaCaja)}`, 'success');
+                showAlert(`Ampliación de capital: ${formatMoney(monto)}. Nueva Caja Inicial: ${formatMoney(nuevaCaja)}`, 'success');
                 playBeep('success');
             } catch (error) {
                 console.error('Error:', error);
-                showAlert('No se pudo registrar el aumento de capital. Verifica tu conexión.', 'danger');
+                showAlert('No se pudo registrar la ampliación de capital. Verifica tu conexión.', 'danger');
                 playBeep('error');
             }
             showLoading(false);
