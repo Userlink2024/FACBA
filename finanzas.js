@@ -1,446 +1,1353 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finanzas - C&A Cloud Factory</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes slide-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
-        .animate-slide-in { animation: slide-in 0.3s ease-out; }
-        .animate-slide-out { animation: slide-out 0.3s ease-out; }
-    </style>
-</head>
-<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900">
+// ============================================
+// C&A CLOUD FACTORY - Finanzas Module
+// ============================================
+
+import { checkAuthAndRedirect, logout, ROLES } from './auth.js';
+import { getNavigationMenu, getRoleName } from './roles.js';
+import { formatCurrency, getWeekStart, showToast, showConfirm } from './utils.js';
+import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, onSnapshot, Timestamp } from './firebase-init.js';
+import { initNotifications } from './notifications.js';
+
+let orders = [];
+let employees = [];
+let inventory = [];
+
+// Inicializar
+async function init() {
+    try {
+        const { user, userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH]);
+        
+        document.getElementById('userName').textContent = userData.nombre;
+        document.getElementById('userRole').textContent = getRoleName(userData.rol);
+        
+        generateNavMenu(userData.rol);
+        
+        // Inicializar notificaciones globales
+        initNotifications(user.uid);
+        
+        await Promise.all([
+            loadOrders(),
+            loadEmployees(),
+            loadInventory(),
+            loadPayrollData(),
+            loadCajaMenor(),
+            loadPedidosCliente(),
+            loadClientes()
+        ]);
+        
+        setupEventListeners();
+        
+    } catch (error) {
+        console.error('Error de autenticación:', error);
+    }
+}
+
+function generateNavMenu(rol) {
+    const menu = getNavigationMenu(rol);
+    const navMenu = document.getElementById('navMenu');
+    navMenu.innerHTML = menu.map(item => `
+        <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${item.href === 'finanzas.html' ? 'bg-gray-700/50 text-white' : ''}">
+            <i class="fas ${item.icon}"></i>
+            <span>${item.name}</span>
+        </a>
+    `).join('');
+}
+
+// ==================== ÓRDENES ====================
+
+async function loadOrders() {
+    try {
+        const q = query(collection(db, 'ordenes'), orderBy('fecha_creacion', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            orders = [];
+            let activeCount = 0;
+            
+            snapshot.forEach(doc => {
+                const order = { id: doc.id, ...doc.data() };
+                orders.push(order);
+                if (order.estado === 'activa') activeCount++;
+            });
+            
+            document.getElementById('totalOrders').textContent = activeCount;
+            renderOrdersTable();
+        });
+        
+    } catch (error) {
+        console.error('Error cargando órdenes:', error);
+    }
+}
+
+function renderOrdersTable(filter = '') {
+    const tbody = document.getElementById('ordersTableBody');
+    const statusFilter = document.getElementById('filterOrderStatus').value;
     
-    <!-- Navbar -->
-    <nav class="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-shoe-prints text-white"></i>
-                    </div>
-                    <span class="text-white font-bold text-lg hidden sm:block">C&A Cloud Factory</span>
-                </div>
-                <div id="navMenu" class="hidden md:flex items-center gap-2"></div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right hidden sm:block">
-                        <p id="userName" class="text-white text-sm font-medium">-</p>
-                        <p id="userRole" class="text-gray-400 text-xs">-</p>
-                    </div>
-                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-            <div>
-                <h1 class="text-3xl font-bold text-white">
-                    <i class="fas fa-dollar-sign mr-3 text-emerald-500"></i>Finanzas
-                </h1>
-                <p class="text-gray-400 mt-2">Órdenes, tarifas, inventario y nómina</p>
-            </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                <div class="w-12 h-12 bg-emerald-600/20 rounded-xl flex items-center justify-center mb-4">
-                    <i class="fas fa-file-invoice-dollar text-emerald-500 text-xl"></i>
-                </div>
-                <p id="totalOrders" class="text-3xl font-bold text-white">0</p>
-                <p class="text-gray-400 text-sm">Órdenes Activas</p>
-            </div>
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                <div class="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center mb-4">
-                    <i class="fas fa-shoe-prints text-blue-500 text-xl"></i>
-                </div>
-                <p id="totalPares" class="text-3xl font-bold text-white">0</p>
-                <p class="text-gray-400 text-sm">Pares Esta Semana</p>
-            </div>
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                <div class="w-12 h-12 bg-amber-600/20 rounded-xl flex items-center justify-center mb-4">
-                    <i class="fas fa-money-bill-wave text-amber-500 text-xl"></i>
-                </div>
-                <p id="totalNomina" class="text-3xl font-bold text-white">$0</p>
-                <p class="text-gray-400 text-sm">Nómina Semana</p>
-            </div>
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center mb-4">
-                    <i class="fas fa-boxes text-purple-500 text-xl"></i>
-                </div>
-                <p id="inventoryAlerts" class="text-3xl font-bold text-white">0</p>
-                <p class="text-gray-400 text-sm">Alertas Inventario</p>
-            </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="flex gap-2 mb-6 border-b border-gray-700 pb-2 overflow-x-auto">
-            <button class="tab-btn px-4 py-2 text-white bg-emerald-600 rounded-lg transition" data-tab="orders">
-                <i class="fas fa-clipboard-list mr-2"></i>Órdenes
-            </button>
-            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="rates">
-                <i class="fas fa-tags mr-2"></i>Tarifas
-            </button>
-            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="inventory">
-                <i class="fas fa-boxes mr-2"></i>Inventario
-            </button>
-            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="payroll">
-                <i class="fas fa-calculator mr-2"></i>Nómina
-            </button>
-            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="caja">
-                <i class="fas fa-cash-register mr-2"></i>Caja Menor
-            </button>
-            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="pedidosCliente">
-                <i class="fas fa-truck-loading mr-2"></i>Pedidos Clientes
-                <span id="pedidosClienteBadge" class="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full hidden">0</span>
-            </button>
-            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="clientes">
-                <i class="fas fa-user-tie mr-2"></i>Clientes
-            </button>
-            <div class="flex-1"></div>
-            <button id="exportPdfBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
-                <i class="fas fa-file-pdf"></i><span class="hidden sm:inline">Exportar PDF</span>
-            </button>
-        </div>
-
-        <!-- Orders Tab -->
-        <div id="ordersTab" class="tab-content">
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 overflow-hidden">
-                <div class="p-4 border-b border-gray-700 flex flex-col sm:flex-row gap-4">
-                    <div class="flex-1 relative">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        <input type="text" id="searchOrders" placeholder="Buscar orden..." class="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    </div>
-                    <select id="filterOrderStatus" class="px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                        <option value="all">Todos</option>
-                        <option value="activa">Activas</option>
-                        <option value="completada">Completadas</option>
-                    </select>
-                    <button id="newOrderBtn" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition flex items-center gap-2">
-                        <i class="fas fa-plus"></i>
-                        <span>Nueva Orden</span>
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-700/50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Cliente</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Modelo</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Progreso</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Estado</th>
-                                <th class="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ordersTableBody" class="divide-y divide-gray-700">
-                            <tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">Cargando...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Rates Tab -->
-        <div id="ratesTab" class="tab-content hidden">
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-tags mr-2 text-amber-500"></i>Tarifas por Operario</h3>
-                <div id="ratesList" class="space-y-3"></div>
-            </div>
-        </div>
-
-        <!-- Inventory Tab -->
-        <div id="inventoryTab" class="tab-content hidden">
-            <!-- Sub-tabs for inventory types -->
-            <div class="flex gap-2 mb-4">
-                <button class="inv-sub-tab px-4 py-2 bg-emerald-600 text-white rounded-lg transition" data-inv="fabrica">
-                    <i class="fas fa-industry mr-2"></i>Inventario Fábrica
-                </button>
-                <button class="inv-sub-tab px-4 py-2 text-gray-400 hover:bg-gray-700 rounded-lg transition" data-inv="clientes">
-                    <i class="fas fa-users mr-2"></i>Materiales Clientes
-                </button>
-            </div>
-
-            <!-- Factory Inventory -->
-            <div id="invFabricaContent" class="inv-content">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-plus-circle mr-2 text-green-500"></i>Agregar/Actualizar Insumo</h3>
-                        <div class="space-y-4">
-                            <input type="text" id="insumoNombre" placeholder="Nombre del insumo" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                            <div class="grid grid-cols-2 gap-4">
-                                <input type="number" id="insumoCantidad" placeholder="Cantidad" min="0" class="px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                                <input type="text" id="insumoUnidad" placeholder="Unidad (kg, lt, m)" class="px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                            </div>
-                            <input type="number" id="insumoMinimo" placeholder="Stock mínimo" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                            <input type="number" id="insumoConsumo" placeholder="Consumo por par" step="0.01" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                            <button id="saveInsumoBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition"><i class="fas fa-save mr-2"></i>Guardar</button>
+    let filtered = orders.filter(order => {
+        const matchesSearch = order.cliente.toLowerCase().includes(filter.toLowerCase()) ||
+                             order.modelo.toLowerCase().includes(filter.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || order.estado === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">No se encontraron órdenes</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filtered.map(order => {
+        const progress = Math.round((order.pares_hechos / order.cantidad_total) * 100) || 0;
+        const statusColor = order.estado === 'completada' ? 'bg-green-600/20 text-green-400' : 'bg-amber-600/20 text-amber-400';
+        const statusText = order.estado === 'completada' ? 'Completada' : 'Activa';
+        
+        return `
+            <tr class="hover:bg-gray-700/30 transition">
+                <td class="px-6 py-4">
+                    <p class="text-white font-medium">${order.cliente}</p>
+                </td>
+                <td class="px-6 py-4">
+                    <p class="text-gray-300">${order.modelo}</p>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 bg-gray-600 rounded-full h-2 max-w-[100px]">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: ${progress}%"></div>
                         </div>
+                        <span class="text-gray-400 text-sm">${order.pares_hechos}/${order.cantidad_total}</span>
                     </div>
-                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-warehouse mr-2 text-purple-500"></i>Inventario Fábrica</h3>
-                        <div id="inventoryList" class="space-y-3 max-h-96 overflow-y-auto"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Client Materials Inventory -->
-            <div id="invClientesContent" class="inv-content hidden">
-                <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-white">
-                            <i class="fas fa-cubes mr-2 text-blue-500"></i>Materiales por Cliente/Pedido
-                        </h3>
-                        <select id="filterClienteMaterial" class="px-4 py-2 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-sm focus:outline-none">
-                            <option value="todos">Todos los clientes</option>
-                        </select>
-                    </div>
-                    <div id="clientInventoryList" class="space-y-4 max-h-[500px] overflow-y-auto">
-                        <p class="text-gray-500 text-center py-8">Sin materiales de clientes registrados</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Payroll Tab -->
-        <div id="payrollTab" class="tab-content hidden">
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6 mb-6">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <h3 class="text-lg font-semibold text-white"><i class="fas fa-calculator mr-2 text-blue-500"></i>Cálculo de Nómina Semanal</h3>
-                    <button id="closeWeekBtn" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition"><i class="fas fa-lock mr-2"></i>Cerrar Semana</button>
-                </div>
-                <div id="payrollList" class="space-y-3"></div>
-                <div class="mt-6 pt-6 border-t border-gray-700 flex justify-between items-center">
-                    <span class="text-xl font-bold text-white">Total Nómina:</span>
-                    <span id="payrollTotal" class="text-3xl font-bold text-emerald-400">$0</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Caja Menor Tab -->
-        <div id="cajaTab" class="tab-content hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Formulario de registro -->
-                <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                    <h3 class="text-lg font-semibold text-white mb-4">
-                        <i class="fas fa-plus-circle mr-2 text-emerald-500"></i>Registrar Movimiento
-                    </h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Tipo</label>
-                            <select id="cajaMovTipo" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="ingreso">💰 Ingreso</option>
-                                <option value="egreso">💸 Egreso</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Concepto</label>
-                            <input type="text" id="cajaMovConcepto" placeholder="Descripción del movimiento" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Monto ($)</label>
-                            <input type="number" id="cajaMovMonto" placeholder="0" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                        </div>
-                        <button id="saveCajaMovBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition">
-                            <i class="fas fa-save mr-2"></i>Registrar
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">${statusText}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                        <button class="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition edit-order-btn" data-id="${order.id}" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="p-2 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition delete-order-btn" data-id="${order.id}" data-cliente="${order.cliente}" title="Eliminar">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    document.querySelectorAll('.edit-order-btn').forEach(btn => {
+        btn.addEventListener('click', () => editOrder(btn.dataset.id));
+    });
+    
+    document.querySelectorAll('.delete-order-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('Eliminar Orden', `¿Eliminar la orden de ${btn.dataset.cliente}?`);
+            if (confirmed) await deleteOrder(btn.dataset.id);
+        });
+    });
+}
+
+function editOrder(id) {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    
+    document.getElementById('orderModalTitle').textContent = 'Editar Orden';
+    document.getElementById('orderId').value = id;
+    document.getElementById('orderCliente').value = order.cliente;
+    document.getElementById('orderModelo').value = order.modelo;
+    document.getElementById('orderCantidad').value = order.cantidad_total;
+    document.getElementById('orderModal').classList.remove('hidden');
+}
+
+async function saveOrder(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('orderId').value;
+    const cliente = document.getElementById('orderCliente').value.trim();
+    const modelo = document.getElementById('orderModelo').value.trim();
+    const cantidad = parseInt(document.getElementById('orderCantidad').value);
+    
+    try {
+        if (id) {
+            await updateDoc(doc(db, 'ordenes', id), { cliente, modelo, cantidad_total: cantidad });
+            showToast('Orden actualizada', 'success');
+        } else {
+            await addDoc(collection(db, 'ordenes'), {
+                cliente,
+                modelo,
+                cantidad_total: cantidad,
+                pares_hechos: 0,
+                estado: 'activa',
+                fecha_creacion: Timestamp.now()
+            });
+            showToast('Orden creada', 'success');
+        }
+        closeOrderModal();
+    } catch (error) {
+        console.error('Error guardando orden:', error);
+        showToast('Error al guardar', 'error');
+    }
+}
+
+async function deleteOrder(id) {
+    try {
+        await deleteDoc(doc(db, 'ordenes', id));
+        showToast('Orden eliminada', 'success');
+    } catch (error) {
+        console.error('Error eliminando orden:', error);
+        showToast('Error al eliminar', 'error');
+    }
+}
+
+function closeOrderModal() {
+    document.getElementById('orderModal').classList.add('hidden');
+    document.getElementById('orderForm').reset();
+    document.getElementById('orderId').value = '';
+}
+
+// ==================== EMPLEADOS Y TARIFAS ====================
+
+async function loadEmployees() {
+    try {
+        const snapshot = await getDocs(collection(db, 'users'));
+        employees = [];
+        
+        snapshot.forEach(doc => {
+            employees.push({ uid: doc.id, ...doc.data() });
+        });
+        
+        renderRatesList();
+    } catch (error) {
+        console.error('Error cargando empleados:', error);
+    }
+}
+
+function renderRatesList() {
+    const list = document.getElementById('ratesList');
+    const operarios = employees.filter(e => e.rol === 'operario');
+    
+    if (operarios.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-4">No hay operarios registrados</p>';
+        return;
+    }
+    
+    list.innerHTML = operarios.map(emp => `
+        <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-gray-400"></i>
                 </div>
-
-                <!-- Saldo y movimientos -->
-                <div class="lg:col-span-2 space-y-6">
-                    <!-- Saldo actual -->
-                    <div class="bg-gradient-to-r from-emerald-900/50 to-blue-900/50 rounded-xl border border-gray-700 p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-sm">Saldo Actual Caja Menor</p>
-                                <p id="saldoCajaMenor" class="text-3xl font-bold text-emerald-400">$0</p>
-                            </div>
-                            <div class="w-16 h-16 bg-emerald-600/20 rounded-2xl flex items-center justify-center">
-                                <i class="fas fa-wallet text-3xl text-emerald-500"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Lista de movimientos -->
-                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">
-                            <i class="fas fa-list mr-2 text-blue-500"></i>Últimos Movimientos
-                        </h3>
-                        <div id="cajaMenorList" class="space-y-3 max-h-96 overflow-y-auto">
-                            <p class="text-gray-500 text-center py-4">Cargando...</p>
-                        </div>
-                    </div>
+                <div>
+                    <p class="text-white font-medium">${emp.nombre}</p>
+                    <p class="text-gray-500 text-sm">${emp.estado === 'sancionado' ? 'Sancionado' : 'Activo'}</p>
                 </div>
             </div>
+            <div class="flex items-center gap-3">
+                <input type="number" value="${emp.tarifa_par || 5000}" min="0" step="100" class="w-32 px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-right focus:outline-none focus:ring-2 focus:ring-emerald-500 rate-input" data-uid="${emp.uid}">
+                <span class="text-gray-400 text-sm">/par</span>
+            </div>
         </div>
+    `).join('');
+    
+    document.querySelectorAll('.rate-input').forEach(input => {
+        input.addEventListener('change', async () => {
+            const uid = input.dataset.uid;
+            const newRate = parseInt(input.value) || 5000;
+            
+            try {
+                await updateDoc(doc(db, 'users', uid), { tarifa_par: newRate });
+                showToast('Tarifa actualizada', 'success');
+            } catch (error) {
+                console.error('Error actualizando tarifa:', error);
+                showToast('Error al actualizar', 'error');
+            }
+        });
+    });
+}
 
-        <!-- Clientes Tab -->
-        <div id="clientesTab" class="tab-content hidden">
-            <div class="bg-gray-800/80 rounded-xl border border-gray-700 overflow-hidden">
-                <div class="p-4 border-b border-gray-700 flex flex-col sm:flex-row gap-4">
-                    <div class="flex-1 relative">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        <input type="text" id="searchClientes" placeholder="Buscar cliente..." class="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+// ==================== INVENTARIO ====================
+
+async function loadInventory() {
+    try {
+        const q = query(collection(db, 'inventario'), orderBy('nombre'));
+        
+        onSnapshot(q, (snapshot) => {
+            inventory = [];
+            let alerts = 0;
+            
+            snapshot.forEach(doc => {
+                const item = { id: doc.id, ...doc.data() };
+                inventory.push(item);
+                if (item.cantidad <= item.minimo) alerts++;
+            });
+            
+            document.getElementById('inventoryAlerts').textContent = alerts;
+            renderInventoryList();
+        });
+    } catch (error) {
+        console.error('Error cargando inventario:', error);
+    }
+}
+
+function renderInventoryList() {
+    const list = document.getElementById('inventoryList');
+    
+    if (inventory.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-4">No hay insumos registrados</p>';
+        return;
+    }
+    
+    list.innerHTML = inventory.map(item => {
+        const isLow = item.cantidad <= item.minimo;
+        const barColor = isLow ? 'bg-red-500' : 'bg-emerald-500';
+        const percentage = Math.min((item.cantidad / (item.minimo * 3)) * 100, 100);
+        
+        return `
+            <div class="bg-gray-700/50 rounded-lg p-4 ${isLow ? 'border-l-4 border-red-500' : ''}" data-id="${item.id}">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-white font-medium">${item.nombre}</p>
+                        <p class="text-gray-500 text-sm">Consumo: ${item.consumo_por_par} ${item.unidad}/par</p>
                     </div>
-                    <button id="newClienteBtn" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition flex items-center gap-2">
-                        <i class="fas fa-plus"></i>
-                        <span>Nuevo Cliente</span>
+                    <div class="flex items-start gap-2">
+                        <div class="text-right">
+                            <p class="text-white font-bold">${item.cantidad} ${item.unidad}</p>
+                            ${isLow ? '<span class="text-red-400 text-xs">¡Stock bajo!</span>' : ''}
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="edit-inv-btn p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded transition" data-id="${item.id}" title="Editar">
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button class="delete-inv-btn p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded transition" data-id="${item.id}" data-nombre="${item.nombre}" title="Eliminar">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-600 rounded-full h-2">
+                    <div class="${barColor} h-2 rounded-full" style="width: ${percentage}%"></div>
+                </div>
+                <p class="text-gray-500 text-xs mt-1">Mínimo: ${item.minimo} ${item.unidad}</p>
+            </div>
+        `;
+    }).join('');
+    
+    // Event listeners para editar
+    document.querySelectorAll('.edit-inv-btn').forEach(btn => {
+        btn.addEventListener('click', () => editInventoryItem(btn.dataset.id));
+    });
+    
+    // Event listeners para eliminar
+    document.querySelectorAll('.delete-inv-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('Eliminar Insumo', `¿Eliminar "${btn.dataset.nombre}" del inventario?`);
+            if (confirmed) await deleteInventoryItem(btn.dataset.id);
+        });
+    });
+}
+
+function editInventoryItem(id) {
+    const item = inventory.find(i => i.id === id);
+    if (!item) return;
+    
+    document.getElementById('insumoNombre').value = item.nombre;
+    document.getElementById('insumoCantidad').value = item.cantidad;
+    document.getElementById('insumoUnidad').value = item.unidad;
+    document.getElementById('insumoMinimo').value = item.minimo;
+    document.getElementById('insumoConsumo').value = item.consumo_por_par;
+    
+    document.getElementById('insumoNombre').focus();
+    showToast('Editando: ' + item.nombre, 'info');
+}
+
+async function deleteInventoryItem(id) {
+    try {
+        await deleteDoc(doc(db, 'inventario', id));
+        showToast('Insumo eliminado', 'success');
+    } catch (error) {
+        console.error('Error eliminando insumo:', error);
+        showToast('Error al eliminar', 'error');
+    }
+}
+
+async function saveInsumo() {
+    const nombre = document.getElementById('insumoNombre').value.trim();
+    const cantidad = parseFloat(document.getElementById('insumoCantidad').value) || 0;
+    const unidad = document.getElementById('insumoUnidad').value.trim() || 'unidad';
+    const minimo = parseFloat(document.getElementById('insumoMinimo').value) || 10;
+    const consumo = parseFloat(document.getElementById('insumoConsumo').value) || 0.1;
+    
+    if (!nombre) {
+        showToast('Ingrese el nombre del insumo', 'warning');
+        return;
+    }
+    
+    try {
+        const existing = inventory.find(i => i.nombre.toLowerCase() === nombre.toLowerCase());
+        
+        if (existing) {
+            await updateDoc(doc(db, 'inventario', existing.id), {
+                cantidad,
+                unidad,
+                minimo,
+                consumo_por_par: consumo
+            });
+            showToast('Insumo actualizado', 'success');
+        } else {
+            await addDoc(collection(db, 'inventario'), {
+                nombre,
+                cantidad,
+                unidad,
+                minimo,
+                consumo_por_par: consumo
+            });
+            showToast('Insumo agregado', 'success');
+        }
+        
+        document.getElementById('insumoNombre').value = '';
+        document.getElementById('insumoCantidad').value = '';
+        document.getElementById('insumoUnidad').value = '';
+        document.getElementById('insumoMinimo').value = '';
+        document.getElementById('insumoConsumo').value = '';
+        
+    } catch (error) {
+        console.error('Error guardando insumo:', error);
+        showToast('Error al guardar', 'error');
+    }
+}
+
+// ==================== NÓMINA ====================
+
+async function loadPayrollData() {
+    try {
+        const weekStart = getWeekStart();
+        
+        const q = query(
+            collection(db, 'produccion_logs'),
+            where('fecha', '>=', Timestamp.fromDate(weekStart)),
+            orderBy('fecha', 'desc')
+        );
+        
+        onSnapshot(q, async (snapshot) => {
+            const payrollData = {};
+            let totalPares = 0;
+            let totalNomina = 0;
+            
+            snapshot.forEach(doc => {
+                const log = doc.data();
+                const uid = log.uid_operario;
+                
+                if (!payrollData[uid]) {
+                    payrollData[uid] = {
+                        nombre: log.nombre_operario,
+                        pares: 0,
+                        monto: 0
+                    };
+                }
+                
+                payrollData[uid].pares += log.cantidad || 0;
+                payrollData[uid].monto += log.monto_ganado || 0;
+                totalPares += log.cantidad || 0;
+                totalNomina += log.monto_ganado || 0;
+            });
+            
+            document.getElementById('totalPares').textContent = totalPares;
+            document.getElementById('totalNomina').textContent = formatCurrency(totalNomina);
+            document.getElementById('payrollTotal').textContent = formatCurrency(totalNomina);
+            
+            renderPayrollList(payrollData);
+        });
+        
+    } catch (error) {
+        console.error('Error cargando nómina:', error);
+    }
+}
+
+function renderPayrollList(data) {
+    const list = document.getElementById('payrollList');
+    const entries = Object.entries(data);
+    
+    if (entries.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin producción registrada esta semana</p>';
+        return;
+    }
+    
+    list.innerHTML = entries.map(([uid, info]) => `
+        <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-user text-blue-500"></i>
+                </div>
+                <div>
+                    <p class="text-white font-medium">${info.nombre}</p>
+                    <p class="text-gray-500 text-sm">${info.pares} pares producidos</p>
+                </div>
+            </div>
+            <p class="text-2xl font-bold text-emerald-400">${formatCurrency(info.monto)}</p>
+        </div>
+    `).join('');
+}
+
+async function closeWeek() {
+    const confirmed = await showConfirm(
+        'Cerrar Semana',
+        '¿Está seguro de cerrar la semana? Esto generará un resumen y descontará el inventario según la producción.'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        const weekStart = getWeekStart();
+        
+        // Obtener producción de la semana
+        const prodQuery = query(
+            collection(db, 'produccion_logs'),
+            where('fecha', '>=', Timestamp.fromDate(weekStart))
+        );
+        
+        const prodSnapshot = await getDocs(prodQuery);
+        let totalPares = 0;
+        
+        prodSnapshot.forEach(doc => {
+            totalPares += doc.data().cantidad || 0;
+        });
+        
+        // Descontar inventario
+        for (const item of inventory) {
+            const consumo = totalPares * (item.consumo_por_par || 0);
+            const newCantidad = Math.max(0, item.cantidad - consumo);
+            
+            await updateDoc(doc(db, 'inventario', item.id), {
+                cantidad: newCantidad
+            });
+        }
+        
+        // Guardar resumen de cierre
+        await addDoc(collection(db, 'cierres_semana'), {
+            fecha_inicio: Timestamp.fromDate(weekStart),
+            fecha_cierre: Timestamp.now(),
+            total_pares: totalPares,
+            total_nomina: parseFloat(document.getElementById('payrollTotal').textContent.replace(/[^\d]/g, '')) || 0
+        });
+        
+        showToast('Semana cerrada correctamente. Inventario actualizado.', 'success');
+        
+    } catch (error) {
+        console.error('Error cerrando semana:', error);
+        showToast('Error al cerrar semana', 'error');
+    }
+}
+
+// ==================== CAJA MENOR ====================
+
+let cajaMenorMovimientos = [];
+
+async function loadCajaMenor() {
+    try {
+        const q = query(collection(db, 'caja_menor'), orderBy('fecha', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            cajaMenorMovimientos = [];
+            let saldo = 0;
+            
+            snapshot.forEach(docSnap => {
+                const mov = { id: docSnap.id, ...docSnap.data() };
+                cajaMenorMovimientos.push(mov);
+            });
+            
+            // Calcular saldo
+            cajaMenorMovimientos.forEach(mov => {
+                if (mov.tipo === 'ingreso') saldo += mov.monto;
+                else saldo -= mov.monto;
+            });
+            
+            document.getElementById('saldoCajaMenor').textContent = formatCurrency(saldo);
+            document.getElementById('saldoCajaMenor').className = saldo >= 0 ? 'text-3xl font-bold text-emerald-400' : 'text-3xl font-bold text-red-400';
+            
+            renderCajaMenorList();
+        });
+    } catch (error) {
+        console.error('Error cargando caja menor:', error);
+    }
+}
+
+function renderCajaMenorList() {
+    const list = document.getElementById('cajaMenorList');
+    
+    if (cajaMenorMovimientos.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">No hay movimientos registrados</p>';
+        return;
+    }
+    
+    list.innerHTML = cajaMenorMovimientos.slice(0, 50).map(mov => {
+        const isIngreso = mov.tipo === 'ingreso';
+        const fecha = mov.fecha?.toDate ? mov.fecha.toDate().toLocaleDateString('es-CO') : '';
+        
+        return `
+            <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 ${isIngreso ? 'bg-emerald-600/20' : 'bg-red-600/20'} rounded-xl flex items-center justify-center">
+                        <i class="fas ${isIngreso ? 'fa-arrow-down' : 'fa-arrow-up'} ${isIngreso ? 'text-emerald-500' : 'text-red-500'}"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">${mov.concepto}</p>
+                        <p class="text-gray-500 text-sm">${fecha}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p class="text-lg font-bold ${isIngreso ? 'text-emerald-400' : 'text-red-400'}">
+                        ${isIngreso ? '+' : '-'}${formatCurrency(mov.monto)}
+                    </p>
+                    <button class="delete-caja-btn p-2 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition" data-id="${mov.id}" title="Eliminar">
+                        <i class="fas fa-trash text-sm"></i>
                     </button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-900/50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Código</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Cliente</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Contacto</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Registro</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Estado</th>
-                                <th class="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="clientesTableBody" class="divide-y divide-gray-700">
-                            <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Cargando clientes...</td></tr>
-                        </tbody>
-                    </table>
+            </div>
+        `;
+    }).join('');
+    
+    document.querySelectorAll('.delete-caja-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('Eliminar Movimiento', '¿Eliminar este movimiento de caja?');
+            if (confirmed) {
+                try {
+                    await deleteDoc(doc(db, 'caja_menor', btn.dataset.id));
+                    showToast('Movimiento eliminado', 'success');
+                } catch (error) {
+                    showToast('Error al eliminar', 'error');
+                }
+            }
+        });
+    });
+}
+
+async function saveCajaMovimiento() {
+    const tipo = document.getElementById('cajaMovTipo').value;
+    const concepto = document.getElementById('cajaMovConcepto').value.trim();
+    const monto = parseFloat(document.getElementById('cajaMovMonto').value) || 0;
+    
+    if (!concepto || monto <= 0) {
+        showToast('Complete todos los campos', 'warning');
+        return;
+    }
+    
+    try {
+        await addDoc(collection(db, 'caja_menor'), {
+            tipo,
+            concepto,
+            monto,
+            fecha: Timestamp.now(),
+            registrado_por: document.getElementById('userName').textContent
+        });
+        
+        document.getElementById('cajaMovConcepto').value = '';
+        document.getElementById('cajaMovMonto').value = '';
+        
+        showToast(`${tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado`, 'success');
+    } catch (error) {
+        console.error('Error guardando movimiento:', error);
+        showToast('Error al guardar', 'error');
+    }
+}
+
+// ==================== EXPORTAR PDF ====================
+
+async function exportarInformePDF() {
+    showToast('Generando informe...', 'info');
+    
+    // Cargar jsPDF dinámicamente
+    if (!window.jspdf) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        document.head.appendChild(script);
+        await new Promise(resolve => script.onload = resolve);
+    }
+    
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    
+    const fechaHoy = new Date().toLocaleDateString('es-CO', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
+    
+    // Encabezado
+    pdf.setFillColor(30, 41, 59);
+    pdf.rect(0, 0, 210, 40, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(24);
+    pdf.text('C&A Cloud Factory', 20, 25);
+    pdf.setFontSize(10);
+    pdf.text('Informe Financiero - ' + fechaHoy, 20, 35);
+    
+    let y = 55;
+    
+    // Resumen
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(16);
+    pdf.text('Resumen Semanal', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(11);
+    pdf.text(`Órdenes Activas: ${document.getElementById('totalOrders').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Pares Producidos: ${document.getElementById('totalPares').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Total Nómina: ${document.getElementById('totalNomina').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Alertas Inventario: ${document.getElementById('inventoryAlerts').textContent}`, 20, y);
+    y += 15;
+    
+    // Órdenes
+    pdf.setFontSize(16);
+    pdf.text('Órdenes de Trabajo', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(10);
+    orders.slice(0, 10).forEach(order => {
+        const progress = Math.round((order.pares_hechos / order.cantidad_total) * 100) || 0;
+        pdf.text(`• ${order.cliente} - ${order.modelo}: ${order.pares_hechos}/${order.cantidad_total} (${progress}%)`, 25, y);
+        y += 6;
+        if (y > 270) { pdf.addPage(); y = 20; }
+    });
+    
+    y += 10;
+    
+    // Nómina
+    pdf.setFontSize(16);
+    pdf.text('Detalle Nómina', 20, y);
+    y += 10;
+    
+    const payrollItems = document.querySelectorAll('#payrollList > div');
+    pdf.setFontSize(10);
+    payrollItems.forEach(item => {
+        const nombre = item.querySelector('p.text-white')?.textContent || '';
+        const monto = item.querySelector('p.text-emerald-400')?.textContent || '';
+        if (nombre && monto) {
+            pdf.text(`• ${nombre}: ${monto}`, 25, y);
+            y += 6;
+            if (y > 270) { pdf.addPage(); y = 20; }
+        }
+    });
+    
+    y += 10;
+    
+    // Inventario
+    if (y > 230) { pdf.addPage(); y = 20; }
+    pdf.setFontSize(16);
+    pdf.text('Estado de Inventario', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(10);
+    inventory.forEach(item => {
+        const status = item.cantidad <= item.minimo ? ' ⚠️ BAJO' : '';
+        pdf.text(`• ${item.nombre}: ${item.cantidad} ${item.unidad}${status}`, 25, y);
+        y += 6;
+        if (y > 270) { pdf.addPage(); y = 20; }
+    });
+    
+    // Pie de página
+    pdf.setFontSize(8);
+    pdf.setTextColor(128, 128, 128);
+    pdf.text('Generado por C&A Cloud Factory ERP', 20, 285);
+    
+    // Descargar
+    pdf.save(`Informe_CA_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('Informe PDF generado', 'success');
+}
+
+// ==================== PEDIDOS CLIENTE ====================
+
+let pedidosCliente = [];
+
+async function loadPedidosCliente() {
+    try {
+        const q = query(collection(db, 'pedidos_cliente'), orderBy('fecha_creacion', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            pedidosCliente = [];
+            let pendientes = 0, porRecibir = 0, enProduccion = 0, completadosHoy = 0;
+            const hoy = new Date().toDateString();
+            
+            snapshot.forEach(docSnap => {
+                const pedido = { id: docSnap.id, ...docSnap.data() };
+                pedidosCliente.push(pedido);
+                
+                if (pedido.estado === 'pendiente') pendientes++;
+                if (pedido.estado === 'en_produccion') enProduccion++;
+                if (pedido.estado === 'completado' && pedido.fecha_completado?.toDate?.()?.toDateString() === hoy) completadosHoy++;
+                
+                if (pedido.materiales) {
+                    porRecibir += pedido.materiales.filter(m => !m.recibido).length;
+                }
+            });
+            
+            document.getElementById('pedidosPendientesCount').textContent = pendientes;
+            document.getElementById('materialesPorRecibir').textContent = porRecibir;
+            document.getElementById('pedidosEnProduccion').textContent = enProduccion;
+            document.getElementById('pedidosCompletadosHoy').textContent = completadosHoy;
+            
+            const badge = document.getElementById('pedidosClienteBadge');
+            if (pendientes > 0) {
+                badge.textContent = pendientes;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+            
+            renderPedidosCliente();
+            loadClientInventory();
+        });
+    } catch (error) {
+        console.error('Error cargando pedidos cliente:', error);
+    }
+}
+
+function renderPedidosCliente() {
+    const list = document.getElementById('pedidosClienteList');
+    const filter = document.getElementById('filterPedidoEstado')?.value || 'todos';
+    
+    let filtered = pedidosCliente;
+    if (filter !== 'todos') {
+        filtered = pedidosCliente.filter(p => p.estado === filter);
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">Sin pedidos de clientes</p>';
+        return;
+    }
+    
+    const statusConfig = {
+        'pendiente': { color: 'bg-amber-600/20 text-amber-400', label: 'Pendiente', icon: 'clock' },
+        'materiales_recibidos': { color: 'bg-blue-600/20 text-blue-400', label: 'Mat. Recibidos', icon: 'box' },
+        'en_produccion': { color: 'bg-purple-600/20 text-purple-400', label: 'En Producción', icon: 'cogs' },
+        'completado': { color: 'bg-green-600/20 text-green-400', label: 'Completado', icon: 'check' },
+        'entregado': { color: 'bg-emerald-600/20 text-emerald-400', label: 'Entregado', icon: 'truck' }
+    };
+    
+    list.innerHTML = filtered.map(pedido => {
+        const status = statusConfig[pedido.estado] || statusConfig['pendiente'];
+        const fecha = pedido.fecha_creacion?.toDate?.() ? pedido.fecha_creacion.toDate().toLocaleDateString('es-CO') : '-';
+        const fechaEntrega = pedido.fecha_entrega_esperada?.toDate?.() ? pedido.fecha_entrega_esperada.toDate().toLocaleDateString('es-CO') : '-';
+        const progress = pedido.pares_hechos ? Math.round((pedido.pares_hechos / pedido.cantidad) * 100) : 0;
+        
+        const materialesHtml = pedido.materiales?.map((m, idx) => `
+            <div class="flex items-center justify-between bg-gray-700/30 rounded px-3 py-2">
+                <span class="text-gray-300 text-sm">${m.nombre}: ${m.cantidad} ${m.unidad}</span>
+                ${m.recibido 
+                    ? '<span class="text-green-400 text-xs"><i class="fas fa-check mr-1"></i>Recibido</span>'
+                    : `<button class="recibir-mat-btn px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition" data-pedido="${pedido.id}" data-idx="${idx}">
+                        <i class="fas fa-hand-holding mr-1"></i>Recibir
+                       </button>`
+                }
+            </div>
+        `).join('') || '';
+        
+        return `
+            <div class="bg-gray-700/50 rounded-xl p-4 border-l-4 ${pedido.estado === 'pendiente' ? 'border-amber-500' : pedido.estado === 'en_produccion' ? 'border-purple-500' : 'border-gray-600'}">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h4 class="text-white font-semibold">${pedido.modelo}</h4>
+                            <span class="px-2 py-1 rounded-full text-xs ${status.color}">
+                                <i class="fas fa-${status.icon} mr-1"></i>${status.label}
+                            </span>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            <i class="fas fa-user mr-1"></i>${pedido.cliente_nombre || 'Cliente'}
+                            <span class="mx-2">•</span>
+                            <i class="fas fa-hashtag mr-1"></i>${pedido.id.slice(-6).toUpperCase()}
+                        </p>
+                        <p class="text-gray-500 text-sm mt-1">
+                            Creado: ${fecha} | Entrega: ${fechaEntrega}
+                        </p>
+                        ${pedido.notas ? `<p class="text-gray-500 text-sm mt-1"><i class="fas fa-sticky-note mr-1"></i>${pedido.notas}</p>` : ''}
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-white">${pedido.cantidad}</p>
+                        <p class="text-gray-400 text-sm">pares</p>
+                        ${pedido.estado === 'en_produccion' ? `<p class="text-purple-400 text-sm mt-1">${pedido.pares_hechos || 0} hechos (${progress}%)</p>` : ''}
+                    </div>
+                </div>
+                
+                ${pedido.materiales && pedido.materiales.length > 0 ? `
+                    <div class="mt-4 pt-4 border-t border-gray-600">
+                        <p class="text-gray-400 text-sm mb-2"><i class="fas fa-cubes mr-1"></i>Materiales:</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${materialesHtml}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap gap-2">
+                    ${pedido.estado === 'pendiente' || pedido.estado === 'materiales_recibidos' ? `
+                        <button class="iniciar-produccion-btn px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-play mr-1"></i>Iniciar Producción
+                        </button>
+                    ` : ''}
+                    ${pedido.estado === 'en_produccion' ? `
+                        <button class="completar-pedido-btn px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-check mr-1"></i>Marcar Completado
+                        </button>
+                    ` : ''}
+                    ${pedido.estado === 'completado' ? `
+                        <button class="entregar-pedido-btn px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-truck mr-1"></i>Marcar Entregado
+                        </button>
+                    ` : ''}
                 </div>
             </div>
-        </div>
+        `;
+    }).join('');
+    
+    // Event listeners
+    document.querySelectorAll('.recibir-mat-btn').forEach(btn => {
+        btn.addEventListener('click', () => recibirMaterial(btn.dataset.pedido, parseInt(btn.dataset.idx)));
+    });
+    
+    document.querySelectorAll('.iniciar-produccion-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'en_produccion'));
+    });
+    
+    document.querySelectorAll('.completar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'completado'));
+    });
+    
+    document.querySelectorAll('.entregar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'entregado'));
+    });
+}
 
-        <!-- Pedidos Cliente Tab -->
-        <div id="pedidosClienteTab" class="tab-content hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Stats -->
-                <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-4">
-                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
-                        <p class="text-gray-400 text-sm">Pedidos Pendientes</p>
-                        <p id="pedidosPendientesCount" class="text-2xl font-bold text-amber-400">0</p>
-                    </div>
-                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
-                        <p class="text-gray-400 text-sm">Materiales por Recibir</p>
-                        <p id="materialesPorRecibir" class="text-2xl font-bold text-blue-400">0</p>
-                    </div>
-                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
-                        <p class="text-gray-400 text-sm">En Producción</p>
-                        <p id="pedidosEnProduccion" class="text-2xl font-bold text-purple-400">0</p>
-                    </div>
-                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
-                        <p class="text-gray-400 text-sm">Completados Hoy</p>
-                        <p id="pedidosCompletadosHoy" class="text-2xl font-bold text-green-400">0</p>
-                    </div>
-                </div>
+async function recibirMaterial(pedidoId, materialIdx) {
+    try {
+        const pedido = pedidosCliente.find(p => p.id === pedidoId);
+        if (!pedido || !pedido.materiales[materialIdx]) return;
+        
+        const material = pedido.materiales[materialIdx];
+        material.recibido = true;
+        material.fecha_recibido = Timestamp.now();
+        
+        await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+            materiales: pedido.materiales
+        });
+        
+        // Agregar al inventario de clientes
+        await addDoc(collection(db, 'inventario_clientes'), {
+            cliente_id: pedido.cliente_id,
+            cliente_nombre: pedido.cliente_nombre,
+            pedido_id: pedidoId,
+            nombre: material.nombre,
+            tipo: material.tipo,
+            cantidad: material.cantidad,
+            unidad: material.unidad,
+            fecha_entrega: Timestamp.now(),
+            recibido: true
+        });
+        
+        // Verificar si todos los materiales fueron recibidos
+        const todosRecibidos = pedido.materiales.every(m => m.recibido);
+        if (todosRecibidos && pedido.estado === 'pendiente') {
+            await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+                estado: 'materiales_recibidos'
+            });
+        }
+        
+        showToast('Material recibido e ingresado al inventario', 'success');
+    } catch (error) {
+        console.error('Error recibiendo material:', error);
+        showToast('Error al recibir material', 'error');
+    }
+}
 
-                <!-- Pedidos List -->
-                <div class="lg:col-span-3 bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-white">
-                            <i class="fas fa-clipboard-list mr-2 text-blue-500"></i>Pedidos de Clientes
-                        </h3>
-                        <select id="filterPedidoEstado" class="px-4 py-2 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-sm focus:outline-none">
-                            <option value="todos">Todos los estados</option>
-                            <option value="pendiente">Pendientes</option>
-                            <option value="materiales_recibidos">Materiales Recibidos</option>
-                            <option value="en_produccion">En Producción</option>
-                            <option value="completado">Completados</option>
-                        </select>
-                    </div>
-                    <div id="pedidosClienteList" class="space-y-4 max-h-[600px] overflow-y-auto">
-                        <p class="text-gray-500 text-center py-8">Cargando pedidos de clientes...</p>
-                    </div>
-                </div>
+async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
+    try {
+        const pedido = pedidosCliente.find(p => p.id === pedidoId);
+        const updateData = { estado: nuevoEstado };
+        
+        if (nuevoEstado === 'en_produccion') {
+            updateData.fecha_inicio_produccion = Timestamp.now();
+            
+            // Crear orden de trabajo en el sistema de producción
+            if (pedido) {
+                await addDoc(collection(db, 'ordenes'), {
+                    cliente: pedido.cliente_nombre || 'Cliente',
+                    modelo: pedido.modelo,
+                    cantidad_total: pedido.cantidad,
+                    cantidad_hecha: 0,
+                    estado: 'activa',
+                    fecha_creacion: Timestamp.now(),
+                    pedido_cliente_id: pedidoId,
+                    tallas: pedido.tallas || '',
+                    notas: pedido.notas || ''
+                });
+            }
+        } else if (nuevoEstado === 'completado') {
+            updateData.fecha_completado = Timestamp.now();
+        } else if (nuevoEstado === 'entregado') {
+            updateData.fecha_entregado = Timestamp.now();
+        }
+        
+        await updateDoc(doc(db, 'pedidos_cliente', pedidoId), updateData);
+        showToast(`Pedido marcado como ${nuevoEstado.replace('_', ' ')}`, 'success');
+    } catch (error) {
+        console.error('Error cambiando estado:', error);
+        showToast('Error al cambiar estado', 'error');
+    }
+}
+
+// ==================== INVENTARIO CLIENTES ====================
+
+let clientInventory = [];
+
+async function loadClientInventory() {
+    try {
+        const q = query(collection(db, 'inventario_clientes'), orderBy('fecha_entrega', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            clientInventory = [];
+            const clientesSet = new Set();
+            
+            snapshot.forEach(docSnap => {
+                const item = { id: docSnap.id, ...docSnap.data() };
+                clientInventory.push(item);
+                if (item.cliente_nombre) clientesSet.add(item.cliente_nombre);
+            });
+            
+            // Actualizar filtro de clientes
+            const filterSelect = document.getElementById('filterClienteMaterial');
+            if (filterSelect) {
+                const currentValue = filterSelect.value;
+                filterSelect.innerHTML = '<option value="todos">Todos los clientes</option>' +
+                    Array.from(clientesSet).map(c => `<option value="${c}">${c}</option>`).join('');
+                filterSelect.value = currentValue;
+            }
+            
+            renderClientInventory();
+        });
+    } catch (error) {
+        console.error('Error cargando inventario clientes:', error);
+    }
+}
+
+function renderClientInventory() {
+    const list = document.getElementById('clientInventoryList');
+    if (!list) return;
+    
+    const filter = document.getElementById('filterClienteMaterial')?.value || 'todos';
+    
+    let filtered = clientInventory;
+    if (filter !== 'todos') {
+        filtered = clientInventory.filter(i => i.cliente_nombre === filter);
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">Sin materiales de clientes registrados</p>';
+        return;
+    }
+    
+    // Agrupar por cliente
+    const grouped = {};
+    filtered.forEach(item => {
+        const key = item.cliente_nombre || 'Sin cliente';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+    });
+    
+    list.innerHTML = Object.entries(grouped).map(([cliente, items]) => `
+        <div class="bg-gray-700/30 rounded-xl p-4">
+            <h4 class="text-white font-semibold mb-3">
+                <i class="fas fa-user mr-2 text-blue-400"></i>${cliente}
+            </h4>
+            <div class="space-y-2">
+                ${items.map(item => {
+                    const fecha = item.fecha_entrega?.toDate?.() ? item.fecha_entrega.toDate().toLocaleDateString('es-CO') : '-';
+                    return `
+                        <div class="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2">
+                            <div>
+                                <span class="text-gray-300">${item.nombre}</span>
+                                <span class="text-gray-500 text-sm ml-2">(${item.cantidad} ${item.unidad})</span>
+                            </div>
+                            <span class="text-gray-500 text-xs">${fecha}</span>
+                        </div>
+                    `;
+                }).join('')}
             </div>
         </div>
-    </main>
+    `).join('');
+}
 
-    <!-- Cliente Modal -->
-    <div id="clienteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-700">
-            <div class="flex items-center justify-between mb-6">
-                <h3 id="clienteModalTitle" class="text-xl font-bold text-white">Nuevo Cliente</h3>
-                <button id="closeClienteModal" class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <form id="clienteForm" class="space-y-4">
-                <input type="hidden" id="clienteId">
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Código Cliente</label>
-                    <input type="text" id="clienteCodigo" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="CLI-001">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Nombre / Empresa</label>
-                    <input type="text" id="clienteNombre" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nombre del cliente">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Teléfono</label>
-                    <input type="tel" id="clienteTelefono" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="300 123 4567">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Correo Electrónico</label>
-                    <input type="email" id="clienteEmail" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="correo@ejemplo.com">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Contraseña Portal</label>
-                    <input type="text" id="clientePassword" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contraseña para acceso al portal">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Estado</label>
-                    <select id="clienteEstado" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="true">Activo</option>
-                        <option value="false">Inactivo</option>
-                    </select>
-                </div>
-                <div class="flex gap-3 pt-4">
-                    <button type="button" id="cancelClienteModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">Cancelar</button>
-                    <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition"><i class="fas fa-save mr-2"></i>Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+// ==================== INVENTORY SUB-TABS ====================
 
-    <!-- Order Modal -->
-    <div id="orderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-700">
-            <div class="flex items-center justify-between mb-6">
-                <h3 id="orderModalTitle" class="text-xl font-bold text-white">Nueva Orden</h3>
-                <button id="closeOrderModal" class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <form id="orderForm" class="space-y-4">
-                <input type="hidden" id="orderId">
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Cliente</label>
-                    <input type="text" id="orderCliente" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Nombre del cliente">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Modelo</label>
-                    <input type="text" id="orderModelo" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Referencia del modelo">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Cantidad Total (Pares)</label>
-                    <input type="number" id="orderCantidad" required min="1" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="100">
-                </div>
-                <div class="flex gap-3 pt-4">
-                    <button type="button" id="cancelOrderModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">Cancelar</button>
-                    <button type="submit" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition"><i class="fas fa-save mr-2"></i>Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+function switchInvSubTab(invType) {
+    document.querySelectorAll('.inv-sub-tab').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white');
+        btn.classList.add('text-gray-400');
+    });
+    
+    document.querySelector(`[data-inv="${invType}"]`).classList.add('bg-emerald-600', 'text-white');
+    document.querySelector(`[data-inv="${invType}"]`).classList.remove('text-gray-400');
+    
+    document.querySelectorAll('.inv-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById(`inv${invType.charAt(0).toUpperCase() + invType.slice(1)}Content`).classList.remove('hidden');
+}
 
-    <footer class="border-t border-gray-800 mt-12 py-6">
-        <div class="max-w-7xl mx-auto px-4 text-center">
-            <p class="text-gray-600 text-sm">C&A Manufacturas © 2024 - Bucaramanga, Colombia</p>
-        </div>
-    </footer>
+// ==================== CLIENTES ====================
 
-    <script type="module" src="js/finanzas.js"></script>
-</body>
-</html>
+let clientes = [];
+
+async function loadClientes() {
+    try {
+        onSnapshot(collection(db, 'clientes'), (snapshot) => {
+            clientes = [];
+            snapshot.forEach(docSnap => {
+                clientes.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            renderClientesTable();
+        });
+    } catch (error) {
+        console.error('Error cargando clientes:', error);
+    }
+}
+
+function renderClientesTable(filter = '') {
+    const tbody = document.getElementById('clientesTableBody');
+    if (!tbody) return;
+    
+    let filtered = clientes.filter(c => {
+        const searchMatch = c.nombre?.toLowerCase().includes(filter.toLowerCase()) ||
+                           c.id?.toLowerCase().includes(filter.toLowerCase()) ||
+                           c.email?.toLowerCase().includes(filter.toLowerCase()) ||
+                           c.telefono?.includes(filter);
+        return searchMatch;
+    });
+    
+    // Ordenar por fecha de registro descendente
+    filtered.sort((a, b) => {
+        const fechaA = a.fecha_registro?.toDate?.() || new Date(0);
+        const fechaB = b.fecha_registro?.toDate?.() || new Date(0);
+        return fechaB - fechaA;
+    });
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No se encontraron clientes</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filtered.map(cliente => {
+        const fecha = cliente.fecha_registro?.toDate?.() ? cliente.fecha_registro.toDate().toLocaleDateString('es-CO') : '-';
+        const statusColor = cliente.activo !== false ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400';
+        const statusText = cliente.activo !== false ? 'Activo' : 'Inactivo';
+        
+        return `
+            <tr class="hover:bg-gray-700/30 transition">
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-mono">${cliente.id}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user-tie text-gray-400"></i>
+                        </div>
+                        <p class="text-white font-medium">${cliente.nombre || '-'}</p>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <p class="text-white">${cliente.telefono || '-'}</p>
+                    <p class="text-gray-500 text-sm">${cliente.email || '-'}</p>
+                </td>
+                <td class="px-6 py-4 text-gray-400">${fecha}</td>
+                <td class="px-6 py-4">
+                    <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">${statusText}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                        <button class="edit-cliente-btn p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-600/20 rounded-lg transition" data-id="${cliente.id}" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="delete-cliente-btn p-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition" data-id="${cliente.id}" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Event listeners
+    document.querySelectorAll('.edit-cliente-btn').forEach(btn => {
+        btn.addEventListener('click', () => editCliente(btn.dataset.id));
+    });
+    
+    document.querySelectorAll('.delete-cliente-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteCliente(btn.dataset.id));
+    });
+}
+
+function editCliente(clienteId) {
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (!cliente) return;
+    
+    document.getElementById('clienteModalTitle').textContent = 'Editar Cliente';
+    document.getElementById('clienteId').value = clienteId;
+    document.getElementById('clienteCodigo').value = clienteId;
+    document.getElementById('clienteCodigo').disabled = true;
+    document.getElementById('clienteNombre').value = cliente.nombre || '';
+    document.getElementById('clienteTelefono').value = cliente.telefono || '';
+    document.getElementById('clienteEmail').value = cliente.email || '';
+    document.getElementById('clientePassword').value = cliente.password || '';
+    document.getElementById('clienteEstado').value = cliente.activo !== false ? 'true' : 'false';
+    
+    document.getElementById('clienteModal').classList.remove('hidden');
+}
+
+async function deleteCliente(clienteId) {
+    const confirmed = await showConfirm('¿Está seguro de eliminar este cliente? Esta acción no se puede deshacer.');
+    if (!confirmed) return;
+    
+    try {
+        await deleteDoc(doc(db, 'clientes', clienteId));
+        showToast('Cliente eliminado correctamente', 'success');
+    } catch (error) {
+        console.error('Error eliminando cliente:', error);
+        showToast('Error al eliminar cliente', 'error');
+    }
+}
+
+async function saveCliente(e) {
+    e.preventDefault();
+    
+    const clienteId = document.getElementById('clienteId').value;
+    const codigo = document.getElementById('clienteCodigo').value.trim();
+    const nombre = document.getElementById('clienteNombre').value.trim();
+    const telefono = document.getElementById('clienteTelefono').value.trim();
+    const email = document.getElementById('clienteEmail').value.trim();
+    const password = document.getElementById('clientePassword').value;
+    const activo = document.getElementById('clienteEstado').value === 'true';
+    
+    if (!codigo || !nombre) {
+        showToast('Complete los campos requeridos', 'warning');
+        return;
+    }
+    
+    try {
+        const data = {
+            nombre,
+            telefono,
+            email,
+            password,
+            activo
+        };
+        
+        if (clienteId) {
+            // Editar
+            await updateDoc(doc(db, 'clientes', clienteId), data);
+            showToast('Cliente actualizado correctamente', 'success');
+        } else {
+            // Crear nuevo
+            data.fecha_registro = Timestamp.now();
+            await setDoc(doc(db, 'clientes', codigo), data);
+            showToast('Cliente creado correctamente', 'success');
+        }
+        
+        closeClienteModal();
+    } catch (error) {
+        console.error('Error guardando cliente:', error);
+        showToast('Error al guardar cliente', 'error');
+    }
+}
+
+function closeClienteModal() {
+    document.getElementById('clienteModal').classList.add('hidden');
+    document.getElementById('clienteForm').reset();
+    document.getElementById('clienteId').value = '';
+    document.getElementById('clienteCodigo').disabled = false;
+}
+
+async function generateNextClientCode() {
+    const snapshot = await getDocs(collection(db, 'clientes'));
+    const nextNum = snapshot.size + 1;
+    return `CLI-${String(nextNum).padStart(3, '0')}`;
+}
+
+// ==================== TABS ====================
+
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white');
+        btn.classList.add('text-gray-400');
+    });
+    
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('bg-emerald-600', 'text-white');
+    document.querySelector(`[data-tab="${tabName}"]`).classList.remove('text-gray-400');
+    
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+}
+
+// ==================== EVENT LISTENERS ====================
+
+function setupEventListeners() {
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    
+    document.getElementById('searchOrders').addEventListener('input', (e) => {
+        renderOrdersTable(e.target.value);
+    });
+    
+    document.getElementById('filterOrderStatus').addEventListener('change', () => {
+        renderOrdersTable(document.getElementById('searchOrders').value);
+    });
+    
+    document.getElementById('newOrderBtn').addEventListener('click', () => {
+        document.getElementById('orderModalTitle').textContent = 'Nueva Orden';
+        document.getElementById('orderId').value = '';
+        document.getElementById('orderForm').reset();
+        document.getElementById('orderModal').classList.remove('hidden');
+    });
+    
+    document.getElementById('closeOrderModal').addEventListener('click', closeOrderModal);
+    document.getElementById('cancelOrderModal').addEventListener('click', closeOrderModal);
+    document.getElementById('orderForm').addEventListener('submit', saveOrder);
+    
+    document.getElementById('saveInsumoBtn').addEventListener('click', saveInsumo);
+    document.getElementById('closeWeekBtn').addEventListener('click', closeWeek);
+    
+    // Caja Menor
+    document.getElementById('saveCajaMovBtn')?.addEventListener('click', saveCajaMovimiento);
+    
+    // Exportar PDF
+    document.getElementById('exportPdfBtn')?.addEventListener('click', exportarInformePDF);
+    
+    // Inventory sub-tabs
+    document.querySelectorAll('.inv-sub-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchInvSubTab(btn.dataset.inv));
+    });
+    
+    // Filter client materials
+    document.getElementById('filterClienteMaterial')?.addEventListener('change', renderClientInventory);
+    
+    // Filter pedidos cliente
+    document.getElementById('filterPedidoEstado')?.addEventListener('change', renderPedidosCliente);
+    
+    // Clientes
+    document.getElementById('newClienteBtn')?.addEventListener('click', async () => {
+        document.getElementById('clienteModalTitle').textContent = 'Nuevo Cliente';
+        document.getElementById('clienteId').value = '';
+        document.getElementById('clienteForm').reset();
+        document.getElementById('clienteCodigo').disabled = false;
+        document.getElementById('clienteCodigo').value = await generateNextClientCode();
+        document.getElementById('clienteModal').classList.remove('hidden');
+    });
+    
+    document.getElementById('closeClienteModal')?.addEventListener('click', closeClienteModal);
+    document.getElementById('cancelClienteModal')?.addEventListener('click', closeClienteModal);
+    document.getElementById('clienteForm')?.addEventListener('submit', saveCliente);
+    document.getElementById('searchClientes')?.addEventListener('input', (e) => {
+        renderClientesTable(e.target.value);
+    });
+}
+
+// Iniciar
+init();
