@@ -7,6 +7,30 @@ import { db, rtdb, collection, addDoc, query, where, orderBy, onSnapshot, Timest
 let currentChatUser = null;
 let currentUserUid = null;
 let unsubscribeChat = null;
+let lastMessageCount = 0;
+
+// Función para reproducir sonido de mensaje
+function playChatSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(523, audioContext.currentTime); // C5
+        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1); // E5
+        
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.25);
+    } catch (e) {
+        console.log('Audio not supported');
+    }
+}
 
 export function initChat(userUid) {
     currentUserUid = userUid;
@@ -104,6 +128,8 @@ function loadMessages() {
     
     if (unsubscribeChat) unsubscribeChat();
     
+    lastMessageCount = 0; // Reset counter when opening chat
+    
     unsubscribeChat = onValue(messagesRef, (snapshot) => {
         const container = document.getElementById('chatMessages');
         
@@ -124,6 +150,16 @@ function loadMessages() {
         });
         
         messages.sort((a, b) => a.timestamp - b.timestamp);
+        
+        // Reproducir sonido si hay nuevos mensajes de otros usuarios
+        const newCount = messages.length;
+        if (newCount > lastMessageCount && lastMessageCount > 0) {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && lastMsg.senderUid !== currentUserUid) {
+                playChatSound();
+            }
+        }
+        lastMessageCount = newCount;
         
         container.innerHTML = messages.map(msg => {
             const isOwn = msg.senderUid === currentUserUid;
