@@ -212,6 +212,7 @@
         import { getNavigationMenu, getRoleName, getRoleBadgeColor } from './js/roles.js';
         import { formatCurrency, formatDateTime, formatDate, getWeekStart, getDayStart, getDayEnd } from './js/utils.js';
         import { db, rtdb, collection, query, where, orderBy, limit, getDocs, onSnapshot, Timestamp, ref, onValue, set } from './js/firebase-init.js';
+        import { initNotifications } from './js/notifications.js';
 
         let productionChart = null;
         let lastNotifCount = -1; // -1 para ignorar la carga inicial
@@ -688,10 +689,22 @@
                                 <p class="text-gray-400 text-xs mt-1">${notif.mensaje || ''}</p>
                                 <p class="text-gray-500 text-xs mt-1">${fecha}</p>
                             </div>
-                            ${isNew ? '<span class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>' : ''}
+                            <button class="delete-notif-btn p-1 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded transition flex-shrink-0" data-id="${notif.id}" title="Eliminar">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
                         </div>
                     `;
                 }).join('');
+                
+                // Event listeners para eliminar notificaciones
+                document.querySelectorAll('.delete-notif-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const notifId = btn.dataset.id;
+                        const deleteRef = ref(rtdb, `notificaciones_fabrica/${notifId}`);
+                        set(deleteRef, null);
+                    });
+                });
             });
             
             // Marcar todas como leídas
@@ -713,6 +726,11 @@
 
         // Iniciar
         init();
+        
+        // Inicializar notificaciones globales después de autenticación
+        checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO]).then(({ user }) => {
+            initNotifications(user.uid);
+        }).catch(() => {});
     </script>
 </body>
 </html>
