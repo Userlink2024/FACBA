@@ -871,7 +871,7 @@ function renderPedidosCliente() {
                 ` : ''}
                 
                 <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap gap-2">
-                    ${pedido.estado === 'pendiente' ? `
+                    ${pedido.estado === 'pendiente' || pedido.estado === 'materiales_recibidos' ? `
                         <button class="iniciar-produccion-btn px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
                             <i class="fas fa-play mr-1"></i>Iniciar Producción
                         </button>
@@ -952,9 +952,27 @@ async function recibirMaterial(pedidoId, materialIdx) {
 
 async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
     try {
+        const pedido = pedidosCliente.find(p => p.id === pedidoId);
         const updateData = { estado: nuevoEstado };
         
-        if (nuevoEstado === 'completado') {
+        if (nuevoEstado === 'en_produccion') {
+            updateData.fecha_inicio_produccion = Timestamp.now();
+            
+            // Crear orden de trabajo en el sistema de producción
+            if (pedido) {
+                await addDoc(collection(db, 'ordenes'), {
+                    cliente: pedido.cliente_nombre || 'Cliente',
+                    modelo: pedido.modelo,
+                    cantidad_total: pedido.cantidad,
+                    cantidad_hecha: 0,
+                    estado: 'activa',
+                    fecha_creacion: Timestamp.now(),
+                    pedido_cliente_id: pedidoId,
+                    tallas: pedido.tallas || '',
+                    notas: pedido.notas || ''
+                });
+            }
+        } else if (nuevoEstado === 'completado') {
             updateData.fecha_completado = Timestamp.now();
         } else if (nuevoEstado === 'entregado') {
             updateData.fecha_entregado = Timestamp.now();
