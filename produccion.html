@@ -208,6 +208,7 @@
         import { getNavigationMenu, getRoleName } from './js/roles.js';
         import { formatCurrency, formatTime, getWeekStart, getDayStart, showToast, showConfirm } from './js/utils.js';
         import { db, collection, doc, getDoc, getDocs, addDoc, updateDoc, query, where, orderBy, onSnapshot, Timestamp, increment } from './js/firebase-init.js';
+        import { initNotifications } from './js/notifications.js';
 
         let currentUser = null;
         let currentUserData = null;
@@ -227,6 +228,9 @@
                 document.getElementById('userRole').textContent = getRoleName(userData.rol);
                 
                 generateNavMenu(userData.rol);
+                
+                // Inicializar notificaciones globales
+                initNotifications(user.uid);
                 
                 // Verificar sanción
                 if (userData.estado === 'sancionado') {
