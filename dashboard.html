@@ -73,11 +73,6 @@
             <p class="text-gray-400 mt-2">Resumen de producción y actividad en tiempo real</p>
         </div>
 
-        <!-- Quick Access Menu -->
-        <div id="quickAccessMenu" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <!-- Dynamic quick access buttons -->
-        </div>
-
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Producción Hoy -->
@@ -219,6 +214,31 @@
         import { db, rtdb, collection, query, where, orderBy, limit, getDocs, onSnapshot, Timestamp, ref, onValue, set } from './js/firebase-init.js';
 
         let productionChart = null;
+        let lastNotifCount = 0;
+        
+        // Función para reproducir sonido de notificación
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
 
         // Inicializar
         async function init() {
@@ -261,40 +281,6 @@
                 <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${window.location.pathname.includes(item.href) ? 'bg-gray-700/50 text-white' : ''}">
                     <i class="fas ${item.icon}"></i>
                     <span>${item.name}</span>
-                </a>
-            `).join('');
-            
-            // Generar accesos rápidos
-            generateQuickAccess(rol);
-        }
-        
-        // Generar accesos rápidos en el dashboard
-        function generateQuickAccess(rol) {
-            const quickAccessMenu = document.getElementById('quickAccessMenu');
-            
-            const quickLinks = {
-                'admin_finanzas': [
-                    { name: 'Finanzas', icon: 'fa-dollar-sign', href: 'finanzas.html', color: 'from-emerald-600 to-emerald-800' },
-                    { name: 'RRHH', icon: 'fa-users', href: 'rrhh.html', color: 'from-purple-600 to-purple-800' },
-                    { name: 'Producción', icon: 'fa-industry', href: 'produccion.html', color: 'from-blue-600 to-blue-800' },
-                    { name: 'Portal Clientes', icon: 'fa-user-tie', href: 'cliente-portal.html', color: 'from-amber-600 to-amber-800' }
-                ],
-                'admin_rrhh': [
-                    { name: 'Finanzas', icon: 'fa-dollar-sign', href: 'finanzas.html', color: 'from-emerald-600 to-emerald-800' },
-                    { name: 'RRHH', icon: 'fa-users', href: 'rrhh.html', color: 'from-purple-600 to-purple-800' },
-                    { name: 'Producción', icon: 'fa-industry', href: 'produccion.html', color: 'from-blue-600 to-blue-800' }
-                ],
-                'operario': [
-                    { name: 'Mi Producción', icon: 'fa-shoe-prints', href: 'produccion.html', color: 'from-blue-600 to-blue-800' }
-                ]
-            };
-            
-            const links = quickLinks[rol] || [];
-            
-            quickAccessMenu.innerHTML = links.map(link => `
-                <a href="${link.href}" class="bg-gradient-to-br ${link.color} rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:scale-105 transition-transform shadow-lg">
-                    <i class="fas ${link.icon} text-white text-2xl"></i>
-                    <span class="text-white font-semibold text-sm">${link.name}</span>
                 </a>
             `).join('');
         }
@@ -637,6 +623,13 @@
                 notifs.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
                 
                 const unread = notifs.filter(n => !n.leido).length;
+                
+                // Reproducir sonido si hay nuevas notificaciones
+                if (unread > lastNotifCount && lastNotifCount >= 0) {
+                    playNotificationSound();
+                }
+                lastNotifCount = unread;
+                
                 if (unread > 0) {
                     badge.textContent = unread;
                     badge.classList.remove('hidden');
