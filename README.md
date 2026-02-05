@@ -213,11 +213,42 @@ Ganancia Operario = Pares Registrados × Tarifa Personal
 
 ## 🌐 Despliegue en GitHub Pages
 
-1. Cree un repositorio en GitHub
-2. Suba todos los archivos
-3. Vaya a Settings > Pages
-4. Seleccione la rama `main` y carpeta `/ (root)`
-5. El sitio estará disponible en `https://usuario.github.io/repositorio`
+### Paso a Paso:
+
+1. **Crear repositorio en GitHub:**
+   - Vaya a [github.com/new](https://github.com/new)
+   - Nombre: `ca-cloud-factory` (o el que prefiera)
+   - Visibilidad: Público (requerido para Pages gratis)
+
+2. **Subir archivos desde terminal:**
+   ```bash
+   cd "SISTEMA CALZADO C&A"
+   git init
+   git add .
+   git commit -m "Initial commit - C&A Cloud Factory ERP"
+   git branch -M main
+   git remote add origin https://github.com/TU_USUARIO/ca-cloud-factory.git
+   git push -u origin main
+   ```
+
+3. **Activar GitHub Pages:**
+   - Ir a Settings > Pages
+   - Source: **Deploy from a branch**
+   - Branch: `main` / `/ (root)`
+   - Clic en **Save**
+
+4. **Esperar 2-3 minutos** y acceder a:
+   ```
+   https://TU_USUARIO.github.io/ca-cloud-factory/
+   ```
+
+5. **Ejecutar Setup inicial:**
+   - Abrir `https://TU_USUARIO.github.io/ca-cloud-factory/setup.html`
+   - Clic en "Inicializar Sistema"
+
+### Archivos importantes para GitHub Pages:
+- `.nojekyll` - Evita procesamiento Jekyll (ya incluido)
+- Todas las rutas son relativas para compatibilidad
 
 ## 🔧 Servidor Local
 
