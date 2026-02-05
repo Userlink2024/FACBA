@@ -25,7 +25,8 @@ async function init() {
             loadOrders(),
             loadEmployees(),
             loadInventory(),
-            loadPayrollData()
+            loadPayrollData(),
+            loadCajaMenor()
         ]);
         
         setupEventListeners();
@@ -293,15 +294,25 @@ function renderInventoryList() {
         const percentage = Math.min((item.cantidad / (item.minimo * 3)) * 100, 100);
         
         return `
-            <div class="bg-gray-700/50 rounded-lg p-4 ${isLow ? 'border-l-4 border-red-500' : ''}">
+            <div class="bg-gray-700/50 rounded-lg p-4 ${isLow ? 'border-l-4 border-red-500' : ''}" data-id="${item.id}">
                 <div class="flex justify-between items-start mb-2">
                     <div>
                         <p class="text-white font-medium">${item.nombre}</p>
                         <p class="text-gray-500 text-sm">Consumo: ${item.consumo_por_par} ${item.unidad}/par</p>
                     </div>
-                    <div class="text-right">
-                        <p class="text-white font-bold">${item.cantidad} ${item.unidad}</p>
-                        ${isLow ? '<span class="text-red-400 text-xs">¡Stock bajo!</span>' : ''}
+                    <div class="flex items-start gap-2">
+                        <div class="text-right">
+                            <p class="text-white font-bold">${item.cantidad} ${item.unidad}</p>
+                            ${isLow ? '<span class="text-red-400 text-xs">¡Stock bajo!</span>' : ''}
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="edit-inv-btn p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded transition" data-id="${item.id}" title="Editar">
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button class="delete-inv-btn p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded transition" data-id="${item.id}" data-nombre="${item.nombre}" title="Eliminar">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="w-full bg-gray-600 rounded-full h-2">
@@ -311,6 +322,43 @@ function renderInventoryList() {
             </div>
         `;
     }).join('');
+    
+    // Event listeners para editar
+    document.querySelectorAll('.edit-inv-btn').forEach(btn => {
+        btn.addEventListener('click', () => editInventoryItem(btn.dataset.id));
+    });
+    
+    // Event listeners para eliminar
+    document.querySelectorAll('.delete-inv-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('Eliminar Insumo', `¿Eliminar "${btn.dataset.nombre}" del inventario?`);
+            if (confirmed) await deleteInventoryItem(btn.dataset.id);
+        });
+    });
+}
+
+function editInventoryItem(id) {
+    const item = inventory.find(i => i.id === id);
+    if (!item) return;
+    
+    document.getElementById('insumoNombre').value = item.nombre;
+    document.getElementById('insumoCantidad').value = item.cantidad;
+    document.getElementById('insumoUnidad').value = item.unidad;
+    document.getElementById('insumoMinimo').value = item.minimo;
+    document.getElementById('insumoConsumo').value = item.consumo_por_par;
+    
+    document.getElementById('insumoNombre').focus();
+    showToast('Editando: ' + item.nombre, 'info');
+}
+
+async function deleteInventoryItem(id) {
+    try {
+        await deleteDoc(doc(db, 'inventario', id));
+        showToast('Insumo eliminado', 'success');
+    } catch (error) {
+        console.error('Error eliminando insumo:', error);
+        showToast('Error al eliminar', 'error');
+    }
 }
 
 async function saveInsumo() {
@@ -481,6 +529,223 @@ async function closeWeek() {
     }
 }
 
+// ==================== CAJA MENOR ====================
+
+let cajaMenorMovimientos = [];
+
+async function loadCajaMenor() {
+    try {
+        const q = query(collection(db, 'caja_menor'), orderBy('fecha', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            cajaMenorMovimientos = [];
+            let saldo = 0;
+            
+            snapshot.forEach(docSnap => {
+                const mov = { id: docSnap.id, ...docSnap.data() };
+                cajaMenorMovimientos.push(mov);
+            });
+            
+            // Calcular saldo
+            cajaMenorMovimientos.forEach(mov => {
+                if (mov.tipo === 'ingreso') saldo += mov.monto;
+                else saldo -= mov.monto;
+            });
+            
+            document.getElementById('saldoCajaMenor').textContent = formatCurrency(saldo);
+            document.getElementById('saldoCajaMenor').className = saldo >= 0 ? 'text-3xl font-bold text-emerald-400' : 'text-3xl font-bold text-red-400';
+            
+            renderCajaMenorList();
+        });
+    } catch (error) {
+        console.error('Error cargando caja menor:', error);
+    }
+}
+
+function renderCajaMenorList() {
+    const list = document.getElementById('cajaMenorList');
+    
+    if (cajaMenorMovimientos.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">No hay movimientos registrados</p>';
+        return;
+    }
+    
+    list.innerHTML = cajaMenorMovimientos.slice(0, 50).map(mov => {
+        const isIngreso = mov.tipo === 'ingreso';
+        const fecha = mov.fecha?.toDate ? mov.fecha.toDate().toLocaleDateString('es-CO') : '';
+        
+        return `
+            <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 ${isIngreso ? 'bg-emerald-600/20' : 'bg-red-600/20'} rounded-xl flex items-center justify-center">
+                        <i class="fas ${isIngreso ? 'fa-arrow-down' : 'fa-arrow-up'} ${isIngreso ? 'text-emerald-500' : 'text-red-500'}"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">${mov.concepto}</p>
+                        <p class="text-gray-500 text-sm">${fecha}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p class="text-lg font-bold ${isIngreso ? 'text-emerald-400' : 'text-red-400'}">
+                        ${isIngreso ? '+' : '-'}${formatCurrency(mov.monto)}
+                    </p>
+                    <button class="delete-caja-btn p-2 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition" data-id="${mov.id}" title="Eliminar">
+                        <i class="fas fa-trash text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.querySelectorAll('.delete-caja-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('Eliminar Movimiento', '¿Eliminar este movimiento de caja?');
+            if (confirmed) {
+                try {
+                    await deleteDoc(doc(db, 'caja_menor', btn.dataset.id));
+                    showToast('Movimiento eliminado', 'success');
+                } catch (error) {
+                    showToast('Error al eliminar', 'error');
+                }
+            }
+        });
+    });
+}
+
+async function saveCajaMovimiento() {
+    const tipo = document.getElementById('cajaMovTipo').value;
+    const concepto = document.getElementById('cajaMovConcepto').value.trim();
+    const monto = parseFloat(document.getElementById('cajaMovMonto').value) || 0;
+    
+    if (!concepto || monto <= 0) {
+        showToast('Complete todos los campos', 'warning');
+        return;
+    }
+    
+    try {
+        await addDoc(collection(db, 'caja_menor'), {
+            tipo,
+            concepto,
+            monto,
+            fecha: Timestamp.now(),
+            registrado_por: document.getElementById('userName').textContent
+        });
+        
+        document.getElementById('cajaMovConcepto').value = '';
+        document.getElementById('cajaMovMonto').value = '';
+        
+        showToast(`${tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado`, 'success');
+    } catch (error) {
+        console.error('Error guardando movimiento:', error);
+        showToast('Error al guardar', 'error');
+    }
+}
+
+// ==================== EXPORTAR PDF ====================
+
+async function exportarInformePDF() {
+    showToast('Generando informe...', 'info');
+    
+    // Cargar jsPDF dinámicamente
+    if (!window.jspdf) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        document.head.appendChild(script);
+        await new Promise(resolve => script.onload = resolve);
+    }
+    
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    
+    const fechaHoy = new Date().toLocaleDateString('es-CO', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
+    
+    // Encabezado
+    pdf.setFillColor(30, 41, 59);
+    pdf.rect(0, 0, 210, 40, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(24);
+    pdf.text('C&A Cloud Factory', 20, 25);
+    pdf.setFontSize(10);
+    pdf.text('Informe Financiero - ' + fechaHoy, 20, 35);
+    
+    let y = 55;
+    
+    // Resumen
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(16);
+    pdf.text('Resumen Semanal', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(11);
+    pdf.text(`Órdenes Activas: ${document.getElementById('totalOrders').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Pares Producidos: ${document.getElementById('totalPares').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Total Nómina: ${document.getElementById('totalNomina').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Alertas Inventario: ${document.getElementById('inventoryAlerts').textContent}`, 20, y);
+    y += 15;
+    
+    // Órdenes
+    pdf.setFontSize(16);
+    pdf.text('Órdenes de Trabajo', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(10);
+    orders.slice(0, 10).forEach(order => {
+        const progress = Math.round((order.pares_hechos / order.cantidad_total) * 100) || 0;
+        pdf.text(`• ${order.cliente} - ${order.modelo}: ${order.pares_hechos}/${order.cantidad_total} (${progress}%)`, 25, y);
+        y += 6;
+        if (y > 270) { pdf.addPage(); y = 20; }
+    });
+    
+    y += 10;
+    
+    // Nómina
+    pdf.setFontSize(16);
+    pdf.text('Detalle Nómina', 20, y);
+    y += 10;
+    
+    const payrollItems = document.querySelectorAll('#payrollList > div');
+    pdf.setFontSize(10);
+    payrollItems.forEach(item => {
+        const nombre = item.querySelector('p.text-white')?.textContent || '';
+        const monto = item.querySelector('p.text-emerald-400')?.textContent || '';
+        if (nombre && monto) {
+            pdf.text(`• ${nombre}: ${monto}`, 25, y);
+            y += 6;
+            if (y > 270) { pdf.addPage(); y = 20; }
+        }
+    });
+    
+    y += 10;
+    
+    // Inventario
+    if (y > 230) { pdf.addPage(); y = 20; }
+    pdf.setFontSize(16);
+    pdf.text('Estado de Inventario', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(10);
+    inventory.forEach(item => {
+        const status = item.cantidad <= item.minimo ? ' ⚠️ BAJO' : '';
+        pdf.text(`• ${item.nombre}: ${item.cantidad} ${item.unidad}${status}`, 25, y);
+        y += 6;
+        if (y > 270) { pdf.addPage(); y = 20; }
+    });
+    
+    // Pie de página
+    pdf.setFontSize(8);
+    pdf.setTextColor(128, 128, 128);
+    pdf.text('Generado por C&A Cloud Factory ERP', 20, 285);
+    
+    // Descargar
+    pdf.save(`Informe_CA_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('Informe PDF generado', 'success');
+}
+
 // ==================== TABS ====================
 
 function switchTab(tabName) {
@@ -529,6 +794,12 @@ function setupEventListeners() {
     
     document.getElementById('saveInsumoBtn').addEventListener('click', saveInsumo);
     document.getElementById('closeWeekBtn').addEventListener('click', closeWeek);
+    
+    // Caja Menor
+    document.getElementById('saveCajaMovBtn')?.addEventListener('click', saveCajaMovimiento);
+    
+    // Exportar PDF
+    document.getElementById('exportPdfBtn')?.addEventListener('click', exportarInformePDF);
 }
 
 // Iniciar
