@@ -844,25 +844,57 @@ function renderPedidosCliente() {
                 <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-2">
-                            <h4 class="text-white font-semibold">${pedido.modelo}</h4>
+                            <h4 class="text-white font-semibold text-lg">${pedido.modelo}</h4>
                             <span class="px-2 py-1 rounded-full text-xs ${status.color}">
                                 <i class="fas fa-${status.icon} mr-1"></i>${status.label}
                             </span>
                         </div>
-                        <p class="text-gray-400 text-sm">
-                            <i class="fas fa-user mr-1"></i>${pedido.cliente_nombre || 'Cliente'}
-                            <span class="mx-2">•</span>
-                            <i class="fas fa-hashtag mr-1"></i>${pedido.id.slice(-6).toUpperCase()}
-                        </p>
-                        <p class="text-gray-500 text-sm mt-1">
-                            Creado: ${fecha} | Entrega: ${fechaEntrega}
-                        </p>
-                        ${pedido.notas ? `<p class="text-gray-500 text-sm mt-1"><i class="fas fa-sticky-note mr-1"></i>${pedido.notas}</p>` : ''}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                            <p class="text-gray-400">
+                                <i class="fas fa-user mr-1 text-blue-400"></i><strong>Cliente:</strong> ${pedido.cliente_nombre || 'N/A'}
+                            </p>
+                            <p class="text-gray-400">
+                                <i class="fas fa-hashtag mr-1 text-gray-500"></i><strong>ID:</strong> ${pedido.id.slice(-8).toUpperCase()}
+                            </p>
+                            <p class="text-gray-400">
+                                <i class="fas fa-calendar-plus mr-1 text-green-400"></i><strong>Creado:</strong> ${fecha}
+                            </p>
+                            <p class="text-gray-400">
+                                <i class="fas fa-calendar-check mr-1 text-amber-400"></i><strong>Entrega:</strong> ${fechaEntrega}
+                            </p>
+                            ${pedido.tallas ? `
+                            <p class="text-gray-400">
+                                <i class="fas fa-ruler mr-1 text-purple-400"></i><strong>Tallas:</strong> ${pedido.tallas}
+                            </p>` : ''}
+                            <p class="text-gray-400">
+                                <i class="fas fa-shoe-prints mr-1 text-blue-400"></i><strong>Cantidad:</strong> ${pedido.cantidad} pares
+                            </p>
+                        </div>
+                        ${pedido.color ? `
+                        <div class="mt-3 p-3 bg-gradient-to-r from-pink-900/30 to-purple-900/30 border border-pink-700/50 rounded-lg">
+                            <p class="text-white font-medium text-sm">
+                                <i class="fas fa-palette mr-2 text-pink-400"></i>🎨 <strong>Color Principal:</strong> 
+                                <span class="text-pink-300 font-bold">${pedido.color}</span>
+                                ${pedido.color_secundario ? `<span class="text-gray-400 mx-2">|</span><strong>Secundario:</strong> <span class="text-purple-300">${pedido.color_secundario}</span>` : ''}
+                            </p>
+                        </div>` : ''}
+                        ${pedido.notas ? `
+                        <div class="mt-3 p-2 bg-gray-800/50 rounded-lg">
+                            <p class="text-gray-400 text-sm"><i class="fas fa-sticky-note mr-1 text-yellow-400"></i><strong>Notas:</strong> ${pedido.notas}</p>
+                        </div>` : ''}
                     </div>
                     <div class="text-right">
-                        <p class="text-2xl font-bold text-white">${pedido.cantidad}</p>
-                        <p class="text-gray-400 text-sm">pares</p>
-                        ${pedido.estado === 'en_produccion' ? `<p class="text-purple-400 text-sm mt-1">${pedido.pares_hechos || 0} hechos (${progress}%)</p>` : ''}
+                        <p class="text-3xl font-bold text-white">${pedido.cantidad}</p>
+                        <p class="text-gray-400 text-sm">pares totales</p>
+                        ${pedido.estado === 'en_produccion' ? `
+                            <div class="mt-2">
+                                <p class="text-purple-400 font-medium">${pedido.pares_hechos || 0} / ${pedido.cantidad}</p>
+                                <div class="w-24 bg-gray-700 rounded-full h-2 mt-1">
+                                    <div class="bg-purple-500 h-2 rounded-full" style="width: ${progress}%"></div>
+                                </div>
+                                <p class="text-gray-500 text-xs mt-1">${progress}% completado</p>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 
@@ -1098,7 +1130,14 @@ async function loadClientes() {
             snapshot.forEach(docSnap => {
                 clientes.push({ id: docSnap.id, ...docSnap.data() });
             });
+            console.log('Clientes cargados:', clientes.length);
             renderClientesTable();
+        }, (error) => {
+            console.error('Error en snapshot clientes:', error);
+            const tbody = document.getElementById('clientesTableBody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-red-400">Error al cargar clientes. Verifique los permisos de Firebase.</td></tr>';
+            }
         });
     } catch (error) {
         console.error('Error cargando clientes:', error);
@@ -1108,6 +1147,12 @@ async function loadClientes() {
 function renderClientesTable(filter = '') {
     const tbody = document.getElementById('clientesTableBody');
     if (!tbody) return;
+    
+    // Si no hay clientes, mostrar mensaje
+    if (clientes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No hay clientes registrados. Cree uno nuevo o espere a que se registren desde el portal.</td></tr>';
+        return;
+    }
     
     let filtered = clientes.filter(c => {
         const searchMatch = c.nombre?.toLowerCase().includes(filter.toLowerCase()) ||
@@ -1133,16 +1178,20 @@ function renderClientesTable(filter = '') {
         const fecha = cliente.fecha_registro?.toDate?.() ? cliente.fecha_registro.toDate().toLocaleDateString('es-CO') : '-';
         const statusColor = cliente.activo !== false ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400';
         const statusText = cliente.activo !== false ? 'Activo' : 'Inactivo';
+        const clienteColor = cliente.color || '#3B82F6';
         
         return `
             <tr class="hover:bg-gray-700/30 transition">
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-mono">${cliente.id}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full" style="background-color: ${clienteColor}"></span>
+                        <span class="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-mono">${cliente.id}</span>
+                    </div>
                 </td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user-tie text-gray-400"></i>
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: ${clienteColor}20; border: 2px solid ${clienteColor}">
+                            <i class="fas fa-user-tie" style="color: ${clienteColor}"></i>
                         </div>
                         <p class="text-white font-medium">${cliente.nombre || '-'}</p>
                     </div>
@@ -1191,6 +1240,7 @@ function editCliente(clienteId) {
     document.getElementById('clienteTelefono').value = cliente.telefono || '';
     document.getElementById('clienteEmail').value = cliente.email || '';
     document.getElementById('clientePassword').value = cliente.password || '';
+    document.getElementById('clienteColor').value = cliente.color || '#3B82F6';
     document.getElementById('clienteEstado').value = cliente.activo !== false ? 'true' : 'false';
     
     document.getElementById('clienteModal').classList.remove('hidden');
@@ -1218,6 +1268,7 @@ async function saveCliente(e) {
     const telefono = document.getElementById('clienteTelefono').value.trim();
     const email = document.getElementById('clienteEmail').value.trim();
     const password = document.getElementById('clientePassword').value;
+    const color = document.getElementById('clienteColor').value;
     const activo = document.getElementById('clienteEstado').value === 'true';
     
     if (!codigo || !nombre) {
@@ -1231,6 +1282,7 @@ async function saveCliente(e) {
             telefono,
             email,
             password,
+            color,
             activo
         };
         
