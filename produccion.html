@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Producción - C&A Cloud Factory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slide-out {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes bounce-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
+        .animate-slide-out { animation: slide-out 0.3s ease-out; }
+        .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
+        .btn-register {
+            min-height: 80px;
+            font-size: 1.5rem;
+        }
+        @media (max-width: 640px) {
+            .btn-register {
+                min-height: 100px;
+                font-size: 1.75rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900">
+    
+    <!-- Navbar -->
+    <nav class="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-shoe-prints text-white"></i>
+                    </div>
+                    <span class="text-white font-bold text-lg hidden sm:block">C&A Cloud Factory</span>
+                </div>
+
+                <div id="navMenu" class="hidden md:flex items-center gap-2"></div>
+
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p id="userName" class="text-white text-sm font-medium">-</p>
+                        <p id="userRole" class="text-gray-400 text-xs">-</p>
+                    </div>
+                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Cerrar Sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sanction Banner -->
+    <div id="sanctionBanner" class="hidden bg-red-900/80 border-b border-red-700">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-center gap-3">
+            <i class="fas fa-ban text-red-400"></i>
+            <p class="text-red-200 font-medium">Su cuenta está sancionada. No puede registrar producción. Contacte a RRHH.</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-white">
+                <i class="fas fa-industry mr-3 text-blue-500"></i>
+                Registro de Producción
+            </h1>
+            <p class="text-gray-400 mt-2">Registra los pares completados por orden de trabajo</p>
+        </div>
+
+        <!-- Earnings Summary Card (Mobile First) -->
+        <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 mb-8 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <p class="text-emerald-100 text-sm mb-1">
+                        <i class="fas fa-wallet mr-2"></i>
+                        Ganancia Esta Semana
+                    </p>
+                    <p id="weekEarnings" class="text-4xl sm:text-5xl font-bold text-white">$0</p>
+                </div>
+                <div class="flex gap-4 sm:gap-8">
+                    <div class="text-center">
+                        <p class="text-emerald-100 text-xs mb-1">Pares Hoy</p>
+                        <p id="paresToday" class="text-2xl font-bold text-white">0</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-emerald-100 text-xs mb-1">Pares Semana</p>
+                        <p id="paresWeek" class="text-2xl font-bold text-white">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Selection -->
+        <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6 mb-8">
+            <h2 class="text-lg font-semibold text-white mb-4">
+                <i class="fas fa-clipboard-list mr-2 text-amber-500"></i>
+                Seleccionar Orden de Trabajo
+            </h2>
+            
+            <div id="ordersList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <p class="text-gray-500 col-span-full text-center py-4">Cargando órdenes...</p>
+            </div>
+        </div>
+
+        <!-- Production Registration (Only visible when order is selected) -->
+        <div id="productionSection" class="hidden">
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6 mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-semibold text-white">
+                            <i class="fas fa-shoe-prints mr-2 text-blue-500"></i>
+                            Registrar Pares
+                        </h2>
+                        <p id="selectedOrderInfo" class="text-gray-400 text-sm mt-1">-</p>
+                    </div>
+                    <button id="changeOrderBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition text-sm">
+                        <i class="fas fa-exchange-alt mr-2"></i>
+                        Cambiar Orden
+                    </button>
+                </div>
+
+                <!-- Big Buttons for Quick Registration -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <button class="btn-register bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2 register-btn" data-cantidad="1">
+                        <i class="fas fa-shoe-prints text-2xl"></i>
+                        <span>+1 Par</span>
+                    </button>
+                    <button class="btn-register bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2 register-btn" data-cantidad="5">
+                        <i class="fas fa-shoe-prints text-2xl"></i>
+                        <span>+5 Pares</span>
+                    </button>
+                    <button class="btn-register bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2 register-btn" data-cantidad="10">
+                        <i class="fas fa-shoe-prints text-2xl"></i>
+                        <span>+10 Pares</span>
+                    </button>
+                    <button class="btn-register bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2" id="customAmountBtn">
+                        <i class="fas fa-edit text-2xl"></i>
+                        <span>Otro</span>
+                    </button>
+                </div>
+
+                <!-- Custom Amount Input (Hidden by default) -->
+                <div id="customAmountSection" class="hidden mb-6 animate-bounce-in">
+                    <div class="flex gap-4">
+                        <input 
+                            type="number" 
+                            id="customAmount" 
+                            min="1" 
+                            max="100"
+                            placeholder="Cantidad de pares"
+                            class="flex-1 px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                        <button id="registerCustomBtn" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition">
+                            <i class="fas fa-check mr-2"></i>
+                            Registrar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Success Animation -->
+                <div id="successAnimation" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div class="bg-emerald-600 rounded-2xl p-8 text-center animate-bounce-in">
+                        <i class="fas fa-check-circle text-6xl text-white mb-4"></i>
+                        <p id="successMessage" class="text-2xl font-bold text-white">¡+10 Pares Registrados!</p>
+                        <p id="successEarnings" class="text-emerald-100 mt-2">+$50,000</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Production Log -->
+        <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">
+                <i class="fas fa-history mr-2 text-purple-500"></i>
+                Mi Producción de Hoy
+            </h2>
+            
+            <div id="todayProductionList" class="space-y-3 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 text-center py-4">Sin registros hoy</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-600 text-sm">C&A Manufacturas © 2024 - Bucaramanga, Colombia</p>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { checkAuthAndRedirect, logout, getCurrentUserData, ROLES } from './js/auth.js';
+        import { getNavigationMenu, getRoleName } from './js/roles.js';
+        import { formatCurrency, formatTime, getWeekStart, getDayStart, showToast, showConfirm } from './js/utils.js';
+        import { db, collection, doc, getDoc, getDocs, addDoc, updateDoc, query, where, orderBy, onSnapshot, Timestamp, increment } from './js/firebase-init.js';
+
+        let currentUser = null;
+        let currentUserData = null;
+        let selectedOrder = null;
+        let userTarifa = 0;
+
+        // Inicializar
+        async function init() {
+            try {
+                const { user, userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO]);
+                
+                currentUser = user;
+                currentUserData = userData;
+                userTarifa = userData.tarifa_par || 5000;
+                
+                document.getElementById('userName').textContent = userData.nombre;
+                document.getElementById('userRole').textContent = getRoleName(userData.rol);
+                
+                generateNavMenu(userData.rol);
+                
+                // Verificar sanción
+                if (userData.estado === 'sancionado') {
+                    document.getElementById('sanctionBanner').classList.remove('hidden');
+                    disableProduction();
+                }
+                
+                // Cargar datos
+                await loadEarnings();
+                await loadActiveOrders();
+                listenToTodayProduction();
+                
+                // Event listeners
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('Error de autenticación:', error);
+            }
+        }
+
+        function generateNavMenu(rol) {
+            const menu = getNavigationMenu(rol);
+            const navMenu = document.getElementById('navMenu');
+            navMenu.innerHTML = menu.map(item => `
+                <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${window.location.pathname.includes(item.href.replace('.html', '')) && item.href !== 'dashboard.html' ? 'bg-gray-700/50 text-white' : ''}">
+                    <i class="fas ${item.icon}"></i>
+                    <span>${item.name}</span>
+                </a>
+            `).join('');
+        }
+
+        function disableProduction() {
+            const buttons = document.querySelectorAll('.register-btn, #customAmountBtn, #registerCustomBtn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            });
+        }
+
+        // Cargar ganancias
+        async function loadEarnings() {
+            try {
+                const weekStart = getWeekStart();
+                const today = getDayStart();
+                
+                const weekQuery = query(
+                    collection(db, 'produccion_logs'),
+                    where('uid_operario', '==', currentUser.uid),
+                    where('fecha', '>=', Timestamp.fromDate(weekStart))
+                );
+                
+                const snapshot = await getDocs(weekQuery);
+                
+                let weekEarnings = 0;
+                let weekPares = 0;
+                let todayPares = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    weekEarnings += data.monto_ganado || 0;
+                    weekPares += data.cantidad || 0;
+                    
+                    const fecha = data.fecha.toDate();
+                    if (fecha >= today) {
+                        todayPares += data.cantidad || 0;
+                    }
+                });
+                
+                document.getElementById('weekEarnings').textContent = formatCurrency(weekEarnings);
+                document.getElementById('paresWeek').textContent = weekPares;
+                document.getElementById('paresToday').textContent = todayPares;
+                
+            } catch (error) {
+                console.error('Error cargando ganancias:', error);
+            }
+        }
+
+        // Cargar órdenes activas
+        async function loadActiveOrders() {
+            try {
+                const ordersQuery = query(
+                    collection(db, 'ordenes'),
+                    where('estado', '==', 'activa'),
+                    orderBy('fecha_creacion', 'desc')
+                );
+                
+                const snapshot = await getDocs(ordersQuery);
+                const ordersList = document.getElementById('ordersList');
+                
+                if (snapshot.empty) {
+                    ordersList.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">No hay órdenes activas disponibles</p>';
+                    return;
+                }
+                
+                ordersList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const order = { id: doc.id, ...doc.data() };
+                    const progress = Math.round((order.pares_hechos / order.cantidad_total) * 100) || 0;
+                    const remaining = order.cantidad_total - order.pares_hechos;
+                    
+                    ordersList.innerHTML += `
+                        <div class="order-card bg-gray-700/50 hover:bg-gray-700 rounded-xl p-4 cursor-pointer transition border-2 border-transparent hover:border-blue-500" data-order='${JSON.stringify(order)}'>
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <p class="text-white font-semibold">${order.cliente}</p>
+                                    <p class="text-gray-400 text-sm">${order.modelo}</p>
+                                </div>
+                                <span class="px-2 py-1 bg-amber-600/20 text-amber-400 text-xs rounded-full">
+                                    Faltan ${remaining}
+                                </span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: ${progress}%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span>${order.pares_hechos} de ${order.cantidad_total} pares</span>
+                                <span>${progress}%</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Agregar event listeners a las tarjetas
+                document.querySelectorAll('.order-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const order = JSON.parse(card.dataset.order);
+                        selectOrder(order);
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error cargando órdenes:', error);
+            }
+        }
+
+        // Seleccionar orden
+        function selectOrder(order) {
+            selectedOrder = order;
+            
+            document.getElementById('ordersList').parentElement.classList.add('hidden');
+            document.getElementById('productionSection').classList.remove('hidden');
+            
+            const remaining = order.cantidad_total - order.pares_hechos;
+            document.getElementById('selectedOrderInfo').innerHTML = `
+                <span class="text-white font-medium">${order.cliente}</span> - ${order.modelo} 
+                <span class="text-amber-400">(Faltan ${remaining} pares)</span>
+            `;
+        }
+
+        // Cambiar orden
+        function changeOrder() {
+            selectedOrder = null;
+            document.getElementById('ordersList').parentElement.classList.remove('hidden');
+            document.getElementById('productionSection').classList.add('hidden');
+            document.getElementById('customAmountSection').classList.add('hidden');
+            loadActiveOrders();
+        }
+
+        // Registrar producción
+        async function registerProduction(cantidad) {
+            if (!selectedOrder) {
+                showToast('Seleccione una orden primero', 'warning');
+                return;
+            }
+            
+            if (currentUserData.estado === 'sancionado') {
+                showToast('Su cuenta está sancionada. No puede registrar producción.', 'error');
+                return;
+            }
+            
+            const remaining = selectedOrder.cantidad_total - selectedOrder.pares_hechos;
+            if (cantidad > remaining) {
+                showToast(`Solo quedan ${remaining} pares por hacer en esta orden`, 'warning');
+                return;
+            }
+            
+            try {
+                const monto = cantidad * userTarifa;
+                
+                // Agregar log de producción
+                await addDoc(collection(db, 'produccion_logs'), {
+                    uid_operario: currentUser.uid,
+                    nombre_operario: currentUserData.nombre,
+                    id_orden: selectedOrder.id,
+                    orden_cliente: selectedOrder.cliente,
+                    orden_modelo: selectedOrder.modelo,
+                    cantidad: cantidad,
+                    tarifa: userTarifa,
+                    monto_ganado: monto,
+                    fecha: Timestamp.now()
+                });
+                
+                // Actualizar orden
+                await updateDoc(doc(db, 'ordenes', selectedOrder.id), {
+                    pares_hechos: increment(cantidad)
+                });
+                
+                // Actualizar orden seleccionada
+                selectedOrder.pares_hechos += cantidad;
+                
+                // Mostrar animación de éxito
+                showSuccessAnimation(cantidad, monto);
+                
+                // Actualizar ganancias
+                await loadEarnings();
+                
+                // Verificar si la orden está completa
+                if (selectedOrder.pares_hechos >= selectedOrder.cantidad_total) {
+                    await updateDoc(doc(db, 'ordenes', selectedOrder.id), {
+                        estado: 'completada'
+                    });
+                    showToast('¡Orden completada!', 'success');
+                    changeOrder();
+                } else {
+                    // Actualizar info de orden
+                    const remaining = selectedOrder.cantidad_total - selectedOrder.pares_hechos;
+                    document.getElementById('selectedOrderInfo').innerHTML = `
+                        <span class="text-white font-medium">${selectedOrder.cliente}</span> - ${selectedOrder.modelo} 
+                        <span class="text-amber-400">(Faltan ${remaining} pares)</span>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error registrando producción:', error);
+                showToast('Error al registrar producción', 'error');
+            }
+        }
+
+        // Mostrar animación de éxito
+        function showSuccessAnimation(cantidad, monto) {
+            const animation = document.getElementById('successAnimation');
+            document.getElementById('successMessage').textContent = `¡+${cantidad} ${cantidad === 1 ? 'Par' : 'Pares'} Registrado${cantidad === 1 ? '' : 's'}!`;
+            document.getElementById('successEarnings').textContent = `+${formatCurrency(monto)}`;
+            
+            animation.classList.remove('hidden');
+            
+            setTimeout(() => {
+                animation.classList.add('hidden');
+            }, 1500);
+        }
+
+        // Escuchar producción de hoy en tiempo real
+        function listenToTodayProduction() {
+            const today = getDayStart();
+            
+            const todayQuery = query(
+                collection(db, 'produccion_logs'),
+                where('uid_operario', '==', currentUser.uid),
+                where('fecha', '>=', Timestamp.fromDate(today)),
+                orderBy('fecha', 'desc')
+            );
+            
+            onSnapshot(todayQuery, (snapshot) => {
+                const list = document.getElementById('todayProductionList');
+                
+                if (snapshot.empty) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin registros hoy</p>';
+                    return;
+                }
+                
+                list.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const log = doc.data();
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-shoe-prints text-blue-500 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-white font-medium">${log.orden_cliente} - ${log.orden_modelo}</p>
+                                    <p class="text-gray-500 text-sm">${formatTime(log.fecha)}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-white font-bold text-lg">${log.cantidad} pares</p>
+                                <p class="text-emerald-400 font-medium">${formatCurrency(log.monto_ganado)}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Cambiar orden
+            document.getElementById('changeOrderBtn').addEventListener('click', changeOrder);
+            
+            // Botones de registro rápido
+            document.querySelectorAll('.register-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cantidad = parseInt(btn.dataset.cantidad);
+                    registerProduction(cantidad);
+                });
+            });
+            
+            // Botón de cantidad personalizada
+            document.getElementById('customAmountBtn').addEventListener('click', () => {
+                const section = document.getElementById('customAmountSection');
+                section.classList.toggle('hidden');
+                if (!section.classList.contains('hidden')) {
+                    document.getElementById('customAmount').focus();
+                }
+            });
+            
+            // Registrar cantidad personalizada
+            document.getElementById('registerCustomBtn').addEventListener('click', () => {
+                const input = document.getElementById('customAmount');
+                const cantidad = parseInt(input.value);
+                
+                if (!cantidad || cantidad < 1) {
+                    showToast('Ingrese una cantidad válida', 'warning');
+                    return;
+                }
+                
+                if (cantidad > 100) {
+                    showToast('Máximo 100 pares por registro', 'warning');
+                    return;
+                }
+                
+                registerProduction(cantidad);
+                input.value = '';
+                document.getElementById('customAmountSection').classList.add('hidden');
+            });
+            
+            // Enter en input de cantidad
+            document.getElementById('customAmount').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('registerCustomBtn').click();
+                }
+            });
+        }
+
+        // Iniciar
+        init();
+    </script>
+</body>
+</html>

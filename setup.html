@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Inicial - C&A Cloud Factory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900 flex items-center justify-center p-4">
+    
+    <div class="w-full max-w-2xl">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-xl mb-4">
+                <i class="fas fa-cogs text-3xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white">C&A Cloud Factory</h1>
+            <p class="text-gray-400 mt-2">Configuración Inicial del Sistema</p>
+        </div>
+
+        <div class="bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700 p-8">
+            <div id="setupStatus" class="space-y-4 mb-6">
+                <p class="text-gray-400 text-center">Haga clic en el botón para crear los datos iniciales del sistema.</p>
+            </div>
+
+            <div class="bg-amber-900/30 border border-amber-700/50 rounded-xl p-4 mb-6">
+                <p class="text-amber-300 text-sm">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <strong>Importante:</strong> Este proceso creará usuarios de prueba y datos iniciales. Solo ejecute una vez.
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <button id="setupBtn" class="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold rounded-xl shadow-lg transition text-lg">
+                    <i class="fas fa-rocket mr-2"></i>
+                    Inicializar Sistema
+                </button>
+                
+                <a href="index.html" class="block w-full py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition text-center">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Volver al Login
+                </a>
+            </div>
+
+            <div id="credentials" class="hidden mt-6 p-4 bg-gray-900/50 rounded-xl border border-gray-600">
+                <h3 class="text-white font-semibold mb-3">
+                    <i class="fas fa-key mr-2 text-amber-500"></i>
+                    Credenciales Creadas:
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between text-gray-300">
+                        <span><strong>Anderson (Finanzas):</strong></span>
+                        <span>anderson@ca-factory.com / admin123</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300">
+                        <span><strong>Carolina (RRHH):</strong></span>
+                        <span>carolina@ca-factory.com / admin123</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300">
+                        <span><strong>Operario Demo:</strong></span>
+                        <span>operario1@ca-factory.com / operario123</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="logContainer" class="hidden mt-6 max-h-64 overflow-y-auto">
+                <h3 class="text-white font-semibold mb-3">
+                    <i class="fas fa-terminal mr-2 text-blue-500"></i>
+                    Log de Ejecución:
+                </h3>
+                <div id="logOutput" class="bg-gray-900 rounded-lg p-4 font-mono text-xs space-y-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db, setDoc, doc, addDoc, collection, Timestamp, createUserWithEmailAndPassword } from './js/firebase-init.js';
+
+        const setupBtn = document.getElementById('setupBtn');
+        const setupStatus = document.getElementById('setupStatus');
+        const credentials = document.getElementById('credentials');
+        const logContainer = document.getElementById('logContainer');
+        const logOutput = document.getElementById('logOutput');
+
+        function log(message, type = 'info') {
+            logContainer.classList.remove('hidden');
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-amber-400'
+            };
+            logOutput.innerHTML += `<p class="${colors[type]}">[${new Date().toLocaleTimeString()}] ${message}</p>`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        async function createUser(email, password, userData) {
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await setDoc(doc(db, 'users', userCredential.user.uid), {
+                    ...userData,
+                    email,
+                    estado: 'activo',
+                    fecha_creacion: Timestamp.now()
+                });
+                log(`Usuario creado: ${userData.nombre} (${email})`, 'success');
+                return userCredential.user.uid;
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    log(`Usuario ya existe: ${email}`, 'warning');
+                    return null;
+                }
+                throw error;
+            }
+        }
+
+        async function runSetup() {
+            setupBtn.disabled = true;
+            setupBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Inicializando...';
+            
+            try {
+                log('Iniciando configuración del sistema...', 'info');
+
+                // Crear usuarios
+                log('Creando usuarios del sistema...', 'info');
+                
+                await createUser('anderson@ca-factory.com', 'admin123', {
+                    nombre: 'Anderson García',
+                    rol: 'admin_finanzas',
+                    tarifa_par: 0
+                });
+
+                await createUser('carolina@ca-factory.com', 'admin123', {
+                    nombre: 'Carolina Mendoza',
+                    rol: 'admin_rrhh',
+                    tarifa_par: 0
+                });
+
+                const op1Uid = await createUser('operario1@ca-factory.com', 'operario123', {
+                    nombre: 'Juan Pérez',
+                    rol: 'operario',
+                    tarifa_par: 5000
+                });
+
+                await createUser('operario2@ca-factory.com', 'operario123', {
+                    nombre: 'María López',
+                    rol: 'operario',
+                    tarifa_par: 5500
+                });
+
+                await createUser('operario3@ca-factory.com', 'operario123', {
+                    nombre: 'Carlos Ruiz',
+                    rol: 'operario',
+                    tarifa_par: 4800
+                });
+
+                // Crear órdenes de trabajo
+                log('Creando órdenes de trabajo de ejemplo...', 'info');
+                
+                await addDoc(collection(db, 'ordenes'), {
+                    cliente: 'Calzado Bucaramanga',
+                    modelo: 'Bota Industrial Ref-001',
+                    cantidad_total: 200,
+                    pares_hechos: 45,
+                    estado: 'activa',
+                    fecha_creacion: Timestamp.now()
+                });
+                log('Orden creada: Calzado Bucaramanga - Bota Industrial', 'success');
+
+                await addDoc(collection(db, 'ordenes'), {
+                    cliente: 'Distribuidora Norte',
+                    modelo: 'Zapato Casual Ref-102',
+                    cantidad_total: 150,
+                    pares_hechos: 0,
+                    estado: 'activa',
+                    fecha_creacion: Timestamp.now()
+                });
+                log('Orden creada: Distribuidora Norte - Zapato Casual', 'success');
+
+                await addDoc(collection(db, 'ordenes'), {
+                    cliente: 'Comercial Santander',
+                    modelo: 'Sandalia Dama Ref-050',
+                    cantidad_total: 100,
+                    pares_hechos: 100,
+                    estado: 'completada',
+                    fecha_creacion: Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+                });
+                log('Orden creada: Comercial Santander - Sandalia Dama (Completada)', 'success');
+
+                // Crear inventario
+                log('Creando inventario inicial...', 'info');
+                
+                const insumos = [
+                    { nombre: 'Pegante Industrial', cantidad: 50, unidad: 'kg', minimo: 10, consumo_por_par: 0.05 },
+                    { nombre: 'Hilo Encerado', cantidad: 200, unidad: 'm', minimo: 50, consumo_por_par: 0.3 },
+                    { nombre: 'Suela de Caucho', cantidad: 500, unidad: 'unidades', minimo: 100, consumo_por_par: 2 },
+                    { nombre: 'Cuero Sintético', cantidad: 150, unidad: 'm²', minimo: 30, consumo_por_par: 0.25 },
+                    { nombre: 'Plantillas', cantidad: 800, unidad: 'pares', minimo: 200, consumo_por_par: 1 }
+                ];
+
+                for (const insumo of insumos) {
+                    await addDoc(collection(db, 'inventario'), insumo);
+                    log(`Insumo creado: ${insumo.nombre}`, 'success');
+                }
+
+                // Crear algunos registros de producción de ejemplo
+                if (op1Uid) {
+                    log('Creando registros de producción de ejemplo...', 'info');
+                    
+                    for (let i = 0; i < 5; i++) {
+                        const fecha = new Date();
+                        fecha.setDate(fecha.getDate() - i);
+                        
+                        await addDoc(collection(db, 'produccion_logs'), {
+                            uid_operario: op1Uid,
+                            nombre_operario: 'Juan Pérez',
+                            id_orden: 'demo',
+                            orden_cliente: 'Calzado Bucaramanga',
+                            orden_modelo: 'Bota Industrial Ref-001',
+                            cantidad: 10 + Math.floor(Math.random() * 10),
+                            tarifa: 5000,
+                            monto_ganado: (10 + Math.floor(Math.random() * 10)) * 5000,
+                            fecha: Timestamp.fromDate(fecha)
+                        });
+                    }
+                    log('Registros de producción creados', 'success');
+                }
+
+                log('¡Configuración completada exitosamente!', 'success');
+                
+                credentials.classList.remove('hidden');
+                setupBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Configuración Completada';
+                setupBtn.classList.remove('from-emerald-600', 'to-emerald-700');
+                setupBtn.classList.add('from-green-600', 'to-green-700');
+
+            } catch (error) {
+                console.error('Error en setup:', error);
+                log(`Error: ${error.message}`, 'error');
+                setupBtn.disabled = false;
+                setupBtn.innerHTML = '<i class="fas fa-redo mr-2"></i>Reintentar';
+            }
+        }
+
+        setupBtn.addEventListener('click', runSetup);
+    </script>
+</body>
+</html>
