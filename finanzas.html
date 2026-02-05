@@ -100,6 +100,13 @@
             <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="payroll">
                 <i class="fas fa-calculator mr-2"></i>Nómina
             </button>
+            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="caja">
+                <i class="fas fa-cash-register mr-2"></i>Caja Menor
+            </button>
+            <div class="flex-1"></div>
+            <button id="exportPdfBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i><span class="hidden sm:inline">Exportar PDF</span>
+            </button>
         </div>
 
         <!-- Orders Tab -->
@@ -177,6 +184,64 @@
                 <div class="mt-6 pt-6 border-t border-gray-700 flex justify-between items-center">
                     <span class="text-xl font-bold text-white">Total Nómina:</span>
                     <span id="payrollTotal" class="text-3xl font-bold text-emerald-400">$0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Caja Menor Tab -->
+        <div id="cajaTab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulario de registro -->
+                <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
+                    <h3 class="text-lg font-semibold text-white mb-4">
+                        <i class="fas fa-plus-circle mr-2 text-emerald-500"></i>Registrar Movimiento
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Tipo</label>
+                            <select id="cajaMovTipo" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="ingreso">💰 Ingreso</option>
+                                <option value="egreso">💸 Egreso</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Concepto</label>
+                            <input type="text" id="cajaMovConcepto" placeholder="Descripción del movimiento" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Monto ($)</label>
+                            <input type="number" id="cajaMovMonto" placeholder="0" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <button id="saveCajaMovBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition">
+                            <i class="fas fa-save mr-2"></i>Registrar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Saldo y movimientos -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Saldo actual -->
+                    <div class="bg-gradient-to-r from-emerald-900/50 to-blue-900/50 rounded-xl border border-gray-700 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm">Saldo Actual Caja Menor</p>
+                                <p id="saldoCajaMenor" class="text-3xl font-bold text-emerald-400">$0</p>
+                            </div>
+                            <div class="w-16 h-16 bg-emerald-600/20 rounded-2xl flex items-center justify-center">
+                                <i class="fas fa-wallet text-3xl text-emerald-500"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de movimientos -->
+                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4">
+                            <i class="fas fa-list mr-2 text-blue-500"></i>Últimos Movimientos
+                        </h3>
+                        <div id="cajaMenorList" class="space-y-3 max-h-96 overflow-y-auto">
+                            <p class="text-gray-500 text-center py-4">Cargando...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
