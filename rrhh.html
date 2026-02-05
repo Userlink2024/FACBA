@@ -406,6 +406,7 @@
         import { getNavigationMenu, getRoleName } from './js/roles.js';
         import { formatCurrency, formatDateTime, formatTime, isLate, getDayStart, showToast, showConfirm } from './js/utils.js';
         import { auth, db, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, onSnapshot, Timestamp, createUserWithEmailAndPassword } from './js/firebase-init.js';
+        import { initNotifications } from './js/notifications.js';
 
         let employees = [];
         let currentTab = 'employees';
@@ -413,12 +414,15 @@
         // Inicializar
         async function init() {
             try {
-                const { userData } = await checkAuthAndRedirect([ROLES.ADMIN_RRHH, ROLES.ADMIN_FINANZAS]);
+                const { user, userData } = await checkAuthAndRedirect([ROLES.ADMIN_RRHH, ROLES.ADMIN_FINANZAS]);
                 
                 document.getElementById('userName').textContent = userData.nombre;
                 document.getElementById('userRole').textContent = getRoleName(userData.rol);
                 
                 generateNavMenu(userData.rol);
+                
+                // Inicializar notificaciones globales
+                initNotifications(user.uid);
                 
                 // Cargar datos
                 await loadEmployees();
