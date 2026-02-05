@@ -154,10 +154,16 @@
 
             <!-- Materiales Tab -->
             <div id="materialesTab" class="tab-content hidden">
+                <div class="bg-blue-900/30 border border-blue-700/50 rounded-xl p-4 mb-6">
+                    <p class="text-blue-300 text-sm flex items-start gap-2">
+                        <i class="fas fa-info-circle mt-0.5"></i>
+                        <span><strong>Mis Materiales:</strong> Aquí puedes ver el historial de todos los materiales que has registrado en tus pedidos. Los materiales marcados como "Recibido" ya fueron confirmados por la fábrica.</span>
+                    </p>
+                </div>
                 <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
                     <h3 class="text-lg font-semibold text-white mb-4">
                         <i class="fas fa-warehouse mr-2 text-purple-500"></i>
-                        Materiales Entregados
+                        Historial de Materiales por Pedido
                     </h3>
                     <div id="materialesList" class="space-y-3">
                         <p class="text-gray-500 text-center py-4">Sin materiales registrados</p>
@@ -562,28 +568,47 @@
         function renderMateriales() {
             const container = document.getElementById('materialesList');
             
-            if (materiales.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-4">Sin materiales registrados</p>';
+            // Mostrar materiales agrupados por pedido
+            if (pedidos.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Crea tu primer pedido para ver los materiales aquí</p>';
                 return;
             }
             
-            container.innerHTML = materiales.map(mat => {
-                const fecha = mat.fecha_entrega?.toDate?.() ? mat.fecha_entrega.toDate().toLocaleDateString('es-CO') : '-';
-                const statusColor = mat.recibido ? 'bg-green-600/20 text-green-400' : 'bg-amber-600/20 text-amber-400';
-                const statusText = mat.recibido ? 'Recibido' : 'Pendiente';
+            // Filtrar pedidos que tienen materiales
+            const pedidosConMateriales = pedidos.filter(p => p.materiales && p.materiales.length > 0);
+            
+            if (pedidosConMateriales.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No has agregado materiales a tus pedidos aún</p>';
+                return;
+            }
+            
+            container.innerHTML = pedidosConMateriales.map(pedido => {
+                const fecha = pedido.fecha_creacion?.toDate?.() ? pedido.fecha_creacion.toDate().toLocaleDateString('es-CO') : '-';
+                const recibidos = pedido.materiales.filter(m => m.recibido).length;
+                const total = pedido.materiales.length;
                 
                 return `
-                    <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-purple-600/20 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-box text-purple-500"></i>
-                            </div>
+                    <div class="bg-gray-700/30 rounded-xl p-4 mb-4">
+                        <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-600">
                             <div>
-                                <p class="text-white font-medium">${mat.nombre}</p>
-                                <p class="text-gray-500 text-sm">${mat.cantidad} ${mat.unidad} • ${fecha}</p>
+                                <p class="text-white font-semibold">${pedido.modelo}</p>
+                                <p class="text-gray-500 text-xs">#${pedido.id.slice(-6).toUpperCase()} • ${fecha}</p>
                             </div>
+                            <span class="px-2 py-1 rounded-full text-xs ${recibidos === total ? 'bg-green-600/20 text-green-400' : 'bg-amber-600/20 text-amber-400'}">
+                                ${recibidos}/${total} recibidos
+                            </span>
                         </div>
-                        <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">${statusText}</span>
+                        <div class="space-y-2">
+                            ${pedido.materiales.map(mat => `
+                                <div class="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-${mat.recibido ? 'check-circle text-green-500' : 'clock text-amber-500'}"></i>
+                                        <span class="text-gray-300 text-sm">${mat.nombre}</span>
+                                    </div>
+                                    <span class="text-gray-400 text-sm">${mat.cantidad} ${mat.unidad}</span>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -595,43 +620,66 @@
         function addMaterialRow() {
             const container = document.getElementById('materialesContainer');
             const row = document.createElement('div');
-            row.className = 'material-row grid grid-cols-12 gap-2 items-end';
+            row.className = 'material-row space-y-2';
             row.innerHTML = `
-                <div class="col-span-5">
-                    <label class="block text-xs text-gray-400 mb-1">Material</label>
-                    <select class="mat-tipo w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="cuero">Cuero</option>
-                        <option value="suela">Suela</option>
-                        <option value="forro">Forro</option>
-                        <option value="hilo">Hilo</option>
-                        <option value="plantilla">Plantilla</option>
-                        <option value="pegante">Pegante</option>
-                        <option value="herrajes">Herrajes</option>
-                        <option value="cordones">Cordones</option>
-                        <option value="otro">Otro</option>
-                    </select>
-                </div>
-                <div class="col-span-3">
-                    <label class="block text-xs text-gray-400 mb-1">Cantidad</label>
-                    <input type="number" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0">
-                </div>
-                <div class="col-span-3">
-                    <label class="block text-xs text-gray-400 mb-1">Unidad</label>
-                    <select class="mat-unidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="metros">Metros</option>
-                        <option value="pies">Pies</option>
-                        <option value="pares">Pares</option>
-                        <option value="unidades">Unidades</option>
-                        <option value="kilos">Kilos</option>
-                        <option value="litros">Litros</option>
-                    </select>
-                </div>
-                <div class="col-span-1">
-                    <button type="button" class="remove-mat-btn w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="grid grid-cols-12 gap-2 items-end">
+                    <div class="col-span-4">
+                        <label class="block text-xs text-gray-400 mb-1">Material</label>
+                        <select class="mat-tipo w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="cuero">Cuero</option>
+                            <option value="suela">Suela</option>
+                            <option value="forro">Forro</option>
+                            <option value="hilo">Hilo</option>
+                            <option value="plantilla">Plantilla</option>
+                            <option value="pegante">Pegante</option>
+                            <option value="herrajes">Herrajes</option>
+                            <option value="cordones">Cordones</option>
+                            <option value="tela">Tela</option>
+                            <option value="sintetico">Sintético</option>
+                            <option value="otro">✏️ Otro (personalizado)</option>
+                        </select>
+                    </div>
+                    <div class="col-span-3 mat-custom-container hidden">
+                        <label class="block text-xs text-gray-400 mb-1">Nombre Material</label>
+                        <input type="text" class="mat-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba el nombre">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs text-gray-400 mb-1">Cantidad</label>
+                        <input type="number" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" step="0.1">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs text-gray-400 mb-1">Unidad</label>
+                        <select class="mat-unidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="metros">Metros</option>
+                            <option value="pies">Pies</option>
+                            <option value="decimetros">Decímetros</option>
+                            <option value="pares">Pares</option>
+                            <option value="unidades">Unidades</option>
+                            <option value="kilos">Kilos</option>
+                            <option value="litros">Litros</option>
+                            <option value="rollos">Rollos</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1">
+                        <button type="button" class="remove-mat-btn w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             `;
+            
+            const select = row.querySelector('.mat-tipo');
+            const customContainer = row.querySelector('.mat-custom-container');
+            
+            select.addEventListener('change', () => {
+                if (select.value === 'otro') {
+                    customContainer.classList.remove('hidden');
+                    row.querySelector('.col-span-4').classList.remove('col-span-4');
+                    row.querySelector('.col-span-4') || select.parentElement.classList.add('col-span-3');
+                } else {
+                    customContainer.classList.add('hidden');
+                }
+            });
             
             row.querySelector('.remove-mat-btn').addEventListener('click', () => row.remove());
             container.appendChild(row);
@@ -656,13 +704,18 @@
             const materialesList = [];
             
             materialRows.forEach(row => {
-                const tipo = row.querySelector('.mat-tipo').value;
+                const tipoSelect = row.querySelector('.mat-tipo').value;
+                const customName = row.querySelector('.mat-custom')?.value?.trim() || '';
                 const cantidadMat = parseFloat(row.querySelector('.mat-cantidad').value) || 0;
                 const unidad = row.querySelector('.mat-unidad').value;
                 
+                // Si es "otro", usar el nombre personalizado
+                const tipo = tipoSelect === 'otro' ? 'personalizado' : tipoSelect;
+                const nombre = tipoSelect === 'otro' && customName ? customName : tipoSelect.charAt(0).toUpperCase() + tipoSelect.slice(1);
+                
                 if (cantidadMat > 0) {
                     materialesList.push({
-                        nombre: tipo.charAt(0).toUpperCase() + tipo.slice(1),
+                        nombre,
                         tipo,
                         cantidad: cantidadMat,
                         unidad,
