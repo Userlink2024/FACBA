@@ -5,7 +5,7 @@
 import { checkAuthAndRedirect, logout, ROLES } from './auth.js';
 import { getNavigationMenu, getRoleName } from './roles.js';
 import { formatCurrency, getWeekStart, showToast, showConfirm } from './utils.js';
-import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, Timestamp } from './firebase-init.js';
+import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, onSnapshot, Timestamp } from './firebase-init.js';
 import { initNotifications } from './notifications.js';
 
 let orders = [];
@@ -31,7 +31,8 @@ async function init() {
             loadInventory(),
             loadPayrollData(),
             loadCajaMenor(),
-            loadPedidosCliente()
+            loadPedidosCliente(),
+            loadClientes()
         ]);
         
         setupEventListeners();
@@ -1086,6 +1087,184 @@ function switchInvSubTab(invType) {
     document.getElementById(`inv${invType.charAt(0).toUpperCase() + invType.slice(1)}Content`).classList.remove('hidden');
 }
 
+// ==================== CLIENTES ====================
+
+let clientes = [];
+
+async function loadClientes() {
+    try {
+        onSnapshot(collection(db, 'clientes'), (snapshot) => {
+            clientes = [];
+            snapshot.forEach(docSnap => {
+                clientes.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            renderClientesTable();
+        });
+    } catch (error) {
+        console.error('Error cargando clientes:', error);
+    }
+}
+
+function renderClientesTable(filter = '') {
+    const tbody = document.getElementById('clientesTableBody');
+    if (!tbody) return;
+    
+    let filtered = clientes.filter(c => {
+        const searchMatch = c.nombre?.toLowerCase().includes(filter.toLowerCase()) ||
+                           c.id?.toLowerCase().includes(filter.toLowerCase()) ||
+                           c.email?.toLowerCase().includes(filter.toLowerCase()) ||
+                           c.telefono?.includes(filter);
+        return searchMatch;
+    });
+    
+    // Ordenar por fecha de registro descendente
+    filtered.sort((a, b) => {
+        const fechaA = a.fecha_registro?.toDate?.() || new Date(0);
+        const fechaB = b.fecha_registro?.toDate?.() || new Date(0);
+        return fechaB - fechaA;
+    });
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No se encontraron clientes</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filtered.map(cliente => {
+        const fecha = cliente.fecha_registro?.toDate?.() ? cliente.fecha_registro.toDate().toLocaleDateString('es-CO') : '-';
+        const statusColor = cliente.activo !== false ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400';
+        const statusText = cliente.activo !== false ? 'Activo' : 'Inactivo';
+        
+        return `
+            <tr class="hover:bg-gray-700/30 transition">
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-mono">${cliente.id}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user-tie text-gray-400"></i>
+                        </div>
+                        <p class="text-white font-medium">${cliente.nombre || '-'}</p>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <p class="text-white">${cliente.telefono || '-'}</p>
+                    <p class="text-gray-500 text-sm">${cliente.email || '-'}</p>
+                </td>
+                <td class="px-6 py-4 text-gray-400">${fecha}</td>
+                <td class="px-6 py-4">
+                    <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">${statusText}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                        <button class="edit-cliente-btn p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-600/20 rounded-lg transition" data-id="${cliente.id}" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="delete-cliente-btn p-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition" data-id="${cliente.id}" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Event listeners
+    document.querySelectorAll('.edit-cliente-btn').forEach(btn => {
+        btn.addEventListener('click', () => editCliente(btn.dataset.id));
+    });
+    
+    document.querySelectorAll('.delete-cliente-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteCliente(btn.dataset.id));
+    });
+}
+
+function editCliente(clienteId) {
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (!cliente) return;
+    
+    document.getElementById('clienteModalTitle').textContent = 'Editar Cliente';
+    document.getElementById('clienteId').value = clienteId;
+    document.getElementById('clienteCodigo').value = clienteId;
+    document.getElementById('clienteCodigo').disabled = true;
+    document.getElementById('clienteNombre').value = cliente.nombre || '';
+    document.getElementById('clienteTelefono').value = cliente.telefono || '';
+    document.getElementById('clienteEmail').value = cliente.email || '';
+    document.getElementById('clientePassword').value = cliente.password || '';
+    document.getElementById('clienteEstado').value = cliente.activo !== false ? 'true' : 'false';
+    
+    document.getElementById('clienteModal').classList.remove('hidden');
+}
+
+async function deleteCliente(clienteId) {
+    const confirmed = await showConfirm('¿Está seguro de eliminar este cliente? Esta acción no se puede deshacer.');
+    if (!confirmed) return;
+    
+    try {
+        await deleteDoc(doc(db, 'clientes', clienteId));
+        showToast('Cliente eliminado correctamente', 'success');
+    } catch (error) {
+        console.error('Error eliminando cliente:', error);
+        showToast('Error al eliminar cliente', 'error');
+    }
+}
+
+async function saveCliente(e) {
+    e.preventDefault();
+    
+    const clienteId = document.getElementById('clienteId').value;
+    const codigo = document.getElementById('clienteCodigo').value.trim();
+    const nombre = document.getElementById('clienteNombre').value.trim();
+    const telefono = document.getElementById('clienteTelefono').value.trim();
+    const email = document.getElementById('clienteEmail').value.trim();
+    const password = document.getElementById('clientePassword').value;
+    const activo = document.getElementById('clienteEstado').value === 'true';
+    
+    if (!codigo || !nombre) {
+        showToast('Complete los campos requeridos', 'warning');
+        return;
+    }
+    
+    try {
+        const data = {
+            nombre,
+            telefono,
+            email,
+            password,
+            activo
+        };
+        
+        if (clienteId) {
+            // Editar
+            await updateDoc(doc(db, 'clientes', clienteId), data);
+            showToast('Cliente actualizado correctamente', 'success');
+        } else {
+            // Crear nuevo
+            data.fecha_registro = Timestamp.now();
+            await setDoc(doc(db, 'clientes', codigo), data);
+            showToast('Cliente creado correctamente', 'success');
+        }
+        
+        closeClienteModal();
+    } catch (error) {
+        console.error('Error guardando cliente:', error);
+        showToast('Error al guardar cliente', 'error');
+    }
+}
+
+function closeClienteModal() {
+    document.getElementById('clienteModal').classList.add('hidden');
+    document.getElementById('clienteForm').reset();
+    document.getElementById('clienteId').value = '';
+    document.getElementById('clienteCodigo').disabled = false;
+}
+
+async function generateNextClientCode() {
+    const snapshot = await getDocs(collection(db, 'clientes'));
+    const nextNum = snapshot.size + 1;
+    return `CLI-${String(nextNum).padStart(3, '0')}`;
+}
+
 // ==================== TABS ====================
 
 function switchTab(tabName) {
@@ -1151,6 +1330,23 @@ function setupEventListeners() {
     
     // Filter pedidos cliente
     document.getElementById('filterPedidoEstado')?.addEventListener('change', renderPedidosCliente);
+    
+    // Clientes
+    document.getElementById('newClienteBtn')?.addEventListener('click', async () => {
+        document.getElementById('clienteModalTitle').textContent = 'Nuevo Cliente';
+        document.getElementById('clienteId').value = '';
+        document.getElementById('clienteForm').reset();
+        document.getElementById('clienteCodigo').disabled = false;
+        document.getElementById('clienteCodigo').value = await generateNextClientCode();
+        document.getElementById('clienteModal').classList.remove('hidden');
+    });
+    
+    document.getElementById('closeClienteModal')?.addEventListener('click', closeClienteModal);
+    document.getElementById('cancelClienteModal')?.addEventListener('click', closeClienteModal);
+    document.getElementById('clienteForm')?.addEventListener('submit', saveCliente);
+    document.getElementById('searchClientes')?.addEventListener('input', (e) => {
+        renderClientesTable(e.target.value);
+    });
 }
 
 // Iniciar
