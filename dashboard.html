@@ -50,6 +50,21 @@
                         <p id="userName" class="text-white text-sm font-medium">-</p>
                         <p id="userRole" class="text-gray-400 text-xs">-</p>
                     </div>
+                    <div class="relative">
+                        <button 
+                            id="settingsBtn"
+                            class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition"
+                            title="Configuración"
+                        >
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <div id="settingsMenu" class="hidden absolute right-0 top-full mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50">
+                            <button id="resetSystemBtn" class="w-full px-4 py-3 text-left text-red-400 hover:bg-red-600/20 rounded-xl transition flex items-center gap-3">
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Restablecer Sistema</span>
+                            </button>
+                        </div>
+                    </div>
                     <button 
                         id="logoutBtn"
                         class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition"
@@ -197,6 +212,32 @@
         </div>
     </main>
 
+    <!-- Reset System Modal -->
+    <div id="resetModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-red-700/50">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">⚠️ Restablecer Sistema</h3>
+                <p class="text-gray-400 mt-2 text-sm">Esta acción eliminará TODOS los datos del sistema: órdenes, empleados, clientes, pedidos, producción, etc.</p>
+                <p class="text-red-400 font-bold mt-2">¡Esta acción NO se puede deshacer!</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Ingrese la contraseña de administrador</label>
+                    <input type="password" id="resetPassword" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Contraseña">
+                </div>
+                <div class="flex gap-3">
+                    <button id="cancelResetBtn" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">Cancelar</button>
+                    <button id="confirmResetBtn" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition">
+                        <i class="fas fa-trash-alt mr-2"></i>Restablecer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="border-t border-gray-800 mt-12 py-6">
         <div class="max-w-7xl mx-auto px-4 text-center">
@@ -211,7 +252,7 @@
         import { initChat, openChat } from './js/chat.js';
         import { getNavigationMenu, getRoleName, getRoleBadgeColor } from './js/roles.js';
         import { formatCurrency, formatDateTime, formatDate, getWeekStart, getDayStart, getDayEnd } from './js/utils.js';
-        import { db, rtdb, collection, query, where, orderBy, limit, getDocs, onSnapshot, Timestamp, ref, onValue, set } from './js/firebase-init.js';
+        import { db, rtdb, collection, query, where, orderBy, limit, getDocs, deleteDoc, doc, onSnapshot, Timestamp, ref, onValue, set, remove } from './js/firebase-init.js';
         import { initNotifications } from './js/notifications.js';
 
         let productionChart = null;
@@ -722,6 +763,104 @@
         // Logout
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await logout();
+        });
+
+        // Settings Menu Toggle
+        document.getElementById('settingsBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('settingsMenu').classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', () => {
+            document.getElementById('settingsMenu').classList.add('hidden');
+        });
+        
+        // Reset System Modal
+        document.getElementById('resetSystemBtn').addEventListener('click', () => {
+            document.getElementById('settingsMenu').classList.add('hidden');
+            document.getElementById('resetModal').classList.remove('hidden');
+            document.getElementById('resetPassword').value = '';
+        });
+        
+        document.getElementById('cancelResetBtn').addEventListener('click', () => {
+            document.getElementById('resetModal').classList.add('hidden');
+        });
+        
+        document.getElementById('resetModal').addEventListener('click', (e) => {
+            if (e.target.id === 'resetModal') {
+                document.getElementById('resetModal').classList.add('hidden');
+            }
+        });
+        
+        // Confirm Reset System
+        document.getElementById('confirmResetBtn').addEventListener('click', async () => {
+            const password = document.getElementById('resetPassword').value;
+            
+            if (password !== 'Avanzar170518') {
+                alert('❌ Contraseña incorrecta');
+                return;
+            }
+            
+            if (!confirm('⚠️ ÚLTIMA ADVERTENCIA: ¿Está COMPLETAMENTE seguro de eliminar TODOS los datos del sistema?')) {
+                return;
+            }
+            
+            try {
+                document.getElementById('confirmResetBtn').disabled = true;
+                document.getElementById('confirmResetBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Eliminando...';
+                
+                // Colecciones de Firestore a eliminar
+                const collections = [
+                    'ordenes',
+                    'usuarios', 
+                    'clientes',
+                    'pedidos_cliente',
+                    'produccion_logs',
+                    'inventario',
+                    'inventario_clientes',
+                    'nomina',
+                    'caja_menor',
+                    'asistencia',
+                    'sanciones',
+                    'notificaciones'
+                ];
+                
+                // Eliminar documentos de cada colección
+                for (const collName of collections) {
+                    try {
+                        const snapshot = await getDocs(collection(db, collName));
+                        const deletePromises = [];
+                        snapshot.forEach(docSnap => {
+                            deletePromises.push(deleteDoc(doc(db, collName, docSnap.id)));
+                        });
+                        await Promise.all(deletePromises);
+                        console.log(`Colección ${collName} eliminada`);
+                    } catch (e) {
+                        console.log(`Error eliminando ${collName}:`, e);
+                    }
+                }
+                
+                // Eliminar datos de Realtime Database
+                try {
+                    await set(ref(rtdb, 'notificaciones_fabrica'), null);
+                    await set(ref(rtdb, 'chats'), null);
+                    console.log('Realtime Database limpiada');
+                } catch (e) {
+                    console.log('Error limpiando RTDB:', e);
+                }
+                
+                alert('✅ Sistema restablecido correctamente. El sistema está ahora en blanco.');
+                document.getElementById('resetModal').classList.add('hidden');
+                
+                // Cerrar sesión y recargar
+                await logout();
+                
+            } catch (error) {
+                console.error('Error restableciendo sistema:', error);
+                alert('❌ Error al restablecer el sistema');
+                document.getElementById('confirmResetBtn').disabled = false;
+                document.getElementById('confirmResetBtn').innerHTML = '<i class="fas fa-trash-alt mr-2"></i>Restablecer';
+            }
         });
 
         // Iniciar
