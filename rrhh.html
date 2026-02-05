@@ -147,15 +147,16 @@
                         <thead class="bg-gray-700/50">
                             <tr>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Empleado</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Rol</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Tarifa/Par</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Cargo</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Tipo Pago</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Valor</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Estado</th>
                                 <th class="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="employeesTableBody" class="divide-y divide-gray-700">
                             <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">Cargando empleados...</td>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">Cargando empleados...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -322,15 +323,41 @@
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Rol</label>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Rol del Sistema</label>
                     <select id="employeeRole" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
                         <option value="operario">Operario</option>
                         <option value="admin_rrhh">Administrador RRHH</option>
                         <option value="admin_finanzas">Administrador Finanzas</option>
                     </select>
                 </div>
-                
+
                 <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Cargo / Función</label>
+                    <select id="employeeCargo" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="guarnecedor">Guarnecedor</option>
+                        <option value="solador">Solador</option>
+                        <option value="cortador">Cortador</option>
+                        <option value="armador">Armador</option>
+                        <option value="montador">Montador</option>
+                        <option value="terminador">Terminador</option>
+                        <option value="empacador">Empacador</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="administrativo">Administrativo</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Pago</label>
+                    <select id="employeeTipoPago" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="por_par">💰 Tarifa por Par</option>
+                        <option value="salario_fijo">📋 Salario Fijo</option>
+                        <option value="quincenal">📅 Quincenal</option>
+                        <option value="mensual">🗓️ Mensual</option>
+                    </select>
+                </div>
+                
+                <div id="tarifaParField">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Tarifa por Par (COP)</label>
                     <input 
                         type="number" 
@@ -339,6 +366,18 @@
                         step="100"
                         class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
                         placeholder="5000"
+                    >
+                </div>
+
+                <div id="salarioFijoField" class="hidden">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Salario (COP)</label>
+                    <input 
+                        type="number" 
+                        id="employeeSalario"
+                        min="0"
+                        step="1000"
+                        class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="1300000"
                     >
                 </div>
                 
@@ -453,6 +492,18 @@
             tbody.innerHTML = filtered.map(emp => {
                 const statusColor = emp.estado === 'sancionado' ? 'bg-red-600/20 text-red-400' : 'bg-green-600/20 text-green-400';
                 const statusText = emp.estado === 'sancionado' ? 'Sancionado' : 'Activo';
+                const cargoNames = {
+                    'guarnecedor': 'Guarnecedor', 'solador': 'Solador', 'cortador': 'Cortador',
+                    'armador': 'Armador', 'montador': 'Montador', 'terminador': 'Terminador',
+                    'empacador': 'Empacador', 'supervisor': 'Supervisor', 'administrativo': 'Administrativo', 'otro': 'Otro'
+                };
+                const tipoPagoLabels = {
+                    'por_par': '💰 Por Par', 'salario_fijo': '📋 Fijo',
+                    'quincenal': '📅 Quincenal', 'mensual': '🗓️ Mensual'
+                };
+                const valorPago = emp.tipo_pago === 'por_par' || !emp.tipo_pago 
+                    ? formatCurrency(emp.tarifa_par || 0) + '/par'
+                    : formatCurrency(emp.salario || 0);
                 
                 return `
                     <tr class="hover:bg-gray-700/30 transition">
@@ -468,10 +519,13 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="text-gray-300">${getRoleName(emp.rol)}</span>
+                            <span class="text-gray-300">${cargoNames[emp.cargo] || getRoleName(emp.rol)}</span>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="text-white font-medium">${formatCurrency(emp.tarifa_par || 0)}</span>
+                            <span class="text-xs px-2 py-1 rounded-full bg-blue-600/20 text-blue-400">${tipoPagoLabels[emp.tipo_pago] || '💰 Por Par'}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-white font-medium">${valorPago}</span>
                         </td>
                         <td class="px-6 py-4">
                             <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">
@@ -791,10 +845,28 @@
             document.getElementById('employeeName').value = employee.nombre;
             document.getElementById('employeeEmail').value = employee.email || '';
             document.getElementById('employeeRole').value = employee.rol;
+            document.getElementById('employeeCargo').value = employee.cargo || 'guarnecedor';
+            document.getElementById('employeeTipoPago').value = employee.tipo_pago || 'por_par';
             document.getElementById('employeeTarifa').value = employee.tarifa_par || 5000;
+            document.getElementById('employeeSalario').value = employee.salario || 1300000;
             document.getElementById('passwordField').classList.add('hidden');
             
+            togglePaymentFields(employee.tipo_pago || 'por_par');
+            
             document.getElementById('employeeModal').classList.remove('hidden');
+        }
+
+        function togglePaymentFields(tipoPago) {
+            const tarifaField = document.getElementById('tarifaParField');
+            const salarioField = document.getElementById('salarioFijoField');
+            
+            if (tipoPago === 'por_par') {
+                tarifaField.classList.remove('hidden');
+                salarioField.classList.add('hidden');
+            } else {
+                tarifaField.classList.add('hidden');
+                salarioField.classList.remove('hidden');
+            }
         }
 
         // Guardar empleado
@@ -805,7 +877,10 @@
             const nombre = document.getElementById('employeeName').value.trim();
             const email = document.getElementById('employeeEmail').value.trim();
             const rol = document.getElementById('employeeRole').value;
+            const cargo = document.getElementById('employeeCargo').value;
+            const tipoPago = document.getElementById('employeeTipoPago').value;
             const tarifa = parseInt(document.getElementById('employeeTarifa').value) || 5000;
+            const salario = parseInt(document.getElementById('employeeSalario').value) || 1300000;
             const password = document.getElementById('employeePassword').value;
             
             try {
@@ -815,7 +890,10 @@
                         nombre,
                         email,
                         rol,
-                        tarifa_par: tarifa
+                        cargo,
+                        tipo_pago: tipoPago,
+                        tarifa_par: tarifa,
+                        salario
                     });
                     showToast('Empleado actualizado correctamente', 'success');
                 } else {
@@ -833,7 +911,10 @@
                         nombre,
                         email,
                         rol,
+                        cargo,
+                        tipo_pago: tipoPago,
                         tarifa_par: tarifa,
+                        salario,
                         estado: 'activo',
                         fecha_creacion: Timestamp.now()
                     });
@@ -926,6 +1007,11 @@
             
             // Sanciones
             document.getElementById('applySanctionBtn').addEventListener('click', applySanction);
+            
+            // Toggle campos de pago
+            document.getElementById('employeeTipoPago').addEventListener('change', (e) => {
+                togglePaymentFields(e.target.value);
+            });
         }
 
         // Iniciar
