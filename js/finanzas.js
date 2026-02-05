@@ -14,7 +14,7 @@ let inventory = [];
 // Inicializar
 async function init() {
     try {
-        const { userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS]);
+        const { userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH]);
         
         document.getElementById('userName').textContent = userData.nombre;
         document.getElementById('userRole').textContent = getRoleName(userData.rol);
@@ -26,7 +26,8 @@ async function init() {
             loadEmployees(),
             loadInventory(),
             loadPayrollData(),
-            loadCajaMenor()
+            loadCajaMenor(),
+            loadPedidosCliente()
         ]);
         
         setupEventListeners();
@@ -746,6 +747,323 @@ async function exportarInformePDF() {
     showToast('Informe PDF generado', 'success');
 }
 
+// ==================== PEDIDOS CLIENTE ====================
+
+let pedidosCliente = [];
+
+async function loadPedidosCliente() {
+    try {
+        const q = query(collection(db, 'pedidos_cliente'), orderBy('fecha_creacion', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            pedidosCliente = [];
+            let pendientes = 0, porRecibir = 0, enProduccion = 0, completadosHoy = 0;
+            const hoy = new Date().toDateString();
+            
+            snapshot.forEach(docSnap => {
+                const pedido = { id: docSnap.id, ...docSnap.data() };
+                pedidosCliente.push(pedido);
+                
+                if (pedido.estado === 'pendiente') pendientes++;
+                if (pedido.estado === 'en_produccion') enProduccion++;
+                if (pedido.estado === 'completado' && pedido.fecha_completado?.toDate?.()?.toDateString() === hoy) completadosHoy++;
+                
+                if (pedido.materiales) {
+                    porRecibir += pedido.materiales.filter(m => !m.recibido).length;
+                }
+            });
+            
+            document.getElementById('pedidosPendientesCount').textContent = pendientes;
+            document.getElementById('materialesPorRecibir').textContent = porRecibir;
+            document.getElementById('pedidosEnProduccion').textContent = enProduccion;
+            document.getElementById('pedidosCompletadosHoy').textContent = completadosHoy;
+            
+            const badge = document.getElementById('pedidosClienteBadge');
+            if (pendientes > 0) {
+                badge.textContent = pendientes;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+            
+            renderPedidosCliente();
+            loadClientInventory();
+        });
+    } catch (error) {
+        console.error('Error cargando pedidos cliente:', error);
+    }
+}
+
+function renderPedidosCliente() {
+    const list = document.getElementById('pedidosClienteList');
+    const filter = document.getElementById('filterPedidoEstado')?.value || 'todos';
+    
+    let filtered = pedidosCliente;
+    if (filter !== 'todos') {
+        filtered = pedidosCliente.filter(p => p.estado === filter);
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">Sin pedidos de clientes</p>';
+        return;
+    }
+    
+    const statusConfig = {
+        'pendiente': { color: 'bg-amber-600/20 text-amber-400', label: 'Pendiente', icon: 'clock' },
+        'materiales_recibidos': { color: 'bg-blue-600/20 text-blue-400', label: 'Mat. Recibidos', icon: 'box' },
+        'en_produccion': { color: 'bg-purple-600/20 text-purple-400', label: 'En Producción', icon: 'cogs' },
+        'completado': { color: 'bg-green-600/20 text-green-400', label: 'Completado', icon: 'check' },
+        'entregado': { color: 'bg-emerald-600/20 text-emerald-400', label: 'Entregado', icon: 'truck' }
+    };
+    
+    list.innerHTML = filtered.map(pedido => {
+        const status = statusConfig[pedido.estado] || statusConfig['pendiente'];
+        const fecha = pedido.fecha_creacion?.toDate?.() ? pedido.fecha_creacion.toDate().toLocaleDateString('es-CO') : '-';
+        const fechaEntrega = pedido.fecha_entrega_esperada?.toDate?.() ? pedido.fecha_entrega_esperada.toDate().toLocaleDateString('es-CO') : '-';
+        const progress = pedido.pares_hechos ? Math.round((pedido.pares_hechos / pedido.cantidad) * 100) : 0;
+        
+        const materialesHtml = pedido.materiales?.map((m, idx) => `
+            <div class="flex items-center justify-between bg-gray-700/30 rounded px-3 py-2">
+                <span class="text-gray-300 text-sm">${m.nombre}: ${m.cantidad} ${m.unidad}</span>
+                ${m.recibido 
+                    ? '<span class="text-green-400 text-xs"><i class="fas fa-check mr-1"></i>Recibido</span>'
+                    : `<button class="recibir-mat-btn px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition" data-pedido="${pedido.id}" data-idx="${idx}">
+                        <i class="fas fa-hand-holding mr-1"></i>Recibir
+                       </button>`
+                }
+            </div>
+        `).join('') || '';
+        
+        return `
+            <div class="bg-gray-700/50 rounded-xl p-4 border-l-4 ${pedido.estado === 'pendiente' ? 'border-amber-500' : pedido.estado === 'en_produccion' ? 'border-purple-500' : 'border-gray-600'}">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h4 class="text-white font-semibold">${pedido.modelo}</h4>
+                            <span class="px-2 py-1 rounded-full text-xs ${status.color}">
+                                <i class="fas fa-${status.icon} mr-1"></i>${status.label}
+                            </span>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            <i class="fas fa-user mr-1"></i>${pedido.cliente_nombre || 'Cliente'}
+                            <span class="mx-2">•</span>
+                            <i class="fas fa-hashtag mr-1"></i>${pedido.id.slice(-6).toUpperCase()}
+                        </p>
+                        <p class="text-gray-500 text-sm mt-1">
+                            Creado: ${fecha} | Entrega: ${fechaEntrega}
+                        </p>
+                        ${pedido.notas ? `<p class="text-gray-500 text-sm mt-1"><i class="fas fa-sticky-note mr-1"></i>${pedido.notas}</p>` : ''}
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-white">${pedido.cantidad}</p>
+                        <p class="text-gray-400 text-sm">pares</p>
+                        ${pedido.estado === 'en_produccion' ? `<p class="text-purple-400 text-sm mt-1">${pedido.pares_hechos || 0} hechos (${progress}%)</p>` : ''}
+                    </div>
+                </div>
+                
+                ${pedido.materiales && pedido.materiales.length > 0 ? `
+                    <div class="mt-4 pt-4 border-t border-gray-600">
+                        <p class="text-gray-400 text-sm mb-2"><i class="fas fa-cubes mr-1"></i>Materiales:</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${materialesHtml}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap gap-2">
+                    ${pedido.estado === 'pendiente' ? `
+                        <button class="iniciar-produccion-btn px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-play mr-1"></i>Iniciar Producción
+                        </button>
+                    ` : ''}
+                    ${pedido.estado === 'en_produccion' ? `
+                        <button class="completar-pedido-btn px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-check mr-1"></i>Marcar Completado
+                        </button>
+                    ` : ''}
+                    ${pedido.estado === 'completado' ? `
+                        <button class="entregar-pedido-btn px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-truck mr-1"></i>Marcar Entregado
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Event listeners
+    document.querySelectorAll('.recibir-mat-btn').forEach(btn => {
+        btn.addEventListener('click', () => recibirMaterial(btn.dataset.pedido, parseInt(btn.dataset.idx)));
+    });
+    
+    document.querySelectorAll('.iniciar-produccion-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'en_produccion'));
+    });
+    
+    document.querySelectorAll('.completar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'completado'));
+    });
+    
+    document.querySelectorAll('.entregar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'entregado'));
+    });
+}
+
+async function recibirMaterial(pedidoId, materialIdx) {
+    try {
+        const pedido = pedidosCliente.find(p => p.id === pedidoId);
+        if (!pedido || !pedido.materiales[materialIdx]) return;
+        
+        const material = pedido.materiales[materialIdx];
+        material.recibido = true;
+        material.fecha_recibido = Timestamp.now();
+        
+        await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+            materiales: pedido.materiales
+        });
+        
+        // Agregar al inventario de clientes
+        await addDoc(collection(db, 'inventario_clientes'), {
+            cliente_id: pedido.cliente_id,
+            cliente_nombre: pedido.cliente_nombre,
+            pedido_id: pedidoId,
+            nombre: material.nombre,
+            tipo: material.tipo,
+            cantidad: material.cantidad,
+            unidad: material.unidad,
+            fecha_entrega: Timestamp.now(),
+            recibido: true
+        });
+        
+        // Verificar si todos los materiales fueron recibidos
+        const todosRecibidos = pedido.materiales.every(m => m.recibido);
+        if (todosRecibidos && pedido.estado === 'pendiente') {
+            await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+                estado: 'materiales_recibidos'
+            });
+        }
+        
+        showToast('Material recibido e ingresado al inventario', 'success');
+    } catch (error) {
+        console.error('Error recibiendo material:', error);
+        showToast('Error al recibir material', 'error');
+    }
+}
+
+async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
+    try {
+        const updateData = { estado: nuevoEstado };
+        
+        if (nuevoEstado === 'completado') {
+            updateData.fecha_completado = Timestamp.now();
+        } else if (nuevoEstado === 'entregado') {
+            updateData.fecha_entregado = Timestamp.now();
+        }
+        
+        await updateDoc(doc(db, 'pedidos_cliente', pedidoId), updateData);
+        showToast(`Pedido marcado como ${nuevoEstado.replace('_', ' ')}`, 'success');
+    } catch (error) {
+        console.error('Error cambiando estado:', error);
+        showToast('Error al cambiar estado', 'error');
+    }
+}
+
+// ==================== INVENTARIO CLIENTES ====================
+
+let clientInventory = [];
+
+async function loadClientInventory() {
+    try {
+        const q = query(collection(db, 'inventario_clientes'), orderBy('fecha_entrega', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            clientInventory = [];
+            const clientesSet = new Set();
+            
+            snapshot.forEach(docSnap => {
+                const item = { id: docSnap.id, ...docSnap.data() };
+                clientInventory.push(item);
+                if (item.cliente_nombre) clientesSet.add(item.cliente_nombre);
+            });
+            
+            // Actualizar filtro de clientes
+            const filterSelect = document.getElementById('filterClienteMaterial');
+            if (filterSelect) {
+                const currentValue = filterSelect.value;
+                filterSelect.innerHTML = '<option value="todos">Todos los clientes</option>' +
+                    Array.from(clientesSet).map(c => `<option value="${c}">${c}</option>`).join('');
+                filterSelect.value = currentValue;
+            }
+            
+            renderClientInventory();
+        });
+    } catch (error) {
+        console.error('Error cargando inventario clientes:', error);
+    }
+}
+
+function renderClientInventory() {
+    const list = document.getElementById('clientInventoryList');
+    if (!list) return;
+    
+    const filter = document.getElementById('filterClienteMaterial')?.value || 'todos';
+    
+    let filtered = clientInventory;
+    if (filter !== 'todos') {
+        filtered = clientInventory.filter(i => i.cliente_nombre === filter);
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">Sin materiales de clientes registrados</p>';
+        return;
+    }
+    
+    // Agrupar por cliente
+    const grouped = {};
+    filtered.forEach(item => {
+        const key = item.cliente_nombre || 'Sin cliente';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+    });
+    
+    list.innerHTML = Object.entries(grouped).map(([cliente, items]) => `
+        <div class="bg-gray-700/30 rounded-xl p-4">
+            <h4 class="text-white font-semibold mb-3">
+                <i class="fas fa-user mr-2 text-blue-400"></i>${cliente}
+            </h4>
+            <div class="space-y-2">
+                ${items.map(item => {
+                    const fecha = item.fecha_entrega?.toDate?.() ? item.fecha_entrega.toDate().toLocaleDateString('es-CO') : '-';
+                    return `
+                        <div class="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2">
+                            <div>
+                                <span class="text-gray-300">${item.nombre}</span>
+                                <span class="text-gray-500 text-sm ml-2">(${item.cantidad} ${item.unidad})</span>
+                            </div>
+                            <span class="text-gray-500 text-xs">${fecha}</span>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+// ==================== INVENTORY SUB-TABS ====================
+
+function switchInvSubTab(invType) {
+    document.querySelectorAll('.inv-sub-tab').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white');
+        btn.classList.add('text-gray-400');
+    });
+    
+    document.querySelector(`[data-inv="${invType}"]`).classList.add('bg-emerald-600', 'text-white');
+    document.querySelector(`[data-inv="${invType}"]`).classList.remove('text-gray-400');
+    
+    document.querySelectorAll('.inv-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById(`inv${invType.charAt(0).toUpperCase() + invType.slice(1)}Content`).classList.remove('hidden');
+}
+
 // ==================== TABS ====================
 
 function switchTab(tabName) {
@@ -800,6 +1118,17 @@ function setupEventListeners() {
     
     // Exportar PDF
     document.getElementById('exportPdfBtn')?.addEventListener('click', exportarInformePDF);
+    
+    // Inventory sub-tabs
+    document.querySelectorAll('.inv-sub-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchInvSubTab(btn.dataset.inv));
+    });
+    
+    // Filter client materials
+    document.getElementById('filterClienteMaterial')?.addEventListener('change', renderClientInventory);
+    
+    // Filter pedidos cliente
+    document.getElementById('filterPedidoEstado')?.addEventListener('change', renderPedidosCliente);
 }
 
 // Iniciar
