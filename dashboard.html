@@ -73,6 +73,11 @@
             <p class="text-gray-400 mt-2">Resumen de producción y actividad en tiempo real</p>
         </div>
 
+        <!-- Quick Access Menu -->
+        <div id="quickAccessMenu" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <!-- Dynamic quick access buttons -->
+        </div>
+
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Producción Hoy -->
@@ -153,7 +158,7 @@
         </div>
 
         <!-- Active Orders & Recent Production -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <!-- Active Orders -->
             <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
                 <h3 class="text-lg font-semibold text-white mb-4">
@@ -176,6 +181,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- Notifications Panel (Admin only) -->
+        <div id="notificationsPanel" class="hidden">
+            <div class="bg-gradient-to-r from-blue-900/50 to-purple-900/50 backdrop-blur-sm rounded-xl border border-blue-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-white">
+                        <i class="fas fa-bell mr-2 text-yellow-500"></i>
+                        Notificaciones de Clientes
+                        <span id="notifBadge" class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full hidden">0</span>
+                    </h3>
+                    <button id="clearNotifsBtn" class="text-gray-400 hover:text-white text-sm">
+                        <i class="fas fa-check-double mr-1"></i>Marcar leídas
+                    </button>
+                </div>
+                <div id="notificationsList" class="space-y-3 max-h-64 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">Sin notificaciones</p>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -192,7 +216,7 @@
         import { initChat, openChat } from './js/chat.js';
         import { getNavigationMenu, getRoleName, getRoleBadgeColor } from './js/roles.js';
         import { formatCurrency, formatDateTime, formatDate, getWeekStart, getDayStart, getDayEnd } from './js/utils.js';
-        import { db, rtdb, collection, query, where, orderBy, limit, getDocs, onSnapshot, Timestamp, ref, onValue } from './js/firebase-init.js';
+        import { db, rtdb, collection, query, where, orderBy, limit, getDocs, onSnapshot, Timestamp, ref, onValue, set } from './js/firebase-init.js';
 
         let productionChart = null;
 
@@ -217,6 +241,12 @@
                 // Escuchar presencia en tiempo real
                 listenToPresence(userData.uid);
                 
+                // Mostrar notificaciones para admins
+                if (userData.rol === ROLES.ADMIN_FINANZAS || userData.rol === ROLES.ADMIN_RRHH) {
+                    document.getElementById('notificationsPanel').classList.remove('hidden');
+                    listenToNotifications();
+                }
+                
             } catch (error) {
                 console.error('Error de autenticación:', error);
             }
@@ -231,6 +261,40 @@
                 <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${window.location.pathname.includes(item.href) ? 'bg-gray-700/50 text-white' : ''}">
                     <i class="fas ${item.icon}"></i>
                     <span>${item.name}</span>
+                </a>
+            `).join('');
+            
+            // Generar accesos rápidos
+            generateQuickAccess(rol);
+        }
+        
+        // Generar accesos rápidos en el dashboard
+        function generateQuickAccess(rol) {
+            const quickAccessMenu = document.getElementById('quickAccessMenu');
+            
+            const quickLinks = {
+                'admin_finanzas': [
+                    { name: 'Finanzas', icon: 'fa-dollar-sign', href: 'finanzas.html', color: 'from-emerald-600 to-emerald-800' },
+                    { name: 'RRHH', icon: 'fa-users', href: 'rrhh.html', color: 'from-purple-600 to-purple-800' },
+                    { name: 'Producción', icon: 'fa-industry', href: 'produccion.html', color: 'from-blue-600 to-blue-800' },
+                    { name: 'Portal Clientes', icon: 'fa-user-tie', href: 'cliente-portal.html', color: 'from-amber-600 to-amber-800' }
+                ],
+                'admin_rrhh': [
+                    { name: 'Finanzas', icon: 'fa-dollar-sign', href: 'finanzas.html', color: 'from-emerald-600 to-emerald-800' },
+                    { name: 'RRHH', icon: 'fa-users', href: 'rrhh.html', color: 'from-purple-600 to-purple-800' },
+                    { name: 'Producción', icon: 'fa-industry', href: 'produccion.html', color: 'from-blue-600 to-blue-800' }
+                ],
+                'operario': [
+                    { name: 'Mi Producción', icon: 'fa-shoe-prints', href: 'produccion.html', color: 'from-blue-600 to-blue-800' }
+                ]
+            };
+            
+            const links = quickLinks[rol] || [];
+            
+            quickAccessMenu.innerHTML = links.map(link => `
+                <a href="${link.href}" class="bg-gradient-to-br ${link.color} rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:scale-105 transition-transform shadow-lg">
+                    <i class="fas ${link.icon} text-white text-2xl"></i>
+                    <span class="text-white font-semibold text-sm">${link.name}</span>
                 </a>
             `).join('');
         }
@@ -548,6 +612,70 @@
             } catch (error) {
                 console.error('Error inicializando gráfica:', error);
             }
+        }
+
+        // Escuchar notificaciones en tiempo real
+        function listenToNotifications() {
+            // Escuchar desde Realtime Database para notificaciones instantáneas
+            const notifsRef = ref(rtdb, 'notificaciones_fabrica');
+            onValue(notifsRef, (snapshot) => {
+                const list = document.getElementById('notificationsList');
+                const badge = document.getElementById('notifBadge');
+                
+                if (!snapshot.exists()) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin notificaciones</p>';
+                    badge.classList.add('hidden');
+                    return;
+                }
+                
+                const notifs = [];
+                snapshot.forEach(child => {
+                    notifs.push({ id: child.key, ...child.val() });
+                });
+                
+                // Ordenar por fecha descendente
+                notifs.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+                
+                const unread = notifs.filter(n => !n.leido).length;
+                if (unread > 0) {
+                    badge.textContent = unread;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+                
+                list.innerHTML = notifs.slice(0, 10).map(notif => {
+                    const fecha = notif.fecha ? new Date(notif.fecha).toLocaleString('es-CO') : '';
+                    const isNew = !notif.leido;
+                    const iconClass = notif.tipo === 'nuevo_pedido' ? 'fa-box text-blue-500' : 
+                                     notif.tipo === 'nuevo_cliente' ? 'fa-user-plus text-green-500' : 'fa-bell text-yellow-500';
+                    
+                    return `
+                        <div class="flex items-start gap-3 p-3 rounded-lg ${isNew ? 'bg-blue-900/30 border border-blue-700/50' : 'bg-gray-700/30'}" data-id="${notif.id}">
+                            <div class="w-10 h-10 bg-gray-700 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-white font-medium text-sm">${notif.titulo || 'Notificación'}</p>
+                                <p class="text-gray-400 text-xs mt-1">${notif.mensaje || ''}</p>
+                                <p class="text-gray-500 text-xs mt-1">${fecha}</p>
+                            </div>
+                            ${isNew ? '<span class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>' : ''}
+                        </div>
+                    `;
+                }).join('');
+            });
+            
+            // Marcar todas como leídas
+            document.getElementById('clearNotifsBtn').addEventListener('click', async () => {
+                const notifsRef = ref(rtdb, 'notificaciones_fabrica');
+                onValue(notifsRef, (snapshot) => {
+                    snapshot.forEach(child => {
+                        const updateRef = ref(rtdb, `notificaciones_fabrica/${child.key}/leido`);
+                        set(updateRef, true);
+                    });
+                }, { onlyOnce: true });
+            });
         }
 
         // Logout
