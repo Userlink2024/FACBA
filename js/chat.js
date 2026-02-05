@@ -8,25 +8,33 @@ let currentChatUser = null;
 let currentUserUid = null;
 let unsubscribeChat = null;
 let lastMessageCount = 0;
+let chatAudioContext = null;
 
 // Función para reproducir sonido de mensaje
 function playChatSound() {
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        if (!chatAudioContext) {
+            chatAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        if (chatAudioContext.state === 'suspended') {
+            chatAudioContext.resume();
+        }
+        
+        const oscillator = chatAudioContext.createOscillator();
+        const gainNode = chatAudioContext.createGain();
         
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(chatAudioContext.destination);
         
-        oscillator.frequency.setValueAtTime(523, audioContext.currentTime); // C5
-        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1); // E5
+        oscillator.frequency.setValueAtTime(587, chatAudioContext.currentTime); // D5
+        oscillator.frequency.setValueAtTime(784, chatAudioContext.currentTime + 0.1); // G5
         
-        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+        gainNode.gain.setValueAtTime(0.4, chatAudioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, chatAudioContext.currentTime + 0.3);
         
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.25);
+        oscillator.start(chatAudioContext.currentTime);
+        oscillator.stop(chatAudioContext.currentTime + 0.3);
     } catch (e) {
         console.log('Audio not supported');
     }
