@@ -299,7 +299,7 @@
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
     <script type="module">
-        import { db, rtdb, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, onSnapshot, Timestamp, ref, push, onValue, set } from './js/firebase-init.js';
+        import { db, rtdb, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, Timestamp, ref, push, onValue, set } from './js/firebase-init.js';
 
         let currentClient = null;
         let pedidos = [];
@@ -560,9 +560,37 @@
                                 </div>
                             </div>
                         ` : ''}
+                        
+                        ${pedido.estado === 'pendiente' ? `
+                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end">
+                                <button class="delete-pedido-btn px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
+                                    <i class="fas fa-trash"></i>
+                                    Eliminar Pedido
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
+            
+            // Event listeners para eliminar
+            document.querySelectorAll('.delete-pedido-btn').forEach(btn => {
+                btn.addEventListener('click', () => deletePedido(btn.dataset.id));
+            });
+        }
+        
+        async function deletePedido(pedidoId) {
+            if (!confirm('¿Está seguro de eliminar este pedido? Esta acción no se puede deshacer.')) {
+                return;
+            }
+            
+            try {
+                await deleteDoc(doc(db, 'pedidos_cliente', pedidoId));
+                showToast('Pedido eliminado correctamente', 'success');
+            } catch (error) {
+                console.error('Error eliminando pedido:', error);
+                showToast('Error al eliminar el pedido', 'error');
+            }
         }
 
         function renderMateriales() {
