@@ -424,6 +424,13 @@
                     pares_hechos: increment(cantidad)
                 });
                 
+                // Sincronizar con pedido del cliente si existe
+                if (selectedOrder.pedido_cliente_id) {
+                    await updateDoc(doc(db, 'pedidos_cliente', selectedOrder.pedido_cliente_id), {
+                        pares_hechos: increment(cantidad)
+                    });
+                }
+                
                 // Actualizar orden seleccionada
                 selectedOrder.pares_hechos += cantidad;
                 
@@ -438,6 +445,15 @@
                     await updateDoc(doc(db, 'ordenes', selectedOrder.id), {
                         estado: 'completada'
                     });
+                    
+                    // Sincronizar estado con pedido del cliente
+                    if (selectedOrder.pedido_cliente_id) {
+                        await updateDoc(doc(db, 'pedidos_cliente', selectedOrder.pedido_cliente_id), {
+                            estado: 'completado',
+                            fecha_completado: Timestamp.now()
+                        });
+                    }
+                    
                     showToast('¡Orden completada!', 'success');
                     changeOrder();
                 } else {
