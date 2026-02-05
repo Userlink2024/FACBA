@@ -103,6 +103,10 @@
             <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="caja">
                 <i class="fas fa-cash-register mr-2"></i>Caja Menor
             </button>
+            <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="pedidosCliente">
+                <i class="fas fa-truck-loading mr-2"></i>Pedidos Clientes
+                <span id="pedidosClienteBadge" class="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full hidden">0</span>
+            </button>
             <div class="flex-1"></div>
             <button id="exportPdfBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
                 <i class="fas fa-file-pdf"></i><span class="hidden sm:inline">Exportar PDF</span>
@@ -152,23 +156,53 @@
 
         <!-- Inventory Tab -->
         <div id="inventoryTab" class="tab-content hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                    <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-plus-circle mr-2 text-green-500"></i>Agregar/Actualizar Insumo</h3>
-                    <div class="space-y-4">
-                        <input type="text" id="insumoNombre" placeholder="Nombre del insumo" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                        <div class="grid grid-cols-2 gap-4">
-                            <input type="number" id="insumoCantidad" placeholder="Cantidad" min="0" class="px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                            <input type="text" id="insumoUnidad" placeholder="Unidad (kg, lt, m)" class="px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
+            <!-- Sub-tabs for inventory types -->
+            <div class="flex gap-2 mb-4">
+                <button class="inv-sub-tab px-4 py-2 bg-emerald-600 text-white rounded-lg transition" data-inv="fabrica">
+                    <i class="fas fa-industry mr-2"></i>Inventario Fábrica
+                </button>
+                <button class="inv-sub-tab px-4 py-2 text-gray-400 hover:bg-gray-700 rounded-lg transition" data-inv="clientes">
+                    <i class="fas fa-users mr-2"></i>Materiales Clientes
+                </button>
+            </div>
+
+            <!-- Factory Inventory -->
+            <div id="invFabricaContent" class="inv-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-plus-circle mr-2 text-green-500"></i>Agregar/Actualizar Insumo</h3>
+                        <div class="space-y-4">
+                            <input type="text" id="insumoNombre" placeholder="Nombre del insumo" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <div class="grid grid-cols-2 gap-4">
+                                <input type="number" id="insumoCantidad" placeholder="Cantidad" min="0" class="px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
+                                <input type="text" id="insumoUnidad" placeholder="Unidad (kg, lt, m)" class="px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
+                            </div>
+                            <input type="number" id="insumoMinimo" placeholder="Stock mínimo" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
+                            <input type="number" id="insumoConsumo" placeholder="Consumo por par" step="0.01" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
+                            <button id="saveInsumoBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition"><i class="fas fa-save mr-2"></i>Guardar</button>
                         </div>
-                        <input type="number" id="insumoMinimo" placeholder="Stock mínimo" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                        <input type="number" id="insumoConsumo" placeholder="Consumo por par" step="0.01" min="0" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none">
-                        <button id="saveInsumoBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition"><i class="fas fa-save mr-2"></i>Guardar</button>
+                    </div>
+                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-warehouse mr-2 text-purple-500"></i>Inventario Fábrica</h3>
+                        <div id="inventoryList" class="space-y-3 max-h-96 overflow-y-auto"></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Client Materials Inventory -->
+            <div id="invClientesContent" class="inv-content hidden">
                 <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-6">
-                    <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-warehouse mr-2 text-purple-500"></i>Inventario Actual</h3>
-                    <div id="inventoryList" class="space-y-3 max-h-96 overflow-y-auto"></div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-white">
+                            <i class="fas fa-cubes mr-2 text-blue-500"></i>Materiales por Cliente/Pedido
+                        </h3>
+                        <select id="filterClienteMaterial" class="px-4 py-2 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-sm focus:outline-none">
+                            <option value="todos">Todos los clientes</option>
+                        </select>
+                    </div>
+                    <div id="clientInventoryList" class="space-y-4 max-h-[500px] overflow-y-auto">
+                        <p class="text-gray-500 text-center py-8">Sin materiales de clientes registrados</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -241,6 +275,50 @@
                         <div id="cajaMenorList" class="space-y-3 max-h-96 overflow-y-auto">
                             <p class="text-gray-500 text-center py-4">Cargando...</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pedidos Cliente Tab -->
+        <div id="pedidosClienteTab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Stats -->
+                <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
+                        <p class="text-gray-400 text-sm">Pedidos Pendientes</p>
+                        <p id="pedidosPendientesCount" class="text-2xl font-bold text-amber-400">0</p>
+                    </div>
+                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
+                        <p class="text-gray-400 text-sm">Materiales por Recibir</p>
+                        <p id="materialesPorRecibir" class="text-2xl font-bold text-blue-400">0</p>
+                    </div>
+                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
+                        <p class="text-gray-400 text-sm">En Producción</p>
+                        <p id="pedidosEnProduccion" class="text-2xl font-bold text-purple-400">0</p>
+                    </div>
+                    <div class="bg-gray-800/80 rounded-xl border border-gray-700 p-4">
+                        <p class="text-gray-400 text-sm">Completados Hoy</p>
+                        <p id="pedidosCompletadosHoy" class="text-2xl font-bold text-green-400">0</p>
+                    </div>
+                </div>
+
+                <!-- Pedidos List -->
+                <div class="lg:col-span-3 bg-gray-800/80 rounded-xl border border-gray-700 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-white">
+                            <i class="fas fa-clipboard-list mr-2 text-blue-500"></i>Pedidos de Clientes
+                        </h3>
+                        <select id="filterPedidoEstado" class="px-4 py-2 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-sm focus:outline-none">
+                            <option value="todos">Todos los estados</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="materiales_recibidos">Materiales Recibidos</option>
+                            <option value="en_produccion">En Producción</option>
+                            <option value="completado">Completados</option>
+                        </select>
+                    </div>
+                    <div id="pedidosClienteList" class="space-y-4 max-h-[600px] overflow-y-auto">
+                        <p class="text-gray-500 text-center py-8">Cargando pedidos de clientes...</p>
                     </div>
                 </div>
             </div>
