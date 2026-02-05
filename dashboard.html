@@ -214,29 +214,59 @@
         import { db, rtdb, collection, query, where, orderBy, limit, getDocs, onSnapshot, Timestamp, ref, onValue, set } from './js/firebase-init.js';
 
         let productionChart = null;
-        let lastNotifCount = 0;
+        let lastNotifCount = -1; // -1 para ignorar la carga inicial
+        let audioContext = null;
+        let audioEnabled = false;
+        
+        // Inicializar audio con interacción del usuario
+        function initAudio() {
+            if (audioContext) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioEnabled = true;
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+        
+        // Activar audio con cualquier clic
+        document.addEventListener('click', () => {
+            initAudio();
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }, { once: true });
         
         // Función para reproducir sonido de notificación
         function playNotificationSound() {
+            if (!audioEnabled || !audioContext) {
+                initAudio();
+                if (!audioContext) return;
+            }
+            
             try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
                 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                // Tono de notificación más audible
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.15);
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.3);
                 
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
                 
                 oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.4);
+                oscillator.stop(audioContext.currentTime + 0.5);
             } catch (e) {
-                console.log('Audio not supported');
+                console.log('Error playing sound:', e);
             }
         }
 
@@ -624,11 +654,16 @@
                 
                 const unread = notifs.filter(n => !n.leido).length;
                 
-                // Reproducir sonido si hay nuevas notificaciones
+                // Reproducir sonido si hay nuevas notificaciones (ignorar carga inicial)
                 if (unread > lastNotifCount && lastNotifCount >= 0) {
                     playNotificationSound();
                 }
-                lastNotifCount = unread;
+                // Después de la primera carga, empezar a contar
+                if (lastNotifCount === -1) {
+                    lastNotifCount = unread;
+                } else {
+                    lastNotifCount = unread;
+                }
                 
                 if (unread > 0) {
                     badge.textContent = unread;
