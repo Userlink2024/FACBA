@@ -182,13 +182,14 @@
     <footer class="border-t border-gray-800 mt-12 py-6">
         <div class="max-w-7xl mx-auto px-4 text-center">
             <p class="text-gray-600 text-sm">
-                C&A Manufacturas © 2024 - Bucaramanga, Colombia
+                C&A Manufacturas 2024 - Bucaramanga, Colombia
             </p>
         </div>
     </footer>
 
     <script type="module">
-        import { checkAuthAndRedirect, logout, getCurrentUserData, ROLES } from './js/auth.js';
+        import { checkAuthAndRedirect, logout, ROLES } from './js/auth.js';
+        import { initChat, openChat } from './js/chat.js';
         import { getNavigationMenu, getRoleName, getRoleBadgeColor } from './js/roles.js';
         import { formatCurrency, formatDateTime, formatDate, getWeekStart, getDayStart, getDayEnd } from './js/utils.js';
         import { db, rtdb, collection, query, where, orderBy, limit, getDocs, onSnapshot, Timestamp, ref, onValue } from './js/firebase-init.js';
@@ -210,8 +211,11 @@
                 // Cargar datos
                 loadDashboardData(userData);
                 
+                // Inicializar chat
+                initChat(userData.uid);
+                
                 // Escuchar presencia en tiempo real
-                listenToPresence();
+                listenToPresence(userData.uid);
                 
             } catch (error) {
                 console.error('Error de autenticación:', error);
@@ -406,7 +410,7 @@
         }
 
         // Escuchar presencia en tiempo real
-        function listenToPresence() {
+        function listenToPresence(currentUid) {
             const presenceRef = ref(rtdb, 'presence');
             
             onValue(presenceRef, (snapshot) => {
@@ -420,7 +424,7 @@
                 }
                 
                 const presence = snapshot.val();
-                const onlineUsers = Object.entries(presence).filter(([uid, data]) => data.online);
+                const onlineUsers = Object.entries(presence).filter(([uid, data]) => data.online && uid !== currentUid);
                 
                 countEl.textContent = onlineUsers.length;
                 
@@ -430,19 +434,27 @@
                 }
                 
                 list.innerHTML = onlineUsers.map(([uid, data]) => `
-                    <div class="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
+                    <div class="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3 cursor-pointer hover:bg-gray-600/50 transition chat-user-btn" data-uid="${uid}" data-name="${data.nombre || 'Usuario'}">
                         <div class="relative">
                             <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
                                 <i class="fas fa-user text-gray-400"></i>
                             </div>
                             <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-700"></span>
                         </div>
-                        <div>
+                        <div class="flex-1">
                             <p class="text-white text-sm font-medium">${data.nombre || 'Usuario'}</p>
                             <p class="text-green-400 text-xs">En línea</p>
                         </div>
+                        <i class="fas fa-comment text-blue-400 opacity-50"></i>
                     </div>
                 `).join('');
+                
+                // Agregar evento de clic para abrir chat
+                document.querySelectorAll('.chat-user-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        openChat(btn.dataset.uid, btn.dataset.name);
+                    });
+                });
             });
         }
 
