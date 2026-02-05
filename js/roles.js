@@ -27,9 +27,9 @@ const PERMISSIONS = {
         edit: [ROLES.ADMIN_RRHH]
     },
     
-    // Finanzas - solo Anderson (admin_finanzas)
+    // Finanzas - Anderson y Carolina
     finanzas: {
-        view: [ROLES.ADMIN_FINANZAS],
+        view: [ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH],
         orders: [ROLES.ADMIN_FINANZAS],
         rates: [ROLES.ADMIN_FINANZAS],
         inventory: [ROLES.ADMIN_FINANZAS],
@@ -52,7 +52,7 @@ export function canAccessPage(rol, pagina) {
         'dashboard.html': [ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO],
         'produccion.html': [ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO],
         'rrhh.html': [ROLES.ADMIN_RRHH, ROLES.ADMIN_FINANZAS],
-        'finanzas.html': [ROLES.ADMIN_FINANZAS]
+        'finanzas.html': [ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH]
     };
     
     return pagePermissions[pagina]?.includes(rol) || false;
@@ -71,6 +71,7 @@ export function getNavigationMenu(rol) {
             { name: 'Producción', icon: 'fa-industry', href: 'produccion.html' }
         ],
         [ROLES.ADMIN_RRHH]: [
+            { name: 'Finanzas', icon: 'fa-dollar-sign', href: 'finanzas.html' },
             { name: 'RRHH', icon: 'fa-users', href: 'rrhh.html' },
             { name: 'Producción', icon: 'fa-industry', href: 'produccion.html' }
         ],
