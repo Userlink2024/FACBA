@@ -213,9 +213,20 @@
                         </div>
                     </div>
                     
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">🎨 Color Principal</label>
+                            <input type="text" id="orderColor" required placeholder="Ej: Negro, Café, Miel..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Color Secundario (opcional)</label>
+                            <input type="text" id="orderColorSecundario" placeholder="Ej: Beige, Blanco..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Especificaciones / Notas</label>
-                        <textarea id="orderNotas" rows="2" placeholder="Color, acabados, detalles especiales..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Especificaciones / Notas Adicionales</label>
+                        <textarea id="orderNotas" rows="2" placeholder="Acabados, detalles especiales, instrucciones..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                     </div>
                 </div>
 
@@ -561,7 +572,7 @@
                             </div>
                         ` : ''}
                         
-                        ${pedido.estado === 'pendiente' ? `
+                        ${pedido.estado !== 'entregado' ? `
                             <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end">
                                 <button class="delete-pedido-btn px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
                                     <i class="fas fa-trash"></i>
@@ -686,7 +697,12 @@
                             <option value="kilos">Kilos</option>
                             <option value="litros">Litros</option>
                             <option value="rollos">Rollos</option>
+                            <option value="otro_unidad">Otra...</option>
                         </select>
+                    </div>
+                    <div class="col-span-2 unidad-custom-container hidden">
+                        <label class="block text-xs text-gray-400 mb-1">Nombre Unidad</label>
+                        <input type="text" class="unidad-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: yardas, galones...">
                     </div>
                     <div class="col-span-1">
                         <button type="button" class="remove-mat-btn w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition">
@@ -698,14 +714,22 @@
             
             const select = row.querySelector('.mat-tipo');
             const customContainer = row.querySelector('.mat-custom-container');
+            const unidadSelect = row.querySelector('.mat-unidad');
+            const unidadCustomContainer = row.querySelector('.unidad-custom-container');
             
             select.addEventListener('change', () => {
                 if (select.value === 'otro') {
                     customContainer.classList.remove('hidden');
-                    row.querySelector('.col-span-4').classList.remove('col-span-4');
-                    row.querySelector('.col-span-4') || select.parentElement.classList.add('col-span-3');
                 } else {
                     customContainer.classList.add('hidden');
+                }
+            });
+            
+            unidadSelect.addEventListener('change', () => {
+                if (unidadSelect.value === 'otro_unidad') {
+                    unidadCustomContainer.classList.remove('hidden');
+                } else {
+                    unidadCustomContainer.classList.add('hidden');
                 }
             });
             
@@ -720,10 +744,12 @@
             const cantidad = parseInt(document.getElementById('orderCantidad').value) || 0;
             const tallas = document.getElementById('orderTallas').value.trim();
             const fechaEntrega = document.getElementById('orderFechaEntrega').value;
+            const color = document.getElementById('orderColor').value.trim();
+            const colorSecundario = document.getElementById('orderColorSecundario').value.trim();
             const notas = document.getElementById('orderNotas').value.trim();
             
-            if (!modelo || cantidad <= 0 || !fechaEntrega) {
-                showToast('Complete los campos requeridos', 'warning');
+            if (!modelo || cantidad <= 0 || !fechaEntrega || !color) {
+                showToast('Complete los campos requeridos (incluido el color)', 'warning');
                 return;
             }
             
@@ -735,11 +761,15 @@
                 const tipoSelect = row.querySelector('.mat-tipo').value;
                 const customName = row.querySelector('.mat-custom')?.value?.trim() || '';
                 const cantidadMat = parseFloat(row.querySelector('.mat-cantidad').value) || 0;
-                const unidad = row.querySelector('.mat-unidad').value;
+                const unidadSelect = row.querySelector('.mat-unidad').value;
+                const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
                 
                 // Si es "otro", usar el nombre personalizado
                 const tipo = tipoSelect === 'otro' ? 'personalizado' : tipoSelect;
                 const nombre = tipoSelect === 'otro' && customName ? customName : tipoSelect.charAt(0).toUpperCase() + tipoSelect.slice(1);
+                
+                // Si es "otro_unidad", usar la unidad personalizada
+                const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
                 
                 if (cantidadMat > 0) {
                     materialesList.push({
@@ -759,6 +789,8 @@
                     modelo,
                     cantidad,
                     tallas,
+                    color,
+                    color_secundario: colorSecundario,
                     fecha_entrega_esperada: Timestamp.fromDate(new Date(fechaEntrega)),
                     notas,
                     materiales: materialesList,
