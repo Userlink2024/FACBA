@@ -6,6 +6,7 @@ import { checkAuthAndRedirect, logout, ROLES } from './auth.js';
 import { getNavigationMenu, getRoleName } from './roles.js';
 import { formatCurrency, getWeekStart, showToast, showConfirm } from './utils.js';
 import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, Timestamp } from './firebase-init.js';
+import { initNotifications } from './notifications.js';
 
 let orders = [];
 let employees = [];
@@ -14,18 +15,23 @@ let inventory = [];
 // Inicializar
 async function init() {
     try {
-        const { userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS]);
+        const { user, userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH]);
         
         document.getElementById('userName').textContent = userData.nombre;
         document.getElementById('userRole').textContent = getRoleName(userData.rol);
         
         generateNavMenu(userData.rol);
         
+        // Inicializar notificaciones globales
+        initNotifications(user.uid);
+        
         await Promise.all([
             loadOrders(),
             loadEmployees(),
             loadInventory(),
-            loadPayrollData()
+            loadPayrollData(),
+            loadCajaMenor(),
+            loadPedidosCliente()
         ]);
         
         setupEventListeners();
@@ -293,15 +299,25 @@ function renderInventoryList() {
         const percentage = Math.min((item.cantidad / (item.minimo * 3)) * 100, 100);
         
         return `
-            <div class="bg-gray-700/50 rounded-lg p-4 ${isLow ? 'border-l-4 border-red-500' : ''}">
+            <div class="bg-gray-700/50 rounded-lg p-4 ${isLow ? 'border-l-4 border-red-500' : ''}" data-id="${item.id}">
                 <div class="flex justify-between items-start mb-2">
                     <div>
                         <p class="text-white font-medium">${item.nombre}</p>
                         <p class="text-gray-500 text-sm">Consumo: ${item.consumo_por_par} ${item.unidad}/par</p>
                     </div>
-                    <div class="text-right">
-                        <p class="text-white font-bold">${item.cantidad} ${item.unidad}</p>
-                        ${isLow ? '<span class="text-red-400 text-xs">¡Stock bajo!</span>' : ''}
+                    <div class="flex items-start gap-2">
+                        <div class="text-right">
+                            <p class="text-white font-bold">${item.cantidad} ${item.unidad}</p>
+                            ${isLow ? '<span class="text-red-400 text-xs">¡Stock bajo!</span>' : ''}
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="edit-inv-btn p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded transition" data-id="${item.id}" title="Editar">
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button class="delete-inv-btn p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded transition" data-id="${item.id}" data-nombre="${item.nombre}" title="Eliminar">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="w-full bg-gray-600 rounded-full h-2">
@@ -311,6 +327,43 @@ function renderInventoryList() {
             </div>
         `;
     }).join('');
+    
+    // Event listeners para editar
+    document.querySelectorAll('.edit-inv-btn').forEach(btn => {
+        btn.addEventListener('click', () => editInventoryItem(btn.dataset.id));
+    });
+    
+    // Event listeners para eliminar
+    document.querySelectorAll('.delete-inv-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('Eliminar Insumo', `¿Eliminar "${btn.dataset.nombre}" del inventario?`);
+            if (confirmed) await deleteInventoryItem(btn.dataset.id);
+        });
+    });
+}
+
+function editInventoryItem(id) {
+    const item = inventory.find(i => i.id === id);
+    if (!item) return;
+    
+    document.getElementById('insumoNombre').value = item.nombre;
+    document.getElementById('insumoCantidad').value = item.cantidad;
+    document.getElementById('insumoUnidad').value = item.unidad;
+    document.getElementById('insumoMinimo').value = item.minimo;
+    document.getElementById('insumoConsumo').value = item.consumo_por_par;
+    
+    document.getElementById('insumoNombre').focus();
+    showToast('Editando: ' + item.nombre, 'info');
+}
+
+async function deleteInventoryItem(id) {
+    try {
+        await deleteDoc(doc(db, 'inventario', id));
+        showToast('Insumo eliminado', 'success');
+    } catch (error) {
+        console.error('Error eliminando insumo:', error);
+        showToast('Error al eliminar', 'error');
+    }
 }
 
 async function saveInsumo() {
@@ -481,6 +534,558 @@ async function closeWeek() {
     }
 }
 
+// ==================== CAJA MENOR ====================
+
+let cajaMenorMovimientos = [];
+
+async function loadCajaMenor() {
+    try {
+        const q = query(collection(db, 'caja_menor'), orderBy('fecha', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            cajaMenorMovimientos = [];
+            let saldo = 0;
+            
+            snapshot.forEach(docSnap => {
+                const mov = { id: docSnap.id, ...docSnap.data() };
+                cajaMenorMovimientos.push(mov);
+            });
+            
+            // Calcular saldo
+            cajaMenorMovimientos.forEach(mov => {
+                if (mov.tipo === 'ingreso') saldo += mov.monto;
+                else saldo -= mov.monto;
+            });
+            
+            document.getElementById('saldoCajaMenor').textContent = formatCurrency(saldo);
+            document.getElementById('saldoCajaMenor').className = saldo >= 0 ? 'text-3xl font-bold text-emerald-400' : 'text-3xl font-bold text-red-400';
+            
+            renderCajaMenorList();
+        });
+    } catch (error) {
+        console.error('Error cargando caja menor:', error);
+    }
+}
+
+function renderCajaMenorList() {
+    const list = document.getElementById('cajaMenorList');
+    
+    if (cajaMenorMovimientos.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">No hay movimientos registrados</p>';
+        return;
+    }
+    
+    list.innerHTML = cajaMenorMovimientos.slice(0, 50).map(mov => {
+        const isIngreso = mov.tipo === 'ingreso';
+        const fecha = mov.fecha?.toDate ? mov.fecha.toDate().toLocaleDateString('es-CO') : '';
+        
+        return `
+            <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 ${isIngreso ? 'bg-emerald-600/20' : 'bg-red-600/20'} rounded-xl flex items-center justify-center">
+                        <i class="fas ${isIngreso ? 'fa-arrow-down' : 'fa-arrow-up'} ${isIngreso ? 'text-emerald-500' : 'text-red-500'}"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">${mov.concepto}</p>
+                        <p class="text-gray-500 text-sm">${fecha}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p class="text-lg font-bold ${isIngreso ? 'text-emerald-400' : 'text-red-400'}">
+                        ${isIngreso ? '+' : '-'}${formatCurrency(mov.monto)}
+                    </p>
+                    <button class="delete-caja-btn p-2 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition" data-id="${mov.id}" title="Eliminar">
+                        <i class="fas fa-trash text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.querySelectorAll('.delete-caja-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('Eliminar Movimiento', '¿Eliminar este movimiento de caja?');
+            if (confirmed) {
+                try {
+                    await deleteDoc(doc(db, 'caja_menor', btn.dataset.id));
+                    showToast('Movimiento eliminado', 'success');
+                } catch (error) {
+                    showToast('Error al eliminar', 'error');
+                }
+            }
+        });
+    });
+}
+
+async function saveCajaMovimiento() {
+    const tipo = document.getElementById('cajaMovTipo').value;
+    const concepto = document.getElementById('cajaMovConcepto').value.trim();
+    const monto = parseFloat(document.getElementById('cajaMovMonto').value) || 0;
+    
+    if (!concepto || monto <= 0) {
+        showToast('Complete todos los campos', 'warning');
+        return;
+    }
+    
+    try {
+        await addDoc(collection(db, 'caja_menor'), {
+            tipo,
+            concepto,
+            monto,
+            fecha: Timestamp.now(),
+            registrado_por: document.getElementById('userName').textContent
+        });
+        
+        document.getElementById('cajaMovConcepto').value = '';
+        document.getElementById('cajaMovMonto').value = '';
+        
+        showToast(`${tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado`, 'success');
+    } catch (error) {
+        console.error('Error guardando movimiento:', error);
+        showToast('Error al guardar', 'error');
+    }
+}
+
+// ==================== EXPORTAR PDF ====================
+
+async function exportarInformePDF() {
+    showToast('Generando informe...', 'info');
+    
+    // Cargar jsPDF dinámicamente
+    if (!window.jspdf) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        document.head.appendChild(script);
+        await new Promise(resolve => script.onload = resolve);
+    }
+    
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    
+    const fechaHoy = new Date().toLocaleDateString('es-CO', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
+    
+    // Encabezado
+    pdf.setFillColor(30, 41, 59);
+    pdf.rect(0, 0, 210, 40, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(24);
+    pdf.text('C&A Cloud Factory', 20, 25);
+    pdf.setFontSize(10);
+    pdf.text('Informe Financiero - ' + fechaHoy, 20, 35);
+    
+    let y = 55;
+    
+    // Resumen
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(16);
+    pdf.text('Resumen Semanal', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(11);
+    pdf.text(`Órdenes Activas: ${document.getElementById('totalOrders').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Pares Producidos: ${document.getElementById('totalPares').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Total Nómina: ${document.getElementById('totalNomina').textContent}`, 20, y);
+    y += 7;
+    pdf.text(`Alertas Inventario: ${document.getElementById('inventoryAlerts').textContent}`, 20, y);
+    y += 15;
+    
+    // Órdenes
+    pdf.setFontSize(16);
+    pdf.text('Órdenes de Trabajo', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(10);
+    orders.slice(0, 10).forEach(order => {
+        const progress = Math.round((order.pares_hechos / order.cantidad_total) * 100) || 0;
+        pdf.text(`• ${order.cliente} - ${order.modelo}: ${order.pares_hechos}/${order.cantidad_total} (${progress}%)`, 25, y);
+        y += 6;
+        if (y > 270) { pdf.addPage(); y = 20; }
+    });
+    
+    y += 10;
+    
+    // Nómina
+    pdf.setFontSize(16);
+    pdf.text('Detalle Nómina', 20, y);
+    y += 10;
+    
+    const payrollItems = document.querySelectorAll('#payrollList > div');
+    pdf.setFontSize(10);
+    payrollItems.forEach(item => {
+        const nombre = item.querySelector('p.text-white')?.textContent || '';
+        const monto = item.querySelector('p.text-emerald-400')?.textContent || '';
+        if (nombre && monto) {
+            pdf.text(`• ${nombre}: ${monto}`, 25, y);
+            y += 6;
+            if (y > 270) { pdf.addPage(); y = 20; }
+        }
+    });
+    
+    y += 10;
+    
+    // Inventario
+    if (y > 230) { pdf.addPage(); y = 20; }
+    pdf.setFontSize(16);
+    pdf.text('Estado de Inventario', 20, y);
+    y += 10;
+    
+    pdf.setFontSize(10);
+    inventory.forEach(item => {
+        const status = item.cantidad <= item.minimo ? ' ⚠️ BAJO' : '';
+        pdf.text(`• ${item.nombre}: ${item.cantidad} ${item.unidad}${status}`, 25, y);
+        y += 6;
+        if (y > 270) { pdf.addPage(); y = 20; }
+    });
+    
+    // Pie de página
+    pdf.setFontSize(8);
+    pdf.setTextColor(128, 128, 128);
+    pdf.text('Generado por C&A Cloud Factory ERP', 20, 285);
+    
+    // Descargar
+    pdf.save(`Informe_CA_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('Informe PDF generado', 'success');
+}
+
+// ==================== PEDIDOS CLIENTE ====================
+
+let pedidosCliente = [];
+
+async function loadPedidosCliente() {
+    try {
+        const q = query(collection(db, 'pedidos_cliente'), orderBy('fecha_creacion', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            pedidosCliente = [];
+            let pendientes = 0, porRecibir = 0, enProduccion = 0, completadosHoy = 0;
+            const hoy = new Date().toDateString();
+            
+            snapshot.forEach(docSnap => {
+                const pedido = { id: docSnap.id, ...docSnap.data() };
+                pedidosCliente.push(pedido);
+                
+                if (pedido.estado === 'pendiente') pendientes++;
+                if (pedido.estado === 'en_produccion') enProduccion++;
+                if (pedido.estado === 'completado' && pedido.fecha_completado?.toDate?.()?.toDateString() === hoy) completadosHoy++;
+                
+                if (pedido.materiales) {
+                    porRecibir += pedido.materiales.filter(m => !m.recibido).length;
+                }
+            });
+            
+            document.getElementById('pedidosPendientesCount').textContent = pendientes;
+            document.getElementById('materialesPorRecibir').textContent = porRecibir;
+            document.getElementById('pedidosEnProduccion').textContent = enProduccion;
+            document.getElementById('pedidosCompletadosHoy').textContent = completadosHoy;
+            
+            const badge = document.getElementById('pedidosClienteBadge');
+            if (pendientes > 0) {
+                badge.textContent = pendientes;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+            
+            renderPedidosCliente();
+            loadClientInventory();
+        });
+    } catch (error) {
+        console.error('Error cargando pedidos cliente:', error);
+    }
+}
+
+function renderPedidosCliente() {
+    const list = document.getElementById('pedidosClienteList');
+    const filter = document.getElementById('filterPedidoEstado')?.value || 'todos';
+    
+    let filtered = pedidosCliente;
+    if (filter !== 'todos') {
+        filtered = pedidosCliente.filter(p => p.estado === filter);
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">Sin pedidos de clientes</p>';
+        return;
+    }
+    
+    const statusConfig = {
+        'pendiente': { color: 'bg-amber-600/20 text-amber-400', label: 'Pendiente', icon: 'clock' },
+        'materiales_recibidos': { color: 'bg-blue-600/20 text-blue-400', label: 'Mat. Recibidos', icon: 'box' },
+        'en_produccion': { color: 'bg-purple-600/20 text-purple-400', label: 'En Producción', icon: 'cogs' },
+        'completado': { color: 'bg-green-600/20 text-green-400', label: 'Completado', icon: 'check' },
+        'entregado': { color: 'bg-emerald-600/20 text-emerald-400', label: 'Entregado', icon: 'truck' }
+    };
+    
+    list.innerHTML = filtered.map(pedido => {
+        const status = statusConfig[pedido.estado] || statusConfig['pendiente'];
+        const fecha = pedido.fecha_creacion?.toDate?.() ? pedido.fecha_creacion.toDate().toLocaleDateString('es-CO') : '-';
+        const fechaEntrega = pedido.fecha_entrega_esperada?.toDate?.() ? pedido.fecha_entrega_esperada.toDate().toLocaleDateString('es-CO') : '-';
+        const progress = pedido.pares_hechos ? Math.round((pedido.pares_hechos / pedido.cantidad) * 100) : 0;
+        
+        const materialesHtml = pedido.materiales?.map((m, idx) => `
+            <div class="flex items-center justify-between bg-gray-700/30 rounded px-3 py-2">
+                <span class="text-gray-300 text-sm">${m.nombre}: ${m.cantidad} ${m.unidad}</span>
+                ${m.recibido 
+                    ? '<span class="text-green-400 text-xs"><i class="fas fa-check mr-1"></i>Recibido</span>'
+                    : `<button class="recibir-mat-btn px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition" data-pedido="${pedido.id}" data-idx="${idx}">
+                        <i class="fas fa-hand-holding mr-1"></i>Recibir
+                       </button>`
+                }
+            </div>
+        `).join('') || '';
+        
+        return `
+            <div class="bg-gray-700/50 rounded-xl p-4 border-l-4 ${pedido.estado === 'pendiente' ? 'border-amber-500' : pedido.estado === 'en_produccion' ? 'border-purple-500' : 'border-gray-600'}">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h4 class="text-white font-semibold">${pedido.modelo}</h4>
+                            <span class="px-2 py-1 rounded-full text-xs ${status.color}">
+                                <i class="fas fa-${status.icon} mr-1"></i>${status.label}
+                            </span>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            <i class="fas fa-user mr-1"></i>${pedido.cliente_nombre || 'Cliente'}
+                            <span class="mx-2">•</span>
+                            <i class="fas fa-hashtag mr-1"></i>${pedido.id.slice(-6).toUpperCase()}
+                        </p>
+                        <p class="text-gray-500 text-sm mt-1">
+                            Creado: ${fecha} | Entrega: ${fechaEntrega}
+                        </p>
+                        ${pedido.notas ? `<p class="text-gray-500 text-sm mt-1"><i class="fas fa-sticky-note mr-1"></i>${pedido.notas}</p>` : ''}
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-white">${pedido.cantidad}</p>
+                        <p class="text-gray-400 text-sm">pares</p>
+                        ${pedido.estado === 'en_produccion' ? `<p class="text-purple-400 text-sm mt-1">${pedido.pares_hechos || 0} hechos (${progress}%)</p>` : ''}
+                    </div>
+                </div>
+                
+                ${pedido.materiales && pedido.materiales.length > 0 ? `
+                    <div class="mt-4 pt-4 border-t border-gray-600">
+                        <p class="text-gray-400 text-sm mb-2"><i class="fas fa-cubes mr-1"></i>Materiales:</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${materialesHtml}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap gap-2">
+                    ${pedido.estado === 'pendiente' || pedido.estado === 'materiales_recibidos' ? `
+                        <button class="iniciar-produccion-btn px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-play mr-1"></i>Iniciar Producción
+                        </button>
+                    ` : ''}
+                    ${pedido.estado === 'en_produccion' ? `
+                        <button class="completar-pedido-btn px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-check mr-1"></i>Marcar Completado
+                        </button>
+                    ` : ''}
+                    ${pedido.estado === 'completado' ? `
+                        <button class="entregar-pedido-btn px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
+                            <i class="fas fa-truck mr-1"></i>Marcar Entregado
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Event listeners
+    document.querySelectorAll('.recibir-mat-btn').forEach(btn => {
+        btn.addEventListener('click', () => recibirMaterial(btn.dataset.pedido, parseInt(btn.dataset.idx)));
+    });
+    
+    document.querySelectorAll('.iniciar-produccion-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'en_produccion'));
+    });
+    
+    document.querySelectorAll('.completar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'completado'));
+    });
+    
+    document.querySelectorAll('.entregar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'entregado'));
+    });
+}
+
+async function recibirMaterial(pedidoId, materialIdx) {
+    try {
+        const pedido = pedidosCliente.find(p => p.id === pedidoId);
+        if (!pedido || !pedido.materiales[materialIdx]) return;
+        
+        const material = pedido.materiales[materialIdx];
+        material.recibido = true;
+        material.fecha_recibido = Timestamp.now();
+        
+        await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+            materiales: pedido.materiales
+        });
+        
+        // Agregar al inventario de clientes
+        await addDoc(collection(db, 'inventario_clientes'), {
+            cliente_id: pedido.cliente_id,
+            cliente_nombre: pedido.cliente_nombre,
+            pedido_id: pedidoId,
+            nombre: material.nombre,
+            tipo: material.tipo,
+            cantidad: material.cantidad,
+            unidad: material.unidad,
+            fecha_entrega: Timestamp.now(),
+            recibido: true
+        });
+        
+        // Verificar si todos los materiales fueron recibidos
+        const todosRecibidos = pedido.materiales.every(m => m.recibido);
+        if (todosRecibidos && pedido.estado === 'pendiente') {
+            await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+                estado: 'materiales_recibidos'
+            });
+        }
+        
+        showToast('Material recibido e ingresado al inventario', 'success');
+    } catch (error) {
+        console.error('Error recibiendo material:', error);
+        showToast('Error al recibir material', 'error');
+    }
+}
+
+async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
+    try {
+        const pedido = pedidosCliente.find(p => p.id === pedidoId);
+        const updateData = { estado: nuevoEstado };
+        
+        if (nuevoEstado === 'en_produccion') {
+            updateData.fecha_inicio_produccion = Timestamp.now();
+            
+            // Crear orden de trabajo en el sistema de producción
+            if (pedido) {
+                await addDoc(collection(db, 'ordenes'), {
+                    cliente: pedido.cliente_nombre || 'Cliente',
+                    modelo: pedido.modelo,
+                    cantidad_total: pedido.cantidad,
+                    cantidad_hecha: 0,
+                    estado: 'activa',
+                    fecha_creacion: Timestamp.now(),
+                    pedido_cliente_id: pedidoId,
+                    tallas: pedido.tallas || '',
+                    notas: pedido.notas || ''
+                });
+            }
+        } else if (nuevoEstado === 'completado') {
+            updateData.fecha_completado = Timestamp.now();
+        } else if (nuevoEstado === 'entregado') {
+            updateData.fecha_entregado = Timestamp.now();
+        }
+        
+        await updateDoc(doc(db, 'pedidos_cliente', pedidoId), updateData);
+        showToast(`Pedido marcado como ${nuevoEstado.replace('_', ' ')}`, 'success');
+    } catch (error) {
+        console.error('Error cambiando estado:', error);
+        showToast('Error al cambiar estado', 'error');
+    }
+}
+
+// ==================== INVENTARIO CLIENTES ====================
+
+let clientInventory = [];
+
+async function loadClientInventory() {
+    try {
+        const q = query(collection(db, 'inventario_clientes'), orderBy('fecha_entrega', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            clientInventory = [];
+            const clientesSet = new Set();
+            
+            snapshot.forEach(docSnap => {
+                const item = { id: docSnap.id, ...docSnap.data() };
+                clientInventory.push(item);
+                if (item.cliente_nombre) clientesSet.add(item.cliente_nombre);
+            });
+            
+            // Actualizar filtro de clientes
+            const filterSelect = document.getElementById('filterClienteMaterial');
+            if (filterSelect) {
+                const currentValue = filterSelect.value;
+                filterSelect.innerHTML = '<option value="todos">Todos los clientes</option>' +
+                    Array.from(clientesSet).map(c => `<option value="${c}">${c}</option>`).join('');
+                filterSelect.value = currentValue;
+            }
+            
+            renderClientInventory();
+        });
+    } catch (error) {
+        console.error('Error cargando inventario clientes:', error);
+    }
+}
+
+function renderClientInventory() {
+    const list = document.getElementById('clientInventoryList');
+    if (!list) return;
+    
+    const filter = document.getElementById('filterClienteMaterial')?.value || 'todos';
+    
+    let filtered = clientInventory;
+    if (filter !== 'todos') {
+        filtered = clientInventory.filter(i => i.cliente_nombre === filter);
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">Sin materiales de clientes registrados</p>';
+        return;
+    }
+    
+    // Agrupar por cliente
+    const grouped = {};
+    filtered.forEach(item => {
+        const key = item.cliente_nombre || 'Sin cliente';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+    });
+    
+    list.innerHTML = Object.entries(grouped).map(([cliente, items]) => `
+        <div class="bg-gray-700/30 rounded-xl p-4">
+            <h4 class="text-white font-semibold mb-3">
+                <i class="fas fa-user mr-2 text-blue-400"></i>${cliente}
+            </h4>
+            <div class="space-y-2">
+                ${items.map(item => {
+                    const fecha = item.fecha_entrega?.toDate?.() ? item.fecha_entrega.toDate().toLocaleDateString('es-CO') : '-';
+                    return `
+                        <div class="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2">
+                            <div>
+                                <span class="text-gray-300">${item.nombre}</span>
+                                <span class="text-gray-500 text-sm ml-2">(${item.cantidad} ${item.unidad})</span>
+                            </div>
+                            <span class="text-gray-500 text-xs">${fecha}</span>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+// ==================== INVENTORY SUB-TABS ====================
+
+function switchInvSubTab(invType) {
+    document.querySelectorAll('.inv-sub-tab').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white');
+        btn.classList.add('text-gray-400');
+    });
+    
+    document.querySelector(`[data-inv="${invType}"]`).classList.add('bg-emerald-600', 'text-white');
+    document.querySelector(`[data-inv="${invType}"]`).classList.remove('text-gray-400');
+    
+    document.querySelectorAll('.inv-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById(`inv${invType.charAt(0).toUpperCase() + invType.slice(1)}Content`).classList.remove('hidden');
+}
+
 // ==================== TABS ====================
 
 function switchTab(tabName) {
@@ -529,6 +1134,23 @@ function setupEventListeners() {
     
     document.getElementById('saveInsumoBtn').addEventListener('click', saveInsumo);
     document.getElementById('closeWeekBtn').addEventListener('click', closeWeek);
+    
+    // Caja Menor
+    document.getElementById('saveCajaMovBtn')?.addEventListener('click', saveCajaMovimiento);
+    
+    // Exportar PDF
+    document.getElementById('exportPdfBtn')?.addEventListener('click', exportarInformePDF);
+    
+    // Inventory sub-tabs
+    document.querySelectorAll('.inv-sub-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchInvSubTab(btn.dataset.inv));
+    });
+    
+    // Filter client materials
+    document.getElementById('filterClienteMaterial')?.addEventListener('change', renderClientInventory);
+    
+    // Filter pedidos cliente
+    document.getElementById('filterPedidoEstado')?.addEventListener('change', renderPedidosCliente);
 }
 
 // Iniciar
