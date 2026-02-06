@@ -316,6 +316,14 @@
         let pedidos = [];
         let materiales = [];
 
+        // ==================== TIMEZONE FIX ====================
+        // Parsear fecha de input sin problemas de timezone (Colombia UTC-5)
+        function parseLocalDate(dateString) {
+            if (!dateString) return null;
+            const [year, month, day] = dateString.split('-').map(Number);
+            return new Date(year, month - 1, day, 12, 0, 0);
+        }
+
         // ==================== TOAST ====================
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
@@ -791,7 +799,7 @@
                     tallas,
                     color,
                     color_secundario: colorSecundario,
-                    fecha_entrega_esperada: Timestamp.fromDate(new Date(fechaEntrega)),
+                    fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
                     notas,
                     materiales: materialesList,
                     estado: 'pendiente',
