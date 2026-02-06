@@ -1484,6 +1484,13 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
+        function parseLocalDate(dateString) {
+            if (!dateString) return null;
+            const [year, month, day] = String(dateString).split('-').map(Number);
+            if (!year || !month || !day) return null;
+            return new Date(year, month - 1, day, 12, 0, 0);
+        }
+
         function generarCalendarioPagos(fechaInicio, frecuencia, cuotas, valorCuota, fechasOverride = null) {
             const pagos = [];
 
@@ -1527,8 +1534,8 @@
 
             if (!frecuencia || !cuotas || !fechaAperturaStr) return;
 
-            const fechaApertura = new Date(`${fechaAperturaStr}T00:00:00`);
-            if (Number.isNaN(fechaApertura.getTime())) return;
+            const fechaApertura = parseLocalDate(fechaAperturaStr);
+            if (!fechaApertura || Number.isNaN(fechaApertura.getTime())) return;
 
             const valorCuotaFake = 1;
             const automatico = generarCalendarioPagos(fechaApertura, frecuencia, cuotas, valorCuotaFake).map(p => p.fecha);
@@ -1745,8 +1752,8 @@
                     const monto = parseMoney(montoEl.value);
                     const fecha = (fechaEl.value || '').trim();
 
-                    const d = new Date(`${fecha}T00:00:00`);
-                    if (!monto || monto <= 0 || !fecha || Number.isNaN(d.getTime())) {
+                    const d = parseLocalDate(fecha);
+                    if (!monto || monto <= 0 || !fecha || !d || Number.isNaN(d.getTime())) {
                         errorEl.style.display = 'block';
                         playBeep('error');
                         return;
@@ -2003,8 +2010,8 @@
 
                 const onOk = () => {
                     const v = (inputEl.value || '').trim();
-                    const d = new Date(`${v}T00:00:00`);
-                    if (!v || Number.isNaN(d.getTime())) {
+                    const d = parseLocalDate(v);
+                    if (!v || !d || Number.isNaN(d.getTime())) {
                         errorEl.style.display = 'block';
                         playBeep('error');
                         inputEl.focus();
@@ -2064,8 +2071,8 @@
                 const valorCuota = Math.ceil(totalPagar / cuotas);
 
                 const hoy = new Date();
-                const fechaApertura = new Date(`${fechaAperturaStr}T00:00:00`);
-                if (Number.isNaN(fechaApertura.getTime())) {
+                const fechaApertura = parseLocalDate(fechaAperturaStr);
+                if (!fechaApertura || Number.isNaN(fechaApertura.getTime())) {
                     document.getElementById('previewCard').style.display = 'none';
                     return;
                 }
@@ -2076,8 +2083,8 @@
                 const tieneManualFechas = Array.isArray(manualCuotasFechas) && manualCuotasFechas.length === cuotas;
 
                 if (tieneManualFechas) {
-                    primeraCuota = new Date(`${manualCuotasFechas[0]}T00:00:00`);
-                    ultimaCuota = new Date(`${manualCuotasFechas[manualCuotasFechas.length - 1]}T00:00:00`);
+                    primeraCuota = parseLocalDate(manualCuotasFechas[0]);
+                    ultimaCuota = parseLocalDate(manualCuotasFechas[manualCuotasFechas.length - 1]);
                 } else {
                     primeraCuota = new Date(fechaApertura);
                     primeraCuota.setDate(primeraCuota.getDate() + frecuencia);
@@ -2112,8 +2119,8 @@
 
             try {
                 const fechaAperturaStr = document.getElementById('fechaApertura').value;
-                const fechaAperturaDate = new Date(`${fechaAperturaStr}T00:00:00`);
-                if (Number.isNaN(fechaAperturaDate.getTime())) {
+                const fechaAperturaDate = parseLocalDate(fechaAperturaStr);
+                if (!fechaAperturaDate || Number.isNaN(fechaAperturaDate.getTime())) {
                     showAlert('Fecha de apertura inválida.', 'danger');
                     showLoading(false);
                     return;
@@ -2285,7 +2292,7 @@
                         if (pago.pagada) {
                             pagosRealizados += pago.valor;
                         } else {
-                            const fechaPago = new Date(pago.fecha);
+                            const fechaPago = parseLocalDate(pago.fecha);
                             fechaPago.setHours(0, 0, 0, 0);
                             const diff = Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
                             if (diff > diasMora) diasMora = diff;
@@ -2369,7 +2376,7 @@
                 let diasMora = 0;
                 cliente.pagos.forEach(pago => {
                     if (!pago.pagada) {
-                        const fechaPago = new Date(pago.fecha);
+                        const fechaPago = parseLocalDate(pago.fecha);
                         fechaPago.setHours(0, 0, 0, 0);
                         const diff = Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
                         if (diff > diasMora) diasMora = diff;
@@ -2442,7 +2449,7 @@
                     <i class="bi bi-check-circle me-2"></i><strong>Desembolsado</strong>
                     ${desembolso.banco ? `<br><small><i class="bi bi-bank me-1"></i>Banco: ${desembolso.banco}</small>` : ''}
                     ${desembolso.numeroCuenta ? `<br><small><i class="bi bi-credit-card me-1"></i>Cuenta: ${desembolso.numeroCuenta}</small>` : ''}
-                    ${desembolso.fechaDesembolso ? `<br><small><i class="bi bi-calendar me-1"></i>Fecha: ${new Date(desembolso.fechaDesembolso).toLocaleDateString('es-CO')}</small>` : ''}
+                    ${desembolso.fechaDesembolso ? `<br><small><i class="bi bi-calendar me-1"></i>Fecha: ${parseLocalDate(desembolso.fechaDesembolso)?.toLocaleDateString('es-CO') || '-'}</small>` : ''}
                    </div>`
                 : `<div class="alert alert-warning mb-3">
                     <i class="bi bi-clock me-2"></i><strong>Pendiente por desembolso</strong>
@@ -2498,7 +2505,7 @@
                                         <div class="d-flex justify-content-between align-items-start border-bottom py-2">
                                             <div>
                                                 <div class="fw-semibold">${(ab?.tipo || 'capital') === 'interes' ? 'Abono a Interés' : 'Abono a Capital'}</div>
-                                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${ab?.fecha ? new Date(ab.fecha).toLocaleDateString('es-CO') : '-'}</small>
+                                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${ab?.fecha ? (parseLocalDate(ab.fecha)?.toLocaleDateString('es-CO') || '-') : '-'}</small>
                                             </div>
                                             <div class="fw-bold text-success">${formatMoney(ab?.monto || 0)}</div>
                                         </div>
@@ -2509,7 +2516,7 @@
 
                     <h6 class="mb-3"><i class="bi bi-calendar-check me-2"></i>Calendario de Pagos</h6>
                     ${cliente.pagos.map((pago, index) => {
-                        const fechaPago = new Date(pago.fecha);
+                        const fechaPago = parseLocalDate(pago.fecha);
                         fechaPago.setHours(0, 0, 0, 0);
                         const vencida = !pago.pagada && fechaPago < hoy;
                         const estado = pago.pagada ? 'pagada' : (vencida ? 'vencida' : 'pendiente');
@@ -2520,10 +2527,10 @@
                                     <div class="cuota-number">Cuota ${pago.numero}</div>
                                     <div class="cuota-date">
                                         <i class="bi bi-calendar3 me-1"></i>
-                                        ${new Date(pago.fecha).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                        ${(parseLocalDate(pago.fecha)?.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' }) || '-')}
                                         ${vencida ? '<span class="text-danger ms-2"><i class="bi bi-exclamation-circle"></i> Vencida</span>' : ''}
                                     </div>
-                                    ${pago.pagada && pago.fechaPago ? `<small class="text-success"><i class="bi bi-check2 me-1"></i>Pagada el ${new Date(pago.fechaPago).toLocaleDateString('es-CO')}</small>` : ''}
+                                    ${pago.pagada && pago.fechaPago ? `<small class="text-success"><i class="bi bi-check2 me-1"></i>Pagada el ${(parseLocalDate(pago.fechaPago)?.toLocaleDateString('es-CO') || '-')}</small>` : ''}
                                 </div>
                                 <div class="text-end">
                                     <div class="cuota-value">${formatMoney(pago.valor)}</div>
@@ -2566,7 +2573,7 @@
                 if (!prestamo) throw new Error('Préstamo no encontrado');
 
                 prestamo.pagos[pagoIndex].pagada = true;
-                prestamo.pagos[pagoIndex].fechaPago = new Date(`${fechaPagoStr}T00:00:00`).toISOString();
+                prestamo.pagos[pagoIndex].fechaPago = fechaPagoStr;
 
                 // Check if all payments are done
                 const todasPagadas = prestamo.pagos.every(p => p.pagada);
