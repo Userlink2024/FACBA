@@ -1,6 +1,25 @@
 // ============================================
 // C&A CLOUD FACTORY - Utility Functions
+// Zona horaria: America/Bogota (UTC-5)
 // ============================================
+
+// Parsear fecha de input type="date" sin problemas de timezone
+// Evita que la fecha se corra hacia atrás por UTC
+export function parseLocalDate(dateString) {
+    if (!dateString) return null;
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0); // Mediodía para evitar problemas de DST
+}
+
+// Formatear fecha para input type="date" (YYYY-MM-DD)
+export function formatDateForInput(date) {
+    if (!date) return '';
+    const d = date.toDate ? date.toDate() : new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 // Formatear moneda colombiana
 export function formatCurrency(amount) {
