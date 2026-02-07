@@ -680,6 +680,21 @@
         // const analytics = getAnalytics(app); // Opcional
         const db = getFirestore(app); // Usaremos Firestore
 
+        // --- Usuario Actual ---
+        let currentUser = null;
+        function loadCurrentUser() {
+            const json = localStorage.getItem('datosUsuario');
+            if (json) {
+                try {
+                    currentUser = JSON.parse(json);
+                    console.log('Usuario cargado:', currentUser.nombreCompleto || currentUser.usuario);
+                } catch (e) {
+                    console.warn('Error al cargar usuario:', e);
+                }
+            }
+        }
+        loadCurrentUser(); // Cargar usuario al iniciar
+
         // --- Elementos del DOM ---
         console.log('DEBUG: Obteniendo referencias a elementos del DOM...');
         const btnInventario = document.getElementById('btnInventario');
@@ -1554,6 +1569,13 @@
                     showStatusMessage("Producto guardado con éxito!");
                 }
                 resetFormInventario();
+                // Enfocar Referencia para continuar digitando rápidamente
+                setTimeout(() => {
+                    if (typeof invReferencia !== 'undefined' && invReferencia) {
+                        invReferencia.focus();
+                        if (typeof invReferencia.select === 'function') invReferencia.select();
+                    }
+                }, 0);
             } catch (e) {
                 console.error("Error al guardar el producto: ", e);
                 showStatusMessage("Error al guardar el producto.", true);
@@ -2137,6 +2159,9 @@
             // --- Fin Generar Código de Registro Único ---
 
 
+            // Obtener nombre del usuario actual
+            const usuarioActual = typeof currentUser !== 'undefined' && currentUser ? (currentUser.nombreCompleto || currentUser.usuario || 'Desconocido') : 'Desconocido';
+            
             const nuevaFactura = {
                 codigoRegistro: codigoRegistro, // Añadir el código de registro
                 fechaHora: fechaHora,
@@ -2147,7 +2172,8 @@
                 valorTotal: valorTotal,
                  saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, // Si es contado, saldo es 0
                 abonos: [], // Inicializar array de abonos
-                createdAt: new Date() // Opcional: añadir timestamp de creación
+                createdAt: new Date(), // Opcional: añadir timestamp de creación
+                creadoPor: usuarioActual // Nombre de quien creó la factura
             };
 
             try {
@@ -2203,10 +2229,14 @@
 
             const nuevoSaldoPendiente = saldoPendienteActual - montoAbono;
 
+            // Obtener nombre del usuario actual
+            const usuarioActual = typeof currentUser !== 'undefined' && currentUser ? (currentUser.nombreCompleto || currentUser.usuario || 'Desconocido') : 'Desconocido';
+            
             const abonoData = {
                 fechaAbono: fechaAbono,
                 montoAbono: montoAbono,
-                createdAt: new Date() // Opcional: timestamp del abono
+                createdAt: new Date(), // Opcional: timestamp del abono
+                registradoPor: usuarioActual // Nombre de quien registró el abono
             };
 
             try {
