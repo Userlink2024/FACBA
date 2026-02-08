@@ -1010,8 +1010,13 @@
         window.calcularPreviewSolicitud = function() {
             const monto = parseCOP(document.getElementById('solMonto').value);
             const plazo = parseInt(document.getElementById('solPlazo').value) || 12;
-            const interesMensual = 0.10; // 10% estimado
-            const cuotaEstimada = (monto + (monto * interesMensual * (plazo / 4))) / plazo;
+            const frecuencia = parseInt(document.getElementById('solFrecuencia').value) || 30;
+            const interesMensualPct = 10; // 10% estimado (sujeto a aprobación del prestamista)
+            // Interés es MENSUAL: calcular meses que cubre el crédito
+            const mesesCredito = Math.ceil(plazo * frecuencia / 30);
+            const totalInteres = monto * (interesMensualPct / 100) * mesesCredito;
+            const totalPagar = monto + totalInteres;
+            const cuotaEstimada = Math.ceil(totalPagar / plazo);
             document.getElementById('previewCuota').textContent = formatMoney(cuotaEstimada);
         };
 
@@ -1097,10 +1102,16 @@
                             const frecuencia = p.frecuencia || 30;
                             let totalAbonado = p.totalAbonado || 0;
                             let cuotasPagadas = p.cuotasPagadas || 0;
-                            // Si tiene array de pagos, calcular desde ahí
+                            // Si tiene array de pagos, calcular cuotas pagadas y total abonado por cuotas
                             if (Array.isArray(p.pagos)) {
                                 cuotasPagadas = p.pagos.filter(pg => pg.pagada).length;
-                                totalAbonado = p.pagos.filter(pg => pg.pagada).reduce((sum, pg) => sum + (pg.montoPagado || pg.monto || 0), 0);
+                                totalAbonado = p.pagos.filter(pg => pg.pagada).reduce((sum, pg) => sum + (pg.valor || pg.monto || 0), 0);
+                            }
+                            // Sumar abonos adicionales (capital/interés) si existen
+                            let totalAbonosExtra = 0;
+                            if (Array.isArray(p.abonos)) {
+                                totalAbonosExtra = p.abonos.reduce((sum, ab) => sum + (ab.monto || 0), 0);
+                                totalAbonado += totalAbonosExtra;
                             }
                             prestamosCliente.push({
                                 id, ...p,
@@ -1116,7 +1127,43 @@
                     }
                 }
 
-                // Cargar movimientos (abonos)
+                // Construir movimientos desde los datos del préstamo
+                prestamosCliente.forEach(prestamo => {
+                    // Cuotas pagadas del calendario de pagos
+                    if (Array.isArray(prestamo.pagos)) {
+                        prestamo.pagos.forEach((pg, idx) => {
+                            if (pg.pagada) {
+                                movimientosCliente.push({
+                                    id: `pago_${prestamo.id}_${idx}`,
+                                    tipo: 'abono',
+                                    subtipo: 'cuota',
+                                    prestamoId: prestamo.id,
+                                    prestamoNombre: prestamo.nombre || prestamo.monto,
+                                    monto: pg.valor || pg.monto || 0,
+                                    fecha: pg.fechaPago || pg.fecha,
+                                    descripcion: `Cuota ${pg.numero || (idx + 1)} de ${prestamo.cuotas}`
+                                });
+                            }
+                        });
+                    }
+                    // Abonos adicionales (capital/interés)
+                    if (Array.isArray(prestamo.abonos)) {
+                        prestamo.abonos.forEach((ab, idx) => {
+                            movimientosCliente.push({
+                                id: `abono_${prestamo.id}_${idx}`,
+                                tipo: 'abono',
+                                subtipo: ab.tipo || 'capital',
+                                prestamoId: prestamo.id,
+                                prestamoNombre: prestamo.nombre || prestamo.monto,
+                                monto: ab.monto || 0,
+                                fecha: ab.fecha,
+                                descripcion: ab.tipo === 'interes' ? 'Abono a Interés' : 'Abono a Capital'
+                            });
+                        });
+                    }
+                });
+
+                // También cargar abonos de la colección separada (legacy)
                 const abonosSnap = await get(ref(db, `prestamos_app/users/${prestamistaUid}/abonos`));
                 if (abonosSnap.exists()) {
                     const allAbonos = abonosSnap.val();
@@ -1124,7 +1171,10 @@
                         const a = allAbonos[id];
                         const prestamo = prestamosCliente.find(p => p.id === a.prestamoId);
                         if (prestamo) {
-                            movimientosCliente.push({ id, tipo: 'abono', ...a });
+                            // Evitar duplicados si ya se cargó desde el prestamo
+                            if (!movimientosCliente.find(m => m.fecha === a.fecha && m.monto === a.monto && m.prestamoId === a.prestamoId)) {
+                                movimientosCliente.push({ id, tipo: 'abono', subtipo: 'legacy', prestamoId: a.prestamoId, ...a });
+                            }
                         }
                     }
                 }
@@ -1225,15 +1275,31 @@
             `;
         }
 
+        function getMovementLabel(m) {
+            if (m.descripcion) return m.descripcion;
+            if (m.subtipo === 'cuota') return 'Pago de cuota';
+            if (m.subtipo === 'interes') return 'Abono a Interés';
+            if (m.subtipo === 'capital') return 'Abono a Capital';
+            if (m.tipo === 'abono') return 'Pago realizado';
+            return 'Préstamo';
+        }
+
+        function getMovementIcon(m) {
+            if (m.subtipo === 'cuota') return 'bi-check-circle';
+            if (m.subtipo === 'interes') return 'bi-percent';
+            if (m.subtipo === 'capital') return 'bi-cash-stack';
+            return m.tipo === 'abono' ? 'bi-arrow-up-circle' : 'bi-cash-coin';
+        }
+
         function renderMovementItem(m) {
             return `
                 <div class="movement-item">
                     <div class="movement-info">
                         <div class="movement-icon ${m.tipo === 'abono' ? 'payment' : 'loan'}">
-                            <i class="bi bi-${m.tipo === 'abono' ? 'arrow-up-circle' : 'cash-coin'}"></i>
+                            <i class="bi ${getMovementIcon(m)}"></i>
                         </div>
                         <div class="movement-text">
-                            <h4>${m.tipo === 'abono' ? 'Pago realizado' : 'Préstamo'}</h4>
+                            <h4>${getMovementLabel(m)}</h4>
                             <p>${formatDate(m.fecha)}</p>
                         </div>
                     </div>
@@ -1367,7 +1433,30 @@
             if (!prestamo) return;
 
             const saldo = (prestamo.totalPagar || 0) - (prestamo.totalAbonado || 0);
-            const pagos = movimientosCliente.filter(m => m.prestamoId === prestamoId);
+            
+            // Obtener pagos de cuotas del calendario
+            const pagosCuotas = Array.isArray(prestamo.pagos)
+                ? prestamo.pagos.filter(pg => pg.pagada).map((pg, idx) => ({
+                    tipo: 'cuota',
+                    numero: pg.numero || (idx + 1),
+                    monto: pg.valor || pg.monto || 0,
+                    fecha: pg.fechaPago || pg.fecha,
+                    totalCuotas: prestamo.cuotas
+                }))
+                : [];
+            
+            // Obtener abonos adicionales (capital/interés)
+            const abonosExtra = Array.isArray(prestamo.abonos)
+                ? prestamo.abonos.map(ab => ({
+                    tipo: ab.tipo || 'capital',
+                    monto: ab.monto || 0,
+                    fecha: ab.fecha,
+                    descripcion: ab.tipo === 'interes' ? 'Abono a Interés' : 'Abono a Capital'
+                }))
+                : [];
+            
+            // Combinar y ordenar por fecha
+            const todosLosPagos = [...pagosCuotas, ...abonosExtra].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
             // Desembolso info
             const desemb = prestamo.desembolso || {};
@@ -1399,7 +1488,7 @@
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Interés:</span>
-                        <strong>${prestamo.interes || 0}%${prestamo.valorInteres ? ` (${formatMoney(prestamo.valorInteres)})` : ''}</strong>
+                        <strong>${prestamo.interes || 0}% × ${prestamo.mesesCredito || Math.ceil((prestamo.cuotas || 1) * (prestamo.frecuencia || 30) / 30)} mes(es) = ${formatMoney(prestamo.valorInteres || 0)}</strong>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Total a pagar:</span>
@@ -1433,17 +1522,41 @@
                 </div>
                 <h6 class="mt-3 mb-2"><i class="bi bi-bank me-1"></i>Estado de Desembolso</h6>
                 ${desembolsoHTML}
-                <h6 class="mt-4 mb-3">Historial de pagos</h6>
-                ${pagos.length === 0 ? '<p class="text-muted text-center">Sin pagos registrados</p>' :
-                    pagos.map(p => `
+                <h6 class="mt-4 mb-3"><i class="bi bi-list-check me-1"></i>Calendario de Cuotas</h6>
+                ${Array.isArray(prestamo.pagos) && prestamo.pagos.length > 0
+                    ? prestamo.pagos.map(pg => `
                         <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
-                                <small class="text-muted">${formatDate(p.fecha)}</small>
+                                <span class="${pg.pagada ? 'text-success' : 'text-muted'}">
+                                    <i class="bi ${pg.pagada ? 'bi-check-circle-fill' : 'bi-circle'} me-1"></i>
+                                    Cuota ${pg.numero}
+                                </span>
+                                <small class="text-muted d-block">${formatDate(pg.fecha)}</small>
+                                ${pg.pagada && pg.fechaPago ? `<small class="text-success d-block">Pagada el ${formatDate(pg.fechaPago)}</small>` : ''}
                             </div>
-                            <strong class="text-success">${formatMoney(p.monto)}</strong>
+                            <div class="text-end">
+                                <strong class="${pg.pagada ? 'text-success' : ''}">${formatMoney(pg.valor || pg.monto || 0)}</strong>
+                                ${pg.pagada ? '<br><span class="badge bg-success" style="font-size:0.65rem">Pagada</span>' : '<br><span class="badge bg-secondary" style="font-size:0.65rem">Pendiente</span>'}
+                            </div>
                         </div>
                     `).join('')
+                    : '<p class="text-muted text-center">Sin calendario de cuotas</p>'
                 }
+                ${abonosExtra.length > 0 ? `
+                    <h6 class="mt-4 mb-3"><i class="bi bi-cash-stack me-1"></i>Abonos Adicionales</h6>
+                    ${abonosExtra.map(ab => `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="${ab.tipo === 'interes' ? 'text-info' : 'text-primary'}">
+                                    <i class="bi ${ab.tipo === 'interes' ? 'bi-percent' : 'bi-cash-stack'} me-1"></i>
+                                    ${ab.descripcion}
+                                </span>
+                                <small class="text-muted d-block">${formatDate(ab.fecha)}</small>
+                            </div>
+                            <strong class="text-success">${formatMoney(ab.monto)}</strong>
+                        </div>
+                    `).join('')}
+                ` : ''}
             `;
 
             new bootstrap.Modal(document.getElementById('detalleModal')).show();
