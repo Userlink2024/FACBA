@@ -3059,9 +3059,15 @@
 
         function formatDate(dateStr) {
             if (!dateStr) return '-';
+            // Si es formato YYYY-MM-DD (sin hora), parsear como fecha local para evitar desfase por zona horaria
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                const [y, m, d] = dateStr.split('-').map(Number);
+                const fecha = new Date(y, m - 1, d);
+                return fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Bogota' });
+            }
             const d = new Date(dateStr);
             if (Number.isNaN(d.getTime())) return '-';
-            return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+            return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Bogota' });
         }
 
         function parsePercent(value) {
@@ -3112,8 +3118,8 @@
                 document.getElementById('previewInteres').textContent = formatMoney(valorInteres);
                 document.getElementById('previewTotal').textContent = formatMoney(totalPagar);
                 document.getElementById('previewCuota').textContent = formatMoney(valorCuota);
-                document.getElementById('previewPrimeraCuota').textContent = primeraCuota.toLocaleDateString('es-CO');
-                document.getElementById('previewUltimaCuota').textContent = ultimaCuota.toLocaleDateString('es-CO');
+                document.getElementById('previewPrimeraCuota').textContent = primeraCuota.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+                document.getElementById('previewUltimaCuota').textContent = ultimaCuota.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
 
                 document.getElementById('previewCard').style.display = 'block';
 
@@ -3191,8 +3197,8 @@
                     activo: true,
                     desembolso: {
                         desembolsado,
-                        banco: desembolsado ? bancoDesembolso : '',
-                        numeroCuenta: desembolsado ? numeroCuenta : '',
+                        banco: bancoDesembolso || '',
+                        numeroCuenta: numeroCuenta || '',
                         fechaDesembolso: desembolsado ? fechaDesembolso : ''
                     }
                 };
@@ -3480,11 +3486,13 @@
                     <i class="bi bi-check-circle me-2"></i><strong>Desembolsado</strong>
                     ${desembolso.banco ? `<br><small><i class="bi bi-bank me-1"></i>Banco: ${desembolso.banco}</small>` : ''}
                     ${desembolso.numeroCuenta ? `<br><small><i class="bi bi-credit-card me-1"></i>Cuenta: ${desembolso.numeroCuenta}</small>` : ''}
-                    ${desembolso.fechaDesembolso ? `<br><small><i class="bi bi-calendar me-1"></i>Fecha: ${parseLocalDate(desembolso.fechaDesembolso)?.toLocaleDateString('es-CO') || '-'}</small>` : ''}
+                    ${desembolso.fechaDesembolso ? `<br><small><i class="bi bi-calendar me-1"></i>Fecha: ${parseLocalDate(desembolso.fechaDesembolso)?.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) || '-'}</small>` : ''}
                    </div>`
                 : `<div class="alert alert-warning mb-3">
                     <i class="bi bi-clock me-2"></i><strong>Pendiente por desembolso</strong>
-                    <button class="btn btn-sm btn-success ms-2" onclick="marcarDesembolsado('${cliente.id}')">Marcar Desembolsado</button>
+                    ${desembolso.banco ? `<br><small><i class="bi bi-bank me-1"></i>Banco: ${desembolso.banco}</small>` : ''}
+                    ${desembolso.numeroCuenta ? `<br><small><i class="bi bi-credit-card me-1"></i>Cuenta: ${desembolso.numeroCuenta}</small>` : ''}
+                    <br><button class="btn btn-sm btn-success mt-2" onclick="marcarDesembolsado('${cliente.id}')">Marcar Desembolsado</button>
                    </div>`;
 
             const content = document.getElementById('clientDetailContent');
@@ -3536,7 +3544,7 @@
                                         <div class="d-flex justify-content-between align-items-start border-bottom py-2">
                                             <div>
                                                 <div class="fw-semibold">${(ab?.tipo || 'capital') === 'interes' ? 'Abono a Interés' : 'Abono a Capital'}</div>
-                                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${ab?.fecha ? (parseLocalDate(ab.fecha)?.toLocaleDateString('es-CO') || '-') : '-'}</small>
+                                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${ab?.fecha ? (parseLocalDate(ab.fecha)?.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) || '-') : '-'}</small>
                                             </div>
                                             <div class="fw-bold text-success">${formatMoney(ab?.monto || 0)}</div>
                                         </div>
@@ -3558,10 +3566,10 @@
                                     <div class="cuota-number">Cuota ${pago.numero}</div>
                                     <div class="cuota-date">
                                         <i class="bi bi-calendar3 me-1"></i>
-                                        ${(parseLocalDate(pago.fecha)?.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' }) || '-')}
+                                        ${(parseLocalDate(pago.fecha)?.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Bogota' }) || '-')}
                                         ${vencida ? '<span class="text-danger ms-2"><i class="bi bi-exclamation-circle"></i> Vencida</span>' : ''}
                                     </div>
-                                    ${pago.pagada && pago.fechaPago ? `<small class="text-success"><i class="bi bi-check2 me-1"></i>Pagada el ${(parseLocalDate(pago.fechaPago)?.toLocaleDateString('es-CO') || '-')}</small>` : ''}
+                                    ${pago.pagada && pago.fechaPago ? `<small class="text-success"><i class="bi bi-check2 me-1"></i>Pagada el ${(parseLocalDate(pago.fechaPago)?.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) || '-')}</small>` : ''}
                                 </div>
                                 <div class="text-end">
                                     <div class="cuota-value">${formatMoney(pago.valor)}</div>
