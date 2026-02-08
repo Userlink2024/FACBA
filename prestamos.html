@@ -1300,6 +1300,28 @@
         </div>
     </div>
 
+    <!-- Modal Confirmación/Prompt Genérico -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" id="confirmModalHeader">
+                    <h5 class="modal-title" id="confirmModalTitle">Confirmar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmModalMessage" class="mb-3">¿Estás seguro?</p>
+                    <div id="confirmModalInputContainer" style="display:none;">
+                        <input type="text" class="form-control" id="confirmModalInput" placeholder="">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="confirmModalCancelBtn">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmModalOkBtn">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- PWA Setup Script -->
     <script>
         // PWA Install prompt
@@ -1652,8 +1674,15 @@
 
         async function cambiarPinUsuario() {
             if (!currentUser) return;
-            const nuevoPin = prompt('Ingresa tu nuevo PIN de 4 dígitos:');
-            if (!nuevoPin || !/^\d{4}$/.test(nuevoPin.trim())) {
+            const nuevoPin = await showPromptModal({
+                title: 'Cambiar PIN',
+                message: 'Ingresa tu nuevo PIN de seguridad',
+                placeholder: '4 dígitos',
+                okText: 'Guardar PIN',
+                okClass: 'btn-primary'
+            });
+            if (nuevoPin === null) return;
+            if (!/^\d{4}$/.test((nuevoPin || '').trim())) {
                 showAlert('El PIN debe ser de 4 dígitos numéricos.', 'danger');
                 playBeep('error');
                 return;
@@ -1949,56 +1978,46 @@
             }
         };
 
+        let solicitudPendienteAprobacion = null;
+
         window.aprobarSolicitudCredito = async function(solicitudId, clienteUid) {
             const solicitud = solicitudesCredito.find(s => s.id === solicitudId);
             if (!solicitud) return;
             
-            const interes = prompt('Ingresa el porcentaje de interés a aplicar (ej: 10):', '10');
-            if (interes === null) return;
-            const interesNum = parseFloat(interes) || 10;
+            // Guardar referencia a la solicitud para usarla al guardar el préstamo
+            solicitudPendienteAprobacion = { id: solicitudId, clienteUid, ...solicitud };
             
-            const monto = solicitud.montoSolicitado;
-            const cuotas = solicitud.plazoSolicitado;
-            const totalInteres = monto * (interesNum / 100) * (cuotas / 4);
-            const totalPagar = monto + totalInteres;
-            const valorCuota = Math.ceil(totalPagar / cuotas);
+            // Cerrar el modal de Mis Clientes
+            const misClientesModal = bootstrap.Modal.getInstance(document.getElementById('misClientesModal'));
+            if (misClientesModal) misClientesModal.hide();
             
-            showLoading();
-            try {
-                const nuevoPrestamo = {
-                    nombre: solicitud.clienteNombre,
-                    cedula: solicitud.clienteCedula,
-                    telefono: solicitud.clienteTelefono,
-                    clienteUid: clienteUid,
-                    monto: monto,
-                    interes: interesNum,
-                    cuotas: cuotas,
-                    valorCuota: valorCuota,
-                    totalPagar: totalPagar,
-                    totalAbonado: 0,
-                    cuotasPagadas: 0,
-                    fecha: new Date().toISOString().split('T')[0],
-                    estado: 'activo',
-                    origenSolicitud: solicitudId
-                };
-                
-                await push(ref(db, `${BASE_PATH}/prestamos`), nuevoPrestamo);
-                await update(ref(db, `${BASE_PATH}/solicitudesCredito/${solicitudId}`), { estado: 'aprobado', fechaAprobacion: new Date().toISOString() });
-                
-                await cargarSolicitudesCredito();
-                renderSolicitudesCredito();
-                cargarDatos();
-                
-                hideLoading();
-                showAlert(`Crédito de ${formatMoney(monto)} aprobado para ${solicitud.clienteNombre}`, 'success');
-            } catch (e) {
-                hideLoading();
-                showAlert('Error: ' + e.message, 'danger');
-            }
+            // Precargar datos en el formulario de Nuevo Préstamo
+            document.getElementById('fechaApertura').value = new Date().toISOString().split('T')[0];
+            document.getElementById('clienteNombre').value = solicitud.clienteNombre || '';
+            document.getElementById('clienteCelular').value = solicitud.clienteTelefono || '';
+            document.getElementById('valorPrestamo').value = solicitud.montoSolicitado ? parseInt(solicitud.montoSolicitado).toLocaleString('es-CO') : '';
+            document.getElementById('numeroCuotas').value = solicitud.plazoSolicitado || 12;
+            document.getElementById('porcentajeInteres').value = '10';
+            document.getElementById('frecuenciaPago').value = '';
+            
+            // Ir a la pestaña de Nuevo Préstamo
+            showView('newLoan');
+            
+            // Mostrar mensaje informativo
+            showAlert(`Completa los datos del préstamo para ${solicitud.clienteNombre}. Selecciona la frecuencia de pago y ajusta los valores si es necesario.`, 'info');
+            
+            // Calcular preview
+            calcularPreview();
         };
 
         window.rechazarSolicitudCredito = async function(solicitudId) {
-            const motivo = prompt('Motivo del rechazo (opcional):');
+            const motivo = await showPromptModal({
+                title: 'Rechazar Solicitud',
+                message: '¿Estás seguro de rechazar esta solicitud de crédito?',
+                placeholder: 'Motivo del rechazo (opcional)',
+                okText: 'Rechazar',
+                okClass: 'btn-danger'
+            });
             if (motivo === null) return;
             
             showLoading();
@@ -2320,6 +2339,51 @@
                 okBtn.addEventListener('click', onOk);
                 modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
                 modal.show();
+            });
+        }
+
+        function showPromptModal({ title = 'Ingresar', message = '', placeholder = '', defaultValue = '', okText = 'Aceptar', okClass = 'btn-primary' } = {}) {
+            return new Promise((resolve) => {
+                const modalEl = document.getElementById('confirmModal');
+                const titleEl = document.getElementById('confirmModalTitle');
+                const msgEl = document.getElementById('confirmModalMessage');
+                const inputContainer = document.getElementById('confirmModalInputContainer');
+                const inputEl = document.getElementById('confirmModalInput');
+                const okBtn = document.getElementById('confirmModalOkBtn');
+
+                titleEl.textContent = title;
+                msgEl.textContent = message;
+                inputContainer.style.display = 'block';
+                inputEl.placeholder = placeholder;
+                inputEl.value = defaultValue;
+                okBtn.textContent = okText;
+                okBtn.className = `btn ${okClass}`;
+
+                const modal = getBsModal('confirmModal');
+
+                const onHidden = () => {
+                    cleanup();
+                    inputContainer.style.display = 'none';
+                    resolve(null);
+                };
+
+                const onOk = () => {
+                    const value = inputEl.value;
+                    cleanup();
+                    inputContainer.style.display = 'none';
+                    modal.hide();
+                    resolve(value);
+                };
+
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                    modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                }
+
+                okBtn.addEventListener('click', onOk);
+                modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+                modal.show();
+                setTimeout(() => inputEl.focus(), 300);
             });
         }
 
@@ -3094,8 +3158,24 @@
                     }
                 };
 
+                // Si viene de una solicitud de crédito, agregar datos del cliente
+                if (solicitudPendienteAprobacion) {
+                    prestamo.clienteUid = solicitudPendienteAprobacion.clienteUid;
+                    prestamo.cedula = solicitudPendienteAprobacion.clienteCedula || '';
+                    prestamo.origenSolicitud = solicitudPendienteAprobacion.id;
+                }
+
                 const prestamosRef = ref(db, `${BASE_PATH}/prestamos`);
                 await push(prestamosRef, prestamo);
+
+                // Si viene de una solicitud, marcarla como aprobada
+                if (solicitudPendienteAprobacion) {
+                    await update(ref(db, `${BASE_PATH}/solicitudesCredito/${solicitudPendienteAprobacion.id}`), {
+                        estado: 'aprobado',
+                        fechaAprobacion: new Date().toISOString()
+                    });
+                    solicitudPendienteAprobacion = null;
+                }
 
                 showAlert('Préstamo registrado exitosamente', 'success');
                 playBeep('success');
