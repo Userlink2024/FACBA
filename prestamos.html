@@ -860,7 +860,7 @@
                                 <strong id="previewCapital">$0</strong>
                             </div>
                             <div class="preview-item">
-                                <span>Interés (<span id="previewPorcentaje">0</span>%):</span>
+                                <span>Interés (<span id="previewPorcentaje">0</span>% × <span id="previewMeses">0</span> mes(es)):</span>
                                 <strong id="previewInteres">$0</strong>
                             </div>
                             <div class="preview-item">
@@ -3087,7 +3087,9 @@
             const fechaAperturaStr = document.getElementById('fechaApertura')?.value || '';
 
             if (capital > 0 && interes > 0 && cuotas > 0 && frecuencia > 0 && fechaAperturaStr) {
-                const valorInteres = capital * (interes / 100);
+                // Interés es MENSUAL: calcular meses que cubre el crédito
+                const mesesCredito = Math.ceil(cuotas * frecuencia / 30);
+                const valorInteres = capital * (interes / 100) * mesesCredito;
                 const totalPagar = capital + valorInteres;
                 const valorCuota = Math.ceil(totalPagar / cuotas);
 
@@ -3115,6 +3117,7 @@
 
                 document.getElementById('previewCapital').textContent = formatMoney(capital);
                 document.getElementById('previewPorcentaje').textContent = interes;
+                document.getElementById('previewMeses').textContent = mesesCredito;
                 document.getElementById('previewInteres').textContent = formatMoney(valorInteres);
                 document.getElementById('previewTotal').textContent = formatMoney(totalPagar);
                 document.getElementById('previewCuota').textContent = formatMoney(valorCuota);
@@ -3171,7 +3174,9 @@
                     return;
                 }
 
-                const valorInteres = capital * (interes / 100);
+                // Interés es MENSUAL: calcular meses que cubre el crédito
+                const mesesCredito = Math.ceil(cuotas * frecuencia / 30);
+                const valorInteres = capital * (interes / 100) * mesesCredito;
                 const totalPagar = capital + valorInteres;
                 const valorCuota = Math.ceil(totalPagar / cuotas);
 
@@ -3187,6 +3192,7 @@
                     celular,
                     capital,
                     interes,
+                    mesesCredito,
                     valorInteres,
                     totalPagar,
                     cuotas,
