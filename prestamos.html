@@ -1920,6 +1920,7 @@
                 container.innerHTML = '<p class="text-muted text-center py-3">No hay solicitudes de crédito pendientes</p>';
                 return;
             }
+            const frecTexto = (f) => { const n=parseInt(f); return n===1?'Diario':n===7?'Semanal':n===15?'Quincenal':n===30?'Mensual':f?`Cada ${f} días`:'—'; };
             container.innerHTML = solicitudesCredito.map(s => `
                 <div class="card mb-2">
                     <div class="card-body py-2">
@@ -1928,7 +1929,8 @@
                                 <strong>${s.clienteNombre}</strong>
                                 <span class="badge bg-primary ms-2">${formatMoney(s.montoSolicitado)}</span><br>
                                 <small class="text-muted"><i class="bi bi-person-vcard me-1"></i>${s.clienteCedula}</small><br>
-                                <small class="text-muted"><i class="bi bi-calendar me-1"></i>${s.plazoSolicitado} cuotas</small><br>
+                                <small class="text-muted"><i class="bi bi-calendar me-1"></i>${s.plazoSolicitado} cuotas · ${frecTexto(s.frecuenciaSolicitada)}</small><br>
+                                ${s.banco ? `<small class="text-muted"><i class="bi bi-bank me-1"></i>${s.banco}${s.numeroCuenta ? ` - ${s.numeroCuenta}` : ''}</small><br>` : ''}
                                 <small class="text-muted"><i class="bi bi-chat-text me-1"></i>${s.motivo || 'Sin motivo'}</small>
                             </div>
                             <div class="text-end">
@@ -1947,7 +1949,13 @@
         }
 
         window.aprobarCliente = async function(pendienteId, clienteUid) {
-            if (!confirm('¿Aprobar este cliente?')) return;
+            const confirmado = await showConfirmModal({
+                title: 'Aprobar Cliente',
+                message: '¿Aprobar este cliente? Podrá acceder al portal y solicitar créditos.',
+                okText: 'Aprobar',
+                okClass: 'btn-success'
+            });
+            if (!confirmado) return;
             showLoading();
             try {
                 await update(ref(db, `prestamos_app/clientes/${clienteUid}`), { estado: 'aprobado' });
@@ -1963,7 +1971,13 @@
         };
 
         window.rechazarCliente = async function(pendienteId, clienteUid) {
-            if (!confirm('¿Rechazar este cliente? No podrá acceder al portal.')) return;
+            const confirmado = await showConfirmModal({
+                title: 'Rechazar Cliente',
+                message: '¿Rechazar este cliente? No podrá acceder al portal.',
+                okText: 'Rechazar',
+                okClass: 'btn-danger'
+            });
+            if (!confirmado) return;
             showLoading();
             try {
                 await update(ref(db, `prestamos_app/clientes/${clienteUid}`), { estado: 'rechazado' });
@@ -1998,7 +2012,32 @@
             document.getElementById('valorPrestamo').value = solicitud.montoSolicitado ? parseInt(solicitud.montoSolicitado).toLocaleString('es-CO') : '';
             document.getElementById('numeroCuotas').value = solicitud.plazoSolicitado || 12;
             document.getElementById('porcentajeInteres').value = '10';
-            document.getElementById('frecuenciaPago').value = '';
+            // Precargar frecuencia si el cliente la seleccionó
+            if (solicitud.frecuenciaSolicitada) {
+                document.getElementById('frecuenciaPago').value = solicitud.frecuenciaSolicitada;
+            } else {
+                document.getElementById('frecuenciaPago').value = '';
+            }
+            
+            // Precargar datos bancarios del cliente en desembolso
+            if (solicitud.banco || solicitud.numeroCuenta) {
+                document.getElementById('desembolsadoCheck').checked = false;
+                document.getElementById('desembolsoFields').style.display = 'block';
+                // Intentar seleccionar el banco del cliente, si no existe usar el campo directamente
+                const bancoSelect = document.getElementById('bancoDesembolso');
+                const bancoOption = [...bancoSelect.options].find(o => o.value === solicitud.banco);
+                if (bancoOption) {
+                    bancoSelect.value = solicitud.banco;
+                } else if (solicitud.banco) {
+                    // Agregar como opción temporal
+                    const opt = document.createElement('option');
+                    opt.value = solicitud.banco;
+                    opt.textContent = solicitud.banco;
+                    bancoSelect.appendChild(opt);
+                    bancoSelect.value = solicitud.banco;
+                }
+                document.getElementById('numeroCuenta').value = solicitud.numeroCuenta || '';
+            }
             
             // Ir a la pestaña de Nuevo Préstamo
             showView('newLoan');
