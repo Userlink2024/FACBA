@@ -613,8 +613,38 @@
                     <small class="text-muted">Ingresa el número de cuotas deseado (1-60)</small>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label">Frecuencia de Pago</label>
+                    <select class="form-select" id="solFrecuencia" onchange="calcularPreviewSolicitud()">
+                        <option value="1">Diario</option>
+                        <option value="7">Semanal</option>
+                        <option value="15">Quincenal</option>
+                        <option value="30" selected>Mensual</option>
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Motivo del crédito</label>
                     <textarea class="form-control" id="solMotivo" rows="2" placeholder="¿Para qué necesitas el crédito?"></textarea>
+                </div>
+                <h6 class="mt-3 mb-2"><i class="bi bi-bank me-1"></i>Datos bancarios para desembolso</h6>
+                <div class="mb-3">
+                    <label class="form-label">Banco</label>
+                    <select class="form-select" id="solBanco">
+                        <option value="">Seleccionar banco...</option>
+                        <option value="Bancolombia">Bancolombia</option>
+                        <option value="Davivienda">Davivienda</option>
+                        <option value="BBVA">BBVA</option>
+                        <option value="Banco de Bogotá">Banco de Bogotá</option>
+                        <option value="Nequi">Nequi</option>
+                        <option value="Daviplata">Daviplata</option>
+                        <option value="Banco Popular">Banco Popular</option>
+                        <option value="Banco de Occidente">Banco de Occidente</option>
+                        <option value="Scotiabank Colpatria">Scotiabank Colpatria</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Número de cuenta / celular</label>
+                    <input type="text" class="form-control" id="solNumeroCuenta" placeholder="Ej: 1234567890" inputmode="numeric">
                 </div>
                 <div class="cuota-preview">
                     <div class="label">Cuota estimada (sujeta a aprobación)</div>
@@ -992,7 +1022,10 @@
 
             const monto = parseCOP(document.getElementById('solMonto').value);
             const plazo = parseInt(document.getElementById('solPlazo').value);
+            const frecuencia = parseInt(document.getElementById('solFrecuencia').value);
             const motivo = document.getElementById('solMotivo').value.trim();
+            const banco = document.getElementById('solBanco').value;
+            const numeroCuenta = document.getElementById('solNumeroCuenta').value.trim();
 
             if (!monto || monto < 10000) {
                 showAlert('Ingresa un monto válido (mínimo $10,000)', 'warning');
@@ -1009,7 +1042,10 @@
                     clienteEmail: clienteData.email,
                     montoSolicitado: monto,
                     plazoSolicitado: plazo,
+                    frecuenciaSolicitada: frecuencia,
                     motivo,
+                    banco: banco || '',
+                    numeroCuenta: numeroCuenta || '',
                     estado: 'pendiente',
                     fechaSolicitud: new Date().toISOString()
                 });
@@ -1018,7 +1054,12 @@
                 showAlert('Solicitud enviada. Tu prestamista la revisará pronto.', 'success');
                 document.getElementById('solMonto').value = '';
                 document.getElementById('solMotivo').value = '';
-                showView('dashboard');
+                document.getElementById('solBanco').value = '';
+                document.getElementById('solNumeroCuenta').value = '';
+                
+                // Recargar datos para que aparezca en Mis Solicitudes
+                await cargarDatosCliente();
+                showView('solicitudes');
             } catch (e) {
                 hideLoading();
                 showAlert('Error: ' + e.message, 'danger');
@@ -1040,7 +1081,29 @@
                     for (const id in allPrestamos) {
                         const p = allPrestamos[id];
                         if (p.clienteUid === currentUser.uid || p.cedula === clienteData.cedula) {
-                            prestamosCliente.push({ id, ...p });
+                            // Normalizar campos entre formato prestamos.html y creditos.html
+                            const monto = p.capital || p.monto || 0;
+                            const fecha = p.fechaApertura || p.fecha || '';
+                            const interes = p.interes || 0;
+                            const valorInteres = p.valorInteres || 0;
+                            const frecuencia = p.frecuencia || 30;
+                            let totalAbonado = p.totalAbonado || 0;
+                            let cuotasPagadas = p.cuotasPagadas || 0;
+                            // Si tiene array de pagos, calcular desde ahí
+                            if (Array.isArray(p.pagos)) {
+                                cuotasPagadas = p.pagos.filter(pg => pg.pagada).length;
+                                totalAbonado = p.pagos.filter(pg => pg.pagada).reduce((sum, pg) => sum + (pg.montoPagado || pg.monto || 0), 0);
+                            }
+                            prestamosCliente.push({
+                                id, ...p,
+                                monto,
+                                fecha,
+                                interes,
+                                valorInteres,
+                                frecuencia,
+                                totalAbonado,
+                                cuotasPagadas
+                            });
                         }
                     }
                 }
@@ -1109,6 +1172,15 @@
             }
         }
 
+        function getFrecuenciaText(freq) {
+            const f = parseInt(freq);
+            if (f === 1) return 'Diario';
+            if (f === 7) return 'Semanal';
+            if (f === 15) return 'Quincenal';
+            if (f === 30) return 'Mensual';
+            return freq ? `Cada ${freq} días` : 'Mensual';
+        }
+
         function renderLoanCard(p) {
             const saldo = (p.totalPagar || 0) - (p.totalAbonado || 0);
             const progreso = p.totalPagar > 0 ? ((p.totalAbonado || 0) / p.totalPagar * 100).toFixed(0) : 0;
@@ -1131,9 +1203,12 @@
                             <span>${formatMoney(p.valorCuota)}</span>
                         </div>
                         <div class="loan-detail-item">
-                            <label>Cuotas</label>
-                            <span>${cuotasPagadas}/${totalCuotas}</span>
+                            <label>Interés</label>
+                            <span>${p.interes || 0}%</span>
                         </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1 mb-1">
+                        <small class="text-muted">${cuotasPagadas}/${totalCuotas} cuotas · ${getFrecuenciaText(p.frecuencia)}</small>
                     </div>
                     <div class="progress-bar-custom">
                         <div class="progress-bar-fill" style="width: ${progreso}%"></div>
@@ -1172,6 +1247,16 @@
                 const status = saldo <= 0 ? 'completed' : 'active';
                 const statusText = saldo <= 0 ? 'Pagado' : 'Activo';
                 const progreso = p.totalPagar > 0 ? ((p.totalAbonado || 0) / p.totalPagar * 100).toFixed(0) : 0;
+                const cuotasPagadas = p.cuotasPagadas || 0;
+
+                // Desembolso info
+                const desemb = p.desembolso || {};
+                let desembolsoHTML = '';
+                if (desemb.desembolsado) {
+                    desembolsoHTML = `<div class="alert alert-success py-1 px-2 mt-2 mb-0 small"><i class="bi bi-check-circle me-1"></i>Desembolsado${desemb.banco ? ` - ${desemb.banco}` : ''}${desemb.numeroCuenta ? ` (${desemb.numeroCuenta})` : ''}</div>`;
+                } else {
+                    desembolsoHTML = `<div class="alert alert-warning py-1 px-2 mt-2 mb-0 small"><i class="bi bi-hourglass-split me-1"></i>Pendiente de desembolso</div>`;
+                }
 
                 return `
                     <div class="loan-card" onclick="verDetallePrestamo('${p.id}')">
@@ -1185,17 +1270,21 @@
                                 <span>${formatDate(p.fecha)}</span>
                             </div>
                             <div class="loan-detail-item">
-                                <label>Total</label>
-                                <span>${formatMoney(p.totalPagar)}</span>
+                                <label>Interés</label>
+                                <span>${p.interes || 0}%</span>
                             </div>
                             <div class="loan-detail-item">
                                 <label>Saldo</label>
                                 <span>${formatMoney(saldo)}</span>
                             </div>
                         </div>
+                        <div class="d-flex justify-content-between mt-1 mb-1">
+                            <small class="text-muted">${cuotasPagadas}/${p.cuotas} cuotas · ${getFrecuenciaText(p.frecuencia)}</small>
+                        </div>
                         <div class="progress-bar-custom">
                             <div class="progress-bar-fill" style="width: ${progreso}%"></div>
                         </div>
+                        ${desembolsoHTML}
                     </div>
                 `;
             }).join('');
@@ -1247,13 +1336,19 @@
                                 <span>${s.plazoSolicitado}</span>
                             </div>
                             <div class="loan-detail-item">
+                                <label>Frecuencia</label>
+                                <span>${getFrecuenciaText(s.frecuenciaSolicitada)}</span>
+                            </div>
+                            <div class="loan-detail-item">
                                 <label>Fecha</label>
                                 <span>${formatDate(s.fechaSolicitud)}</span>
                             </div>
                         </div>
-                        ${s.motivo ? `<small class="text-muted d-block mt-2"><i class="bi bi-chat-text me-1"></i>${s.motivo}</small>` : ''}
+                        ${s.banco ? `<small class="text-muted d-block mt-2"><i class="bi bi-bank me-1"></i>${s.banco}${s.numeroCuenta ? ` - ${s.numeroCuenta}` : ''}</small>` : ''}
+                        ${s.motivo ? `<small class="text-muted d-block mt-1"><i class="bi bi-chat-text me-1"></i>${s.motivo}</small>` : ''}
                         ${s.estado === 'rechazado' && s.motivoRechazo ? `<div class="alert alert-danger py-2 mt-2 mb-0 small"><i class="bi bi-exclamation-triangle me-1"></i>${s.motivoRechazo}</div>` : ''}
                         ${s.estado === 'aprobado' ? `<div class="alert alert-success py-2 mt-2 mb-0 small"><i class="bi bi-check2-circle me-1"></i>¡Tu crédito ha sido aprobado! Revisa la sección de Créditos.</div>` : ''}
+                        ${s.estado === 'pendiente' ? `<div class="alert alert-info py-2 mt-2 mb-0 small"><i class="bi bi-info-circle me-1"></i>Tu solicitud está siendo revisada por tu prestamista.</div>` : ''}
                     </div>
                 `;
             }).join('');
@@ -1266,12 +1361,35 @@
             const saldo = (prestamo.totalPagar || 0) - (prestamo.totalAbonado || 0);
             const pagos = movimientosCliente.filter(m => m.prestamoId === prestamoId);
 
+            // Desembolso info
+            const desemb = prestamo.desembolso || {};
+            let desembolsoHTML = '';
+            if (desemb.desembolsado) {
+                desembolsoHTML = `
+                    <div class="alert alert-success py-2 mt-2 mb-0">
+                        <div class="d-flex align-items-center mb-1"><i class="bi bi-check-circle-fill me-2"></i><strong>Desembolsado</strong></div>
+                        ${desemb.banco ? `<small class="d-block">Banco: ${desemb.banco}</small>` : ''}
+                        ${desemb.numeroCuenta ? `<small class="d-block">Cuenta: ${desemb.numeroCuenta}</small>` : ''}
+                        ${desemb.fechaDesembolso ? `<small class="d-block">Fecha: ${formatDate(desemb.fechaDesembolso)}</small>` : ''}
+                    </div>`;
+            } else {
+                desembolsoHTML = `
+                    <div class="alert alert-warning py-2 mt-2 mb-0">
+                        <div class="d-flex align-items-center"><i class="bi bi-hourglass-split me-2"></i><strong>Pendiente de desembolso</strong></div>
+                        <small class="text-muted">Tu prestamista aún no ha registrado el desembolso.</small>
+                    </div>`;
+            }
+
             const modalBody = document.getElementById('detalleModalBody');
             modalBody.innerHTML = `
                 <div class="mb-3">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Monto prestado:</span>
                         <strong>${formatMoney(prestamo.monto)}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Interés:</span>
+                        <strong>${prestamo.interes || 0}%${prestamo.valorInteres ? ` (${formatMoney(prestamo.valorInteres)})` : ''}</strong>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Total a pagar:</span>
@@ -1298,7 +1416,13 @@
                         <span class="text-muted">Valor cuota:</span>
                         <span>${formatMoney(prestamo.valorCuota)}</span>
                     </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Frecuencia:</span>
+                        <span>${getFrecuenciaText(prestamo.frecuencia)}</span>
+                    </div>
                 </div>
+                <h6 class="mt-3 mb-2"><i class="bi bi-bank me-1"></i>Estado de Desembolso</h6>
+                ${desembolsoHTML}
                 <h6 class="mt-4 mb-3">Historial de pagos</h6>
                 ${pagos.length === 0 ? '<p class="text-muted text-center">Sin pagos registrados</p>' :
                     pagos.map(p => `
