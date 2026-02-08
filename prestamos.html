@@ -698,6 +698,7 @@
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><span class="dropdown-item-text fw-bold" id="menuUserName">-</span></li>
                             <li><span class="dropdown-item-text text-muted small" id="menuUserEmail">-</span></li>
+                            <li id="menuCodigoPrestamista" class="dropdown-item-text small" style="display:none;"><i class="bi bi-qr-code me-1"></i>Código: <strong id="codigoPrestamistaDisplay">-</strong> <button class="btn btn-sm btn-link p-0 ms-1" onclick="copiarCodigoPrestamista()"><i class="bi bi-clipboard"></i></button></li>
                             <li id="menuMembershipInfo" class="dropdown-item-text small text-success" style="display:none;"></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="cambiarPinUsuario(); return false;"><i class="bi bi-shield-lock me-2"></i>Cambiar PIN</a></li>
@@ -1187,6 +1188,8 @@
                     <ul class="nav nav-tabs mb-3" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabUsuarios">Usuarios</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAdmins">Administradores</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabClientesPendientes"><i class="bi bi-person-plus me-1"></i>Clientes <span class="badge bg-warning text-dark" id="badgeClientesPendientes">0</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabSolicitudesCredito"><i class="bi bi-cash-coin me-1"></i>Solicitudes <span class="badge bg-info" id="badgeSolicitudesCredito">0</span></a></li>
                     </ul>
                     <div class="tab-content">
                         <!-- Tab Usuarios -->
@@ -1206,6 +1209,24 @@
                             </div>
                             <div id="adminAdminsList">
                                 <p class="text-muted text-center">Cargando administradores...</p>
+                            </div>
+                        </div>
+                        <!-- Tab Clientes Pendientes -->
+                        <div class="tab-pane fade" id="tabClientesPendientes">
+                            <div class="alert alert-warning small">
+                                <i class="bi bi-info-circle me-2"></i>Clientes que se registraron desde el portal y esperan aprobación para acceder.
+                            </div>
+                            <div id="adminClientesPendientesList" style="max-height: 400px; overflow-y: auto;">
+                                <p class="text-muted text-center">Sin clientes pendientes</p>
+                            </div>
+                        </div>
+                        <!-- Tab Solicitudes de Crédito -->
+                        <div class="tab-pane fade" id="tabSolicitudesCredito">
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle me-2"></i>Solicitudes de crédito enviadas por tus clientes desde el portal.
+                            </div>
+                            <div id="adminSolicitudesCreditoList" style="max-height: 400px; overflow-y: auto;">
+                                <p class="text-muted text-center">Sin solicitudes pendientes</p>
                             </div>
                         </div>
                     </div>
@@ -1453,7 +1474,7 @@
         let editingUserId = null;
 
         // Tu email de dueño/superadmin (CÁMBIALO por tu email real)
-        const OWNER_EMAIL = 'jhoanc_felipe@hotmail.com';
+        const OWNER_EMAIL = 'admin@prestamos.com';
 
         // Global variables
         let prestamos = [];
@@ -1521,6 +1542,14 @@
         window.filtrarUsuariosAdmin = filtrarUsuariosAdmin;
         window.editarMembresia = editarMembresia;
         window.guardarMembresia = guardarMembresia;
+        window.copiarCodigoPrestamista = function() {
+            const codigo = document.getElementById('codigoPrestamistaDisplay').textContent;
+            navigator.clipboard.writeText(codigo).then(() => {
+                showAlert('Código copiado: ' + codigo, 'success');
+            }).catch(() => {
+                showAlert('No se pudo copiar el código', 'warning');
+            });
+        };
         window.registrarAbono = registrarAbono;
 
         // ==================== AUTH SYSTEM ====================
@@ -1713,12 +1742,17 @@
                     }
                 }
 
-                // Load user PIN from profile
+                // Load user PIN and code from profile
                 try {
                     const perfilSnap = await get(ref(db, `${BASE_PATH}/perfil`));
                     if (perfilSnap.exists()) {
                         const perfil = perfilSnap.val();
                         userPin = perfil.pin || '1705';
+                        
+                        // Show prestamista code (use UID as code)
+                        const codigoPrestamista = user.uid.substring(0, 8).toUpperCase();
+                        document.getElementById('codigoPrestamistaDisplay').textContent = codigoPrestamista;
+                        document.getElementById('menuCodigoPrestamista').style.display = 'block';
                     }
                 } catch (e) {
                     console.log('Error loading profile:', e);
@@ -1790,11 +1824,216 @@
         async function abrirPanelAdmin() {
             if (!isAdmin) return;
             await cargarTodosLosUsuarios();
+            await cargarClientesPendientes();
+            await cargarSolicitudesCredito();
             renderUsuariosAdmin();
             renderAdminsAdmin();
+            renderClientesPendientes();
+            renderSolicitudesCredito();
             const modal = getBsModal('adminModal');
             modal.show();
         }
+
+        let clientesPendientes = [];
+        let solicitudesCredito = [];
+
+        async function cargarClientesPendientes() {
+            try {
+                const snap = await get(ref(db, `${BASE_PATH}/clientesPendientes`));
+                clientesPendientes = [];
+                if (snap.exists()) {
+                    const data = snap.val();
+                    for (const key in data) {
+                        clientesPendientes.push({ id: key, ...data[key] });
+                    }
+                }
+                document.getElementById('badgeClientesPendientes').textContent = clientesPendientes.length;
+            } catch (e) {
+                console.error('Error cargando clientes pendientes:', e);
+            }
+        }
+
+        async function cargarSolicitudesCredito() {
+            try {
+                const snap = await get(ref(db, `${BASE_PATH}/solicitudesCredito`));
+                solicitudesCredito = [];
+                if (snap.exists()) {
+                    const data = snap.val();
+                    for (const key in data) {
+                        if (data[key].estado === 'pendiente') {
+                            solicitudesCredito.push({ id: key, ...data[key] });
+                        }
+                    }
+                }
+                document.getElementById('badgeSolicitudesCredito').textContent = solicitudesCredito.length;
+            } catch (e) {
+                console.error('Error cargando solicitudes:', e);
+            }
+        }
+
+        function renderClientesPendientes() {
+            const container = document.getElementById('adminClientesPendientesList');
+            if (clientesPendientes.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center py-3">No hay clientes pendientes de aprobación</p>';
+                return;
+            }
+            container.innerHTML = clientesPendientes.map(c => `
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>${c.nombre}</strong><br>
+                                <small class="text-muted"><i class="bi bi-envelope me-1"></i>${c.email}</small><br>
+                                <small class="text-muted"><i class="bi bi-phone me-1"></i>${c.telefono}</small><br>
+                                <small class="text-muted"><i class="bi bi-person-vcard me-1"></i>${c.cedula}</small>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted d-block mb-2">${formatDate(c.fechaSolicitud)}</small>
+                                <button class="btn btn-success btn-sm me-1" onclick="aprobarCliente('${c.id}', '${c.clienteUid}')">
+                                    <i class="bi bi-check-lg"></i> Aprobar
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="rechazarCliente('${c.id}', '${c.clienteUid}')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSolicitudesCredito() {
+            const container = document.getElementById('adminSolicitudesCreditoList');
+            if (solicitudesCredito.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center py-3">No hay solicitudes de crédito pendientes</p>';
+                return;
+            }
+            container.innerHTML = solicitudesCredito.map(s => `
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>${s.clienteNombre}</strong>
+                                <span class="badge bg-primary ms-2">${formatMoney(s.montoSolicitado)}</span><br>
+                                <small class="text-muted"><i class="bi bi-person-vcard me-1"></i>${s.clienteCedula}</small><br>
+                                <small class="text-muted"><i class="bi bi-calendar me-1"></i>${s.plazoSolicitado} cuotas</small><br>
+                                <small class="text-muted"><i class="bi bi-chat-text me-1"></i>${s.motivo || 'Sin motivo'}</small>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted d-block mb-2">${formatDate(s.fechaSolicitud)}</small>
+                                <button class="btn btn-success btn-sm" onclick="aprobarSolicitudCredito('${s.id}', '${s.clienteUid}')">
+                                    <i class="bi bi-check-lg me-1"></i>Aprobar
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="rechazarSolicitudCredito('${s.id}')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.aprobarCliente = async function(pendienteId, clienteUid) {
+            if (!confirm('¿Aprobar este cliente?')) return;
+            showLoading();
+            try {
+                await update(ref(db, `prestamos_app/clientes/${clienteUid}`), { estado: 'aprobado' });
+                await set(ref(db, `${BASE_PATH}/clientesPendientes/${pendienteId}`), null);
+                await cargarClientesPendientes();
+                renderClientesPendientes();
+                hideLoading();
+                showAlert('Cliente aprobado exitosamente', 'success');
+            } catch (e) {
+                hideLoading();
+                showAlert('Error: ' + e.message, 'danger');
+            }
+        };
+
+        window.rechazarCliente = async function(pendienteId, clienteUid) {
+            if (!confirm('¿Rechazar este cliente? No podrá acceder al portal.')) return;
+            showLoading();
+            try {
+                await update(ref(db, `prestamos_app/clientes/${clienteUid}`), { estado: 'rechazado' });
+                await set(ref(db, `${BASE_PATH}/clientesPendientes/${pendienteId}`), null);
+                await cargarClientesPendientes();
+                renderClientesPendientes();
+                hideLoading();
+                showAlert('Cliente rechazado', 'warning');
+            } catch (e) {
+                hideLoading();
+                showAlert('Error: ' + e.message, 'danger');
+            }
+        };
+
+        window.aprobarSolicitudCredito = async function(solicitudId, clienteUid) {
+            const solicitud = solicitudesCredito.find(s => s.id === solicitudId);
+            if (!solicitud) return;
+            
+            const interes = prompt('Ingresa el porcentaje de interés a aplicar (ej: 10):', '10');
+            if (interes === null) return;
+            const interesNum = parseFloat(interes) || 10;
+            
+            const monto = solicitud.montoSolicitado;
+            const cuotas = solicitud.plazoSolicitado;
+            const totalInteres = monto * (interesNum / 100) * (cuotas / 4);
+            const totalPagar = monto + totalInteres;
+            const valorCuota = Math.ceil(totalPagar / cuotas);
+            
+            showLoading();
+            try {
+                const nuevoPrestamo = {
+                    nombre: solicitud.clienteNombre,
+                    cedula: solicitud.clienteCedula,
+                    telefono: solicitud.clienteTelefono,
+                    clienteUid: clienteUid,
+                    monto: monto,
+                    interes: interesNum,
+                    cuotas: cuotas,
+                    valorCuota: valorCuota,
+                    totalPagar: totalPagar,
+                    totalAbonado: 0,
+                    cuotasPagadas: 0,
+                    fecha: new Date().toISOString().split('T')[0],
+                    estado: 'activo',
+                    origenSolicitud: solicitudId
+                };
+                
+                await push(ref(db, `${BASE_PATH}/prestamos`), nuevoPrestamo);
+                await update(ref(db, `${BASE_PATH}/solicitudesCredito/${solicitudId}`), { estado: 'aprobado', fechaAprobacion: new Date().toISOString() });
+                
+                await cargarSolicitudesCredito();
+                renderSolicitudesCredito();
+                cargarDatos();
+                
+                hideLoading();
+                showAlert(`Crédito de ${formatMoney(monto)} aprobado para ${solicitud.clienteNombre}`, 'success');
+            } catch (e) {
+                hideLoading();
+                showAlert('Error: ' + e.message, 'danger');
+            }
+        };
+
+        window.rechazarSolicitudCredito = async function(solicitudId) {
+            const motivo = prompt('Motivo del rechazo (opcional):');
+            if (motivo === null) return;
+            
+            showLoading();
+            try {
+                await update(ref(db, `${BASE_PATH}/solicitudesCredito/${solicitudId}`), { 
+                    estado: 'rechazado', 
+                    motivoRechazo: motivo,
+                    fechaRechazo: new Date().toISOString() 
+                });
+                await cargarSolicitudesCredito();
+                renderSolicitudesCredito();
+                hideLoading();
+                showAlert('Solicitud rechazada', 'warning');
+            } catch (e) {
+                hideLoading();
+                showAlert('Error: ' + e.message, 'danger');
+            }
+        };
 
         async function cargarTodosLosUsuarios() {
             try {
