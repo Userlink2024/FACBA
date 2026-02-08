@@ -605,18 +605,12 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Monto a solicitar</label>
-                    <input type="number" class="form-control" id="solMonto" placeholder="Ej: 500000" oninput="calcularPreviewSolicitud()">
+                    <input type="text" class="form-control" id="solMonto" placeholder="Ej: 500.000" inputmode="numeric" oninput="formatearMontoSolicitud(); calcularPreviewSolicitud();">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Plazo (cuotas)</label>
-                    <select class="form-select" id="solPlazo" onchange="calcularPreviewSolicitud()">
-                        <option value="4">4 cuotas</option>
-                        <option value="8">8 cuotas</option>
-                        <option value="12" selected>12 cuotas</option>
-                        <option value="16">16 cuotas</option>
-                        <option value="20">20 cuotas</option>
-                        <option value="24">24 cuotas</option>
-                    </select>
+                    <label class="form-label">Plazo (número de cuotas)</label>
+                    <input type="number" class="form-control" id="solPlazo" min="1" max="60" value="12" placeholder="Ej: 12" oninput="calcularPreviewSolicitud()">
+                    <small class="text-muted">Ingresa el número de cuotas deseado (1-60)</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Motivo del crédito</label>
@@ -654,6 +648,17 @@
             </div>
         </div>
 
+        <!-- Mis Solicitudes View -->
+        <div class="view" id="solicitudesView">
+            <h3 class="section-title">Mis Solicitudes</h3>
+            <div id="solicitudesContainer">
+                <div class="empty-state">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <p>No has enviado solicitudes</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="bottom-nav-item active" onclick="showView('dashboard')">
@@ -664,13 +669,13 @@
                 <i class="bi bi-plus-circle"></i>
                 <span>Solicitar</span>
             </button>
+            <button class="bottom-nav-item" onclick="showView('solicitudes')">
+                <i class="bi bi-file-earmark-text"></i>
+                <span>Solicitudes</span>
+            </button>
             <button class="bottom-nav-item" onclick="showView('prestamos')">
                 <i class="bi bi-credit-card"></i>
                 <span>Créditos</span>
-            </button>
-            <button class="bottom-nav-item" onclick="showView('movimientos')">
-                <i class="bi bi-clock-history"></i>
-                <span>Historial</span>
             </button>
         </nav>
     </div>
@@ -811,6 +816,7 @@
         let prestamistaUid = null;
         let prestamosCliente = [];
         let movimientosCliente = [];
+        let solicitudesCliente = [];
 
         // Utility functions
         function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
@@ -824,6 +830,16 @@
             alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
             document.body.appendChild(alert);
             setTimeout(() => alert.remove(), 4000);
+        }
+
+        function parseCOP(value) {
+            const raw = String(value ?? '').replace(/[^0-9]/g, '');
+            return parseInt(raw || '0', 10) || 0;
+        }
+
+        function formatCOPInput(value) {
+            const n = parseCOP(value);
+            return n ? n.toLocaleString('es-CO') : '';
         }
 
         function formatMoney(amount) {
@@ -954,11 +970,17 @@
 
         // Calcular preview de solicitud
         window.calcularPreviewSolicitud = function() {
-            const monto = parseFloat(document.getElementById('solMonto').value) || 0;
+            const monto = parseCOP(document.getElementById('solMonto').value);
             const plazo = parseInt(document.getElementById('solPlazo').value) || 12;
             const interesMensual = 0.10; // 10% estimado
             const cuotaEstimada = (monto + (monto * interesMensual * (plazo / 4))) / plazo;
             document.getElementById('previewCuota').textContent = formatMoney(cuotaEstimada);
+        };
+
+        window.formatearMontoSolicitud = function() {
+            const input = document.getElementById('solMonto');
+            const formatted = formatCOPInput(input.value);
+            input.value = formatted;
         };
 
         // Enviar solicitud de crédito
@@ -968,7 +990,7 @@
                 return;
             }
 
-            const monto = parseFloat(document.getElementById('solMonto').value);
+            const monto = parseCOP(document.getElementById('solMonto').value);
             const plazo = parseInt(document.getElementById('solPlazo').value);
             const motivo = document.getElementById('solMotivo').value.trim();
 
@@ -1036,9 +1058,23 @@
                     }
                 }
 
+                // Cargar solicitudes del cliente
+                const solicitudesSnap = await get(ref(db, `prestamos_app/users/${prestamistaUid}/solicitudesCredito`));
+                solicitudesCliente = [];
+                if (solicitudesSnap.exists()) {
+                    const allSolicitudes = solicitudesSnap.val();
+                    for (const id in allSolicitudes) {
+                        const s = allSolicitudes[id];
+                        if (s.clienteUid === currentUser.uid) {
+                            solicitudesCliente.push({ id, ...s });
+                        }
+                    }
+                }
+
                 renderDashboard();
                 renderPrestamos();
                 renderMovimientos();
+                renderSolicitudes();
             } catch (e) {
                 console.error('Error cargando datos:', e);
             }
@@ -1174,6 +1210,53 @@
                 return;
             }
             container.innerHTML = allMov.map(m => renderMovementItem(m)).join('');
+        }
+
+        function renderSolicitudes() {
+            const container = document.getElementById('solicitudesContainer');
+            if (solicitudesCliente.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="bi bi-file-earmark-text"></i><p>No has enviado solicitudes</p></div>';
+                return;
+            }
+            
+            const sorted = [...solicitudesCliente].sort((a, b) => new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud));
+            container.innerHTML = sorted.map(s => {
+                let estadoClass = 'bg-warning text-dark';
+                let estadoIcon = 'bi-hourglass-split';
+                let estadoText = 'Pendiente';
+                
+                if (s.estado === 'aprobado') {
+                    estadoClass = 'bg-success';
+                    estadoIcon = 'bi-check-circle';
+                    estadoText = 'Aprobado';
+                } else if (s.estado === 'rechazado') {
+                    estadoClass = 'bg-danger';
+                    estadoIcon = 'bi-x-circle';
+                    estadoText = 'Rechazado';
+                }
+                
+                return `
+                    <div class="loan-card mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="loan-amount">${formatMoney(s.montoSolicitado)}</span>
+                            <span class="badge ${estadoClass}"><i class="${estadoIcon} me-1"></i>${estadoText}</span>
+                        </div>
+                        <div class="loan-details">
+                            <div class="loan-detail-item">
+                                <label>Cuotas</label>
+                                <span>${s.plazoSolicitado}</span>
+                            </div>
+                            <div class="loan-detail-item">
+                                <label>Fecha</label>
+                                <span>${formatDate(s.fechaSolicitud)}</span>
+                            </div>
+                        </div>
+                        ${s.motivo ? `<small class="text-muted d-block mt-2"><i class="bi bi-chat-text me-1"></i>${s.motivo}</small>` : ''}
+                        ${s.estado === 'rechazado' && s.motivoRechazo ? `<div class="alert alert-danger py-2 mt-2 mb-0 small"><i class="bi bi-exclamation-triangle me-1"></i>${s.motivoRechazo}</div>` : ''}
+                        ${s.estado === 'aprobado' ? `<div class="alert alert-success py-2 mt-2 mb-0 small"><i class="bi bi-check2-circle me-1"></i>¡Tu crédito ha sido aprobado! Revisa la sección de Créditos.</div>` : ''}
+                    </div>
+                `;
+            }).join('');
         }
 
         window.verDetallePrestamo = async function(prestamoId) {
