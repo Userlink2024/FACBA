@@ -702,6 +702,7 @@
                             <li id="menuMembershipInfo" class="dropdown-item-text small text-success" style="display:none;"></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="cambiarPinUsuario(); return false;"><i class="bi bi-shield-lock me-2"></i>Cambiar PIN</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="abrirMisClientes(); return false;"><i class="bi bi-people me-2"></i>Mis Clientes <span class="badge bg-warning text-dark" id="badgeMisClientesMenu" style="display:none;">0</span></a></li>
                             <li id="adminMenuOption" style="display:none;"><a class="dropdown-item text-primary" href="#" onclick="abrirPanelAdmin(); return false;"><i class="bi bi-gear-wide-connected me-2"></i>Panel Admin</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger" href="#" onclick="logoutUser(); return false;"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
@@ -1188,8 +1189,6 @@
                     <ul class="nav nav-tabs mb-3" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabUsuarios">Usuarios</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAdmins">Administradores</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabClientesPendientes"><i class="bi bi-person-plus me-1"></i>Clientes <span class="badge bg-warning text-dark" id="badgeClientesPendientes">0</span></a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabSolicitudesCredito"><i class="bi bi-cash-coin me-1"></i>Solicitudes <span class="badge bg-info" id="badgeSolicitudesCredito">0</span></a></li>
                     </ul>
                     <div class="tab-content">
                         <!-- Tab Usuarios -->
@@ -1211,10 +1210,30 @@
                                 <p class="text-muted text-center">Cargando administradores...</p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Mis Clientes (accesible para TODOS los prestamistas) -->
+    <div class="modal fade" id="misClientesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-people me-2"></i>Mis Clientes</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabClientesPendientes"><i class="bi bi-person-plus me-1"></i>Pendientes <span class="badge bg-warning text-dark" id="badgeClientesPendientes">0</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabSolicitudesCredito"><i class="bi bi-cash-coin me-1"></i>Solicitudes <span class="badge bg-info" id="badgeSolicitudesCredito">0</span></a></li>
+                    </ul>
+                    <div class="tab-content">
                         <!-- Tab Clientes Pendientes -->
-                        <div class="tab-pane fade" id="tabClientesPendientes">
+                        <div class="tab-pane fade show active" id="tabClientesPendientes">
                             <div class="alert alert-warning small">
-                                <i class="bi bi-info-circle me-2"></i>Clientes que se registraron desde el portal y esperan aprobación para acceder.
+                                <i class="bi bi-info-circle me-2"></i>Clientes que se registraron desde el portal y esperan tu aprobación para acceder.
                             </div>
                             <div id="adminClientesPendientesList" style="max-height: 400px; overflow-y: auto;">
                                 <p class="text-muted text-center">Sin clientes pendientes</p>
@@ -1474,7 +1493,7 @@
         let editingUserId = null;
 
         // Tu email de dueño/superadmin (CÁMBIALO por tu email real)
-        const OWNER_EMAIL = 'jhoanc_felipe@hotmail.com';
+        const OWNER_EMAIL = 'admin@prestamos.com';
 
         // Global variables
         let prestamos = [];
@@ -1539,6 +1558,7 @@
         window.agregarBanco = agregarBanco;
         window.eliminarBanco = eliminarBanco;
         window.abrirPanelAdmin = abrirPanelAdmin;
+        window.abrirMisClientes = abrirMisClientes;
         window.filtrarUsuariosAdmin = filtrarUsuariosAdmin;
         window.editarMembresia = editarMembresia;
         window.guardarMembresia = guardarMembresia;
@@ -1824,13 +1844,27 @@
         async function abrirPanelAdmin() {
             if (!isAdmin) return;
             await cargarTodosLosUsuarios();
-            await cargarClientesPendientes();
-            await cargarSolicitudesCredito();
             renderUsuariosAdmin();
             renderAdminsAdmin();
+            const modal = getBsModal('adminModal');
+            modal.show();
+        }
+
+        async function abrirMisClientes() {
+            await cargarClientesPendientes();
+            await cargarSolicitudesCredito();
             renderClientesPendientes();
             renderSolicitudesCredito();
-            const modal = getBsModal('adminModal');
+            // Actualizar badge del menú
+            const total = clientesPendientes.length + solicitudesCredito.length;
+            const badgeMenu = document.getElementById('badgeMisClientesMenu');
+            if (total > 0) {
+                badgeMenu.textContent = total;
+                badgeMenu.style.display = 'inline';
+            } else {
+                badgeMenu.style.display = 'none';
+            }
+            const modal = getBsModal('misClientesModal');
             modal.show();
         }
 
