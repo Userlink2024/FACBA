@@ -28,45 +28,128 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* PIN Screen */
-        #pinScreen {
+        /* Auth Screen */
+        #authScreen {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .pin-container {
+        .auth-container {
             background: white;
-            padding: 40px;
+            padding: 35px 30px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            text-align: center;
-            max-width: 350px;
-            width: 90%;
+            max-width: 400px;
+            width: 92%;
         }
 
-        .pin-container h2 {
+        .auth-container h2 {
             color: var(--dark-color);
-            margin-bottom: 30px;
+            margin-bottom: 8px;
+            font-size: 1.5rem;
         }
 
-        .pin-input {
-            font-size: 2rem;
+        .auth-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #e9ecef;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
             text-align: center;
-            letter-spacing: 15px;
-            padding: 15px;
-            border: 2px solid #ddd;
+            background: #f8f9fa;
+            border: none;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+        }
+
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+
+        .auth-input {
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
             border-radius: 10px;
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
         }
 
-        .pin-input:focus {
+        .auth-input:focus {
             border-color: var(--primary-color);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
         }
+
+        /* Suspended Screen */
+        #suspendedScreen {
+            min-height: 100vh;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        .suspended-container {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 420px;
+        }
+        .suspended-icon {
+            font-size: 4rem;
+            color: #dc3545;
+        }
+
+        /* Admin Panel Styles */
+        .admin-badge {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            margin-left: 8px;
+        }
+        .user-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #198754;
+        }
+        .user-card.suspended {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .user-card.expired {
+            border-left-color: #ffc107;
+            background: #fffbeb;
+        }
+        .membership-badge {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .membership-badge.active { background: #d4edda; color: #155724; }
+        .membership-badge.expired { background: #fff3cd; color: #856404; }
+        .membership-badge.suspended { background: #f8d7da; color: #721c24; }
 
         /* App Container */
         #appContainer {
@@ -523,8 +606,8 @@
     </style>
 </head>
 <body>
-    <!-- PIN Screen -->
-    <div id="pinScreen">
+    <!-- Auth Screen -->
+    <div id="authScreen">
         <!-- PWA Install Buttons -->
         <div class="pwa-install-container">
             <button id="btnInstallPC" class="btn-pwa-install btn-pwa-pc" onclick="instalarPWA()">
@@ -536,15 +619,58 @@
                 <span>Descargar Android</span>
             </button>
         </div>
-        <div class="pin-container">
-            <i class="bi bi-shield-lock" style="font-size: 3rem; color: #1e3c72;"></i>
-            <h2 class="mt-3">Acceso Seguro</h2>
-            <p class="text-muted">Ingresa tu PIN para continuar</p>
-            <input type="password" id="pinInput" class="pin-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="****">
-            <button class="btn btn-primary-custom" onclick="verificarPIN()">
-                <i class="bi bi-unlock me-2"></i>Ingresar
+        <div class="auth-container">
+            <div class="text-center mb-3">
+                <i class="bi bi-cash-stack" style="font-size: 3rem; color: #1e3c72;"></i>
+                <h2 class="mt-2">Gestión de Préstamos</h2>
+                <p class="text-muted mb-0">Tu portal de préstamos personal</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Iniciar Sesión</button>
+                <button class="auth-tab" onclick="switchAuthTab('register')">Registrarse</button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form active">
+                <input type="email" id="loginEmail" class="auth-input" placeholder="Correo electrónico">
+                <input type="password" id="loginPassword" class="auth-input" placeholder="Contraseña">
+                <button class="btn btn-primary-custom text-white" onclick="loginUser()">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Ingresar
+                </button>
+                <p id="loginError" class="text-danger mt-2 text-center" style="display: none;"></p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form">
+                <input type="text" id="regNombre" class="auth-input" placeholder="Nombre completo">
+                <input type="email" id="regEmail" class="auth-input" placeholder="Correo electrónico">
+                <input type="password" id="regPassword" class="auth-input" placeholder="Contraseña (mínimo 6 caracteres)">
+                <input type="password" id="regPassword2" class="auth-input" placeholder="Confirmar contraseña">
+                <input type="text" id="regPin" class="auth-input" maxlength="4" inputmode="numeric" placeholder="PIN de seguridad (4 dígitos)">
+                <button class="btn btn-primary-custom text-white" onclick="registerUser()">
+                    <i class="bi bi-person-plus me-2"></i>Crear Cuenta
+                </button>
+                <p id="registerError" class="text-danger mt-2 text-center" style="display: none;"></p>
+                <p id="registerSuccess" class="text-success mt-2 text-center" style="display: none;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Suspended/Expired Membership Screen -->
+    <div id="suspendedScreen">
+        <div class="suspended-container">
+            <i class="bi bi-shield-x suspended-icon"></i>
+            <h3 class="mt-3 text-danger">Membresía Inactiva</h3>
+            <p id="suspendedMessage" class="text-muted">Tu membresía ha expirado o fue suspendida.</p>
+            <p class="text-muted small">Contacta al administrador para renovar tu suscripción.</p>
+            <div class="mt-4">
+                <p class="small text-muted mb-1">Tu membresía venció el:</p>
+                <p id="suspendedExpireDate" class="fw-bold text-danger">-</p>
+            </div>
+            <button class="btn btn-outline-secondary mt-3" onclick="logoutUser()">
+                <i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesión
             </button>
-            <p id="pinError" class="text-danger mt-3" style="display: none;">PIN incorrecto. Intenta de nuevo.</p>
         </div>
     </div>
 
@@ -561,7 +687,27 @@
     <div id="appContainer">
         <!-- Header -->
         <div class="app-header">
-            <h1><i class="bi bi-cash-stack me-2"></i>Gestión de Préstamos</h1>
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Préstamos</h1>
+                <div class="d-flex align-items-center gap-2">
+                    <small id="headerUserName" class="d-none d-sm-inline opacity-75"></small>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text fw-bold" id="menuUserName">-</span></li>
+                            <li><span class="dropdown-item-text text-muted small" id="menuUserEmail">-</span></li>
+                            <li id="menuMembershipInfo" class="dropdown-item-text small text-success" style="display:none;"></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="cambiarPinUsuario(); return false;"><i class="bi bi-shield-lock me-2"></i>Cambiar PIN</a></li>
+                            <li id="adminMenuOption" style="display:none;"><a class="dropdown-item text-primary" href="#" onclick="abrirPanelAdmin(); return false;"><i class="bi bi-gear-wide-connected me-2"></i>Panel Admin</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="logoutUser(); return false;"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Views Container -->
@@ -1028,6 +1174,92 @@
         </div>
     </div>
 
+    <!-- Modal Panel de Administración -->
+    <div class="modal fade" id="adminModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-gear-wide-connected me-2"></i>Panel de Administración</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabUsuarios">Usuarios</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAdmins">Administradores</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <!-- Tab Usuarios -->
+                        <div class="tab-pane fade show active" id="tabUsuarios">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <small class="text-muted">Total: <span id="adminTotalUsers">0</span> usuarios</small>
+                                <input type="text" class="form-control form-control-sm" style="max-width:200px;" placeholder="Buscar..." id="adminSearchUser" oninput="filtrarUsuariosAdmin()">
+                            </div>
+                            <div id="adminUsersList" style="max-height: 400px; overflow-y: auto;">
+                                <p class="text-muted text-center">Cargando usuarios...</p>
+                            </div>
+                        </div>
+                        <!-- Tab Admins -->
+                        <div class="tab-pane fade" id="tabAdmins">
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle me-2"></i>Los administradores pueden gestionar membresías de otros usuarios.
+                            </div>
+                            <div id="adminAdminsList">
+                                <p class="text-muted text-center">Cargando administradores...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Membresía de Usuario -->
+    <div class="modal fade" id="membershipModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-calendar-check me-2"></i>Gestionar Membresía</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fw-bold" id="membershipUserName">-</p>
+                    <p class="text-muted small" id="membershipUserEmail">-</p>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" id="membershipStatus">
+                            <option value="activo">✅ Activo</option>
+                            <option value="suspendido">🚫 Suspendido</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" id="membershipStart">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" id="membershipEnd">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label">Notas (opcional)</label>
+                        <textarea class="form-control" id="membershipNotes" rows="2" placeholder="Ej: Pagó $20,000 - Mes de Febrero"></textarea>
+                    </div>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="membershipIsAdmin">
+                        <label class="form-check-label" for="membershipIsAdmin">Es Administrador</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarMembresia()">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- PWA Setup Script -->
     <script>
         // PWA Install prompt
@@ -1193,6 +1425,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { getDatabase, ref, set, push, get, update, onValue, remove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
         // Firebase Configuration
         const firebaseConfig = {
@@ -1209,11 +1442,18 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app);
 
-        // Base path for all data
-        const BASE_PATH = 'prestamos_app';
+        // Base path for all data - will be set per user after login
+        let BASE_PATH = '';
+        let currentUser = null;
+        let userPin = '1705'; // default, loaded from user profile
+        let isAdmin = false;
+        let allUsers = [];
+        let editingUserId = null;
 
-        const ACCESS_PIN = '1705';
+        // Tu email de dueño/superadmin (CÁMBIALO por tu email real)
+        const OWNER_EMAIL = 'admin@prestamos.com';
 
         // Global variables
         let prestamos = [];
@@ -1256,7 +1496,11 @@
         ];
 
         // Make functions available globally
-        window.verificarPIN = verificarPIN;
+        window.switchAuthTab = switchAuthTab;
+        window.loginUser = loginUser;
+        window.registerUser = registerUser;
+        window.logoutUser = logoutUser;
+        window.cambiarPinUsuario = cambiarPinUsuario;
         window.showView = showView;
         window.formatearMoneda = formatearMoneda;
         window.calcularPreview = calcularPreview;
@@ -1273,29 +1517,468 @@
         window.gestionarBancos = gestionarBancos;
         window.agregarBanco = agregarBanco;
         window.eliminarBanco = eliminarBanco;
+        window.abrirPanelAdmin = abrirPanelAdmin;
+        window.filtrarUsuariosAdmin = filtrarUsuariosAdmin;
+        window.editarMembresia = editarMembresia;
+        window.guardarMembresia = guardarMembresia;
         window.registrarAbono = registrarAbono;
 
-        // PIN Verification
-        function verificarPIN() {
-            const pin = document.getElementById('pinInput').value;
-            if (pin === ACCESS_PIN) {
-                document.getElementById('pinScreen').style.display = 'none';
+        // ==================== AUTH SYSTEM ====================
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            if (tab === 'login') {
+                document.querySelector('.auth-tab:first-child').classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelector('.auth-tab:last-child').classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+        }
+
+        async function loginUser() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+            errorEl.style.display = 'none';
+
+            if (!email || !password) {
+                errorEl.textContent = 'Completa todos los campos.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            showLoading(true);
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Login error:', error);
+                const messages = {
+                    'auth/user-not-found': 'No existe una cuenta con este correo.',
+                    'auth/wrong-password': 'Contraseña incorrecta.',
+                    'auth/invalid-email': 'Correo electrónico inválido.',
+                    'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+                    'auth/too-many-requests': 'Demasiados intentos. Espera un momento.'
+                };
+                errorEl.textContent = messages[error.code] || 'Error al iniciar sesión.';
+                errorEl.style.display = 'block';
+                playBeep('error');
+            }
+            showLoading(false);
+        }
+
+        async function registerUser() {
+            const nombre = document.getElementById('regNombre').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const password2 = document.getElementById('regPassword2').value;
+            const pin = document.getElementById('regPin').value.trim();
+            const errorEl = document.getElementById('registerError');
+            const successEl = document.getElementById('registerSuccess');
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            if (!nombre || !email || !password || !password2 || !pin) {
+                errorEl.textContent = 'Completa todos los campos.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (password.length < 6) {
+                errorEl.textContent = 'La contraseña debe tener mínimo 6 caracteres.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (password !== password2) {
+                errorEl.textContent = 'Las contraseñas no coinciden.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (!/^\d{4}$/.test(pin)) {
+                errorEl.textContent = 'El PIN debe ser de 4 dígitos numéricos.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(cred.user, { displayName: nombre });
+
+                // Save user profile in Realtime Database
+                const userProfileRef = ref(db, `prestamos_app/users/${cred.user.uid}/perfil`);
+                await set(userProfileRef, {
+                    nombre,
+                    email,
+                    pin,
+                    fechaRegistro: new Date().toISOString()
+                });
+
+                // Initialize bancos for this user
+                const bancosRef = ref(db, `prestamos_app/users/${cred.user.uid}/config/bancos`);
+                await set(bancosRef, BANCOS_INICIALES);
+
+                playBeep('success');
+                // onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Register error:', error);
+                const messages = {
+                    'auth/email-already-in-use': 'Ya existe una cuenta con este correo.',
+                    'auth/invalid-email': 'Correo electrónico inválido.',
+                    'auth/weak-password': 'La contraseña es muy débil (mínimo 6 caracteres).'
+                };
+                errorEl.textContent = messages[error.code] || 'Error al crear la cuenta.';
+                errorEl.style.display = 'block';
+                playBeep('error');
+            }
+            showLoading(false);
+        }
+
+        async function logoutUser() {
+            try {
+                await signOut(auth);
+                // Reset state
+                prestamos = [];
+                currentClienteId = null;
+                cajaInicial = 0;
+                manualCuotasFechas = null;
+                bancos = [];
+                BASE_PATH = '';
+                currentUser = null;
+                document.getElementById('appContainer').style.display = 'none';
+                document.getElementById('authScreen').style.display = 'flex';
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        async function cambiarPinUsuario() {
+            if (!currentUser) return;
+            const nuevoPin = prompt('Ingresa tu nuevo PIN de 4 dígitos:');
+            if (!nuevoPin || !/^\d{4}$/.test(nuevoPin.trim())) {
+                showAlert('El PIN debe ser de 4 dígitos numéricos.', 'danger');
+                playBeep('error');
+                return;
+            }
+            try {
+                const pinRef = ref(db, `${BASE_PATH}/perfil/pin`);
+                await set(pinRef, nuevoPin.trim());
+                userPin = nuevoPin.trim();
+                showAlert('PIN actualizado correctamente.', 'success');
+                playBeep('success');
+            } catch (error) {
+                showAlert('Error al actualizar el PIN.', 'danger');
+                playBeep('error');
+            }
+        }
+
+        // Listen for auth state changes
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                BASE_PATH = `prestamos_app/users/${user.uid}`;
+
+                // Update UI with user info
+                const displayName = user.displayName || user.email;
+                document.getElementById('headerUserName').textContent = displayName;
+                document.getElementById('menuUserName').textContent = displayName;
+                document.getElementById('menuUserEmail').textContent = user.email;
+
+                // Check if user is admin or owner
+                isAdmin = await verificarSiEsAdmin(user.uid, user.email);
+                if (isAdmin) {
+                    document.getElementById('adminMenuOption').style.display = 'block';
+                } else {
+                    document.getElementById('adminMenuOption').style.display = 'none';
+                }
+
+                // Check membership status (admins/owners skip this)
+                if (!isAdmin) {
+                    const membershipStatus = await verificarMembresia(user.uid);
+                    if (!membershipStatus.activo) {
+                        // Show suspended screen
+                        document.getElementById('authScreen').style.display = 'none';
+                        document.getElementById('appContainer').style.display = 'none';
+                        document.getElementById('suspendedScreen').style.display = 'flex';
+                        document.getElementById('suspendedMessage').textContent = membershipStatus.mensaje;
+                        document.getElementById('suspendedExpireDate').textContent = membershipStatus.fechaFin || '-';
+                        showLoading(false);
+                        return;
+                    }
+                    // Show membership expiry info
+                    if (membershipStatus.fechaFin) {
+                        const infoEl = document.getElementById('menuMembershipInfo');
+                        infoEl.textContent = `Membresía hasta: ${membershipStatus.fechaFin}`;
+                        infoEl.style.display = 'block';
+                    }
+                }
+
+                // Load user PIN from profile
+                try {
+                    const perfilSnap = await get(ref(db, `${BASE_PATH}/perfil`));
+                    if (perfilSnap.exists()) {
+                        const perfil = perfilSnap.val();
+                        userPin = perfil.pin || '1705';
+                    }
+                } catch (e) {
+                    console.log('Error loading profile:', e);
+                }
+
+                // Show app
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('suspendedScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'block';
                 cargarDatos();
                 cargarCaja();
                 cargarBancos();
             } else {
-                document.getElementById('pinError').style.display = 'block';
-                document.getElementById('pinInput').value = '';
-                document.getElementById('pinInput').focus();
+                // Not logged in
+                currentUser = null;
+                BASE_PATH = '';
+                isAdmin = false;
+                document.getElementById('appContainer').style.display = 'none';
+                document.getElementById('suspendedScreen').style.display = 'none';
+                document.getElementById('authScreen').style.display = 'flex';
+            }
+        });
+
+        // ==================== ADMIN & MEMBERSHIP SYSTEM ====================
+        async function verificarSiEsAdmin(uid, email) {
+            // Owner email is always admin
+            if (email === OWNER_EMAIL) return true;
+            
+            try {
+                const adminSnap = await get(ref(db, `prestamos_app/admins/${uid}`));
+                return adminSnap.exists() && adminSnap.val() === true;
+            } catch (e) {
+                return false;
             }
         }
 
-        // Enter key for PIN
-        document.getElementById('pinInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                verificarPIN();
+        async function verificarMembresia(uid) {
+            try {
+                const membresiaSnap = await get(ref(db, `prestamos_app/membresias/${uid}`));
+                if (!membresiaSnap.exists()) {
+                    // No membership record - suspended by default for new users
+                    return { activo: false, mensaje: 'Tu cuenta está pendiente de activación.', fechaFin: null };
+                }
+                
+                const membresia = membresiaSnap.val();
+                
+                // Check if suspended manually
+                if (membresia.estado === 'suspendido') {
+                    return { activo: false, mensaje: 'Tu membresía ha sido suspendida.', fechaFin: membresia.fechaFin || null };
+                }
+                
+                // Check if expired
+                if (membresia.fechaFin) {
+                    const hoy = new Date();
+                    hoy.setHours(0, 0, 0, 0);
+                    const fechaFin = parseLocalDate(membresia.fechaFin);
+                    if (fechaFin && fechaFin < hoy) {
+                        return { activo: false, mensaje: 'Tu membresía ha expirado.', fechaFin: membresia.fechaFin };
+                    }
+                }
+                
+                return { activo: true, fechaFin: membresia.fechaFin || null };
+            } catch (e) {
+                console.log('Error verificando membresía:', e);
+                return { activo: false, mensaje: 'Error verificando membresía.', fechaFin: null };
             }
+        }
+
+        async function abrirPanelAdmin() {
+            if (!isAdmin) return;
+            await cargarTodosLosUsuarios();
+            renderUsuariosAdmin();
+            renderAdminsAdmin();
+            const modal = getBsModal('adminModal');
+            modal.show();
+        }
+
+        async function cargarTodosLosUsuarios() {
+            try {
+                const usersSnap = await get(ref(db, 'prestamos_app/users'));
+                allUsers = [];
+                if (usersSnap.exists()) {
+                    const data = usersSnap.val();
+                    for (const uid in data) {
+                        const perfil = data[uid].perfil || {};
+                        const membresiaSnap = await get(ref(db, `prestamos_app/membresias/${uid}`));
+                        const membresia = membresiaSnap.exists() ? membresiaSnap.val() : null;
+                        const adminSnap = await get(ref(db, `prestamos_app/admins/${uid}`));
+                        const esAdmin = adminSnap.exists() && adminSnap.val() === true;
+                        
+                        allUsers.push({
+                            uid,
+                            nombre: perfil.nombre || 'Sin nombre',
+                            email: perfil.email || '-',
+                            fechaRegistro: perfil.fechaRegistro || null,
+                            membresia,
+                            esAdmin,
+                            esOwner: perfil.email === OWNER_EMAIL
+                        });
+                    }
+                }
+                document.getElementById('adminTotalUsers').textContent = allUsers.length;
+            } catch (e) {
+                console.error('Error cargando usuarios:', e);
+                allUsers = [];
+            }
+        }
+
+        function getMembershipStatus(user) {
+            if (!user.membresia) return { status: 'suspended', label: 'Pendiente', class: 'suspended' };
+            if (user.membresia.estado === 'suspendido') return { status: 'suspended', label: 'Suspendido', class: 'suspended' };
+            if (user.membresia.fechaFin) {
+                const hoy = new Date(); hoy.setHours(0,0,0,0);
+                const fechaFin = parseLocalDate(user.membresia.fechaFin);
+                if (fechaFin && fechaFin < hoy) return { status: 'expired', label: 'Expirado', class: 'expired' };
+            }
+            return { status: 'active', label: 'Activo', class: 'active' };
+        }
+
+        function renderUsuariosAdmin(filtro = '') {
+            const container = document.getElementById('adminUsersList');
+            let usuarios = allUsers;
+            if (filtro) {
+                const f = filtro.toLowerCase();
+                usuarios = usuarios.filter(u => u.nombre.toLowerCase().includes(f) || u.email.toLowerCase().includes(f));
+            }
+            
+            if (usuarios.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">No hay usuarios registrados.</p>';
+                return;
+            }
+            
+            container.innerHTML = usuarios.map(user => {
+                const ms = getMembershipStatus(user);
+                const fechaFin = user.membresia?.fechaFin || '-';
+                return `
+                    <div class="user-card ${ms.class}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>${user.nombre}</strong>
+                                ${user.esAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
+                                ${user.esOwner ? '<span class="admin-badge" style="background:#ffc107;color:#000;">DUEÑO</span>' : ''}
+                                <br><small class="text-muted">${user.email}</small>
+                            </div>
+                            <span class="membership-badge ${ms.class}">${ms.label}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted">Vence: ${fechaFin}</small>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editarMembresia('${user.uid}')">
+                                <i class="bi bi-pencil me-1"></i>Gestionar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAdminsAdmin() {
+            const container = document.getElementById('adminAdminsList');
+            const admins = allUsers.filter(u => u.esAdmin || u.esOwner);
+            
+            if (admins.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">No hay administradores.</p>';
+                return;
+            }
+            
+            container.innerHTML = admins.map(user => `
+                <div class="user-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${user.nombre}</strong>
+                            ${user.esOwner ? '<span class="admin-badge" style="background:#ffc107;color:#000;">DUEÑO</span>' : '<span class="admin-badge">ADMIN</span>'}
+                            <br><small class="text-muted">${user.email}</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filtrarUsuariosAdmin() {
+            const filtro = document.getElementById('adminSearchUser').value;
+            renderUsuariosAdmin(filtro);
+        }
+
+        function editarMembresia(uid) {
+            const user = allUsers.find(u => u.uid === uid);
+            if (!user) return;
+            
+            editingUserId = uid;
+            document.getElementById('membershipUserName').textContent = user.nombre;
+            document.getElementById('membershipUserEmail').textContent = user.email;
+            
+            const membresia = user.membresia || {};
+            document.getElementById('membershipStatus').value = membresia.estado || 'activo';
+            document.getElementById('membershipStart').value = membresia.fechaInicio || toISODateLocal(new Date());
+            document.getElementById('membershipEnd').value = membresia.fechaFin || '';
+            document.getElementById('membershipNotes').value = membresia.notas || '';
+            document.getElementById('membershipIsAdmin').checked = user.esAdmin;
+            
+            const modal = getBsModal('membershipModal');
+            modal.show();
+        }
+
+        async function guardarMembresia() {
+            if (!editingUserId) return;
+            
+            const estado = document.getElementById('membershipStatus').value;
+            const fechaInicio = document.getElementById('membershipStart').value;
+            const fechaFin = document.getElementById('membershipEnd').value;
+            const notas = document.getElementById('membershipNotes').value.trim();
+            const esAdmin = document.getElementById('membershipIsAdmin').checked;
+            
+            if (!fechaFin) {
+                showAlert('Debes especificar una fecha de vencimiento.', 'danger');
+                playBeep('error');
+                return;
+            }
+            
+            showLoading(true);
+            try {
+                // Save membership
+                await set(ref(db, `prestamos_app/membresias/${editingUserId}`), {
+                    estado,
+                    fechaInicio,
+                    fechaFin,
+                    notas,
+                    ultimaModificacion: new Date().toISOString()
+                });
+                
+                // Update admin status
+                if (esAdmin) {
+                    await set(ref(db, `prestamos_app/admins/${editingUserId}`), true);
+                } else {
+                    await remove(ref(db, `prestamos_app/admins/${editingUserId}`));
+                }
+                
+                showAlert('Membresía actualizada correctamente.', 'success');
+                playBeep('success');
+                
+                // Refresh list
+                await cargarTodosLosUsuarios();
+                renderUsuariosAdmin(document.getElementById('adminSearchUser').value);
+                renderAdminsAdmin();
+                
+                getBsModal('membershipModal').hide();
+                
+            } catch (e) {
+                console.error('Error guardando membresía:', e);
+                showAlert('Error al guardar la membresía.', 'danger');
+                playBeep('error');
+            }
+            showLoading(false);
+        }
+
+        // Enter key for login
+        document.getElementById('loginPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loginUser();
+        });
+        document.getElementById('regPin').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') registerUser();
         });
 
         // Default Fecha de Apertura = hoy
@@ -1441,7 +2124,7 @@
 
                 const onOk = () => {
                     const pin = (inputEl.value || '').trim();
-                    const ok = pin === ACCESS_PIN;
+                    const ok = pin === userPin;
                     if (!ok) {
                         errorEl.style.display = 'block';
                         playBeep('error');
