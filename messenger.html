@@ -14,6 +14,14 @@
             overflow: hidden; /* Prevenir scroll del body */
             /* Establecer la fuente principal */
             font-family: 'Roboto', sans-serif; /* Usar Roboto, con sans-serif como fallback moderno */
+            background-color: #f2f2f7; /* Fondo neutro para PC */
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            padding: 20px; /* En PC da aire alrededor del chat */
+            box-sizing: border-box;
         }
 
         /* Estilos generales y de contenedor */
@@ -27,10 +35,10 @@
             display: flex;
             flex-direction: column;
             /* Altura inicial al 100% del viewport */
-            height: 100vh; /* Usar 100vh inicialmente */
-            max-height: 100vh; /* Asegurar que no exceda 100vh */
+            height: calc(100vh - 40px); /* Considera el padding del body en PC */
+            max-height: calc(100vh - 40px); /* Asegurar que no exceda el viewport */
             box-sizing: border-box;
-             padding: 20px; /* Añadir padding aquí en lugar del body */
+            padding: 0; /* Evita desalineación con el área fija inferior */
         }
 
         /* Estilos para la sección de ingreso de nombre */
@@ -87,6 +95,13 @@
              font-size: 1.3em;
              color: #1c1c1e;
          }
+
+        /* Ajustes finos para escritorio (mantener móvil intacto) */
+        @media (min-width: 769px) {
+            #bottom-fixed-area {
+                bottom: 20px; /* Alinea visualmente con el padding del body */
+            }
+        }
 
          #online-users {
              font-size: 0.9em;
@@ -216,9 +231,11 @@
         .message.sent .text,
         .message.sent .timestamp {
             /* color: white !important; Removido para probar inline style */
+            color: inherit;
         }
          .message.sent .timestamp {
              /* color: rgba(255, 255, 255, 0.8) !important; Removido para probar inline style */
+             color: inherit;
          }
          .message.sent .checkmarks {
              color: white !important; /* Checkmarks blancos en mensajes enviados, forzar */
@@ -268,8 +285,8 @@
             min-height: 1.2em; /* Reserva espacio */
             text-align: right; /* Alinear a la derecha */
             margin-bottom: 5px; /* Añadir margen debajo del indicador */
-            /* border: 1px dashed blue; /* Debugging border */ */
-            /* background-color: rgba(0, 0, 255, 0.1); /* Debugging background */ */
+            /* border: 1px dashed blue; Debugging border */
+            /* background-color: rgba(0, 0, 255, 0.1); Debugging background */
         }
         /* --- End Debugging Styles --- */
 
@@ -361,6 +378,7 @@
          /* Estilo específico para el botón de emoji */
          #emoji-button {
              /* Ya tienen estilos base de .message-input-area button */
+             -webkit-tap-highlight-color: transparent;
          }
 
          #emoji-button svg {
@@ -555,6 +573,7 @@
         @media (max-width: 768px) {
             body {
                 padding: 0; /* Eliminar padding del body en móviles */
+                display: block;
             }
             #chat-container {
                 max-width: 100vw; /* Ocupar todo el ancho del viewport */
@@ -583,6 +602,7 @@
              #bottom-fixed-area {
                  max-width: 100vw;
                  padding: 10px 15px; /* Ajustar padding para móviles */
+                 bottom: 0;
              }
 
 
@@ -1113,6 +1133,31 @@
              }, (error) => {
                  console.error(`[${userName}] Error in realtime listener for message changes (child_changed):`, error); // Debugging log con nombre de usuario
              });
+
+             // Listener para reflejar borrados masivos del nodo 'messages' (por ejemplo, al limpiar el chat)
+             messagesRef.on('value', (snapshot) => {
+                 // Si el nodo no existe o queda vacío, limpiar el DOM del chat
+                 if (!snapshot.exists()) {
+                     clearChatUI();
+                 }
+             }, (error) => {
+                 console.error(`[${userName}] Error in realtime listener for messages (value):`, error);
+             });
+        }
+
+        function clearChatUI(){
+            chatBox.innerHTML = '';
+            typingIndicator.textContent = '';
+            // Reset del estado de respuesta si estaba activo
+            replyingToMessage = null;
+            replyPreview.style.display = 'none';
+            replyNameSpan.textContent = '';
+            replyTextSpan.textContent = '';
+            // Ocultar selector/menús abiertos
+            emojiPicker.style.display = 'none';
+            settingsDropdown.style.display = 'none';
+            // Ajustar padding por si cambia la altura del área fija
+            adjustChatBoxPadding();
         }
 
 
@@ -1432,12 +1477,13 @@
             const enteredPassword = prompt("Ingresa la clave para limpiar el chat:");
 
             // Verificar la clave
-            if (enteredPassword === CLEAR_CHAT_PASSWORD) {
+            if (String(enteredPassword || '').trim() === CLEAR_CHAT_PASSWORD) {
                 // Si la clave es correcta, eliminar el nodo 'messages' de Realtime Database
                 messagesRef.remove()
                     .then(() => {
                         console.log("Chat limpiado exitosamente en Realtime Database!");
-                        // La UI se actualizará automáticamente gracias al listener on 'child_added'
+                        // Limpiar también la UI local inmediatamente
+                        clearChatUI();
                     })
                     .catch((error) => {
                         console.error("Error al limpiar el chat en Realtime Database:", error);
