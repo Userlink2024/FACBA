@@ -1,228 +1,1715 @@
-// ============================================
-// C&A CLOUD FACTORY - Chat Module
-// ============================================
-
-import { db, rtdb, collection, addDoc, query, where, orderBy, onSnapshot, Timestamp, ref, push, onValue } from './firebase-init.js';
-
-let currentChatUser = null;
-let currentUserUid = null;
-let unsubscribeChat = null;
-let lastMessageCount = 0;
-let chatAudioContext = null;
-
-// Función para reproducir sonido de mensaje
-function playChatSound() {
-    try {
-        if (!chatAudioContext) {
-            chatAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Moderno</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Asegurar que html y body ocupen toda la altura de la ventana */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevenir scroll del body */
+            /* Establecer la fuente principal */
+            font-family: 'Roboto', sans-serif; /* Usar Roboto, con sans-serif como fallback moderno */
         }
-        
-        if (chatAudioContext.state === 'suspended') {
-            chatAudioContext.resume();
+
+        /* Estilos generales y de contenedor */
+        #chat-container {
+            width: 100%; /* Ocupar todo el ancho disponible hasta el max-width */
+            max-width: 700px; /* Aumentar el ancho máximo */
+            background-color: #ffffff; /* Fondo blanco limpio */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Sombra más suave */
+            border-radius: 15px; /* Bordes más redondeados */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            /* Altura inicial al 100% del viewport */
+            height: 100vh; /* Usar 100vh inicialmente */
+            max-height: 100vh; /* Asegurar que no exceda 100vh */
+            box-sizing: border-box;
+             padding: 20px; /* Añadir padding aquí en lugar del body */
         }
-        
-        const oscillator = chatAudioContext.createOscillator();
-        const gainNode = chatAudioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(chatAudioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(587, chatAudioContext.currentTime); // D5
-        oscillator.frequency.setValueAtTime(784, chatAudioContext.currentTime + 0.1); // G5
-        
-        gainNode.gain.setValueAtTime(0.4, chatAudioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, chatAudioContext.currentTime + 0.3);
-        
-        oscillator.start(chatAudioContext.currentTime);
-        oscillator.stop(chatAudioContext.currentTime + 0.3);
-    } catch (e) {
-        console.log('Audio not supported');
-    }
-}
 
-export function initChat(userUid) {
-    currentUserUid = userUid;
-    createChatModal();
-}
+        /* Estilos para la sección de ingreso de nombre */
+        #name-prompt {
+            padding: 30px 20px; /* Más padding */
+            text-align: center;
+            background-color: #e5e5ea; /* Gris claro */
+            border-bottom: 1px solid #d1d1d6; /* Borde sutil */
+            flex-shrink: 0; /* Evitar que se encoja */
+        }
 
-function createChatModal() {
-    if (document.getElementById('chatModal')) return;
-    
-    const modal = document.createElement('div');
-    modal.id = 'chatModal';
-    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden';
-    modal.innerHTML = `
-        <div class="bg-gray-800 rounded-2xl w-full max-w-lg mx-4 shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
-            <!-- Header -->
-            <div class="flex items-center justify-between p-4 border-b border-gray-700">
-                <div class="flex items-center gap-3">
-                    <div class="relative">
-                        <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user text-gray-400"></i>
-                        </div>
-                        <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></span>
-                    </div>
-                    <div>
-                        <p id="chatUserName" class="text-white font-medium">Usuario</p>
-                        <p class="text-green-400 text-xs">En línea</p>
-                    </div>
-                </div>
-                <button id="closeChatModal" class="text-gray-400 hover:text-white p-2">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <!-- Messages -->
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px]">
-                <p class="text-gray-500 text-center text-sm">Cargando mensajes...</p>
-            </div>
-            
-            <!-- Input -->
-            <div class="p-4 border-t border-gray-700">
-                <form id="chatForm" class="flex gap-2">
-                    <input 
-                        type="text" 
-                        id="chatInput" 
-                        placeholder="Escribe un mensaje importante..." 
-                        class="flex-1 px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        autocomplete="off"
-                    >
-                    <button type="submit" class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </form>
-            </div>
+        #name-prompt h2 {
+            margin-top: 0;
+            color: #1c1c1e; /* Texto oscuro */
+            font-size: 1.5em; /* Aumentar tamaño del título */
+        }
+
+        #name-prompt input {
+            padding: 12px 15px; /* Más padding */
+            margin-right: 10px;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px; /* Bordes redondeados */
+            font-size: 1.1em; /* Aumentar tamaño de fuente */
+            box-sizing: border-box; /* Incluir padding y border */
+        }
+
+        #name-prompt button {
+            padding: 12px 20px; /* Más padding */
+            background-color: #007aff; /* Azul de Apple */
+            color: white;
+            border: none;
+            border-radius: 8px; /* Bordes redondeados */
+            cursor: pointer;
+            font-size: 1.1em; /* Aumentar tamaño de fuente */
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        #name-prompt button:hover {
+            background-color: #0056b3; /* Azul más oscuro */
+        }
+
+        /* Estilos para el encabezado del chat */
+        #chat-header {
+            display: flex;
+            justify-content: space-between; /* Espacio entre título/online y botón de settings */
+            align-items: center;
+            padding: 0 20px 10px 20px; /* Padding superior, sin padding lateral extra */
+            flex-shrink: 0;
+            position: relative; /* Para posicionar el dropdown */
+        }
+
+         #chat-header h2 {
+             margin: 0;
+             font-size: 1.3em;
+             color: #1c1c1e;
+         }
+
+         #online-users {
+             font-size: 0.9em;
+             color: #8e8e93;
+             margin-top: 5px;
+             min-height: 1.2em; /* Reserva espacio */
+         }
+
+
+        /* Estilos para la caja de chat (mensajes) */
+        #chat-box {
+            flex-grow: 1; /* Permite que la caja de chat ocupe el espacio restante */
+            padding: 0 20px; /* Padding lateral */
+            overflow-y: auto; /* Habilita el scroll vertical si los mensajes exceden la altura */
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            gap: 12px; /* Más espacio entre mensajes */
+
+            /* Estilos para la imagen de fondo */
+            background-image: url('https://images.unsplash.com/photo-1518655048521-f130df041722?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* URL de imagen de fondo moderna y sobria */
+            background-size: cover; /* Cubrir el área del contenedor */
+            background-position: center; /* Centrar la imagen */
+            background-repeat: no-repeat; /* No repetir la imagen */
+             /* Padding inferior dinámico ajustado por JS */
+            padding-bottom: 20px; /* Padding inicial, se ajustará con JS */
+        }
+
+        /* Estilos para cada mensaje individual */
+        .message {
+            padding: 12px 18px; /* Aumentar padding del mensaje */
+            border-radius: 18px; /* Bordes más redondeados */
+            max-width: 85%; /* Aumentar ancho máximo */
+            word-wrap: break-word;
+            position: relative;
+            line-height: 1.5; /* Mejorar espaciado entre líneas */
+            font-size: 1.1em; /* Aumentar tamaño de fuente base del mensaje */
+            /* Añadir un fondo semi-transparente para que el texto sea legible sobre la imagen */
+            background-color: rgba(255, 255, 255, 0.9); /* Blanco con 90% de opacidad */
+            cursor: pointer; /* Indicar que se puede hacer clic para responder */
+            display: flex; /* Usar flexbox para organizar el contenido interno */
+            flex-direction: column; /* Apilar nombre, respuesta, y footer */
+            z-index: 1; /* Asegurar que los mensajes estén por encima */
+        }
+
+        .message .name {
+             font-size: 0.9em; /* Tamaño de fuente del nombre (relativo al 1.1em del mensaje) */
+             color: #3a3a3c; /* Color de texto sutil */
+             margin-bottom: 2px; /* Espacio debajo del nombre */
+             display: block;
+             font-weight: 600; /* Semi-negrita */
+        }
+
+        .message .text {
+            display: block;
+            font-size: 1em; /* Tamaño de fuente del texto (relativo al 1.1em del mensaje) */
+            /* margin-bottom: 4px; Eliminado, el margen ahora está en el footer */
+             flex-grow: 1; /* Permitir que el texto ocupe espacio */
+             min-width: 0; /* Permitir que el texto se encoja y envuelva */
+             margin-right: auto; /* Empujar la hora/checks a la derecha */
+             padding-right: 8px; /* Espacio entre texto y hora/checks */
+             /* Asegurar que el texto se envuelva correctamente */
+             overflow-wrap: break-word;
+             word-break: break-word;
+        }
+
+         /* Estilos para los enlaces dentro de los mensajes */
+        .message a {
+            color: #007aff; /* Color azul para enlaces */
+            text-decoration: none; /* Sin subrayado por defecto */
+        }
+
+        .message a:hover {
+            text-decoration: underline; /* Subrayado al pasar el ratón */
+        }
+
+
+         /* Contenedor para texto, hora y checkmarks */
+         .message-footer {
+             display: flex;
+             align-items: center; /* Alinear verticalmente */
+             justify-content: flex-end; /* Alinear a la derecha */
+             flex-wrap: wrap; /* Permitir que los elementos se envuelvan si no hay espacio */
+             /* gap: 5px; */ /* Espacio entre elementos del footer */
+             margin-top: 4px; /* Espacio arriba del footer */
+         }
+
+
+        .message .timestamp {
+            font-size: 0.7em; /* Tamaño de fuente de la hora (relativo al 1.1em del mensaje) */
+            color: #8e8e93; /* Gris tenue */
+            /* text-align: right; Eliminado, manejado por flexbox */
+            display: inline-block; /* O inline, ambos funcionan con flexbox */
+             /* margin-top: 4px; Eliminado, el margen está en el footer */
+             flex-shrink: 0; /* Evitar que se encoja */
+             margin-left: 4px; /* Espacio a la izquierda del timestamp */
+        }
+
+         /* Estilos para los checkmarks */
+         .message .checkmarks {
+             font-size: 0.8em; /* Tamaño de los checkmarks */
+             color: #007aff; /* Color azul para checkmarks */
+             margin-left: 4px; /* Espacio a la izquierda */
+             vertical-align: middle; /* Alinear verticalmente */
+             display: inline; /* O inline-block */
+             flex-shrink: 0; /* Evitar que se encoja */
+         }
+
+
+        /* Estilos para mensajes recibidos */
+        .message.received {
+            background-color: rgba(229, 229, 234, 0.9); /* Gris claro con 90% de opacidad */
+            align-self: flex-start;
+            border-bottom-left-radius: 5px; /* Esquina inferior izquierda menos redondeada */
+        }
+
+        /* Estilos para mensajes enviados */
+        .message.sent {
+            background-color: rgba(0, 122, 255, 0.9); /* Azul con 90% de opacidad */
+            color: white; /* Texto blanco */
+            align-self: flex-end;
+            border-bottom-right-radius: 5px; /* Esquina inferior derecha menos redondeada */
+        }
+
+         /* Estilos para mensajes enviados - elementos internos */
+        .message.sent .name,
+        .message.sent .text,
+        .message.sent .timestamp {
+            /* color: white !important; Removido para probar inline style */
+        }
+         .message.sent .timestamp {
+             /* color: rgba(255, 255, 255, 0.8) !important; Removido para probar inline style */
+         }
+         .message.sent .checkmarks {
+             color: white !important; /* Checkmarks blancos en mensajes enviados, forzar */
+         }
+
+        /* Estilos para el contenedor del video de YouTube y otros embeds */
+        .video-preview-container {
+            margin-top: 8px; /* Espacio entre el texto y el video */
+            margin-bottom: 4px; /* Espacio entre el video y el footer */
+            width: 100%; /* Ocupar el ancho del mensaje */
+            aspect-ratio: 16 / 9; /* Mantener relación de aspecto 16:9 */
+            overflow: hidden; /* Asegurar que el iframe o video no se salga */
+            border-radius: 8px; /* Bordes redondeados para la previsualización */
+        }
+
+        .video-preview-container iframe,
+        .video-preview-container video {
+            width: 100%;
+            height: 100%;
+            border: none; /* Eliminar borde */
+        }
+
+
+        /* Contenedor fijo para el área de input y el indicador de escribiendo */
+        #bottom-fixed-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%; /* Ocupar todo el ancho */
+            max-width: 700px; /* Igual que el contenedor principal */
+            box-sizing: border-box; /* Incluir padding en el ancho */
+            margin: 0 auto; /* Centrar horizontalmente */
+            z-index: 5; /* Asegurar que esté por encima de la caja de chat */
+            display: flex; /* Usar flexbox */
+            flex-direction: column; /* Apilar elementos verticalmente */
+             /* background-color: #f9f9f9; Eliminado el color de fondo */
+             border-top: 1px solid #eee; /* Borde superior */
+             padding: 10px 20px; /* Padding interno */
+        }
+
+        /* --- Debugging Styles for typing indicator --- */
+        #typing-indicator {
+            font-size: 0.9em; /* Aumentar tamaño */
+            color: #8e8e93; /* Gris tenue */
+            padding: 0 5px; /* Padding interno */
+            min-height: 1.2em; /* Reserva espacio */
+            text-align: right; /* Alinear a la derecha */
+            margin-bottom: 5px; /* Añadir margen debajo del indicador */
+            /* border: 1px dashed blue; /* Debugging border */ */
+            /* background-color: rgba(0, 0, 255, 0.1); /* Debugging background */ */
+        }
+        /* --- End Debugging Styles --- */
+
+
+        /* Estilos para el área de entrada de mensajes (ahora dentro del contenedor fijo) */
+        .message-input-area {
+            display: flex;
+            /* flex-direction: column; Eliminado, el contenedor padre ya es flex-direction: column */
+            /* padding: 15px 20px; Eliminado, el padding está en el contenedor fijo */
+            /* background-color: #f9f9f9; Eliminado, el fondo está en el contenedor fijo */
+            /* border-top: 1px solid #eee; Eliminado, el borde está en el contenedor fijo */
+            align-items: center; /* Centrar horizontalmente */
+            gap: 10px; /* Espacio entre elementos */
+            flex-shrink: 0; /* Evita que el área de entrada se encoja */
+            /* Propiedades de position: fixed restauradas */
+            /* Eliminado: position, bottom, left, right, width, max-width, box-sizing, margin, z-index */
+        }
+
+
+        /* Contenedor para el input y los botones */
+        .input-container {
+            display: flex; /* Alinear elementos horizontalmente */
+            align-items: flex-end; /* Alinear verticalmente los elementos al final (bottom) */
+            gap: 10px; /* Espacio entre input y botones */
+            width: 100%; /* Ocupar todo el ancho disponible */
+        }
+
+
+        /* Estilos para el TEXTAREA */
+        .message-input-area textarea {
+            flex-grow: 1; /* Permite que el textarea ocupe el espacio restante */
+            /* Ajuste de padding para hacerlo menos "gordo" */
+            padding: 8px 15px;
+            border: 1px solid #d1d1d6;
+            border-radius: 20px; /* Bordes muy redondeados */
+            font-size: 1.1em;
+            box-sizing: border-box;
+            outline: none; /* Eliminar contorno al enfocar */
+            transition: border-color 0.2s ease-in-out;
+            line-height: 1.5; /* Igual que los mensajes para consistencia */
+            resize: none; /* Deshabilitar el redimensionamiento manual por el usuario */
+            min-height: 40px; /* Altura mínima similar a la del input original */
+            max-height: 120px; /* Altura máxima para evitar que crezca demasiado */
+            overflow-y: auto; /* Mostrar scrollbar si el contenido excede max-height */
+        }
+         .message-input-area textarea:focus {
+             border-color: #007aff; /* Borde azul al enfocar */
+         }
+
+
+         .message-input-area .input-buttons {
+             display: flex; /* Alinear botones horizontalmente */
+             gap: 5px; /* Espacio entre los botones */
+             align-items: center; /* Centrar verticalmente los botones */
+             flex-shrink: 0; /* Evitar que los botones se encoja */
+         }
+
+         /* Estilo base para los botones de icono */
+        .message-input-area button {
+            padding: 10px; /* Padding uniforme para botones de icono */
+            background-color: #e5e5ea; /* Fondo gris claro para botones de icono */
+            color: #007aff; /* Color azul para iconos */
+            border: none;
+            border-radius: 50%; /* Botones redondos */
+            cursor: pointer;
+            /* Ajuste de tamaño fijo para botones redondos */
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+         /* Estilo específico para el botón de enviar */
+         #send-button {
+             background-color: #007aff; /* Fondo azul para enviar */
+             color: white; /* Texto blanco */
+             border-radius: 20px; /* Bordes redondeados */
+             padding: 10px 20px; /* Padding horizontal */
+             width: auto; /* Ancho automático */
+             height: auto; /* Altura automática */
+         }
+
+         #send-button:hover {
+             background-color: #0056b3;
+         }
+
+         /* Estilo específico para el botón de emoji */
+         #emoji-button {
+             /* Ya tienen estilos base de .message-input-area button */
+         }
+
+         #emoji-button svg {
+             width: 22px; /* Tamaño del icono SVG */
+             height: 22px; /* Tamaño del icono SVG */
+             fill: #3a3a3c; /* Color del icono oscuro */
+         }
+          #emoji-button:hover {
+              background-color: #d1d1d6; /* Gris un poco más oscuro al pasar el ratón */
+          }
+
+        /* Estilos para el botón de limpiar chat */
+        /* Ahora dentro del dropdown */
+        #settings-dropdown button { /* Aplicar a todos los botones dentro del dropdown */
+            padding: 10px 15px; /* Padding para elemento de menú */
+            background-color: transparent; /* Fondo transparente */
+            color: #1c1c1e; /* Color de texto oscuro */
+            border: none;
+            border-radius: 0; /* Sin bordes redondeados */
+            cursor: pointer;
+            font-size: 1em; /* Tamaño de fuente estándar */
+            margin: 0; /* Sin margen */
+            width: 100%; /* Ocupar todo el ancho del dropdown */
+            text-align: left; /* Alinear texto a la izquierda */
+            transition: background-color 0.1s ease-in-out;
+            display: block; /* Asegurar que sea un bloque para ocupar el ancho */
+        }
+
+        #settings-dropdown button:hover { /* Aplicar a todos los botones al pasar el ratón */
+            background-color: #e5e5ea; /* Fondo gris claro al pasar el ratón */
+        }
+
+        /* Estilo específico para el botón de limpiar chat al pasar el ratón */
+        #settings-dropdown #clear-chat-button:hover {
+             color: #ff3b30; /* Color rojo al pasar el ratón */
+        }
+
+
+        /* Oculta la interfaz de chat inicialmente */
+        #chat-interface {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1; /* Asegura que la interfaz de chat ocupe el espacio disponible */
+             /* Ajuste clave: Darle una altura al contenedor flex para que los hijos flex-grow funcionen */
+            height: 100%;
+            position: relative; /* Necesario para posicionar el selector de emojis si se pone fuera del input-area */
+        }
+
+        /* Estilos para el selector de emojis */
+        #emoji-picker {
+            display: none; /* Oculto por defecto */
+            position: absolute;
+            /* bottom se ajusta dinámicamente en JS */
+            left: 20px; /* Alinear a la izquierda */
+            background-color: #fff;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 10; /* Asegurar que esté por encima de otros elementos */
+            max-height: 200px; /* Altura máxima para scroll */
+            overflow-y: auto; /* Habilitar scroll si hay muchos emojis */
+            width: calc(100% - 40px); /* Ocupar el ancho del contenedor con padding */
+            box-sizing: border-box;
+            flex-wrap: wrap; /* Permite que los emojis se envuelvan */
+            gap: 5px; /* Espacio entre emojis */
+        }
+
+        #emoji-picker span {
+            cursor: pointer;
+            font-size: 1.5em; /* Tamaño de los emojis */
+            padding: 3px;
+            border-radius: 4px;
+            transition: background-color 0.1s ease-in-out;
+        }
+
+        #emoji-picker span:hover {
+            background-color: #e5e5ea;
+        }
+
+        /* Estilos para la vista previa del mensaje al responder */
+        #reply-preview {
+            display: none; /* Oculto por defecto */
+            background-color: #e5e5ea; /* Fondo gris claro */
+            border-left: 4px solid #007aff; /* Barra azul a la izquierda */
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px; /* Espacio debajo de la vista previa */
+            width: 100%; /* Ocupar todo el ancho */
+            box-sizing: border-box;
+            position: relative; /* Para posicionar el botón de cerrar */
+        }
+
+        #reply-preview .reply-name {
+            font-size: 0.9em;
+            color: #3a3a3c;
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        #reply-preview .reply-text {
+            font-size: 1em;
+            color: #1c1c1e;
+            display: block;
+            /* Limitar el texto para que no sea demasiado largo */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #reply-preview #cancel-reply-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #8e8e93; /* Color gris */
+            font-size: 1.2em;
+        }
+
+        #reply-preview #cancel-reply-button:hover {
+            color: #3a3a3c; /* Gris más oscuro al pasar el ratón */
+        }
+
+        /* Estilos para mostrar el contenido de la respuesta dentro de un mensaje */
+        .message .reply-content {
+            background-color: rgba(0, 0, 0, 0.05); /* Fondo ligeramente oscuro */
+            border-left: 4px solid rgba(0, 122, 255, 0.5); /* Barra azul semi-transparente */
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px; /* Espacio debajo del contenido de respuesta */
+            font-size: 0.9em; /* Tamaño de fuente más pequeño */
+            word-wrap: break-word;
+        }
+
+        .message.sent .reply-content {
+             border-left-color: rgba(255, 255, 255, 0.5); /* Barra blanca semi-transparente en mensajes enviados */
+        }
+
+
+        .message .reply-content .reply-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: block;
+            color: #3a3a3c; /* Color de texto sutil */
+        }
+         .message.sent .reply-content .reply-name {
+             color: rgba(255, 255, 255, 0.8); /* Color de texto sutil en mensajes enviados */
+         }
+
+
+        .message .reply-content .reply-text {
+            display: block;
+            color: #1c1c1e; /* Texto oscuro */
+            /* Limitar el texto para que no sea demasiado largo */
+             white-space: nowrap;
+             overflow: hidden;
+             text-overflow: ellipsis;
+        }
+         .message.sent .reply-content .reply-text {
+             color: white; /* Texto blanco en mensajes enviados */
+         }
+
+
+        /* Estilos para el menú desplegable de configuración */
+        #settings-dropdown {
+            display: none; /* Oculto por defecto */
+            position: absolute;
+            /* bottom y right se ajustan dinámicamente en JS o se calculan */
+            background-color: #fff;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 10; /* Asegurar que esté por encima de otros elementos */
+            min-width: 150px; /* Ancho mínimo del menú */
+            padding: 5px 0; /* Padding interno */
+            flex-direction: column; /* Elementos apilados verticalmente */
+            top: 40px; /* Posicionar debajo del botón de settings */
+            right: 20px; /* Alinear a la derecha del chat-header */
+        }
+
+
+        /* Media query para pantallas más pequeñas (Android) */
+        @media (max-width: 768px) {
+            body {
+                padding: 0; /* Eliminar padding del body en móviles */
+            }
+            #chat-container {
+                max-width: 100vw; /* Ocupar todo el ancho del viewport */
+                border-radius: 0; /* Eliminar bordes redondeados en pantalla completa */
+                 padding: 0; /* Eliminar padding del contenedor en móviles */
+                 height: 100vh;
+                 max-height: 100vh;
+            }
+
+            #name-prompt {
+                padding: 20px 15px;
+            }
+
+            #name-prompt input,
+            #name-prompt button {
+                font-size: 1em; /* Ajustar tamaño de fuente */
+                padding: 10px 12px; /* Ajustar padding */
+            }
+
+             #name-prompt input[type="text"] { /* Especificar input de texto */
+                 margin-right: 5px;
+                 align-self: center; /* Centrar verticalmente */
+             }
+
+             /* Contenedor fijo para el área de input y el indicador de escribiendo en móviles */
+             #bottom-fixed-area {
+                 max-width: 100vw;
+                 padding: 10px 15px; /* Ajustar padding para móviles */
+             }
+
+
+             .message-input-area {
+                 display: flex;
+                 gap: 5px;
+                 align-items: center; /* Centrar horizontalmente */
+                 flex-shrink: 0; /* Evita que el área de entrada se encoja */
+             }
+
+             .message-input-area .input-buttons {
+                 gap: 5px;
+                 align-items: center; /* Centrar verticalmente */
+                 flex-shrink: 0; /* Asegurar que no se encoja */
+             }
+
+             /* Ajuste para textarea en móviles */
+             .message-input-area textarea {
+                 font-size: 1em;
+                 padding: 8px 12px; /* Ajustar padding */
+                 min-height: 40px; /* Asegurar altura mínima */
+                 max-height: 100px; /* Ajustar altura máxima para móviles */
+                 flex-grow: 1;
+                 box-sizing: border-box;
+             }
+
+             .input-container {
+                 flex-direction: row; /* Alinear horizontalmente en móviles */
+                 align-items: flex-end; /* Alinear verticalmente los elementos al final (bottom) */
+                 gap: 5px;
+             }
+
+
+             #emoji-button, #send-button {
+                 width: 40px;
+                 height: 40px;
+                 padding: 0; /* Eliminar padding extra */
+                 flex-shrink: 0; /* Evitar que se reduzcan */
+                 align-self: center; /* Centrar verticalmente */
+             }
+              #send-button {
+                  width: auto; /* Permitir que el botón de enviar ajuste su ancho */
+                  padding: 10px 15px;
+              }
+
+
+              #emoji-button svg, #settings-button svg {
+                 width: 20px;
+                 height: 20px;
+             }
+
+             #settings-button {
+                 /* Ajuste de tamaño y posición para móviles */
+                 width: 40px;
+                 height: 40px;
+                 padding: 0;
+                 align-self: center;
+                 font-size: 1.5em; /* Tamaño para el emoji */
+                 /* Añadido para intentar centrar el emoji */
+                 line-height: 1;
+                 vertical-align: middle;
+             }
+
+             #settings-dropdown button { /* Aplicar a todos los botones dentro del dropdown */
+                 font-size: 0.9em;
+                 padding: 8px 12px;
+             }
+
+             .message {
+                 max-width: 90%; /* Permitir que los mensajes ocupen más ancho */
+             }
+
+             /* Ajuste del indicador de escribiendo en móviles */
+             #typing-indicator {
+                 /* align-self: flex-end; Eliminado */
+                 /* margin-bottom: 5px; Eliminado */
+                 padding: 0 5px; /* Ajustar padding lateral para móviles */
+                 text-align: right; /* Asegurar alineación derecha */
+                 margin-bottom: 5px; /* Añadir margen debajo del indicador */
+             }
+
+             /* Ajuste del selector de emojis en móviles */
+             #emoji-picker {
+                 /* bottom se ajustará dinámicamente en JS */
+                 left: 10px;
+                 width: calc(100% - 20px); /* Ajustar ancho para móviles */
+             }
+
+             /* Ajuste de la vista previa de respuesta en móviles */
+             #reply-preview {
+                 padding: 8px 10px;
+             }
+
+             /* Ajuste del dropdown de settings en móviles */
+             #settings-dropdown {
+                 top: 40px; /* Posicionar debajo del botón de settings */
+                 right: 10px; /* Alinear a la derecha en móviles */
+                 left: auto; /* Desactivar alineación izquierda */
+             }
+        }
+
+         /* Estilos para el botón de configuración en general */
+         #settings-button {
+             /* Ajuste de tamaño y posición */
+             width: 40px;
+             height: 40px;
+             padding: 0;
+             display: flex;
+             justify-content: center;
+             align-items: center;
+             background-color: transparent; /* Fondo transparente */
+             border: none;
+             border-radius: 50%; /* Botón redondo */
+             cursor: pointer;
+             font-size: 1.5em; /* Tamaño para el emoji */
+             color: #1c1c1e; /* Color oscuro para el emoji */
+             /* Añadido para intentar centrar el emoji */
+             line-height: 1;
+             vertical-align: middle;
+         }
+
+         #settings-button:hover {
+             background-color: #e5e5ea; /* Fondo gris claro al pasar el ratón */
+         }
+
+
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-analytics-compat.js"></script>
+
+</head>
+<body>
+
+    <div id="chat-container">
+        <div id="name-prompt">
+            <h2>Ingresa tu nombre</h2>
+            <input type="text" id="name-input" placeholder="Tu nombre">
+            <button id="start-chat-button">Entrar al Chat</button>
         </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    document.getElementById('closeChatModal').addEventListener('click', closeChat);
-    document.getElementById('chatForm').addEventListener('submit', sendMessage);
-    
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeChat();
-    });
-}
 
-export function openChat(targetUid, targetName) {
-    currentChatUser = { uid: targetUid, nombre: targetName };
-    
-    document.getElementById('chatUserName').textContent = targetName;
-    document.getElementById('chatModal').classList.remove('hidden');
-    document.getElementById('chatInput').focus();
-    
-    loadMessages();
-}
-
-function closeChat() {
-    document.getElementById('chatModal').classList.add('hidden');
-    if (unsubscribeChat) {
-        unsubscribeChat();
-        unsubscribeChat = null;
-    }
-    currentChatUser = null;
-}
-
-function getChatId(uid1, uid2) {
-    return [uid1, uid2].sort().join('_');
-}
-
-function loadMessages() {
-    if (!currentChatUser || !currentUserUid) return;
-    
-    const chatId = getChatId(currentUserUid, currentChatUser.uid);
-    const messagesRef = ref(rtdb, `chats/${chatId}/messages`);
-    
-    if (unsubscribeChat) unsubscribeChat();
-    
-    lastMessageCount = 0; // Reset counter when opening chat
-    
-    unsubscribeChat = onValue(messagesRef, (snapshot) => {
-        const container = document.getElementById('chatMessages');
-        
-        if (!snapshot.exists()) {
-            container.innerHTML = `
-                <div class="text-center py-8">
-                    <i class="fas fa-comments text-4xl text-gray-600 mb-3"></i>
-                    <p class="text-gray-500">No hay mensajes aún</p>
-                    <p class="text-gray-600 text-sm">Envía un mensaje importante</p>
+        <div id="chat-interface">
+            <div id="chat-header">
+                 <div>
+                     <h2>FACBA</h2>
+                     <div id="online-users"></div> </div>
+                 <button id="settings-button" title="Configuración">
+                      ⚙️
+                 </button>
+                 <div id="settings-dropdown">
+                     <button id="clear-chat-button">Limpiar Chat</button>
+                     <button id="change-name-button">Cambiar Nombre</button>
+                 </div>
+            </div>
+             <div id="chat-box">
                 </div>
-            `;
-            return;
-        }
-        
-        const messages = [];
-        snapshot.forEach(child => {
-            messages.push({ id: child.key, ...child.val() });
+            <div id="bottom-fixed-area">
+                <div id="typing-indicator"></div>
+                 <div id="emoji-picker">
+                     </div>
+                 <div id="reply-preview">
+                     <span class="reply-name"></span>
+                     <span class="reply-text"></span>
+                     <button id="cancel-reply-button">×</button>
+                 </div>
+                <div class="message-input-area">
+                    <textarea id="message-input" placeholder="Escribe un mensaje..." autocomplete="off" autocorrect="off" rows="1"></textarea>
+                    <div class="input-buttons">
+                         <button id="emoji-button" title="Insertar Emoji">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22c-5.514 0-10-4.486-10-10s4.486-10 10-10 10 4.486 10 10-4.486 10-10 10zm-3-8c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm6 0c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm-3 4c-2.04 0-3.831-1.242-4.588-3h9.176c-.757 1.758-2.548 3-4.588 3z"/>
+                            </svg>
+                        </button>
+                         <button id="send-button">Enviar</button>
+                    </div>
+                 </div>
+            </div>
+             </div>
+    </div>
+
+    <audio id="notification-sound" src="sonido_mensaje.mp3" preload="auto"></audio>
+
+
+    <script>
+        // Configuración de tu aplicación web de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vxd4ISRBRB5SVY", // Reemplaza con tu apiKey
+            authDomain: "facba-a160c.firebaseapp.com", // Reemplaza con tu authDomain
+            projectId: "facba-a160c", // Reemplaza con tu projectId
+            storageBucket: "facba-a160c.firebasestorage.app", // Reemplaza con tu storageBucket (aunque no se use Storage)
+            messagingSenderId: "585530132394", // Reemplaza con tu messagingSenderId
+            appId: "1:585530132394:web:a25cda63f883f786804dd3", // Reemplaza con tu appId
+            measurementId: "G-S29LSYM8TQ", // Reemplaza con tu measurementId
+            // Añadir explícitamente la URL de la base de datos
+            databaseURL: "https://facba-a160c-default-rtdb.firebaseio.com/" // Reemplaza con tu databaseURL
+        };
+
+        // Inicializar Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database(); // Obtener la instancia de Realtime Database
+
+        let userName = ''; // Variable para almacenar el nombre del usuario
+        let typingTimeout; // Para manejar el indicador de escribiendo
+        let initialLoadComplete = false; // Bandera para saber si la carga inicial de mensajes ha terminado
+        let audioUnlocked = false; // Bandera para rastrear si el audio se ha desbloqueado
+
+
+        // Variable para almacenar los datos del mensaje al que se está respondiendo
+        let replyingToMessage = null;
+
+        // Intersection Observer para detectar cuando los mensajes son visibles
+        let messageObserver;
+
+
+        // Obtener elementos del DOM
+        const namePrompt = document.getElementById('name-prompt');
+        const nameInput = document.getElementById('name-input');
+        const startChatButton = document.getElementById('start-chat-button');
+        const chatInterface = document.getElementById('chat-interface');
+        const chatBox = document.getElementById('chat-box');
+        // Cambiado de input type="text" a textarea
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const typingIndicator = document.getElementById('typing-indicator'); // Elemento para el indicador
+        const notificationSound = document.getElementById('notification-sound'); // Elemento de audio
+        const emojiButton = document.getElementById('emoji-button'); // Botón de emoji
+        const emojiPicker = document.getElementById('emoji-picker'); // Selector de emojis
+        const replyPreview = document.getElementById('reply-preview'); // Vista previa de respuesta
+        const replyNameSpan = replyPreview.querySelector('.reply-name');
+        const replyTextSpan = replyPreview.querySelector('.reply-text');
+        const cancelReplyButton = document.getElementById('cancel-reply-button');
+        // Nuevos elementos para configuración
+        const settingsButton = document.getElementById('settings-button'); // Ahora en chat-header
+        const settingsDropdown = document.getElementById('settings-dropdown'); // Ahora en chat-header
+        const clearChatButton = document.getElementById('clear-chat-button'); // Ahora dentro del dropdown
+        const changeNameButton = document.getElementById('change-name-button'); // Nuevo botón para cambiar nombre
+        const chatContainer = document.getElementById('chat-container'); // Referencia al contenedor principal
+        const messageInputArea = document.querySelector('.message-input-area'); // Referencia al área de input
+        const onlineUsersDiv = document.getElementById('online-users'); // Elemento para usuarios en línea
+        const bottomFixedArea = document.getElementById('bottom-fixed-area'); // Nuevo contenedor fijo
+
+
+        // --- Lógica de Ingreso de Nombre ---
+        startChatButton.addEventListener('click', () => {
+            const enteredName = nameInput.value.trim(); // Obtener el nombre y eliminar espacios en blanco
+            if (enteredName) {
+                userName = enteredName;
+                namePrompt.style.display = 'none'; // Ocultar la sección de nombre
+                chatInterface.style.display = 'flex'; // Mostrar la interfaz de chat
+                messageInput.focus(); // Poner el foco en el campo de mensaje
+                // Opcional: Guardar el nombre en localStorage para recordarlo
+                localStorage.setItem('chatName', userName);
+                initializeChat(); // Inicializar la carga de mensajes y listeners
+            } else {
+                // Usar un mensaje en el DOM en lugar de alert()
+                // Podrías añadir un elemento div para mostrar errores
+                 console.log('Por favor, ingresa un nombre.'); // Usar console.log como alternativa simple
+            }
         });
-        
-        messages.sort((a, b) => a.timestamp - b.timestamp);
-        
-        // Reproducir sonido si hay nuevos mensajes de otros usuarios
-        const newCount = messages.length;
-        if (newCount > lastMessageCount && lastMessageCount > 0) {
-            const lastMsg = messages[messages.length - 1];
-            if (lastMsg && lastMsg.senderUid !== currentUserUid) {
-                playChatSound();
+
+        // Permitir presionar Enter en el campo de nombre
+        nameInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                startChatButton.click(); // Simular clic en el botón
+            }
+        });
+
+        // --- Función para inicializar la carga y los listeners del chat ---
+        function initializeChat() {
+             console.log("initializeChat function called.");
+             setupMessageObserver(); // Configurar el Intersection Observer
+             loadInitialMessages(); // Cargar mensajes existentes una vez
+             setupRealtimeListeners(); // Configurar listeners en tiempo real una vez
+             setupTypingIndicator(); // Configurar el indicador de escribiendo
+             setupPresence(); // Configurar la presencia del usuario
+             // El desbloqueo de audio ahora se maneja en la primera interacción del usuario (enviar mensaje)
+        }
+
+
+        // --- Lógica del Chat (Realtime Database) ---
+
+        // Referencia al nodo 'messages' en la base de datos
+        const messagesRef = database.ref('messages'); // 'messages' es el nombre del nodo
+        // Referencia al nodo para el estado de escritura
+        const typingRef = database.ref('typing');
+        // Referencia al nodo para la presencia de usuarios
+        const presenceRef = database.ref('presence');
+
+
+        // Clave para limpiar el chat (¡Mantén esto seguro en una aplicación real!)
+        const CLEAR_CHAT_PASSWORD = '170518';
+
+
+        // Función para formatear el timestamp a HH:MM
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return ''; // Manejar caso sin timestamp
+            const date = new Date(timestamp);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        // Función para enviar un mensaje (texto o respuesta)
+        function sendMessage() {
+            console.log("sendMessage function called."); // Debugging log
+            const messageText = messageInput.value.trim(); // Obtener el texto del mensaje y limpiar
+            console.log("Message text:", messageText); // Debugging log
+            console.log("User name:", userName); // Debugging log
+
+            if (messageText && userName) { // Asegurarse de que haya texto y nombre de usuario
+                const newMessage = {
+                    name: userName,
+                    text: messageText,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP, // Usar el timestamp del servidor de Firebase
+                    status: 'sent' // Estado inicial: enviado
+                };
+
+                // Si estamos respondiendo a un mensaje, añadir la referencia
+                if (replyingToMessage) {
+                    newMessage.replyTo = {
+                        id: replyingToMessage.id, // ID único del mensaje original
+                        name: replyingToMessage.name,
+                        content: replyingToMessage.text ? replyingToMessage.text.substring(0, 50) + (replyingToMessage.text.length > 50 ? '...' : '') : 'Archivo' // Fragmento del texto o indicar que es archivo
+                    };
+                    console.log("Sending as a reply to:", replyingToMessage.id); // Debugging log
+                }
+
+                console.log("Attempting to send message to Realtime Database:", newMessage); // Debugging log
+
+                // Enviar el nuevo mensaje a la base de datos
+                messagesRef.push(newMessage)
+                    .then(() => {
+                        console.log("Mensaje enviado exitosamente a Realtime Database!");
+                        messageInput.value = ''; // Limpiar el campo de entrada
+                        setTypingStatus(false); // Limpiar estado de escritura
+                        cancelReply(); // Cancelar el estado de respuesta después de enviar
+                        // Después de enviar, ajustar la altura del textarea a la mínima
+                        messageInput.style.height = 'auto';
+                    })
+                    .catch((error) => {
+                        console.error("Error al enviar mensaje a Realtime Database:", error);
+                        // Mostrar mensaje de error al usuario
+                    });
+            } else {
+                 console.log("Message not sent: text or user name missing."); // Debugging log
             }
         }
-        lastMessageCount = newCount;
-        
-        container.innerHTML = messages.map(msg => {
-            const isOwn = msg.senderUid === currentUserUid;
-            const time = new Date(msg.timestamp).toLocaleTimeString('es-CO', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-            
-            return `
-                <div class="flex ${isOwn ? 'justify-end' : 'justify-start'}">
-                    <div class="max-w-[75%] ${isOwn ? 'bg-blue-600' : 'bg-gray-700'} rounded-2xl px-4 py-2">
-                        ${!isOwn ? `<p class="text-xs text-gray-400 mb-1">${msg.senderName}</p>` : ''}
-                        <p class="text-white text-sm">${escapeHtml(msg.text)}</p>
-                        <p class="text-xs ${isOwn ? 'text-blue-200' : 'text-gray-500'} text-right mt-1">${time}</p>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        container.scrollTop = container.scrollHeight;
-    });
-}
 
-async function sendMessage(e) {
-    e.preventDefault();
-    
-    const input = document.getElementById('chatInput');
-    const text = input.value.trim();
-    
-    if (!text || !currentChatUser || !currentUserUid) return;
-    
-    input.value = '';
-    
-    try {
-        const chatId = getChatId(currentUserUid, currentChatUser.uid);
-        const messagesRef = ref(rtdb, `chats/${chatId}/messages`);
-        
-        const senderName = document.getElementById('userName')?.textContent || 'Usuario';
-        
-        await push(messagesRef, {
-            text,
-            senderUid: currentUserUid,
-            senderName,
-            receiverUid: currentChatUser.uid,
-            timestamp: Date.now()
+        // Listener para el botón de enviar texto
+        sendButton.addEventListener('click', sendMessage);
+
+        // Permitir presionar Enter en el campo de mensaje de texto (solo si no hay Shift)
+        messageInput.addEventListener('keypress', (event) => {
+            // Si es Enter y no Shift+Enter
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Prevenir el salto de línea por defecto
+                sendMessage(); // Enviar el mensaje
+            }
+            // Si es Shift+Enter, permitir el salto de línea
         });
-        
-    } catch (error) {
-        console.error('Error enviando mensaje:', error);
-        input.value = text;
-    }
-}
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+
+         // --- Lógica de Ajuste de Altura del Textarea ---
+
+        // Función para ajustar la altura del textarea automáticamente
+        function adjustTextareaHeight() {
+             // Restablecer la altura a 'auto' para que se recalcule correctamente
+            messageInput.style.height = 'auto';
+            // Establecer la altura al scrollHeight (altura necesaria para mostrar todo el contenido)
+            // Limitar por max-height definido en CSS
+            messageInput.style.height = messageInput.scrollHeight + 'px';
+            // Después de ajustar la altura del textarea, ajustar el padding inferior del chatBox
+            adjustChatBoxPadding();
+        }
+
+        // Listener para el evento 'input' en el textarea para ajustar la altura
+        messageInput.addEventListener('input', adjustTextareaHeight);
+
+
+         // --- Lógica del Indicador de Escribiendo (Realtime Database) ---
+
+        // Función para establecer el estado de escritura en Realtime Database
+        function setTypingStatus(isTyping) {
+            if (!userName) return; // No hacer nada si el nombre del usuario no está establecido
+
+            const userTypingRef = typingRef.child(userName); // Referencia al estado del usuario actual en RTDB
+
+            if (isTyping) {
+                userTypingRef.set(true); // Establecer el estado a true
+                // Limpiar el estado después de un tiempo si el usuario deja de escribir
+                if (typingTimeout) clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    userTypingRef.remove(); // Eliminar el estado después de 1.5 segundos
+                }, 1500);
+            } else {
+                 // Limpiar el timeout si existe
+                 if (typingTimeout) {
+                     clearTimeout(typingTimeout);
+                     typingTimeout = null;
+                 }
+                 userTypingRef.remove(); // Eliminar el estado si ya no está escribiendo
+            }
+        }
+
+        // Listener para el campo de entrada de mensaje para detectar escritura
+        messageInput.addEventListener('input', () => {
+            if (messageInput.value.trim().length > 0) {
+                setTypingStatus(true); // El usuario está escribiendo
+            } else {
+                setTypingStatus(false); // El usuario ha borrado el texto
+            }
+        });
+
+        // Configurar el listener para el estado de escritura de otros usuarios
+        function setupTypingIndicator() {
+            typingRef.on('value', (snapshot) => { // Listener en RTDB
+                const typingUsers = snapshot.val();
+                const usersTyping = [];
+
+                if (typingUsers) {
+                    // Iterar sobre los usuarios que están escribiendo
+                    for (const name in typingUsers) {
+                        // Asegurarse de que no sea el usuario actual
+                        if (name !== userName) {
+                            usersTyping.push(name);
+                        }
+                    }
+                }
+
+                // Actualizar el texto del indicador
+                if (usersTyping.length > 0) {
+                    typingIndicator.textContent = `${usersTyping.join(', ')} está escribiendo...`;
+                } else {
+                    typingIndicator.textContent = ''; // Limpiar si nadie está escribiendo
+                }
+                // Después de actualizar el indicador, ajustar el padding del chatBox
+                adjustChatBoxPadding();
+            });
+        }
+
+
+        // --- Lógica para Cargar Mensajes Iniciales (Realtime Database) ---
+        function loadInitialMessages() {
+             console.log("loadInitialMessages function called."); // Debugging log
+
+             // Cargar mensajes existentes una vez al inicio
+             messagesRef.once('value', (snapshot) => {
+                 console.log("Initial message load from Realtime Database complete.");
+                 const messages = snapshot.val();
+                 if (messages) {
+                     // Convertir objeto de mensajes a array y ordenar por timestamp
+                     const messageList = Object.keys(messages).map(key => ({ id: key, ...messages[key] }));
+                     messageList.sort((a, b) => a.timestamp - b.timestamp);
+
+                     // Limpiar el chatbox antes de cargar los mensajes existentes
+                     chatBox.innerHTML = '';
+
+                     messageList.forEach((msg) => {
+                         displayMessage(msg, msg.id); // Pasar el ID a displayMessage
+                     });
+                 }
+                 chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+                 initialLoadComplete = true; // Marcar la carga inicial como completa
+             }, (error) => {
+                 console.error("Error fetching initial messages from Realtime Database:", error);
+             });
+        }
+
+        // --- Lógica para Configurar Listeners en Tiempo Real (Realtime Database) ---
+        function setupRealtimeListeners() {
+            console.log("setupRealtimeListeners function called.");
+
+             // Escuchar en tiempo real los mensajes nuevos desde Realtime Database
+             // Este listener solo se adjunta UNA VEZ
+             messagesRef.on('child_added', (data) => {
+                 const newMessage = data.val();
+                 const messageId = data.key; // Obtener el ID único del mensaje
+                 console.log(`[${userName}] child_added event:`, newMessage, "ID:", messageId); // Debugging log con nombre de usuario
+
+                 // Solo mostrar el mensaje si no es parte de la carga inicial
+                 // La bandera initialLoadComplete ayuda a diferenciar
+                 if (initialLoadComplete) {
+                    displayMessage(newMessage, messageId); // Mostrar el nuevo mensaje
+                    // Reproducir sonido si el mensaje no es del usuario actual
+                     if (newMessage.name !== userName) {
+                         playNotificationSound();
+                     }
+                    chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final
+                 } else {
+                     // Si aún no ha terminado la carga inicial, no hacemos nada con este evento
+                     // porque ya se mostrará en loadInitialMessages
+                     console.log(`[${userName}] Ignoring child_added event during initial load.`); // Debugging log con nombre de usuario
+                 }
+
+             }, (error) => {
+                 console.error(`[${userName}] Error in realtime listener for messages (child_added):`, error); // Debugging log con nombre de usuario
+             });
+
+             // Listener para actualizar el estado de los mensajes (para doble check)
+             messagesRef.on('child_changed', (data) => {
+                 const changedMessage = data.val();
+                 const messageId = data.key;
+                 console.log(`[${userName}] child_changed event: Message ${messageId} changed to:`, changedMessage); // Debugging log con nombre de usuario
+
+                 // Si el mensaje cambiado es del usuario actual y su estado es 'read', actualizar la UI
+                 if (changedMessage.name === userName && changedMessage.status === 'read') {
+                     const messageElement = chatBox.querySelector(`[data-message-id="${messageId}"]`);
+                     if (messageElement) {
+                         // Encontrar el message-footer dentro del mensaje
+                         const messageFooter = messageElement.querySelector('.message-footer');
+                         if (messageFooter) {
+                             // Eliminar checkmarks existentes si los hay
+                             const existingCheckmarks = messageFooter.querySelector('.checkmarks');
+                             if (existingCheckmarks) {
+                                 existingCheckmarks.remove();
+                             }
+
+                             const checkmarksSpan = document.createElement('span');
+                             checkmarksSpan.classList.add('checkmarks');
+                             checkmarksSpan.textContent = '✓✓'; // Doble checkmark Unicode
+                             // Añadir los checkmarks al final del message-footer
+                             messageFooter.appendChild(checkmarksSpan);
+                             console.log(`[${userName}] Updated message ${messageId} to double check.`); // Debugging log con nombre de usuario
+                         }
+                     }
+                 }
+             }, (error) => {
+                 console.error(`[${userName}] Error in realtime listener for message changes (child_changed):`, error); // Debugging log con nombre de usuario
+             });
+        }
+
+
+        // --- Configurar Intersection Observer ---
+        function setupMessageObserver() {
+            const options = {
+                root: chatBox, // Observar dentro del chatBox
+                rootMargin: '0px',
+                threshold: 0.5 // El mensaje se considera visible si al menos el 50% está en el viewport
+            };
+
+            messageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    // Si el mensaje es visible (intersecting) y es un mensaje recibido por este usuario
+                    if (entry.isIntersecting && entry.target.classList.contains('received')) {
+                        const messageElement = entry.target;
+                        const messageId = messageElement.dataset.messageId;
+                        // Obtener el estado actual del mensaje de la base de datos para evitar escrituras innecesarias
+                        messagesRef.child(messageId).once('value', (snapshot) => {
+                            const messageData = snapshot.val();
+                            // Mark as read only if the status is not already 'read'
+                            if (messageData && messageData.status !== 'read') {
+                                console.log(`[${userName}] Message ${messageId} is now visible. Marking as read.`);
+                                messagesRef.child(messageId).update({ status: 'read' })
+                                    .then(() => console.log(`[${userName}] Message ${messageId} marked as read successfully via Observer.`))
+                                    .catch(error => console.error(`[${userName}] Error marking message ${messageId} as read via Observer:`, error));
+                            } else {
+                                console.log(`[${userName}] Message ${messageId} is visible but already read or not found.`);
+                            }
+                        });
+                        // Dejar de observar este mensaje una vez que se marca como leído
+                        observer.unobserve(messageElement);
+                    }
+                });
+            }, options);
+             console.log(`[${userName}] Intersection Observer configured.`);
+        }
+
+
+        // Función para mostrar un mensaje en el DOM
+        function displayMessage(msg, messageId) {
+            console.log(`[${userName}] Displaying message:`, msg, "ID:", messageId); // Debugging log con nombre de usuario
+
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.dataset.messageId = messageId; // Almacenar el ID del mensaje en el elemento DOM
+
+            // Añadir clase 'sent' o 'received'
+            if (msg.name === userName) {
+                messageElement.classList.add('sent');
+                 console.log(`[${userName}] Message ${messageId} is SENT. Initial status: ${msg.status}`); // Log initial status for sent message
+            } else {
+                messageElement.classList.add('received');
+                 console.log(`[${userName}] Message ${messageId} is RECEIVED from ${msg.name}.`); // Debugging log con nombre de usuario
+                // La lógica para marcar como leído ahora está en el Intersection Observer
+            }
+
+            // Crear elementos para el nombre y contenido
+            const nameSpan = document.createElement('span');
+            nameSpan.classList.add('name');
+            /* Solo mostrar el nombre si no es el mensaje del usuario actual (opcional, estilo WhatsApp) */
+            if (msg.name !== userName) {
+               nameSpan.textContent = msg.name + ': ';
+            } else {
+               nameSpan.textContent = ''; // No mostrar el nombre en mensajes propios
+            }
+
+            // Crear el contenedor para el texto, hora y checkmarks
+            const messageFooter = document.createElement('div');
+            messageFooter.classList.add('message-footer');
+
+            // Crear elementos para el texto y timestamp
+            const textSpan = document.createElement('span');
+            textSpan.classList.add('text');
+            textSpan.textContent = msg.text;
+            console.log(`[${userName}] textSpan created for message ${messageId}. Content: "${textSpan.textContent}"`); // Debugging log: contenido del texto
+
+            // --- Aplicar estilos inline para asegurar visibilidad y color ---
+            // Estos estilos inline tienen alta prioridad y deberían forzar la visibilidad y color.
+            textSpan.style.visibility = 'visible';
+            textSpan.style.display = 'block'; // O 'inline-block' si prefieres
+            if (msg.name === userName) {
+                textSpan.style.color = 'white'; // Color blanco para mensajes enviados
+            } else {
+                textSpan.style.color = '#1c1c1e'; // Color oscuro para mensajes recibidos
+            }
+            console.log(`[${userName}] textSpan for message ${messageId} inline styles applied -> Color: ${textSpan.style.color}, Visibility: ${textSpan.style.visibility}, Display: ${textSpan.style.display}`); // Log inline styles
+
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.classList.add('timestamp');
+            timestampSpan.textContent = formatTimestamp(msg.timestamp); // Formatear y mostrar hora
+
+
+            // Añadir nombre al elemento del mensaje si no es el usuario actual
+            if (msg.name !== userName) {
+                 messageElement.appendChild(nameSpan);
+            }
+
+            // --- Mostrar contenido de la respuesta si existe ---
+            if (msg.replyTo) {
+                const replyContentDiv = document.createElement('div');
+                replyContentDiv.classList.add('reply-content');
+
+                const replyName = document.createElement('span');
+                replyName.classList.add('reply-name');
+                replyName.textContent = msg.replyTo.name + ':';
+
+                const replyText = document.createElement('span');
+                replyText.classList.add('reply-text');
+                replyText.textContent = msg.replyTo.content;
+
+                replyContentDiv.appendChild(replyName);
+                replyContentDiv.appendChild(replyText);
+                messageElement.appendChild(replyContentDiv);
+            }
+            /* --- Fin de mostrar contenido de respuesta --- */
+
+            // --- Lógica para detectar y mostrar previsualización de videos o enlaces ---
+            let contentElement = null; // Elemento que contendrá la previsualización o el texto del enlace
+
+            // 1. Intentar detectar YouTube
+            const youtubeUrlMatch = msg.text ? msg.text.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]+)/) : null;
+            if (youtubeUrlMatch && youtubeUrlMatch[1]) {
+                const videoId = youtubeUrlMatch[1];
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.youtube.com/embed/${videoId}`; // URL de incrustación estándar de YouTube
+                iframe.setAttribute('allowfullscreen', ''); // Permitir pantalla completa
+                iframe.setAttribute('loading', 'lazy'); // Carga diferida
+                contentElement = iframe;
+                console.log(`[${userName}] YouTube video detected for message ${messageId}. Video ID: ${videoId}`);
+            } else {
+                // 2. Intentar detectar Facebook Video (regex mejorada, pero puede no ser exhaustiva)
+                const facebookUrlMatch = msg.text ? msg.text.match(/(?:https?:\/\/)?(?:www\.)?(?:facebook\.com)\/(?:watch\/)?(?:v=)?(?:videos\/)?([0-9]+)(?:\/)?/) : null;
+                 if (facebookUrlMatch && facebookUrlMatch[1]) {
+                     const videoId = facebookUrlMatch[1];
+                     const iframe = document.createElement('iframe');
+                     // URL de incrustación básica de Facebook (puede requerir ajustes dependiendo de la configuración)
+                     iframe.src = `https://www.facebook.com/plugins/video.php?href=https%3A%2F%2Fwww.facebook.com%2Fwatch%2F%3Fv%3D${videoId}&show_text=0&width=560`;
+                     iframe.setAttribute('allowfullscreen', '');
+                     iframe.setAttribute('loading', 'lazy');
+                     iframe.setAttribute('scrolling', 'no');
+                     iframe.setAttribute('frameborder', '0');
+                     iframe.setAttribute('allow', 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share');
+                     contentElement = iframe;
+                     console.log(`[${userName}] Facebook video detected for message ${messageId}. Video ID: ${videoId}`);
+                 } else {
+                     // 3. Intentar detectar enlaces directos a archivos de video
+                     const videoFileMatch = msg.text ? msg.text.match(/(https?:\/\/[^\s]+\.(mp4|webm|ogg))/) : null;
+                     if (videoFileMatch && videoFileMatch[1]) {
+                         const videoUrl = videoFileMatch[1];
+                         const videoElement = document.createElement('video');
+                         videoElement.src = videoUrl;
+                         videoElement.setAttribute('controls', ''); // Mostrar controles de video
+                         videoElement.setAttribute('preload', 'metadata'); // Cargar metadatos primero
+                         contentElement = videoElement;
+                         console.log(`[${userName}] Direct video file detected for message ${messageId}. URL: ${videoUrl}`);
+                     } else {
+                         // 4. Si no es un video soportado, mostrar el texto del mensaje con enlaces clicables
+                         // Detectar URLs generales en el texto y convertirlas en enlaces clicables
+                         const urlRegex = /(https?:\/\/[^\s]+)/g;
+                         const textWithLinks = msg.text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+                         textSpan.innerHTML = textWithLinks; // Usar innerHTML para renderizar el enlace
+                         contentElement = textSpan; // El texto con enlaces es el contenido principal
+                         console.log(`[${userName}] No supported video detected for message ${messageId}. Displaying text with links.`);
+                     }
+                 }
+            }
+
+            // Si se encontró una previsualización de video, crear un contenedor y añadirla
+            if (contentElement && (contentElement.tagName === 'IFRAME' || contentElement.tagName === 'VIDEO')) {
+                const videoPreviewContainer = document.createElement('div');
+                videoPreviewContainer.classList.add('video-preview-container');
+                videoPreviewContainer.appendChild(contentElement);
+                messageElement.appendChild(videoPreviewContainer); // Añadir el contenedor de previsualización al messageElement
+
+                // Después de añadir la previsualización, añadir el texto original si no es solo la URL
+                 if (msg.text && !youtubeUrlMatch && !facebookUrlMatch && !videoFileMatch) {
+                     // Si el mensaje contenía texto además de la URL, añadir el textSpan original (ahora con enlaces clicables)
+                     messageElement.appendChild(textSpan);
+                     console.log(`[${userName}] Adding original textSpan after video preview for message ${messageId}.`);
+                 } else if (msg.text && (youtubeUrlMatch || facebookUrlMatch || videoFileMatch)) {
+                     // Si el mensaje es solo la URL del video, no es necesario añadir el textSpan de nuevo
+                     console.log(`[${userName}] Message is only a video URL, not adding textSpan again for message ${messageId}.`);
+                 }
+
+
+            } else if (contentElement && contentElement.classList.contains('text')) {
+                 // Si el contenido principal es el textSpan (con enlaces clicables)
+                 messageElement.appendChild(contentElement); // Añadir el textSpan (que ya tiene el contenido)
+                 console.log(`[${userName}] Adding textSpan as main content for message ${messageId}.`);
+            }
+
+
+            // --- Añadir hora y checkmarks al footer ---
+            messageFooter.appendChild(timestampSpan); // Añadir la hora
+
+            // Añadir checkmarks si es un mensaje enviado por el usuario actual
+            if (msg.name === userName) {
+                 const checkmarksSpan = document.createElement('span');
+                 checkmarksSpan.classList.add('checkmarks');
+                 // Mostrar un check simple si el estado es 'sent', doble si es 'read'
+                 checkmarksSpan.textContent = msg.status === 'read' ? '✓✓' : '✓'; // Unicode checkmarks
+                 messageFooter.appendChild(checkmarksSpan); // Añadir los checkmarks al footer
+                 console.log(`[${userName}] Displaying checkmarks for SENT message ${messageId}: ${checkmarksSpan.textContent}, based on status "${msg.status}"`); // Debugging log con nombre de usuario
+            } else {
+                 console.log(`[${userName}] Not displaying checkmarks for RECEIVED message ${messageId}.`); // Debugging log con nombre de usuario
+            }
+
+            messageElement.appendChild(messageFooter); // Asegurarse de que el footer se añade al messageElement
+            console.log(`[${userName}] messageFooter appended to messageElement for message ${messageId}.`); // Log after appending messageFooter
+
+            chatBox.appendChild(messageElement);
+            console.log(`[${userName}] messageElement appended to chatBox for message ${messageId}.`); // Log after appending messageElement
+            console.log(`[${userName}] chatBox after appending message ${messageId}:`, chatBox.innerHTML); // Log chatBox content
+
+
+            // Después de añadir el messageElement al DOM, podemos obtener los estilos computados del textSpan
+            // Aumentar el retraso para dar más tiempo a la renderización
+            setTimeout(() => {
+                 // Verificar si textSpan existe antes de intentar obtener estilos computados
+                 if (textSpan && textSpan.parentElement) { // Asegurarse de que textSpan está en el DOM
+                     const computedStyle = window.getComputedStyle(textSpan);
+                     console.log(`[${userName}] textSpan for message ${messageId} computed style -> Color: ${computedStyle.color}, Visibility: ${computedStyle.visibility}, Display: ${computedStyle.display}`);
+                 } else {
+                     console.log(`[${userName}] textSpan not found in DOM for message ${messageId}. Skipping computed style log.`);
+                 }
+
+
+                 // Verificar también el estilo computado del messageFooter
+                 const computedFooterStyle = window.getComputedStyle(messageFooter);
+                 console.log(`[${userName}] messageFooter for message ${messageId} computed style -> Display: ${computedFooterStyle.display}, Visibility: ${computedFooterStyle.visibility}, Opacity: ${computedFooterStyle.opacity}`);
+
+                 // Observar el mensaje si es un mensaje recibido
+                 if (messageElement.classList.contains('received')) {
+                     messageObserver.observe(messageElement);
+                     console.log(`[${userName}] Observing received message ${messageId} with Intersection Observer.`);
+                 }
+
+
+            }, 500); // Retraso aumentado a 500ms
+
+
+             // Reproducir sonido solo para mensajes entrantes que no sean del usuario actual
+             if (initialLoadComplete && msg.name !== userName) {
+                 playNotificationSound();
+             }
+
+             // Añadir listener de clic para responder
+             messageElement.addEventListener('click', () => {
+                 // Crear un objeto con los datos necesarios para la respuesta
+                 const messageDataForReply = {
+                     id: messageId,
+                     name: msg.name,
+                     text: msg.text || '', // Usar texto si existe, vacío si es archivo
+                     // Puedes añadir más propiedades si quieres referenciar archivos en el futuro
+                 };
+                 startReply(messageDataForReply);
+             });
+        }
+
+        // Función para reproducir el sonido de notificación
+        function playNotificationSound() {
+             if (notificationSound && audioUnlocked) { // Solo reproducir si el audio está desbloqueado
+                 notificationSound.currentTime = 0; // Reiniciar el sonido si ya se está reproduciendo
+                 notificationSound.play().catch(error => {
+                     console.error("Error al reproducir el sonido:", error);
+                     // Esto a menudo ocurre si el navegador bloquea el autoplay
+                 });
+             } else if (!audioUnlocked) {
+                 console.log("Audio not unlocked yet. Cannot play sound.");
+             }
+        }
+
+        // Función para intentar desbloquear el audio con una interacción del usuario
+        function unlockAudio() {
+            if (notificationSound && notificationSound.readyState >= 2 && !audioUnlocked) { // readyState 2 means enough data is available
+                notificationSound.volume = 0; // Set volume to 0
+                const playPromise = notificationSound.play();
+
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // Playback started successfully
+                        notificationSound.pause(); // Pause immediately
+                        notificationSound.volume = 1; // Restore volume
+                        audioUnlocked = true; // Mark audio as unlocked
+                        console.log("Audio unlocked successfully.");
+                        // Remove this listener after first interaction
+                        document.removeEventListener('click', unlockAudio);
+                        document.removeEventListener('touchstart', unlockAudio);
+                        sendButton.removeEventListener('click', unlockAudio); // Remove from send button too
+                    }).catch(error => {
+                        // Playback failed, likely due to user interaction requirement
+                        console.error("Audio unlock failed:", error);
+                        audioUnlocked = false; // Keep audio locked
+                    });
+                }
+            } else if (audioUnlocked) {
+                 console.log("Audio already unlocked.");
+                 // Remove listeners if already unlocked
+                 document.removeEventListener('click', unlockAudio);
+                 document.removeEventListener('touchstart', unlockAudio);
+                 sendButton.removeEventListener('click', unlockAudio); // Remove from send button too
+            } else {
+                 console.log("Notification sound not ready or not found.");
+            }
+        }
+
+
+        // --- Lógica para Limpiar Chat con Clave (Realtime Database) ---
+        // El listener ahora está asociado al botón dentro del dropdown
+        clearChatButton.addEventListener('click', () => {
+            // Ocultar el dropdown antes de mostrar el prompt
+            settingsDropdown.style.display = 'none';
+
+            // Usar prompt() para solicitar la clave
+            const enteredPassword = prompt("Ingresa la clave para limpiar el chat:");
+
+            // Verificar la clave
+            if (enteredPassword === CLEAR_CHAT_PASSWORD) {
+                // Si la clave es correcta, eliminar el nodo 'messages' de Realtime Database
+                messagesRef.remove()
+                    .then(() => {
+                        console.log("Chat limpiado exitosamente en Realtime Database!");
+                        // La UI se actualizará automáticamente gracias al listener on 'child_added'
+                    })
+                    .catch((error) => {
+                        console.error("Error al limpiar el chat en Realtime Database:", error);
+                        // Mostrar mensaje de error al usuario
+                    });
+            } else {
+                // Si la clave es incorrecta
+                console.log("Clave incorrecta. El chat no fue limpiado.");
+                // Mostrar mensaje de clave incorrecta al usuario
+            }
+        });
+
+        // --- Lógica para Cambiar Nombre ---
+        changeNameButton.addEventListener('click', () => {
+            // Ocultar el dropdown antes de mostrar el prompt
+            settingsDropdown.style.display = 'none';
+
+            const newName = prompt("Ingresa tu nuevo nombre:");
+            if (newName && newName.trim() !== '' && newName.trim() !== userName) {
+                userName = newName.trim();
+                localStorage.setItem('chatName', userName);
+                console.log(`Nombre cambiado a: ${userName}`);
+                // Recargar la página para actualizar la interfaz y la presencia
+                location.reload();
+            } else if (newName && newName.trim() === userName) {
+                console.log("El nuevo nombre es el mismo que el actual.");
+            } else {
+                console.log("Cambio de nombre cancelado o nombre inválido.");
+            }
+        });
+
+
+        // --- Lógica del Botón de Emoji y Selector ---
+
+        // Lista de emojis para el selector
+        const emojis = ['😊', '😂', '❤️', '👍', '🙏', '😢', '😍', '🥳', '😎', '🤩', '😭', '🥰', '😘'];
+
+        // Llenar el selector de emojis
+        emojis.forEach(emoji => {
+            const emojiSpan = document.createElement('span');
+            emojiSpan.textContent = emoji;
+            emojiPicker.appendChild(emojiSpan);
+
+            // Añadir listener para insertar el emoji en el input
+            emojiSpan.addEventListener('click', () => {
+                insertEmoji(emoji);
+                // Opcional: Ocultar el selector después de seleccionar un emoji
+                // emojiPicker.style.display = 'none';
+            });
+        });
+
+        // Función para insertar emoji en el textarea en la posición del cursor
+        function insertEmoji(emoji) {
+            const textarea = messageInput;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const value = textarea.value;
+
+            textarea.value = value.substring(0, start) + emoji + value.substring(end);
+
+            // Mover el cursor después del emoji insertado
+            textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+
+            // Disparar un evento 'input' para que la lógica de auto-ajuste de altura y typing indicator se active
+            const event = new Event('input', { bubbles: true });
+            textarea.dispatchEvent(event);
+
+            textarea.focus(); // Mantener el foco en el textarea
+        }
+
+
+        // Listener para el botón de emoji para mostrar/ocultar el selector
+        emojiButton.addEventListener('click', (event) => {
+            // Prevenir que el clic en el botón cierre el selector inmediatamente
+            event.stopPropagation();
+             // Ocultar el dropdown de settings si está visible
+             settingsDropdown.style.display = 'none';
+
+            if (emojiPicker.style.display === 'flex') {
+                emojiPicker.style.display = 'none';
+            } else {
+                // Posicionar el selector justo encima de la barra de input
+                // bottom del selector = altura del área de input + padding/margen
+                const inputAreaHeight = bottomFixedArea.offsetHeight; // Usar la altura del contenedor fijo
+                emojiPicker.style.bottom = `${inputAreaHeight + 10}px`; // 10px de margen
+                emojiPicker.style.display = 'flex';
+            }
+        });
+
+        // Ocultar el selector de emojis y el dropdown de settings si se hace clic fuera de ellos
+        document.addEventListener('click', (event) => {
+            // Si el clic no fue dentro del selector de emojis ni en el botón de emoji
+            if (!emojiPicker.contains(event.target) && event.target !== emojiButton) {
+                emojiPicker.style.display = 'none';
+            }
+             // Si el clic no fue dentro del dropdown de settings ni en el botón de settings
+             if (!settingsDropdown.contains(event.target) && event.target !== settingsButton) {
+                 settingsDropdown.style.display = 'none';
+             }
+        });
+
+
+        // --- Lógica para Ajustar Layout con Teclado Virtual ---
+
+        // Función para ajustar el padding inferior del chatBox
+        function adjustChatBoxPadding() {
+            // Usar un pequeño retraso para asegurar que el DOM esté renderizado y las alturas sean correctas
+            setTimeout(() => {
+                 // Usar la altura del nuevo contenedor fijo
+                 const bottomAreaHeight = bottomFixedArea.offsetHeight;
+                 // Añadir un buffer más grande para asegurar espacio suficiente
+                 // Puedes ajustar este valor (80) para aumentar o disminuir el espacio inferior
+                 const newPaddingBottom = bottomAreaHeight + 80; // <--- Aquí puedes modificar el valor del buffer
+                 chatBox.style.paddingBottom = `${newPaddingBottom}px`;
+                 console.log(`[${userName}] Adjusted paddingBottom of chatBox to ${chatBox.style.paddingBottom}`); // Debugging log con nombre de usuario
+                 console.log(`[${userName}] bottomFixedArea.offsetHeight: ${bottomAreaHeight}`); // Debugging log con nombre de usuario
+                 // Intentar scrollear al final después de ajustar el padding
+                 chatBox.scrollTop = chatBox.scrollHeight;
+            }, 300); // Aumentar el retraso a 300ms
+        }
+
+
+        // Listener para el evento resize de la ventana
+        window.addEventListener('resize', adjustChatBoxPadding);
+
+        // Listener para el evento 'focus' en el input de mensaje
+        messageInput.addEventListener('focus', () => {
+             // Intentar scrollear la caja de chat al final cuando el input recibe foco
+             // Esto ayuda a asegurar que la barra de input sea visible
+             setTimeout(() => {
+                 chatBox.scrollTop = chatBox.scrollHeight;
+                 console.log(`[${userName}] Input enfocado, scrolleando chatBox al final con retraso.`); // Debugging log con nombre de usuario
+             }, 150); // Retraso para dar tiempo al layout a ajustarse
+        });
+
+
+        // --- Lógica de Responder Mensajes ---
+
+        // Función para iniciar el modo de respuesta
+        function startReply(messageData) {
+            replyingToMessage = messageData; // Almacenar los datos del mensaje
+            replyNameSpan.textContent = messageData.name + ':';
+            // Mostrar un fragmento del texto o indicar que es un archivo
+            replyTextSpan.textContent = messageData.text ? messageData.text.substring(0, 50) + (messageData.text.length > 50 ? '...' : '') : 'Archivo'; // Asumiendo solo texto por ahora
+
+            replyPreview.style.display = 'flex'; // Mostrar la vista previa
+            messageInput.focus(); // Poner el foco en el campo de mensaje
+            // Ajustar padding después de mostrar la vista previa
+            adjustChatBoxPadding();
+        }
+
+        // Función para cancelar el modo de respuesta
+        function cancelReply() {
+            replyingToMessage = null; // Limpiar la referencia al mensaje
+            replyPreview.style.display = 'none'; // Ocultar la vista previa
+            replyNameSpan.textContent = '';
+            replyTextSpan.textContent = '';
+            // Ajustar padding después de ocultar la vista previa
+            adjustChatBoxPadding();
+        }
+
+        // Listener para el botón de cancelar respuesta
+        cancelReplyButton.addEventListener('click', cancelReply);
+
+
+        // --- Lógica del Botón de Configuración y Dropdown ---
+
+        // Listener para el botón de configuración para mostrar/ocultar el dropdown
+        settingsButton.addEventListener('click', (event) => {
+            // Prevenir que el clic en el botón cierre el dropdown inmediatamente
+            event.stopPropagation();
+             // Ocultar el selector de emojis si está visible
+             emojiPicker.style.display = 'none';
+
+            if (settingsDropdown.style.display === 'flex') {
+                settingsDropdown.style.display = 'none';
+            } else {
+                // Posicionar el dropdown justo debajo y a la derecha del botón de settings
+                // Esto se maneja principalmente con CSS position: absolute y top/right
+                settingsDropdown.style.display = 'flex';
+                // La posición top y right ya están definidas en CSS, pero podrías ajustarlas dinámicamente si fuera necesario
+                // const settingsButtonRect = settingsButton.getBoundingClientRect();
+                // settingsDropdown.style.top = `${settingsButtonRect.bottom + 5}px`; // 5px debajo del botón
+                // settingsDropdown.style.right = `${window.innerWidth - settingsButtonRect.right}px`; // Alinear a la derecha del botón
+            }
+        });
+
+
+        // --- Lógica de Presencia (Usuarios en Línea) ---
+        function setupPresence() {
+             if (!userName) return;
+
+             const userPresenceRef = presenceRef.child(userName);
+
+             // Establecer la presencia a true cuando el usuario se conecta
+             userPresenceRef.set(true);
+             console.log(`[${userName}] Presence set to true.`);
+
+             // Eliminar la presencia cuando el usuario se desconecta inesperadamente
+             userPresenceRef.onDisconnect().remove()
+                 .then(() => console.log(`[${userName}] onDisconnect configured to remove presence.`))
+                 .catch(error => console.error(`[${userName}] Error configuring onDisconnect:`, error));
+
+
+             // Establecer la presencia a false cuando el usuario abandona la página (cierra pestaña, navega)
+             window.addEventListener('beforeunload', () => {
+                 console.log(`[${userName}] beforeunload event detected. Setting presence to false.`);
+                 userPresenceRef.set(false); // Establecer a false explícitamente
+             });
+
+             window.addEventListener('unload', () => {
+                 console.log(`[${userName}] unload event detected. Setting presence to false.`);
+                 userPresenceRef.set(false); // Establecer a false explícitamente
+             });
+
+
+             // Escuchar cambios en el nodo de presencia para actualizar la lista de usuarios en línea
+             presenceRef.on('value', (snapshot) => {
+                 const onlineUsers = snapshot.val();
+                 const usersOnline = [];
+
+                 if (onlineUsers) {
+                     for (const name in onlineUsers) {
+                         // Solo considerar usuarios cuya presencia es explícitamente true y no el usuario actual
+                         if (onlineUsers[name] === true && name !== userName) {
+                             usersOnline.push(name);
+                         }
+                     }
+                 }
+
+                 // Actualizar el elemento en la interfaz
+                 if (usersOnline.length > 0) {
+                     onlineUsersDiv.textContent = `En línea: ${usersOnline.join(', ')}`;
+                 } else {
+                     onlineUsersDiv.textContent = 'Nadie más en línea';
+                 }
+                 console.log(`[${userName}] Online users updated: ${onlineUsersDiv.textContent}. Raw data:`, onlineUsers);
+             }, (error) => {
+                 console.error(`[${userName}] Error in presence listener:`, error);
+             });
+        }
+
+
+        // Comprobar si hay un nombre guardado en localStorage al cargar la página
+        const savedName = localStorage.getItem('chatName');
+        if (savedName) {
+            nameInput.value = savedName; // Rellenar el campo de nombre
+            // No llamar a startChatButton.click() aquí, initializeChat se llama en window.onload
+        }
+
+        // Ajustes iniciales al cargar la página
+        window.onload = function() {
+             // Si hay un nombre guardado, inicializar el chat
+             if (localStorage.getItem('chatName')) {
+                 userName = localStorage.getItem('chatName');
+                 namePrompt.style.display = 'none'; // Ocultar la sección de nombre
+                 chatInterface.style.display = 'flex'; // Mostrar la interfaz de chat
+                 initializeChat(); // Inicializar la carga de mensajes y listeners
+             }
+             // Ajustar el padding inferior del chatBox al cargar
+             adjustChatBoxPadding();
+
+             // Add initial click/touch listeners to unlock audio
+             document.addEventListener('click', unlockAudio, { once: true });
+             document.addEventListener('touchstart', unlockAudio, { once: true });
+             sendButton.addEventListener('click', unlockAudio, { once: true }); // Also try on send button click
+
+
+        };
+
+
+    </script>
+
+</body>
+</html>
