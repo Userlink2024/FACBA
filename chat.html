@@ -729,6 +729,59 @@
          }
 
 
+        /* Lock Overlay */
+        #lock-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #fff;
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #lock-overlay.active { display: flex; }
+        .lock-content { text-align: center; padding: 40px; }
+        .lock-icon { font-size: 64px; margin-bottom: 16px; }
+        .lock-content h2 { font-size: 1.6em; color: #1c1c1e; margin-bottom: 8px; }
+        .lock-content p { font-size: 1em; color: #8e8e93; margin-bottom: 28px; }
+        .lock-buttons { display: flex; gap: 12px; justify-content: center; }
+        .lock-btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 1em; font-weight: 600; cursor: pointer; transition: background-color .2s; }
+        .lock-btn.primary { background-color: #007aff; color: #fff; }
+        .lock-btn.primary:hover { background-color: #0056b3; }
+        .lock-btn.secondary { background-color: #e5e5ea; color: #1c1c1e; }
+        .lock-btn.secondary:hover { background-color: #d1d1d6; }
+
+        /* Password / Prompt Modal */
+        #password-modal, #prompt-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.4);
+            z-index: 600;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        #password-modal.active, #prompt-modal.active { display: flex; }
+        .pw-modal-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 28px 32px;
+            width: 90%;
+            max-width: 340px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.15);
+            text-align: center;
+        }
+        .pw-modal-card h3 { font-size: 1.2em; color: #1c1c1e; margin-bottom: 16px; }
+        .pw-modal-card input {
+            width: 100%; padding: 10px 14px; border: 1px solid #d1d1d6; border-radius: 8px;
+            font-size: 1em; box-sizing: border-box; outline: none; margin-bottom: 8px;
+        }
+        .pw-modal-card input:focus { border-color: #007aff; box-shadow: 0 0 0 3px rgba(0,122,255,.12); }
+        #pw-modal-error { font-size: .85em; color: #ff3b30; min-height: 1.2em; margin-bottom: 12px; }
+        .pw-modal-actions { display: flex; gap: 10px; justify-content: center; }
+
     </style>
 
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
@@ -754,6 +807,7 @@
                       ⚙️
                  </button>
                  <div id="settings-dropdown">
+                     <button id="lock-chat-button">🔒 Bloqueo</button>
                      <button id="clear-chat-button">Limpiar Chat</button>
                      <button id="change-name-button">Cambiar Nombre</button>
                  </div>
@@ -782,6 +836,44 @@
                  </div>
             </div>
              </div>
+    </div>
+
+    <!-- Lock Overlay -->
+    <div id="lock-overlay">
+        <div class="lock-content">
+            <div class="lock-icon">🔒</div>
+            <h2>No disponible</h2>
+            <p>Este chat se encuentra bloqueado</p>
+            <div class="lock-buttons">
+                <button id="lock-help-btn" class="lock-btn primary">Ayuda</button>
+                <button id="lock-more-btn" class="lock-btn secondary">Más opciones</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div id="password-modal">
+        <div class="pw-modal-card">
+            <h3 id="pw-modal-title">Ingresa la clave</h3>
+            <input type="password" id="pw-modal-input" placeholder="Contraseña" autocomplete="off"/>
+            <p id="pw-modal-error"></p>
+            <div class="pw-modal-actions">
+                <button id="pw-modal-cancel" class="lock-btn secondary">Cancelar</button>
+                <button id="pw-modal-ok" class="lock-btn primary">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt Modal (replaces browser prompt) -->
+    <div id="prompt-modal">
+        <div class="pw-modal-card">
+            <h3 id="prompt-modal-title">Ingresa un valor</h3>
+            <input type="text" id="prompt-modal-input" placeholder="" autocomplete="off"/>
+            <div class="pw-modal-actions">
+                <button id="prompt-modal-cancel" class="lock-btn secondary">Cancelar</button>
+                <button id="prompt-modal-ok" class="lock-btn primary">Aceptar</button>
+            </div>
+        </div>
     </div>
 
     <audio id="notification-sound" src="sonido_mensaje.mp3" preload="auto"></audio>
@@ -1467,51 +1559,115 @@
         }
 
 
-        // --- Lógica para Limpiar Chat con Clave (Realtime Database) ---
-        // El listener ahora está asociado al botón dentro del dropdown
-        clearChatButton.addEventListener('click', () => {
-            // Ocultar el dropdown antes de mostrar el prompt
+        // --- Custom Modal Helpers ---
+        const lockOverlay = document.getElementById('lock-overlay');
+        const passwordModal = document.getElementById('password-modal');
+        const pwInput = document.getElementById('pw-modal-input');
+        const pwError = document.getElementById('pw-modal-error');
+        const pwTitle = document.getElementById('pw-modal-title');
+        const promptModal = document.getElementById('prompt-modal');
+        const promptInput = document.getElementById('prompt-modal-input');
+        const promptTitle = document.getElementById('prompt-modal-title');
+        const lockChatButton = document.getElementById('lock-chat-button');
+
+        // Show a password modal and return a promise that resolves true/false
+        function showPasswordModal(title){
+            return new Promise(resolve => {
+                pwTitle.textContent = title || 'Ingresa la clave';
+                pwInput.value = '';
+                pwError.textContent = '';
+                passwordModal.classList.add('active');
+                pwInput.focus();
+
+                function cleanup(){ passwordModal.classList.remove('active'); pwInput.removeEventListener('keypress', onKey); }
+                function onKey(e){ if(e.key==='Enter') document.getElementById('pw-modal-ok').click(); }
+                pwInput.addEventListener('keypress', onKey);
+
+                document.getElementById('pw-modal-ok').onclick = () => {
+                    const val = pwInput.value.trim();
+                    if(val === CLEAR_CHAT_PASSWORD){
+                        cleanup(); resolve(true);
+                    } else {
+                        pwError.textContent = 'Clave incorrecta';
+                        pwInput.value = '';
+                        pwInput.focus();
+                    }
+                };
+                document.getElementById('pw-modal-cancel').onclick = () => { cleanup(); resolve(false); };
+            });
+        }
+
+        // Show a text prompt modal (replaces browser prompt)
+        function showPromptModal(title, placeholder){
+            return new Promise(resolve => {
+                promptTitle.textContent = title || 'Ingresa un valor';
+                promptInput.value = '';
+                promptInput.placeholder = placeholder || '';
+                promptModal.classList.add('active');
+                promptInput.focus();
+
+                function cleanup(){ promptModal.classList.remove('active'); promptInput.removeEventListener('keypress', onKey); }
+                function onKey(e){ if(e.key==='Enter') document.getElementById('prompt-modal-ok').click(); }
+                promptInput.addEventListener('keypress', onKey);
+
+                document.getElementById('prompt-modal-ok').onclick = () => { const v = promptInput.value.trim(); cleanup(); resolve(v || null); };
+                document.getElementById('prompt-modal-cancel').onclick = () => { cleanup(); resolve(null); };
+            });
+        }
+
+
+        // --- Lógica de BLOQUEO ---
+        lockChatButton.addEventListener('click', () => {
             settingsDropdown.style.display = 'none';
+            lockOverlay.classList.add('active');
+        });
 
-            // Usar prompt() para solicitar la clave
-            const enteredPassword = prompt("Ingresa la clave para limpiar el chat:");
+        // Ayuda = desbloquear con clave
+        document.getElementById('lock-help-btn').addEventListener('click', async () => {
+            const ok = await showPasswordModal('Ingresa la clave para desbloquear');
+            if(ok) lockOverlay.classList.remove('active');
+        });
 
-            // Verificar la clave
-            if (String(enteredPassword || '').trim() === CLEAR_CHAT_PASSWORD) {
-                // Si la clave es correcta, eliminar el nodo 'messages' de Realtime Database
+        // Más opciones = borrar chat con clave
+        document.getElementById('lock-more-btn').addEventListener('click', async () => {
+            const ok = await showPasswordModal('Ingresa la clave para borrar el chat');
+            if(ok){
+                messagesRef.remove()
+                    .then(() => {
+                        console.log('Chat limpiado desde bloqueo');
+                        clearChatUI();
+                        lockOverlay.classList.remove('active');
+                    })
+                    .catch(err => console.error('Error al limpiar chat:', err));
+            }
+        });
+
+
+        // --- Lógica para Limpiar Chat con Clave (Realtime Database) ---
+        clearChatButton.addEventListener('click', async () => {
+            settingsDropdown.style.display = 'none';
+            const ok = await showPasswordModal('Ingresa la clave para limpiar el chat');
+            if(ok){
                 messagesRef.remove()
                     .then(() => {
                         console.log("Chat limpiado exitosamente en Realtime Database!");
-                        // Limpiar también la UI local inmediatamente
                         clearChatUI();
                     })
                     .catch((error) => {
                         console.error("Error al limpiar el chat en Realtime Database:", error);
-                        // Mostrar mensaje de error al usuario
                     });
-            } else {
-                // Si la clave es incorrecta
-                console.log("Clave incorrecta. El chat no fue limpiado.");
-                // Mostrar mensaje de clave incorrecta al usuario
             }
         });
 
         // --- Lógica para Cambiar Nombre ---
-        changeNameButton.addEventListener('click', () => {
-            // Ocultar el dropdown antes de mostrar el prompt
+        changeNameButton.addEventListener('click', async () => {
             settingsDropdown.style.display = 'none';
-
-            const newName = prompt("Ingresa tu nuevo nombre:");
-            if (newName && newName.trim() !== '' && newName.trim() !== userName) {
-                userName = newName.trim();
+            const newName = await showPromptModal('Ingresa tu nuevo nombre', 'Nuevo nombre');
+            if (newName && newName !== userName) {
+                userName = newName;
                 localStorage.setItem('chatName', userName);
                 console.log(`Nombre cambiado a: ${userName}`);
-                // Recargar la página para actualizar la interfaz y la presencia
                 location.reload();
-            } else if (newName && newName.trim() === userName) {
-                console.log("El nuevo nombre es el mismo que el actual.");
-            } else {
-                console.log("Cambio de nombre cancelado o nombre inválido.");
             }
         });
 
