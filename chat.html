@@ -971,6 +971,7 @@
              setupRealtimeListeners(); // Configurar listeners en tiempo real una vez
              setupTypingIndicator(); // Configurar el indicador de escribiendo
              setupPresence(); // Configurar la presencia del usuario
+             setupChatLockListener(); // Escuchar estado de bloqueo global
              // El desbloqueo de audio ahora se maneja en la primera interacción del usuario (enviar mensaje)
         }
 
@@ -983,6 +984,8 @@
         const typingRef = database.ref('typing');
         // Referencia al nodo para la presencia de usuarios
         const presenceRef = database.ref('presence');
+        // Referencia al nodo para el bloqueo global del chat
+        const chatLockRef = database.ref('chat_lock');
 
 
         // Clave para limpiar el chat (¡Mantén esto seguro en una aplicación real!)
@@ -1616,29 +1619,48 @@
         }
 
 
-        // --- Lógica de BLOQUEO ---
+        // --- Lógica de BLOQUEO GLOBAL (Firebase RTDB) ---
+        function setupChatLockListener(){
+            chatLockRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                const isLocked = data && data.locked === true;
+                if(isLocked){
+                    lockOverlay.classList.add('active');
+                    console.log('Chat bloqueado globalmente por:', data.lockedBy || 'desconocido');
+                } else {
+                    lockOverlay.classList.remove('active');
+                    console.log('Chat desbloqueado.');
+                }
+            });
+        }
+
         lockChatButton.addEventListener('click', () => {
             settingsDropdown.style.display = 'none';
-            lockOverlay.classList.add('active');
+            chatLockRef.set({ locked: true, lockedBy: userName || 'admin', lockedAt: firebase.database.ServerValue.TIMESTAMP })
+                .then(() => console.log('Bloqueo activado globalmente'))
+                .catch(err => console.error('Error al bloquear:', err));
         });
 
         // Ayuda = desbloquear con clave
         document.getElementById('lock-help-btn').addEventListener('click', async () => {
             const ok = await showPasswordModal('Ingresa la clave para desbloquear');
-            if(ok) lockOverlay.classList.remove('active');
+            if(ok){
+                chatLockRef.set({ locked: false })
+                    .then(() => console.log('Chat desbloqueado globalmente'))
+                    .catch(err => console.error('Error al desbloquear:', err));
+            }
         });
 
         // Más opciones = borrar chat con clave
         document.getElementById('lock-more-btn').addEventListener('click', async () => {
             const ok = await showPasswordModal('Ingresa la clave para borrar el chat');
             if(ok){
-                messagesRef.remove()
-                    .then(() => {
-                        console.log('Chat limpiado desde bloqueo');
-                        clearChatUI();
-                        lockOverlay.classList.remove('active');
-                    })
-                    .catch(err => console.error('Error al limpiar chat:', err));
+                try {
+                    await messagesRef.remove();
+                    console.log('Chat limpiado desde bloqueo');
+                    clearChatUI();
+                    await chatLockRef.set({ locked: false });
+                } catch(err){ console.error('Error al limpiar chat:', err); }
             }
         });
 
