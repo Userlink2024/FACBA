@@ -462,7 +462,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, onSnapshot, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, setDoc, query, where, onSnapshot, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
@@ -479,6 +479,7 @@
     const inventarioCol = collection(db, "inventario");
     const facturasCol = collection(db, "facturas");
     const pedidosCol = collection(db, "pedidos_china");
+    const borradorCol = collection(db, "facturas_borrador");
 
     // === SESSION DETECTION ===
     let currentUser = null;
@@ -682,7 +683,7 @@
         if (tab) tab.classList.add('active');
 
         if (tabName === 'inventario') { resetFormInventario(); cargarInventario(); }
-        else if (tabName === 'facturacion') { resetFormFacturacion(); checkDraft(); }
+        else if (tabName === 'facturacion') { resetFormFacturacion(); loadDraft().then(d => updateDraftUI(d)); }
         else if (tabName === 'facturas') { resetBusquedaFacturas(); cargarFacturas(); }
         else if (tabName === 'pedidos') { cargarPedidos(); }
     }
@@ -768,10 +769,25 @@
         if (abonoFecha) abonoFecha.value = getTodayColombiaISO();
     }
 
-    // === DRAFT INVOICE SYSTEM ===
-    const DRAFT_KEY = 'chinaFacturaDraft';
-    function saveDraft() {
+    // === DRAFT INVOICE SYSTEM (FIREBASE AUTO-SAVE) ===
+    // Each user gets one draft document: facturas_borrador/{usuario}
+    // This syncs across devices — if user closes tab on tablet, can resume on PC
+    let cachedDraft = null; // local cache to avoid extra reads
+
+    function getDraftDocRef() {
+        const userId = currentUser?.usuario || 'unknown';
+        return doc(db, "facturas_borrador", `china_${userId}`);
+    }
+
+    // Auto-save silently to Firebase on every product add/remove
+    async function autoSaveDraft() {
+        if (productosEnFactura.length === 0 && !facCliente.value.trim()) {
+            await deleteDraftFromFirebase();
+            return;
+        }
         const draft = {
+            usuario: currentUser?.usuario || 'unknown',
+            nombreUsuario: userName(),
             fecha: facFechaHora.value,
             cliente: facCliente.value,
             numeroFactura: facNumeroFactura ? facNumeroFactura.value : '',
@@ -780,18 +796,34 @@
             productos: productosEnFactura,
             savedAt: new Date().toISOString()
         };
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-        toast('Borrador guardado', 'info');
-        checkDraft();
+        try {
+            await setDoc(getDraftDocRef(), draft);
+            cachedDraft = draft;
+            updateDraftUI(draft);
+        } catch (e) { /* silent fail — don't interrupt user flow */ }
     }
-    function loadDraft() {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        if (!raw) return null;
-        try { return JSON.parse(raw); } catch { return null; }
+
+    // Manual save with toast
+    async function saveDraft() {
+        await autoSaveDraft();
+        if (productosEnFactura.length > 0 || facCliente.value.trim()) toast('Borrador guardado en la nube', 'info');
     }
-    function restoreDraft() {
-        const draft = loadDraft();
+
+    // Load draft from Firebase
+    async function loadDraft() {
+        try {
+            const snap = await getDoc(getDraftDocRef());
+            if (snap.exists()) { cachedDraft = snap.data(); return cachedDraft; }
+            cachedDraft = null;
+            return null;
+        } catch (e) { return null; }
+    }
+
+    // Restore: re-populate form + products array (inventory already deducted in Firebase)
+    async function restoreDraft() {
+        const draft = cachedDraft || await loadDraft();
         if (!draft) return;
+        showModule('facturacion');
         facFechaHora.value = draft.fecha || getTodayColombiaISO();
         facCliente.value = draft.cliente || '';
         if (facNumeroFactura) facNumeroFactura.value = draft.numeroFactura || '';
@@ -800,21 +832,97 @@
         productosEnFactura = draft.productos || [];
         renderProductosEnFactura();
         calcularTotalFactura();
-        discardDraftSilent();
-        toast('Borrador restaurado', 'info');
+        toast(`Factura restaurada con ${productosEnFactura.length} producto(s). Continúa donde quedaste.`, 'info');
     }
-    function discardDraft() { localStorage.removeItem(DRAFT_KEY); checkDraft(); toast('Borrador descartado'); }
-    function discardDraftSilent() { localStorage.removeItem(DRAFT_KEY); checkDraft(); }
-    function checkDraft() {
-        const draft = loadDraft();
+
+    // Rollback helper: returns products to inventory
+    async function rollbackProducts(productos) {
+        let restored = 0;
+        for (const p of productos) {
+            try {
+                const ref = doc(db, "inventario", p.id);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    const pi = snap.data();
+                    let update;
+                    if (p.unidadMedida === 'metros') {
+                        let totalCm = (parseInt(pi.metros) || 0) * 100 + (parseInt(pi.centimetros) || 0) + (p.metrosFacturados * 100 + p.centimetrosFacturados);
+                        update = { metros: Math.floor(totalCm / 100), centimetros: totalCm % 100 };
+                    } else {
+                        update = { unidades: (parseInt(pi.unidades) || 0) + p.unidadesFacturadas };
+                    }
+                    await updateDoc(ref, update);
+                    restored++;
+                }
+            } catch (e) { /* skip failed items */ }
+        }
+        return restored;
+    }
+
+    // Discard: return ALL products to inventory, then delete draft from Firebase
+    async function discardDraftAndRollback() {
+        const draft = cachedDraft || await loadDraft();
+        if (!draft || !draft.productos || draft.productos.length === 0) {
+            await deleteDraftFromFirebase();
+            toast('Borrador descartado');
+            return;
+        }
+        const ok = await showConfirm(
+            `Se devolverán ${draft.productos.length} producto(s) al inventario y se descartará la factura en progreso. ¿Continuar?`,
+            'Descartar Factura'
+        );
+        if (!ok) return;
+        const restored = await rollbackProducts(draft.productos);
+        productosEnFactura = [];
+        renderProductosEnFactura();
+        calcularTotalFactura();
+        await deleteDraftFromFirebase();
+        toast(`Borrador descartado. ${restored} producto(s) devueltos al inventario.`, 'info');
+    }
+
+    async function deleteDraftFromFirebase() {
+        try { await deleteDoc(getDraftDocRef()); } catch (e) { /* ignore */ }
+        cachedDraft = null;
+        updateDraftUI(null);
+    }
+
+    async function discardDraftSilent() {
+        await deleteDraftFromFirebase();
+    }
+
+    function updateDraftUI(draft) {
         const banner = $('draftBannerEl');
         const badge = $('draftBadge');
-        if (draft) { banner.classList.remove('hidden'); badge.classList.remove('hidden'); }
+        const hasProducts = draft && draft.productos && draft.productos.length > 0;
+        const hasData = draft && (hasProducts || (draft.cliente && draft.cliente.trim()));
+        if (hasData) { banner.classList.remove('hidden'); badge.classList.remove('hidden'); }
         else { banner.classList.add('hidden'); badge.classList.add('hidden'); }
     }
+
+    // Check for pending draft on page load — if products were deducted, ask user
+    async function checkPendingDraftOnLoad() {
+        const draft = await loadDraft();
+        if (!draft || !draft.productos || draft.productos.length === 0) {
+            updateDraftUI(null);
+            return;
+        }
+        updateDraftUI(draft);
+        const continuar = await showConfirm(
+            `Se encontró una factura en progreso con ${draft.productos.length} producto(s) (cliente: "${draft.cliente || 'sin nombre'}", usuario: ${draft.nombreUsuario || 'desconocido'}). El inventario ya fue descontado.\n\n¿Deseas CONTINUAR la factura donde quedaste?\n\n(Si eliges "Cancelar", los productos se devolverán al inventario)`,
+            'Factura en Progreso Detectada'
+        );
+        if (continuar) {
+            await restoreDraft();
+        } else {
+            const restored = await rollbackProducts(draft.productos);
+            await deleteDraftFromFirebase();
+            toast(`${restored} producto(s) devueltos al inventario.`, 'info');
+        }
+    }
+
     $('btnGuardarBorrador').addEventListener('click', saveDraft);
     $('btnRestaurarBorrador').addEventListener('click', restoreDraft);
-    $('btnDescartarBorrador').addEventListener('click', discardDraft);
+    $('btnDescartarBorrador').addEventListener('click', discardDraftAndRollback);
 
     // === INVENTORY CRUD ===
     async function cargarInventario() {
@@ -1068,6 +1176,7 @@
             }
         } catch (e) { toast("Error al actualizar inventario.", 'error'); productosEnFactura.pop(); }
         renderProductosEnFactura(); calcularTotalFactura();
+        autoSaveDraft(); // Auto-save after adding product
         facProducto.value = ''; detalleProductoFactura.classList.add('hidden');
         facProductId.value = ''; facProductUnit.value = ''; facProductMetros.value = ''; facProductCentimetros.value = '';
         facProductUnidades.value = ''; facProductValorUnitario.value = ''; facProductProveedor.value = '';
@@ -1109,6 +1218,7 @@
         } catch (e) { toast("Error al devolver cantidad.", 'error'); }
         productosEnFactura.splice(index, 1);
         renderProductosEnFactura(); calcularTotalFactura();
+        autoSaveDraft(); // Auto-save after removing product
     }
     window._eliminarProductoFactura = eliminarProductoDeListaFactura;
 
@@ -1592,13 +1702,23 @@
         });
     });
 
+    // === PREVENT ACCIDENTAL REFRESH WHEN INVOICE IN PROGRESS ===
+    window.addEventListener('beforeunload', (e) => {
+        if (productosEnFactura.length > 0 || facCliente.value.trim() !== '') {
+            e.preventDefault();
+            e.returnValue = '⚠️ Tienes una factura en progreso. Si actualizas perderás los datos. ¿Deseas continuar?';
+            return e.returnValue;
+        }
+    });
+
     // === INITIALIZATION ===
     const todayColombia = getTodayColombiaISO();
     if (invFechaHora) invFechaHora.value = todayColombia;
     if (facFechaHora) facFechaHora.value = todayColombia;
     if (abonoFecha) abonoFecha.value = todayColombia;
     showModule('inventario');
-    checkDraft();
+    // Check Firebase for pending invoice draft with deducted inventory
+    checkPendingDraftOnLoad();
 
 </script>
 </body>
