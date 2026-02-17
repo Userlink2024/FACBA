@@ -474,6 +474,47 @@
   </div>
 </div>
 
+<div class="modal" id="editarProductoFacturaModal">
+  <div class="modal-card" style="max-width:600px">
+    <div class="modal-head"><h3><i class="fas fa-edit" style="color:var(--primary)"></i> Editar Producto en Factura</h3><button class="btn btn-ghost" id="cerrarEditarProductoFactura"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="editFacturaProductoIndex">
+      <div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px">
+        <div style="font-weight:600;color:var(--text)" id="editFacturaProductoNombre"></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px" id="editFacturaProductoProveedor"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cantidad Disponible en Inventario</label>
+        <div style="padding:8px 12px;background:var(--primary-light);border-radius:8px;color:var(--primary);font-weight:600" id="editFacturaCantDisponible"></div>
+      </div>
+      <div id="editFacturaCantidadMetros" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Cantidad a Facturar (Metros)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="editFacturaMetros" class="form-input" placeholder="Metros" min="0" style="flex:1">
+            <span style="font-weight:600">.</span>
+            <input type="number" id="editFacturaCentimetros" class="form-input" placeholder="cm" min="0" max="99" style="width:80px">
+          </div>
+        </div>
+      </div>
+      <div id="editFacturaCantidadUnidades" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Cantidad a Facturar (Unidades)</label>
+          <input type="number" id="editFacturaUnidades" class="form-input" placeholder="Unidades" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor Unitario</label>
+        <input type="number" id="editFacturaValorUnitario" class="form-input" placeholder="Valor unitario" min="0">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="btnCancelarEditFactura">Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarEditFactura"><i class="fas fa-save"></i> Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="moduloBuscarProducto">
   <div class="modal-card">
     <div class="modal-head"><h3><i class="fas fa-search" style="color:var(--primary)"></i> Buscar Producto</h3><button class="btn btn-ghost" id="cerrarBuscarProducto"><i class="fas fa-xmark"></i></button></div>
@@ -1235,7 +1276,7 @@
             const row = tablaProductosFactura.insertRow();
             const cant = p.unidadMedida === 'metros' ? fmtCantidad(p.metrosFacturados, p.centimetrosFacturados, 'metros').replace(' Metros', 'm') : `${p.unidadesFacturadas} und`;
             const provDisp = p.proveedor ? ` (${p.proveedor})` : '';
-            row.innerHTML = `<td>${p.referenciaColor}${provDisp}</td><td>${cant}</td><td>$${fmtCOP(p.valorUnitario)}</td><td>$${fmtCOP(p.subtotal)}</td><td><button class="btn btn-danger btn-xs" onclick="window._eliminarProductoFactura(${i})"><i class="fas fa-trash"></i></button></td>`;
+            row.innerHTML = `<td>${p.referenciaColor}${provDisp}</td><td>${cant}</td><td>$${fmtCOP(p.valorUnitario)}</td><td>$${fmtCOP(p.subtotal)}</td><td><div class="btn-group"><button class="btn btn-primary btn-xs" onclick="window._editarProductoFactura(${i})"><i class="fas fa-pen"></i></button><button class="btn btn-danger btn-xs" onclick="window._eliminarProductoFactura(${i})"><i class="fas fa-trash"></i></button></div></td>`;
         });
     }
 
@@ -1262,6 +1303,135 @@
         autoSaveDraft(); // Auto-save after removing product
     }
     window._eliminarProductoFactura = eliminarProductoDeListaFactura;
+
+    // === EDIT PRODUCT IN FACTURA ===
+    async function editarProductoEnFactura(index) {
+        if (index < 0 || index >= productosEnFactura.length) return;
+        const p = productosEnFactura[index];
+        
+        // Get current inventory data
+        try {
+            const snap = await getDoc(doc(db, "inventario", p.id));
+            if (!snap.exists()) { toast("Producto no encontrado en inventario.", 'error'); return; }
+            const invData = snap.data();
+            
+            // Store index
+            $('editFacturaProductoIndex').value = index;
+            
+            // Display product info
+            $('editFacturaProductoNombre').textContent = p.referenciaColor;
+            $('editFacturaProductoProveedor').textContent = p.proveedor ? `Proveedor: ${p.proveedor}` : 'Sin proveedor';
+            
+            // Calculate available quantity (current inventory + what was already taken for this product)
+            let disponibleDisplay = '';
+            if (p.unidadMedida === 'metros') {
+                const totalCm = (invData.metros || 0) * 100 + (invData.centimetros || 0) + (p.metrosFacturados * 100 + p.centimetrosFacturados);
+                const m = Math.floor(totalCm / 100);
+                const cm = totalCm % 100;
+                disponibleDisplay = fmtCantidad(m, cm, 'metros');
+                $('editFacturaCantidadMetros').style.display = 'block';
+                $('editFacturaCantidadUnidades').style.display = 'none';
+                $('editFacturaMetros').value = p.metrosFacturados || 0;
+                $('editFacturaCentimetros').value = p.centimetrosFacturados || 0;
+                $('editFacturaMetros').max = m;
+            } else {
+                const totalUnidades = (invData.unidades || 0) + p.unidadesFacturadas;
+                disponibleDisplay = fmtCantidad(totalUnidades, 0, 'unidades');
+                $('editFacturaCantidadUnidades').style.display = 'block';
+                $('editFacturaCantidadMetros').style.display = 'none';
+                $('editFacturaUnidades').value = p.unidadesFacturadas || 0;
+                $('editFacturaUnidades').max = totalUnidades;
+            }
+            $('editFacturaCantDisponible').textContent = disponibleDisplay;
+            $('editFacturaValorUnitario').value = p.valorUnitario;
+            
+            // Open modal
+            $('editarProductoFacturaModal').classList.add('open');
+        } catch (e) {
+            toast("Error al cargar datos del producto.", 'error');
+        }
+    }
+    window._editarProductoFactura = editarProductoEnFactura;
+
+    async function guardarEditProductoFactura() {
+        const index = parseInt($('editFacturaProductoIndex').value);
+        if (index < 0 || index >= productosEnFactura.length) return;
+        
+        const p = productosEnFactura[index];
+        const valorUnitario = parseFloat($('editFacturaValorUnitario').value) || 0;
+        
+        if (valorUnitario <= 0) { toast("Valor unitario debe ser mayor a 0.", 'error'); return; }
+        
+        let newMetros = 0, newCm = 0, newUnidades = 0, cantidadFacturada = 0;
+        
+        if (p.unidadMedida === 'metros') {
+            newMetros = parseInt($('editFacturaMetros').value) || 0;
+            newCm = parseInt($('editFacturaCentimetros').value) || 0;
+            if (newMetros === 0 && newCm === 0) { toast("Cantidad debe ser mayor a 0.", 'error'); return; }
+            cantidadFacturada = newMetros + (newCm / 100);
+        } else {
+            newUnidades = parseInt($('editFacturaUnidades').value) || 0;
+            if (newUnidades === 0) { toast("Cantidad debe ser mayor a 0.", 'error'); return; }
+            cantidadFacturada = newUnidades;
+        }
+        
+        // Calculate difference to adjust inventory
+        const oldMetros = p.metrosFacturados || 0;
+        const oldCm = p.centimetrosFacturados || 0;
+        const oldUnidades = p.unidadesFacturadas || 0;
+        
+        try {
+            const ref = doc(db, "inventario", p.id);
+            const snap = await getDoc(ref);
+            if (!snap.exists()) { toast("Producto no encontrado.", 'error'); return; }
+            const invData = snap.data();
+            
+            if (p.unidadMedida === 'metros') {
+                // Return old quantity and deduct new quantity
+                const oldTotalCm = oldMetros * 100 + oldCm;
+                const newTotalCm = newMetros * 100 + newCm;
+                const currentCm = (invData.metros || 0) * 100 + (invData.centimetros || 0);
+                const finalCm = currentCm + oldTotalCm - newTotalCm;
+                
+                if (finalCm < 0) { toast("Cantidad insuficiente en inventario.", 'error'); return; }
+                
+                await updateDoc(ref, {
+                    metros: Math.floor(finalCm / 100),
+                    centimetros: finalCm % 100
+                });
+            } else {
+                const currentUnidades = invData.unidades || 0;
+                const finalUnidades = currentUnidades + oldUnidades - newUnidades;
+                
+                if (finalUnidades < 0) { toast("Cantidad insuficiente en inventario.", 'error'); return; }
+                
+                await updateDoc(ref, { unidades: finalUnidades });
+            }
+            
+            // Update product in factura
+            productosEnFactura[index] = {
+                ...p,
+                metrosFacturados: newMetros,
+                centimetrosFacturados: newCm,
+                unidadesFacturadas: newUnidades,
+                cantidadFacturada,
+                valorUnitario,
+                subtotal: cantidadFacturada * valorUnitario
+            };
+            
+            renderProductosEnFactura();
+            calcularTotalFactura();
+            autoSaveDraft();
+            toast("Producto actualizado!");
+            $('editarProductoFacturaModal').classList.remove('open');
+        } catch (e) {
+            toast("Error al actualizar producto.", 'error');
+        }
+    }
+
+    $('cerrarEditarProductoFactura').addEventListener('click', () => $('editarProductoFacturaModal').classList.remove('open'));
+    $('btnCancelarEditFactura').addEventListener('click', () => $('editarProductoFacturaModal').classList.remove('open'));
+    $('btnGuardarEditFactura').addEventListener('click', guardarEditProductoFactura);
 
     function calcularTotalFactura() {
         let total = 0;
