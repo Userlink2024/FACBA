@@ -709,7 +709,7 @@
     function handleCamposDescuento(unidad) {
         camposDescuentoMetros.classList.add('hidden'); camposDescuentoUnidades.classList.add('hidden');
         descMetros.removeAttribute('required'); descCentimetros.removeAttribute('required'); descUnidades.removeAttribute('required');
-        descMetros.value = 0; descCentimetros.value = 0; descUnidades.value = 0;
+        descMetros.value = ''; descCentimetros.value = ''; descUnidades.value = '';
         if (unidad === 'metros') { camposDescuentoMetros.classList.remove('hidden'); descMetros.setAttribute('required', 'required'); descCentimetros.setAttribute('required', 'required'); }
         else if (unidad === 'unidades') { camposDescuentoUnidades.classList.remove('hidden'); descUnidades.setAttribute('required', 'required'); }
     }
@@ -1025,8 +1025,8 @@
         prodProveedorFac.textContent = producto.proveedor || 'N/A';
         const cant = producto.unidadMedida === 'metros' ? fmtCantidad(producto.metros, producto.centimetros, 'metros') : fmtCantidad(producto.unidades, 0, 'unidades');
         prodCantidadFac.textContent = cant;
-        if (producto.unidadMedida === 'metros') { descMetros.max = producto.metros; descCentimetros.max = 99; descMetros.value = 0; descCentimetros.value = 0; }
-        else { descUnidades.max = producto.unidades || 0; descUnidades.value = 0; }
+        if (producto.unidadMedida === 'metros') { descMetros.max = producto.metros; descCentimetros.max = 99; descMetros.value = ''; descCentimetros.value = ''; }
+        else { descUnidades.max = producto.unidades || 0; descUnidades.value = ''; }
         handleCamposDescuento(producto.unidadMedida);
         if (producto.unidadMedida === 'metros') descMetros.focus(); else descUnidades.focus();
     }
