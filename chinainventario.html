@@ -481,6 +481,1742 @@
     const pedidosCol = collection(db, "pedidos_china");
     const borradorCol = collection(db, "facturas_borrador");
 
+    // === LIVE INVENTORY CACHE (real-time sync via onSnapshot) ===
+    let inventarioCache = [];
+    onSnapshot(inventarioCol, (snapshot) => {
+        inventarioCache = [];
+        snapshot.forEach(d => inventarioCache.push({ id: d.id, ...d.data() }));
+    }, () => { /* error silently */ });
+
+    // === SESSION DETECTION ===
+    let currentUser = null;
+    function loadCurrentUser() {
+        const json = localStorage.getItem('datosUsuario');
+        if (json) {
+            try { currentUser = JSON.parse(json); } catch (e) { currentUser = null; }
+        }
+        if (!currentUser || !currentUser.nombreCompleto) {
+            toast('No se detectó usuario activo. Redirigiendo...', 'error');
+            setTimeout(() => { window.location.href = 'https://userlink2024.github.io/lazapateria/index.html'; }, 2500);
+            throw new Error("No hay datos de usuario válidos.");
+        }
+        const pill = document.getElementById('userPill');
+        if (pill) pill.innerHTML = `<i class="fas fa-user"></i> <strong>${currentUser.nombreCompleto}</strong>`;
+    }
+    loadCurrentUser();
+    const userName = () => (currentUser ? (currentUser.nombreCompleto || currentUser.usuario || 'Desconocido') : 'Desconocido');
+
+    // === UTILITY FUNCTIONS ===
+    const $ = id => document.getElementById(id);
+
+    function fmtCOP(n) {
+        return Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function fmtCantidad(metros, centimetros, unidadMedida) {
+        if (unidadMedida === 'metros') {
+            const m = parseInt(metros) || 0;
+            const c = parseInt(centimetros) || 0;
+            return c > 0 ? `${m}.${c.toString().padStart(2, '0')} Metros` : `${m} Metros`;
+        }
+        return `${parseInt(metros) || 0} Unidades`;
+    }
+
+    function getTodayColombiaISO() {
+        return new Date().toLocaleString('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
+
+    function parseCurrency(str) {
+        if (typeof str === 'number') return str;
+        return parseFloat(String(str || '0').replace(/\./g, '').replace(/,/g, '.')) || 0;
+    }
+
+    function setupCurrencyInput(input) {
+        if (!input) return;
+        input.addEventListener('focus', () => {
+            const raw = parseCurrency(input.value);
+            input.value = raw > 0 ? raw : '';
+        });
+        input.addEventListener('blur', () => {
+            const raw = parseCurrency(input.value);
+            input.value = raw > 0 ? fmtCOP(raw) : '';
+        });
+    }
+
+    // === TOAST NOTIFICATIONS ===
+    let toastTimer = null;
+    function toast(msg, type = 'success') {
+        const el = $('toastEl');
+        const msgEl = $('toastMsg');
+        if (!el || !msgEl) return;
+        msgEl.textContent = msg;
+        el.className = 'toast ' + type;
+        el.querySelector('i').className = type === 'error' ? 'fas fa-circle-exclamation' : type === 'info' ? 'fas fa-info-circle' : 'fas fa-check-circle';
+        clearTimeout(toastTimer);
+        requestAnimationFrame(() => el.classList.add('show'));
+        toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    // === CONFIRM MODAL (replaces confirm()) ===
+    let confirmResolve = null;
+    function showConfirm(msg, title) {
+        return new Promise(resolve => {
+            confirmResolve = resolve;
+            if (title) $('confirmTitle').innerHTML = `<i class="fas fa-question-circle" style="color:var(--primary)"></i> ${title}`;
+            $('confirmMessage').textContent = msg;
+            $('confirmModal').classList.add('open');
+        });
+    }
+    function closeConfirmModal() {
+        $('confirmModal').classList.remove('open');
+        if (confirmResolve) { confirmResolve(false); confirmResolve = null; }
+    }
+    $('confirmOkBtn').addEventListener('click', () => {
+        $('confirmModal').classList.remove('open');
+        if (confirmResolve) { confirmResolve(true); confirmResolve = null; }
+    });
+
+    // === SETTINGS ===
+    function loadSettings() {
+        const s = JSON.parse(localStorage.getItem('chinaSettings') || '{}');
+        return { pedidoTimer: s.pedidoTimer || 30, despachoTimer: s.despachoTimer || 48 };
+    }
+    function saveSettings() {
+        const pedidoTimer = parseInt($('settPedidoTimer').value) || 30;
+        const despachoTimer = parseInt($('settDespachoTimer').value) || 48;
+        localStorage.setItem('chinaSettings', JSON.stringify({ pedidoTimer, despachoTimer }));
+        $('settingsModal').classList.remove('open');
+        toast('Configuración guardada');
+    }
+    $('btnSettings').addEventListener('click', () => {
+        const s = loadSettings();
+        $('settPedidoTimer').value = s.pedidoTimer;
+        $('settDespachoTimer').value = s.despachoTimer;
+        $('settingsModal').classList.add('open');
+    });
+    $('btnGuardarSettings').addEventListener('click', saveSettings);
+    $('cerrarSettings').addEventListener('click', () => $('settingsModal').classList.remove('open'));
+
+    // === DOM REFERENCES ===
+    const formInventario = $('formInventario');
+    const formInventarioTitle = $('formInventarioTitle');
+    const invProductId = $('invProductId');
+    const radioMetros = $('radioMetros');
+    const radioUnidades = $('radioUnidades');
+    const camposMetros = $('camposMetros');
+    const camposUnidades = $('camposUnidades');
+    const invFechaHora = $('invFechaHora');
+    const invReferencia = $('invReferencia');
+    const invColor = $('invColor');
+    const invMetros = $('invMetros');
+    const invCentimetros = $('invCentimetros');
+    const invUnidades = $('invUnidades');
+    const invValor = $('invValor');
+    const invProveedor = $('invProveedor');
+    const btnCancelarEdicion = $('btnCancelarEdicion');
+    const tablaInventario = $('tablaInventario').querySelector('tbody');
+    const inputBuscarInventario = $('inputBuscarInventario');
+    const facFechaHora = $('facFechaHora');
+    const facCliente = $('facCliente');
+    const facNumeroFactura = $('facNumeroFactura');
+    const radioContado = $('radioContado');
+    const radioCredito = $('radioCredito');
+    const subTipoContado = $('subTipoContado');
+    const radioEfectivo = $('radioEfectivo');
+    const radioTransferencia = $('radioTransferencia');
+    const facProductoBusqueda = $('facProductoBusqueda');
+    const resultadosBusquedaInline = $('resultadosBusquedaInline');
+    const facProducto = $('facProducto');
+    const detalleProductoFactura = $('detalleProductoFactura');
+    const prodNombreFac = $('prodNombreFac');
+    const prodCantidadFac = $('prodCantidadFac');
+    const prodProveedorFac = $('prodProveedorFac');
+    const camposDescuentoMetros = $('camposDescuentoMetros');
+    const camposDescuentoUnidades = $('camposDescuentoUnidades');
+    const descMetros = $('descMetros');
+    const descCentimetros = $('descCentimetros');
+    const descUnidades = $('descUnidades');
+    const facValorTotalDisplay = $('facValorTotalDisplay');
+    const facValorTotal = $('facValorTotal');
+    const facProductId = $('facProductId');
+    const facProductUnit = $('facProductUnit');
+    const facProductMetros = $('facProductMetros');
+    const facProductCentimetros = $('facProductCentimetros');
+    const facProductUnidades = $('facProductUnidades');
+    const facProductValorUnitario = $('facProductValorUnitario');
+    const facValorUnitarioEditable = $('facValorUnitarioEditable');
+    const facProductProveedor = $('facProductProveedor');
+    const btnAgregarProductoFactura = $('btnAgregarProductoFactura');
+    const tablaProductosFactura = $('tablaProductosFactura').querySelector('tbody');
+    const btnCrearFactura = $('btnCrearFactura');
+    const inputBuscarProducto = $('inputBuscarProducto');
+    const resultadosBusqueda = $('resultadosBusqueda');
+    const tablaFacturas = $('tablaFacturas').querySelector('tbody');
+    const inputBuscarFacturas = $('inputBuscarFacturas');
+    const abonoFacturaId = $('abonoFacturaId');
+    const abonoFacturaInfo = $('abonoFacturaInfo');
+    const abonoSaldoPendiente = $('abonoSaldoPendiente');
+    const abonoFecha = $('abonoFecha');
+    const abonoMonto = $('abonoMonto');
+    const historialAbonosContent = $('historialAbonosContent');
+    const totalFacturadoDisplay = $('totalFacturadoDisplay');
+    const creditoPendienteDisplay = $('creditoPendienteDisplay');
+    const totalAbonadoDisplay = $('totalAbonadoDisplay');
+    const pdfTemplate = $('pdfTemplate');
+    const pdfFacturaCodigo = $('pdfFacturaCodigo');
+    const pdfFacturaFecha = $('pdfFacturaFecha');
+    const pdfFacturaTipoPago = $('pdfFacturaTipoPago');
+    const pdfFacturaCliente = $('pdfFacturaCliente');
+    const pdfFacturaItems = $('pdfFacturaItems');
+    const pdfFacturaValorTotal = $('pdfFacturaValorTotal');
+    const pdfFacturaSaldoPendiente = $('pdfFacturaSaldoPendiente');
+
+    // Currency inputs setup
+    document.querySelectorAll('.currency-input').forEach(setupCurrencyInput);
+
+    // === STATE ===
+    let productosEnFactura = [];
+    const PAGE_SIZE = 50;
+    let invCurrentPage = 1;
+    let facCurrentPage = 1;
+
+    // === NAVIGATION ===
+    function showModule(tabName) {
+        document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        const mod = $('mod' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+        if (mod) mod.classList.add('active');
+        const tab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+        if (tab) tab.classList.add('active');
+
+        if (tabName === 'inventario') { resetFormInventario(); cargarInventario(); }
+        else if (tabName === 'facturacion') { resetFormFacturacion(); loadDraft().then(d => updateDraftUI(d)); }
+        else if (tabName === 'facturas') { resetBusquedaFacturas(); cargarFacturas(); }
+        else if (tabName === 'pedidos') { cargarPedidos(); }
+    }
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => showModule(tab.dataset.tab));
+    });
+
+    // === UNIT HANDLING ===
+    function handleUnidadMedida() {
+        if (radioMetros.checked) {
+            camposMetros.classList.remove('hidden'); camposUnidades.classList.add('hidden');
+            invMetros.setAttribute('required', 'required'); invCentimetros.setAttribute('required', 'required');
+            invUnidades.removeAttribute('required'); invUnidades.value = 0;
+        } else if (radioUnidades.checked) {
+            camposMetros.classList.add('hidden'); camposUnidades.classList.remove('hidden');
+            invUnidades.setAttribute('required', 'required');
+            invMetros.removeAttribute('required'); invCentimetros.removeAttribute('required');
+            invMetros.value = 0; invCentimetros.value = 0;
+        }
+    }
+    radioMetros.addEventListener('change', handleUnidadMedida);
+    radioUnidades.addEventListener('change', handleUnidadMedida);
+
+    function handleCamposDescuento(unidad) {
+        camposDescuentoMetros.classList.add('hidden'); camposDescuentoUnidades.classList.add('hidden');
+        descMetros.removeAttribute('required'); descCentimetros.removeAttribute('required'); descUnidades.removeAttribute('required');
+        descMetros.value = ''; descCentimetros.value = ''; descUnidades.value = '';
+        if (unidad === 'metros') { camposDescuentoMetros.classList.remove('hidden'); descMetros.setAttribute('required', 'required'); descCentimetros.setAttribute('required', 'required'); }
+        else if (unidad === 'unidades') { camposDescuentoUnidades.classList.remove('hidden'); descUnidades.setAttribute('required', 'required'); }
+    }
+
+    function handleTipoPagoChange() {
+        if (radioContado && radioContado.checked) { if (subTipoContado) subTipoContado.classList.remove('hidden'); }
+        else { if (subTipoContado) subTipoContado.classList.add('hidden'); if (radioEfectivo) radioEfectivo.checked = false; if (radioTransferencia) radioTransferencia.checked = false; }
+    }
+    if (radioContado) radioContado.addEventListener('change', handleTipoPagoChange);
+    if (radioCredito) radioCredito.addEventListener('change', handleTipoPagoChange);
+
+    // === FORM RESETS ===
+    function resetFormInventario() {
+        formInventario.reset();
+        invProductId.value = '';
+        formInventarioTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Agregar Producto';
+        btnCancelarEdicion.classList.add('hidden');
+        camposMetros.classList.add('hidden'); camposUnidades.classList.add('hidden');
+        radioMetros.checked = false; radioUnidades.checked = false;
+        handleUnidadMedida();
+        if (invFechaHora) invFechaHora.value = getTodayColombiaISO();
+        if (inputBuscarInventario) inputBuscarInventario.value = '';
+        filtrarInventario();
+    }
+
+    function resetFormFacturacion() {
+        facFechaHora.value = getTodayColombiaISO();
+        facCliente.value = '';
+        if (facNumeroFactura) facNumeroFactura.value = '';
+        radioContado.checked = false; radioCredito.checked = false;
+        if (subTipoContado) subTipoContado.classList.add('hidden');
+        if (radioEfectivo) radioEfectivo.checked = false;
+        if (radioTransferencia) radioTransferencia.checked = false;
+        facValorTotalDisplay.textContent = '$0';
+        facValorTotal.value = 0;
+        facProducto.value = '';
+        if (facProductoBusqueda) facProductoBusqueda.value = '';
+        if (resultadosBusquedaInline) resultadosBusquedaInline.classList.remove('open');
+        detalleProductoFactura.classList.add('hidden');
+        facProductId.value = ''; facProductUnit.value = '';
+        facProductMetros.value = ''; facProductCentimetros.value = '';
+        facProductUnidades.value = ''; facProductValorUnitario.value = '';
+        if (facValorUnitarioEditable) facValorUnitarioEditable.value = '';
+        facProductProveedor.value = '';
+        prodNombreFac.textContent = ''; prodCantidadFac.textContent = ''; prodProveedorFac.textContent = '';
+        handleCamposDescuento('');
+        productosEnFactura = [];
+        renderProductosEnFactura();
+    }
+
+    function resetBusquedaFacturas() { if (inputBuscarFacturas) inputBuscarFacturas.value = ''; }
+
+    function resetFormAbonar() {
+        $('formAbonar').reset();
+        abonoFacturaId.value = ''; abonoFacturaInfo.textContent = ''; abonoSaldoPendiente.textContent = '';
+        if (abonoFecha) abonoFecha.value = getTodayColombiaISO();
+    }
+
+    // === DRAFT INVOICE SYSTEM (FIREBASE AUTO-SAVE) ===
+    // Each user gets one draft document: facturas_borrador/{usuario}
+    // This syncs across devices — if user closes tab on tablet, can resume on PC
+    let cachedDraft = null; // local cache to avoid extra reads
+
+    function getDraftDocRef() {
+        const userId = currentUser?.usuario || 'unknown';
+        return doc(db, "facturas_borrador", `china_${userId}`);
+    }
+
+    // Auto-save silently to Firebase on every product add/remove
+    async function autoSaveDraft() {
+        if (productosEnFactura.length === 0 && !facCliente.value.trim()) {
+            await deleteDraftFromFirebase();
+            return;
+        }
+        const draft = {
+            usuario: currentUser?.usuario || 'unknown',
+            nombreUsuario: userName(),
+            fecha: facFechaHora.value,
+            cliente: facCliente.value,
+            numeroFactura: facNumeroFactura ? facNumeroFactura.value : '',
+            tipoPago: document.querySelector('input[name="tipoPago"]:checked')?.value || '',
+            metodoPago: document.querySelector('input[name="metodoPago"]:checked')?.value || '',
+            productos: productosEnFactura,
+            savedAt: new Date().toISOString()
+        };
+        try {
+            await setDoc(getDraftDocRef(), draft);
+            cachedDraft = draft;
+            updateDraftUI(draft);
+        } catch (e) { /* silent fail — don't interrupt user flow */ }
+    }
+
+    // Manual save with toast
+    async function saveDraft() {
+        await autoSaveDraft();
+        if (productosEnFactura.length > 0 || facCliente.value.trim()) toast('Borrador guardado en la nube', 'info');
+    }
+
+    // Load draft from Firebase
+    async function loadDraft() {
+        try {
+            const snap = await getDoc(getDraftDocRef());
+            if (snap.exists()) { cachedDraft = snap.data(); return cachedDraft; }
+            cachedDraft = null;
+            return null;
+        } catch (e) { return null; }
+    }
+
+    // Restore: re-populate form + products array (inventory already deducted in Firebase)
+    async function restoreDraft() {
+        const draft = cachedDraft || await loadDraft();
+        if (!draft) return;
+        showModule('facturacion');
+        facFechaHora.value = draft.fecha || getTodayColombiaISO();
+        facCliente.value = draft.cliente || '';
+        if (facNumeroFactura) facNumeroFactura.value = draft.numeroFactura || '';
+        if (draft.tipoPago === 'contado') { radioContado.checked = true; handleTipoPagoChange(); if (draft.metodoPago === 'efectivo') radioEfectivo.checked = true; else if (draft.metodoPago === 'transferencia') radioTransferencia.checked = true; }
+        else if (draft.tipoPago === 'credito') { radioCredito.checked = true; handleTipoPagoChange(); }
+        productosEnFactura = draft.productos || [];
+        renderProductosEnFactura();
+        calcularTotalFactura();
+        toast(`Factura restaurada con ${productosEnFactura.length} producto(s). Continúa donde quedaste.`, 'info');
+    }
+
+    // Rollback helper: returns products to inventory
+    async function rollbackProducts(productos) {
+        let restored = 0;
+        for (const p of productos) {
+            try {
+                const ref = doc(db, "inventario", p.id);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    const pi = snap.data();
+                    let update;
+                    if (p.unidadMedida === 'metros') {
+                        let totalCm = (parseInt(pi.metros) || 0) * 100 + (parseInt(pi.centimetros) || 0) + (p.metrosFacturados * 100 + p.centimetrosFacturados);
+                        update = { metros: Math.floor(totalCm / 100), centimetros: totalCm % 100 };
+                    } else {
+                        update = { unidades: (parseInt(pi.unidades) || 0) + p.unidadesFacturadas };
+                    }
+                    await updateDoc(ref, update);
+                    restored++;
+                }
+            } catch (e) { /* skip failed items */ }
+        }
+        return restored;
+    }
+
+    // Discard: return ALL products to inventory, then delete draft from Firebase
+    async function discardDraftAndRollback() {
+        const draft = cachedDraft || await loadDraft();
+        if (!draft || !draft.productos || draft.productos.length === 0) {
+            await deleteDraftFromFirebase();
+            toast('Borrador descartado');
+            return;
+        }
+        const ok = await showConfirm(
+            `Se devolverán ${draft.productos.length} producto(s) al inventario y se descartará la factura en progreso. ¿Continuar?`,
+            'Descartar Factura'
+        );
+        if (!ok) return;
+        const restored = await rollbackProducts(draft.productos);
+        productosEnFactura = [];
+        renderProductosEnFactura();
+        calcularTotalFactura();
+        await deleteDraftFromFirebase();
+        toast(`Borrador descartado. ${restored} producto(s) devueltos al inventario.`, 'info');
+    }
+
+    async function deleteDraftFromFirebase() {
+        try { await deleteDoc(getDraftDocRef()); } catch (e) { /* ignore */ }
+        cachedDraft = null;
+        updateDraftUI(null);
+    }
+
+    async function discardDraftSilent() {
+        await deleteDraftFromFirebase();
+    }
+
+    function updateDraftUI(draft) {
+        const banner = $('draftBannerEl');
+        const badge = $('draftBadge');
+        const hasProducts = draft && draft.productos && draft.productos.length > 0;
+        const hasData = draft && (hasProducts || (draft.cliente && draft.cliente.trim()));
+        if (hasData) { banner.classList.remove('hidden'); badge.classList.remove('hidden'); }
+        else { banner.classList.add('hidden'); badge.classList.add('hidden'); }
+    }
+
+    // Check for pending draft on page load — if products were deducted, ask user
+    async function checkPendingDraftOnLoad() {
+        const draft = await loadDraft();
+        if (!draft || !draft.productos || draft.productos.length === 0) {
+            updateDraftUI(null);
+            return;
+        }
+        updateDraftUI(draft);
+        const continuar = await showConfirm(
+            `Se encontró una factura en progreso con ${draft.productos.length} producto(s) (cliente: "${draft.cliente || 'sin nombre'}", usuario: ${draft.nombreUsuario || 'desconocido'}). El inventario ya fue descontado.\n\n¿Deseas CONTINUAR la factura donde quedaste?\n\n(Si eliges "Cancelar", los productos se devolverán al inventario)`,
+            'Factura en Progreso Detectada'
+        );
+        if (continuar) {
+            await restoreDraft();
+        } else {
+            const restored = await rollbackProducts(draft.productos);
+            await deleteDraftFromFirebase();
+            toast(`${restored} producto(s) devueltos al inventario.`, 'info');
+        }
+    }
+
+    $('btnGuardarBorrador').addEventListener('click', saveDraft);
+    $('btnRestaurarBorrador').addEventListener('click', restoreDraft);
+    $('btnDescartarBorrador').addEventListener('click', discardDraftAndRollback);
+
+    // === INVENTORY CRUD ===
+    async function cargarInventario() {
+        tablaInventario.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+        const soldQuantitiesMap = new Map();
+        try {
+            const facturasSnapshot = await getDocs(facturasCol);
+            facturasSnapshot.forEach(facturaDoc => {
+                const factura = facturaDoc.data();
+                if (factura.productos && Array.isArray(factura.productos)) {
+                    factura.productos.forEach(p => {
+                        const pid = p.id;
+                        soldQuantitiesMap.set(pid, (soldQuantitiesMap.get(pid) || 0) + p.cantidadFacturada);
+                    });
+                }
+            });
+        } catch (e) { toast('Error al cargar datos de ventas.', 'error'); }
+
+        onSnapshot(inventarioCol, (snapshot) => {
+            tablaInventario.innerHTML = '';
+            if (snapshot.empty) { tablaInventario.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-box-open"></i> No hay productos en el inventario.</td></tr>'; return; }
+            snapshot.forEach((docSnap) => {
+                const p = docSnap.data();
+                const row = tablaInventario.insertRow();
+                row.dataset.id = docSnap.id;
+                const cantDisplay = p.unidadMedida === 'metros' ? fmtCantidad(p.metros, p.centimetros, 'metros') : fmtCantidad(p.unidades, 0, 'unidades');
+                const totalSold = soldQuantitiesMap.get(docSnap.id) || 0;
+                let soldDisplay = '';
+                if (p.unidadMedida === 'metros') { const sm = Math.floor(totalSold); const sc = Math.round((totalSold - sm) * 100); soldDisplay = fmtCantidad(sm, sc, 'metros'); }
+                else { soldDisplay = fmtCantidad(totalSold, 0, 'unidades'); }
+                const usuarioDisplay = p.ultimoUsuario || p.creadoPor || '';
+                row.innerHTML = `
+                    <td>${p.fechaHora}</td><td>${p.referencia}</td><td>${p.color}</td>
+                    <td>${cantDisplay}</td><td>${soldDisplay}</td><td>$${fmtCOP(p.valor)}</td>
+                    <td>${p.proveedor || ''}</td><td><span class="chip info">${usuarioDisplay}</span></td>
+                    <td><div class="btn-group"><button class="btn btn-primary btn-xs" data-id="${docSnap.id}" onclick="window._modificarProducto('${docSnap.id}')"><i class="fas fa-pen"></i></button><button class="btn btn-danger btn-xs" data-id="${docSnap.id}" onclick="window._eliminarProducto('${docSnap.id}')"><i class="fas fa-trash"></i></button></div></td>`;
+            });
+            filtrarInventario();
+        }, () => { tablaInventario.innerHTML = '<tr><td colspan="9" class="empty" style="color:var(--danger)">Error al cargar inventario.</td></tr>'; toast('Error al cargar inventario.', 'error'); });
+    }
+
+    function filtrarInventario() {
+        const term = inputBuscarInventario.value.toLowerCase().trim();
+        tablaInventario.querySelectorAll('tr').forEach(row => {
+            if (row.querySelector('td[colspan="9"]')) return;
+            const ref = row.cells[1].textContent.toLowerCase();
+            const col = row.cells[2].textContent.toLowerCase();
+            const prov = row.cells[6].textContent.toLowerCase();
+            row.dataset.hiddenByFilter = (ref.includes(term) || col.includes(term) || prov.includes(term)) ? '0' : '1';
+        });
+        paginateInventario();
+    }
+
+    function getDataRows(tbody, cs) { return Array.from(tbody.querySelectorAll('tr')).filter(r => !r.querySelector(`td[colspan="${cs}"]`)); }
+    function applyRowVisibility(rows) { rows.forEach(r => { r.style.display = (r.dataset.hiddenByFilter === '1' || r.dataset.hiddenByPage === '1') ? 'none' : ''; }); }
+
+    function paginateInventario() {
+        const pager = $('inventarioPager'); const label = $('invPageLabel'); const prev = $('btnInvPrev'); const next = $('btnInvNext');
+        const rows = getDataRows(tablaInventario, 9);
+        const filtered = rows.filter(r => r.dataset.hiddenByFilter !== '1');
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        if (invCurrentPage > totalPages) invCurrentPage = totalPages;
+        if (invCurrentPage < 1) invCurrentPage = 1;
+        rows.forEach(r => { r.dataset.hiddenByPage = '0'; });
+        const start = (invCurrentPage - 1) * PAGE_SIZE;
+        filtered.forEach((r, i) => { if (i < start || i >= start + PAGE_SIZE) r.dataset.hiddenByPage = '1'; });
+        applyRowVisibility(rows);
+        if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
+        if (label) label.textContent = `Página ${invCurrentPage} de ${totalPages} (${total} registros)`;
+        if (prev) prev.disabled = invCurrentPage <= 1;
+        if (next) next.disabled = invCurrentPage >= totalPages;
+    }
+
+    async function productoExiste(referencia, color, excludeId = null) {
+        const q = query(inventarioCol, where("referencia", "==", referencia), where("color", "==", color));
+        const snap = await getDocs(q);
+        return excludeId ? snap.docs.some(d => d.id !== excludeId) : !snap.empty;
+    }
+
+    async function guardarProducto(event) {
+        event.preventDefault();
+        const id = invProductId.value;
+        const referencia = invReferencia.value.trim().toLowerCase();
+        const color = invColor.value.trim().toLowerCase();
+        const valor = parseCurrency(invValor.value);
+        const proveedor = invProveedor.value.trim();
+        const fechaHora = invFechaHora.value.trim();
+        if (!fechaHora) { toast("La fecha es obligatoria.", 'error'); return; }
+        let unidad = '', metros = 0, centimetros = 0, unidades = 0;
+        if (radioMetros.checked) {
+            unidad = 'metros'; metros = parseInt(invMetros.value) || 0; centimetros = parseInt(invCentimetros.value) || 0;
+            if (metros === 0 && centimetros === 0) { toast("La cantidad debe ser mayor a 0.", 'error'); return; }
+        } else if (radioUnidades.checked) {
+            unidad = 'unidades'; unidades = parseInt(invUnidades.value) || 0;
+            if (unidades === 0) { toast("La cantidad debe ser mayor a 0.", 'error'); return; }
+        } else { toast("Seleccione unidad de medida.", 'error'); return; }
+        if (!id && await productoExiste(referencia, color)) { toast(`Producto "${referencia}" - "${color}" ya existe.`, 'error'); return; }
+        if (id && await productoExiste(referencia, color, id)) { toast(`Ya existe otro producto "${referencia}" - "${color}".`, 'error'); return; }
+        const productoData = { fechaHora, referencia, color, unidadMedida: unidad, metros, centimetros, unidades, valor, proveedor, ultimoUsuario: userName(), ultimaModificacion: new Date().toISOString() };
+        if (!id) productoData.creadoPor = userName();
+        try {
+            if (id) { await updateDoc(doc(db, "inventario", id), productoData); toast("Producto actualizado!"); }
+            else { await addDoc(inventarioCol, productoData); toast("Producto guardado!"); }
+            resetFormInventario();
+            setTimeout(() => { if (invReferencia) { invReferencia.focus(); invReferencia.select(); } }, 0);
+        } catch (e) { toast("Error al guardar el producto.", 'error'); }
+    }
+
+    async function eliminarProducto(idProducto) {
+        const ok = await showConfirm("¿Estás seguro de eliminar este producto?", "Eliminar Producto");
+        if (ok) {
+            try { await deleteDoc(doc(db, "inventario", idProducto)); toast("Producto eliminado."); }
+            catch (e) { toast("Error al eliminar.", 'error'); }
+        }
+    }
+
+    async function modificarProducto(idProducto) {
+        try {
+            const snap = await getDoc(doc(db, "inventario", idProducto));
+            if (snap.exists()) {
+                const p = snap.data();
+                invProductId.value = idProducto; invFechaHora.value = p.fechaHora; invReferencia.value = p.referencia;
+                invColor.value = p.color; invValor.value = fmtCOP(p.valor); invProveedor.value = p.proveedor || '';
+                if (p.unidadMedida === 'metros') { radioMetros.checked = true; invMetros.value = p.metros || 0; invCentimetros.value = p.centimetros || 0; }
+                else if (p.unidadMedida === 'unidades') { radioUnidades.checked = true; invUnidades.value = p.unidades || 0; }
+                handleUnidadMedida();
+                formInventarioTitle.innerHTML = '<i class="fas fa-pen"></i> Modificar Producto';
+                btnCancelarEdicion.classList.remove('hidden');
+                formInventario.scrollIntoView({ behavior: 'smooth' });
+            } else { toast("Producto no encontrado.", 'error'); }
+        } catch (e) { toast("Error cargando datos.", 'error'); }
+    }
+
+    window._modificarProducto = modificarProducto;
+    window._eliminarProducto = eliminarProducto;
+    window.closeConfirmModal = closeConfirmModal;
+
+    // === IMPORT INVENTORY ===
+    $('btnImportarInventario').addEventListener('click', () => $('inputImportarInventario').click());
+    $('inputImportarInventario').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const ok = await showConfirm(`¿Importar productos desde "${file.name}"? Las columnas esperadas son: Referencia, Color, UnidadMedida(metros/unidades), Metros, Centimetros, Unidades, Valor, Proveedor`, "Importar Inventario");
+        if (!ok) { e.target.value = ''; return; }
+        try {
+            const data = await file.arrayBuffer();
+            const wb = XLSX.read(data, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws);
+            let imported = 0, skipped = 0;
+            for (const r of rows) {
+                const ref = String(r.Referencia || r.referencia || '').trim().toLowerCase();
+                const col = String(r.Color || r.color || '').trim().toLowerCase();
+                if (!ref || !col) { skipped++; continue; }
+                const exists = await productoExiste(ref, col);
+                if (exists) { skipped++; continue; }
+                const unidad = String(r.UnidadMedida || r.unidadMedida || r.unidad || 'unidades').toLowerCase();
+                const productoData = {
+                    fechaHora: getTodayColombiaISO(), referencia: ref, color: col, unidadMedida: unidad === 'metros' ? 'metros' : 'unidades',
+                    metros: parseInt(r.Metros || r.metros || 0) || 0, centimetros: parseInt(r.Centimetros || r.centimetros || 0) || 0,
+                    unidades: parseInt(r.Unidades || r.unidades || 0) || 0, valor: parseFloat(r.Valor || r.valor || 0) || 0,
+                    proveedor: String(r.Proveedor || r.proveedor || '').trim(), creadoPor: userName(), ultimoUsuario: userName(), ultimaModificacion: new Date().toISOString()
+                };
+                await addDoc(inventarioCol, productoData);
+                imported++;
+            }
+            toast(`Importación completa: ${imported} productos importados, ${skipped} omitidos.`, 'info');
+        } catch (err) { toast("Error al importar: " + err.message, 'error'); }
+        e.target.value = '';
+    });
+
+    // === FACTURACION - SEARCH & ADD PRODUCTS ===
+    // Uses live inventarioCache — always reflects real-time prices/quantities
+    function buscarProductoInline() {
+        const term = (facProductoBusqueda ? facProductoBusqueda.value : '').toLowerCase().trim();
+        if (!resultadosBusquedaInline) return;
+        if (term.length < 2) { resultadosBusquedaInline.innerHTML = ''; resultadosBusquedaInline.classList.remove('open'); return; }
+        const products = inventarioCache.filter(p =>
+            (p.referencia || '').toLowerCase().includes(term) ||
+            (p.color || '').toLowerCase().includes(term) ||
+            (p.proveedor || '').toLowerCase().includes(term)
+        );
+        resultadosBusquedaInline.innerHTML = '';
+        if (products.length === 0) { resultadosBusquedaInline.innerHTML = '<div class="search-item" style="color:var(--muted)">No se encontraron productos.</div>'; resultadosBusquedaInline.classList.add('open'); return; }
+        products.forEach(p => {
+            const div = document.createElement('div'); div.classList.add('search-item');
+            const cant = p.unidadMedida === 'metros' ? fmtCantidad(p.metros, p.centimetros, 'metros') : fmtCantidad(p.unidades, 0, 'unidades');
+            const prov = p.proveedor ? ` [${p.proveedor}]` : '';
+            div.innerHTML = `<strong>${p.referencia} - ${p.color}</strong> <span style="color:var(--muted)">(${cant})${prov} $${fmtCOP(p.valor)}</span>`;
+            div.onclick = () => { seleccionarProductoParaFactura(p); resultadosBusquedaInline.classList.remove('open'); facProductoBusqueda.value = ''; };
+            resultadosBusquedaInline.appendChild(div);
+        });
+        resultadosBusquedaInline.classList.add('open');
+    }
+
+    function seleccionarProductoParaFactura(producto) {
+        $('moduloBuscarProducto').classList.remove('open');
+        facProductId.value = producto.id; facProductUnit.value = producto.unidadMedida;
+        facProductMetros.value = producto.metros || 0; facProductCentimetros.value = producto.centimetros || 0;
+        facProductUnidades.value = producto.unidades || 0; facProductValorUnitario.value = producto.valor;
+        if (facValorUnitarioEditable) facValorUnitarioEditable.value = fmtCOP(producto.valor);
+        facProductProveedor.value = producto.proveedor || '';
+        detalleProductoFactura.classList.remove('hidden');
+        prodNombreFac.textContent = `${producto.referencia} - ${producto.color}`;
+        prodProveedorFac.textContent = producto.proveedor || 'N/A';
+        const cant = producto.unidadMedida === 'metros' ? fmtCantidad(producto.metros, producto.centimetros, 'metros') : fmtCantidad(producto.unidades, 0, 'unidades');
+        prodCantidadFac.textContent = cant;
+        if (producto.unidadMedida === 'metros') { descMetros.max = producto.metros; descCentimetros.max = 99; descMetros.value = ''; descCentimetros.value = ''; }
+        else { descUnidades.max = producto.unidades || 0; descUnidades.value = ''; }
+        handleCamposDescuento(producto.unidadMedida);
+        if (producto.unidadMedida === 'metros') descMetros.focus(); else descUnidades.focus();
+    }
+
+    async function agregarProductoAListaFactura() {
+        const productoId = facProductId.value;
+        const unidadMedida = facProductUnit.value;
+        const valorUnitario = parseCurrency(facValorUnitarioEditable ? facValorUnitarioEditable.value : '') || parseCurrency(facProductValorUnitario.value);
+        const nombreProducto = prodNombreFac.textContent;
+        const proveedorProducto = facProductProveedor.value;
+        if (!productoId || !unidadMedida || isNaN(valorUnitario)) { toast("Selecciona un producto válido.", 'error'); return; }
+        if (valorUnitario <= 0) { toast("Valor unitario debe ser mayor a 0.", 'error'); return; }
+        let cantidadADescontar = 0, metrosADescontar = 0, centimetrosADescontar = 0, unidadesADescontar = 0, cantidadDisponible = 0;
+        if (unidadMedida === 'metros') {
+            metrosADescontar = parseInt(descMetros.value) || 0; centimetrosADescontar = parseInt(descCentimetros.value) || 0;
+            cantidadADescontar = metrosADescontar + centimetrosADescontar / 100;
+            cantidadDisponible = (parseInt(facProductMetros.value) || 0) + (parseInt(facProductCentimetros.value) || 0) / 100;
+            if (cantidadADescontar <= 0) { toast("Cantidad debe ser mayor a 0.", 'error'); return; }
+            if (cantidadADescontar > cantidadDisponible) { toast(`Cantidad (${cantidadADescontar}m) supera disponible (${cantidadDisponible}m).`, 'error'); return; }
+        } else if (unidadMedida === 'unidades') {
+            unidadesADescontar = parseInt(descUnidades.value) || 0; cantidadADescontar = unidadesADescontar;
+            cantidadDisponible = parseInt(facProductUnidades.value) || 0;
+            if (cantidadADescontar <= 0) { toast("Cantidad debe ser mayor a 0.", 'error'); return; }
+            if (cantidadADescontar > cantidadDisponible) { toast(`Cantidad (${cantidadADescontar}) supera disponible (${cantidadDisponible}).`, 'error'); return; }
+        } else { toast("Unidad no reconocida.", 'error'); return; }
+        const subtotal = cantidadADescontar * valorUnitario;
+        productosEnFactura.push({ id: productoId, referenciaColor: nombreProducto, unidadMedida, cantidadFacturada: cantidadADescontar, metrosFacturados: metrosADescontar, centimetrosFacturados: centimetrosADescontar, unidadesFacturadas: unidadesADescontar, valorUnitario, subtotal, proveedor: proveedorProducto });
+        try {
+            const productRef = doc(db, "inventario", productoId);
+            const productSnap = await getDoc(productRef);
+            if (productSnap.exists()) {
+                const pi = productSnap.data(); let update;
+                if (unidadMedida === 'metros') {
+                    let totalCm = (parseInt(pi.metros) || 0) * 100 + (parseInt(pi.centimetros) || 0) - (metrosADescontar * 100 + centimetrosADescontar);
+                    update = { metros: Math.floor(totalCm / 100), centimetros: totalCm % 100 };
+                } else { update = { unidades: (parseInt(pi.unidades) || 0) - unidadesADescontar }; }
+                await updateDoc(productRef, update);
+                toast("Producto agregado a factura.");
+            }
+        } catch (e) { toast("Error al actualizar inventario.", 'error'); productosEnFactura.pop(); }
+        renderProductosEnFactura(); calcularTotalFactura();
+        autoSaveDraft(); // Auto-save after adding product
+        facProducto.value = ''; detalleProductoFactura.classList.add('hidden');
+        facProductId.value = ''; facProductUnit.value = ''; facProductMetros.value = ''; facProductCentimetros.value = '';
+        facProductUnidades.value = ''; facProductValorUnitario.value = ''; facProductProveedor.value = '';
+        if (facValorUnitarioEditable) facValorUnitarioEditable.value = '';
+        prodNombreFac.textContent = ''; prodCantidadFac.textContent = ''; prodProveedorFac.textContent = '';
+        handleCamposDescuento('');
+        // AUTO-FOCUS on search after adding product
+        setTimeout(() => { if (facProductoBusqueda) { facProductoBusqueda.focus(); } }, 100);
+    }
+
+    function renderProductosEnFactura() {
+        tablaProductosFactura.innerHTML = '';
+        if (productosEnFactura.length === 0) { tablaProductosFactura.innerHTML = '<tr><td colspan="5" class="empty">No hay productos agregados.</td></tr>'; return; }
+        productosEnFactura.forEach((p, i) => {
+            const row = tablaProductosFactura.insertRow();
+            const cant = p.unidadMedida === 'metros' ? fmtCantidad(p.metrosFacturados, p.centimetrosFacturados, 'metros').replace(' Metros', 'm') : `${p.unidadesFacturadas} und`;
+            const provDisp = p.proveedor ? ` (${p.proveedor})` : '';
+            row.innerHTML = `<td>${p.referenciaColor}${provDisp}</td><td>${cant}</td><td>$${fmtCOP(p.valorUnitario)}</td><td>$${fmtCOP(p.subtotal)}</td><td><button class="btn btn-danger btn-xs" onclick="window._eliminarProductoFactura(${i})"><i class="fas fa-trash"></i></button></td>`;
+        });
+    }
+
+    async function eliminarProductoDeListaFactura(index) {
+        if (index < 0 || index >= productosEnFactura.length) return;
+        const ok = await showConfirm("¿Eliminar este producto de la factura?");
+        if (!ok) return;
+        const p = productosEnFactura[index];
+        try {
+            const ref = doc(db, "inventario", p.id);
+            const snap = await getDoc(ref);
+            if (snap.exists()) {
+                const pi = snap.data(); let update;
+                if (p.unidadMedida === 'metros') {
+                    let totalCm = (parseInt(pi.metros) || 0) * 100 + (parseInt(pi.centimetros) || 0) + (p.metrosFacturados * 100 + p.centimetrosFacturados);
+                    update = { metros: Math.floor(totalCm / 100), centimetros: totalCm % 100 };
+                } else { update = { unidades: (parseInt(pi.unidades) || 0) + p.unidadesFacturadas }; }
+                await updateDoc(ref, update);
+                toast("Cantidad devuelta al inventario.");
+            }
+        } catch (e) { toast("Error al devolver cantidad.", 'error'); }
+        productosEnFactura.splice(index, 1);
+        renderProductosEnFactura(); calcularTotalFactura();
+        autoSaveDraft(); // Auto-save after removing product
+    }
+    window._eliminarProductoFactura = eliminarProductoDeListaFactura;
+
+    function calcularTotalFactura() {
+        let total = 0;
+        productosEnFactura.forEach(p => total += p.subtotal);
+        facValorTotalDisplay.textContent = '$' + fmtCOP(total);
+        facValorTotal.value = total;
+    }
+
+    // === CREATE INVOICE ===
+    async function crearFactura() {
+        const cliente = facCliente.value.trim();
+        const fechaHora = facFechaHora.value.trim();
+        const tipoPago = document.querySelector('input[name="tipoPago"]:checked')?.value;
+        const metodoPago = document.querySelector('input[name="metodoPago"]:checked')?.value || null;
+        const numeroFacturaManual = facNumeroFactura ? facNumeroFactura.value.trim() : '';
+        if (!fechaHora) { toast("Fecha obligatoria.", 'error'); return; }
+        if (!cliente) { toast("Cliente obligatorio.", 'error'); return; }
+        if (!tipoPago) { toast("Seleccione tipo de pago.", 'error'); return; }
+        if (tipoPago === 'contado' && !metodoPago) { toast("Seleccione método de pago.", 'error'); return; }
+        if (productosEnFactura.length === 0) { toast("Agregue al menos un producto.", 'error'); return; }
+        const valorTotal = parseFloat(facValorTotal.value);
+        const now = new Date();
+        const codigoRegistro = numeroFacturaManual || `${now.getFullYear()}${('0'+(now.getMonth()+1)).slice(-2)}${('0'+now.getDate()).slice(-2)}${('0'+now.getHours()).slice(-2)}${('0'+now.getMinutes()).slice(-2)}${('0'+now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
+        const nuevaFactura = { codigoRegistro, fechaHora, cliente, tipoPago, metodoPago, productos: productosEnFactura, valorTotal, saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, abonos: [], createdAt: new Date(), creadoPor: userName(), despachado: false, despachadoFecha: null };
+        try {
+            await addDoc(facturasCol, nuevaFactura);
+            toast("Factura creada con éxito!");
+            discardDraftSilent();
+            resetFormFacturacion();
+        } catch (e) { toast("Error al crear factura.", 'error'); }
+    }
+
+    // === FACTURAS LIST ===
+    function cargarFacturas() {
+        tablaFacturas.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+        let totalFacturado = 0, totalCreditoPendiente = 0, totalAbonado = 0;
+        onSnapshot(facturasCol, (snapshot) => {
+            tablaFacturas.innerHTML = '';
+            totalFacturado = 0; totalCreditoPendiente = 0; totalAbonado = 0;
+            if (snapshot.empty) { tablaFacturas.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-receipt"></i> No hay facturas emitidas.</td></tr>'; totalFacturadoDisplay.textContent = '$0'; creditoPendienteDisplay.textContent = '$0'; totalAbonadoDisplay.textContent = '$0'; return; }
+            const settings = loadSettings();
+            snapshot.forEach((docSnap) => {
+                const f = docSnap.data();
+                const row = tablaFacturas.insertRow();
+                row.dataset.id = docSnap.id;
+                row.dataset.abonos = JSON.stringify(f.abonos || []);
+                totalFacturado += parseFloat(f.valorTotal) || 0;
+                if (f.abonos && Array.isArray(f.abonos)) f.abonos.forEach(a => { totalAbonado += parseFloat(a.montoAbono) || 0; });
+                let productosDisplay = 'Sin productos';
+                if (f.productos && f.productos.length > 0) {
+                    productosDisplay = f.productos.map(p => {
+                        let cant = p.unidadMedida === 'metros' ? fmtCantidad(p.metrosFacturados, p.centimetrosFacturados, 'metros').replace(' Metros', 'm') : `${p.unidadesFacturadas || 0} und`;
+                        const prov = p.proveedor ? ` [${p.proveedor}]` : '';
+                        return `${p.referenciaColor} (${cant})${prov}`;
+                    }).join(', ');
+                }
+                let tipoPagoDisplay = f.tipoPago === 'credito' ? 'Crédito' : 'Contado';
+                if (f.tipoPago === 'contado' && f.metodoPago) tipoPagoDisplay = `Contado (${f.metodoPago.charAt(0).toUpperCase() + f.metodoPago.slice(1)})`;
+                let saldo = f.saldoPendiente !== undefined && f.saldoPendiente !== null ? parseFloat(f.saldoPendiente) : parseFloat(f.valorTotal || 0);
+                let saldoDisplay = '0';
+                if (f.tipoPago === 'contado') saldo = 0;
+                else { saldoDisplay = fmtCOP(saldo); totalCreditoPendiente += saldo; }
+                // Dispatch tracking
+                let despachoHtml = '';
+                if (f.despachado) { despachoHtml = '<span class="chip ok"><i class="fas fa-check"></i> Despachado</span>'; }
+                else {
+                    const created = f.createdAt?.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
+                    const elapsed = (Date.now() - created.getTime()) / 3600000;
+                    const limit = settings.despachoTimer;
+                    if (elapsed > limit) despachoHtml = `<span class="timer-badge danger"><i class="fas fa-exclamation-triangle"></i> ${Math.round(elapsed)}h</span>`;
+                    else if (elapsed > limit * 0.7) despachoHtml = `<span class="timer-badge warning"><i class="fas fa-clock"></i> ${Math.round(elapsed)}h</span>`;
+                    else despachoHtml = `<span class="timer-badge ok"><i class="fas fa-clock"></i> ${Math.round(elapsed)}h</span>`;
+                }
+                let acciones = '';
+                if (f.abonos && f.abonos.length > 0) acciones += `<button class="btn btn-info btn-xs btn-ver-abonos" data-id="${docSnap.id}">Abonos (${f.abonos.length})</button> `;
+                if (f.tipoPago === 'credito' && saldo > 0) acciones += `<button class="btn btn-success btn-xs btn-abonar" data-id="${docSnap.id}" data-saldo="${saldo}" data-cliente="${f.cliente}" data-valortotal="${f.valorTotal}">Abonar</button> `;
+                if (!f.despachado) acciones += `<button class="btn btn-secondary btn-xs btn-despachar" data-id="${docSnap.id}"><i class="fas fa-truck"></i></button> `;
+                acciones += `<button class="btn btn-secondary btn-xs btn-generate-pdf" data-id="${docSnap.id}"><i class="fas fa-file-pdf"></i></button> `;
+                acciones += `<button class="btn btn-danger btn-xs btn-eliminar-factura" data-id="${docSnap.id}"><i class="fas fa-trash"></i></button>`;
+                row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora}</td><td>${f.cliente}</td><td>${tipoPagoDisplay}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${productosDisplay}">${productosDisplay}</td><td>$${fmtCOP(f.valorTotal)}</td><td>${saldoDisplay}</td><td>${despachoHtml}</td><td><div class="btn-group">${acciones}</div></td>`;
+            });
+            totalFacturadoDisplay.textContent = '$' + fmtCOP(totalFacturado);
+            creditoPendienteDisplay.textContent = '$' + fmtCOP(totalCreditoPendiente);
+            totalAbonadoDisplay.textContent = '$' + fmtCOP(totalAbonado);
+            filtrarFacturas();
+        }, () => { tablaFacturas.innerHTML = '<tr><td colspan="9" class="empty" style="color:var(--danger)">Error al cargar facturas.</td></tr>'; toast('Error al cargar facturas.', 'error'); });
+    }
+
+    function filtrarFacturas() {
+        const term = inputBuscarFacturas.value.toLowerCase().trim();
+        tablaFacturas.querySelectorAll('tr').forEach(row => {
+            if (row.querySelector('td[colspan="9"]')) return;
+            const txt = row.textContent.toLowerCase();
+            row.dataset.hiddenByFilter = txt.includes(term) ? '0' : '1';
+        });
+        paginateFacturas();
+    }
+
+    function paginateFacturas() {
+        const pager = $('facturasPager'); const label = $('facPageLabel'); const prev = $('btnFacPrev'); const next = $('btnFacNext');
+        const rows = getDataRows(tablaFacturas, 9);
+        const filtered = rows.filter(r => r.dataset.hiddenByFilter !== '1');
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        if (facCurrentPage > totalPages) facCurrentPage = totalPages;
+        if (facCurrentPage < 1) facCurrentPage = 1;
+        rows.forEach(r => { r.dataset.hiddenByPage = '0'; });
+        const start = (facCurrentPage - 1) * PAGE_SIZE;
+        filtered.forEach((r, i) => { if (i < start || i >= start + PAGE_SIZE) r.dataset.hiddenByPage = '1'; });
+        applyRowVisibility(rows);
+        if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
+        if (label) label.textContent = `Página ${facCurrentPage} de ${totalPages} (${total} registros)`;
+        if (prev) prev.disabled = facCurrentPage <= 1;
+        if (next) next.disabled = facCurrentPage >= totalPages;
+    }
+
+    // === ABONOS ===
+    function abrirModalAbonar(facturaId, saldoActual, cliente, valorTotal) {
+        resetFormAbonar();
+        abonoFacturaId.value = facturaId;
+        abonoFacturaInfo.textContent = `Cliente: ${cliente} | Total: $${fmtCOP(valorTotal)}`;
+        abonoSaldoPendiente.textContent = '$' + fmtCOP(saldoActual);
+        abonoMonto.max = saldoActual;
+        $('abonarModal').classList.add('open');
+        if (abonoFecha) abonoFecha.value = getTodayColombiaISO();
+    }
+
+    async function guardarAbono(event) {
+        event.preventDefault();
+        const facturaId = abonoFacturaId.value;
+        const fechaAbono = abonoFecha.value.trim();
+        const montoAbono = parseCurrency(abonoMonto.value);
+        const saldoText = abonoSaldoPendiente.textContent.replace(/[^0-9.,]/g, '');
+        const saldoPendienteActual = parseCurrency(saldoText);
+        if (!facturaId || !fechaAbono || isNaN(montoAbono) || montoAbono <= 0) { toast("Complete todos los campos.", 'error'); return; }
+        if (montoAbono > saldoPendienteActual) { toast("Monto excede saldo pendiente.", 'error'); return; }
+        const nuevoSaldo = saldoPendienteActual - montoAbono;
+        const abonoData = { fechaAbono, montoAbono, createdAt: new Date(), registradoPor: userName() };
+        try {
+            const facturaRef = doc(db, "facturas", facturaId);
+            await updateDoc(facturaRef, { abonos: arrayUnion(abonoData), saldoPendiente: nuevoSaldo });
+            toast("Abono registrado!");
+            $('abonarModal').classList.remove('open');
+            resetFormAbonar();
+        } catch (e) { toast("Error al guardar abono.", 'error'); }
+    }
+
+    function mostrarHistorialAbonos(abonosData) {
+        historialAbonosContent.innerHTML = '';
+        if (!abonosData || abonosData.length === 0) { historialAbonosContent.innerHTML = '<div class="empty"><i class="fas fa-inbox"></i> Sin abonos</div>'; }
+        else {
+            abonosData.sort((a, b) => new Date(a.fechaAbono) - new Date(b.fechaAbono));
+            let html = '<div style="display:flex;flex-direction:column;gap:8px">';
+            abonosData.forEach(a => { html += `<div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg);border-radius:10px"><div><strong>${a.fechaAbono}</strong><br><span style="font-size:11px;color:var(--muted)">${a.registradoPor || ''}</span></div><div style="font-weight:700;color:var(--success)">$${fmtCOP(a.montoAbono)}</div></div>`; });
+            html += '</div>';
+            historialAbonosContent.innerHTML = html;
+        }
+        $('historialModal').classList.add('open');
+    }
+
+    // === DISPATCH ===
+    async function marcarDespachado(facturaId) {
+        const ok = await showConfirm("¿Marcar esta factura como despachada?", "Despacho");
+        if (!ok) return;
+        try {
+            await updateDoc(doc(db, "facturas", facturaId), { despachado: true, despachadoFecha: new Date(), despachadoPor: userName() });
+            toast("Factura marcada como despachada.");
+        } catch (e) { toast("Error al marcar despacho.", 'error'); }
+    }
+
+    async function eliminarFactura(idFactura) {
+        const ok = await showConfirm("¿Eliminar esta factura? Esta acción no se puede deshacer.", "Eliminar Factura");
+        if (!ok) return;
+        try { await deleteDoc(doc(db, "facturas", idFactura)); toast("Factura eliminada."); }
+        catch (e) { toast("Error al eliminar.", 'error'); }
+    }
+
+    // === PDF GENERATION ===
+    async function generarFacturaPDF(facturaId) {
+        toast("Generando PDF...", 'info');
+        try {
+            const snap = await getDoc(doc(db, "facturas", facturaId));
+            if (!snap.exists()) { toast("Factura no encontrada.", 'error'); return; }
+            const f = snap.data();
+            pdfFacturaCodigo.textContent = f.codigoRegistro || 'N/A';
+            pdfFacturaFecha.textContent = f.fechaHora || 'N/A';
+            pdfFacturaTipoPago.textContent = f.tipoPago === 'credito' ? 'Credito' : 'Contado';
+            pdfFacturaCliente.textContent = f.cliente || 'N/A';
+            pdfFacturaItems.innerHTML = '';
+            if (f.productos && f.productos.length > 0) {
+                f.productos.forEach(item => {
+                    const row = pdfFacturaItems.insertRow();
+                    const cant = item.unidadMedida === 'metros' ? fmtCantidad(item.metrosFacturados, item.centimetrosFacturados, 'metros').replace(' Metros', 'm') : `${item.unidadesFacturadas || 0} und`;
+                    const prov = item.proveedor ? ` (${item.proveedor})` : '';
+                    row.innerHTML = `<td>${item.referenciaColor}${prov}</td><td>${cant}</td><td>$${fmtCOP(item.valorUnitario)}</td><td>$${fmtCOP(item.subtotal)}</td>`;
+                });
+            }
+            pdfFacturaValorTotal.textContent = '$' + fmtCOP(f.valorTotal);
+            let saldoPDF = f.saldoPendiente !== undefined ? parseFloat(f.saldoPendiente) : parseFloat(f.valorTotal || 0);
+            if (f.tipoPago === 'contado') saldoPDF = 0;
+            pdfFacturaSaldoPendiente.textContent = '$' + fmtCOP(saldoPDF);
+            pdfTemplate.style.display = 'block'; pdfTemplate.style.position = 'absolute'; pdfTemplate.style.top = '-9999px'; pdfTemplate.style.left = '-9999px'; pdfTemplate.style.zIndex = '-1000';
+            const canvas = await html2canvas(pdfTemplate, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            pdfTemplate.style.display = 'none'; pdfTemplate.style.position = 'static';
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgW = 210; const imgH = canvas.height * imgW / canvas.width;
+            let hLeft = imgH; let pos = 0;
+            pdf.addImage(imgData, 'PNG', 0, pos, imgW, imgH); hLeft -= 297;
+            while (hLeft > 0) { pos = hLeft - imgH; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, pos, imgW, imgH); hLeft -= 297; }
+            pdf.save(`factura_${f.codigoRegistro || facturaId}.pdf`);
+            toast("PDF generado!");
+        } catch (e) { toast("Error al generar PDF.", 'error'); pdfTemplate.style.display = 'none'; }
+    }
+
+    // === EXPORT FUNCTIONS ===
+    function exportarInventarioAExcel() {
+        const data = [];
+        const headers = [];
+        $('tablaInventario').querySelectorAll('thead th').forEach(h => { if (h.textContent.trim() !== 'Acciones') headers.push(h.textContent.trim()); });
+        data.push(headers);
+        tablaInventario.querySelectorAll('tr').forEach(row => {
+            if (row.style.display === 'none' || row.querySelector('td[colspan="9"]')) return;
+            let rd = [];
+            row.querySelectorAll('td').forEach((cell, i) => { if (i < row.cells.length - 1) rd.push(cell.textContent.trim()); });
+            data.push(rd);
+        });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "Inventario");
+        XLSX.writeFile(wb, "inventario.xlsx");
+        toast("Inventario exportado.");
+    }
+
+    function exportarFacturasAExcel() {
+        let csv = "data:text/csv;charset=utf-8,";
+        csv += ["Código","Fecha","Cliente","Tipo Pago","Productos","Valor Total","Saldo Pendiente"].join(";") + "\r\n";
+        tablaFacturas.querySelectorAll('tr').forEach(row => {
+            if (row.querySelector('td[colspan="9"]')) return;
+            let rd = [];
+            row.querySelectorAll('td').forEach((cell, i) => { if (i < 7) rd.push(cell.textContent.trim()); });
+            csv += rd.join(";") + "\r\n";
+        });
+        const link = document.createElement("a"); link.setAttribute("href", encodeURI(csv)); link.setAttribute("download", "facturas.csv");
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        toast("Facturas exportadas.");
+    }
+
+    // === SEARCH MODAL (legacy) ===
+    async function buscarProductoParaFacturacion() {
+        const term = inputBuscarProducto.value.toLowerCase().trim();
+        resultadosBusqueda.innerHTML = '';
+        if (term.length < 2) { resultadosBusqueda.innerHTML = '<div class="search-item" style="color:var(--muted)">Escribe al menos 2 caracteres.</div>'; return; }
+        try {
+            const qRef = query(inventarioCol, where("referencia", ">=", term), where("referencia", "<=", term + '\uf8ff'));
+            const qColor = query(inventarioCol, where("color", ">=", term), where("color", "<=", term + '\uf8ff'));
+            const qProv = query(inventarioCol, where("proveedor", ">=", term), where("proveedor", "<=", term + '\uf8ff'));
+            const [sRef, sColor, sProv] = await Promise.all([getDocs(qRef), getDocs(qColor), getDocs(qProv)]);
+            const ids = new Set(); const products = [];
+            [sRef, sColor, sProv].forEach(s => s.forEach(d => { if (!ids.has(d.id)) { ids.add(d.id); products.push({ id: d.id, ...d.data() }); } }));
+            if (products.length === 0) { resultadosBusqueda.innerHTML = '<div style="padding:12px;color:var(--muted)">No se encontraron productos.</div>'; return; }
+            products.forEach(p => {
+                const div = document.createElement('div'); div.classList.add('search-item');
+                const cant = p.unidadMedida === 'metros' ? fmtCantidad(p.metros, p.centimetros, 'metros') : fmtCantidad(p.unidades, 0, 'unidades');
+                const prov = p.proveedor ? ` [${p.proveedor}]` : '';
+                div.textContent = `${p.referencia} - ${p.color} (${cant})${prov}`;
+                div.onclick = () => seleccionarProductoParaFactura(p);
+                resultadosBusqueda.appendChild(div);
+            });
+        } catch (e) { resultadosBusqueda.innerHTML = '<div style="padding:12px;color:var(--danger)">Error buscando.</div>'; }
+    }
+
+    // === PEDIDOS (ORDER MANAGEMENT) ===
+    let productosEnPedido = [];
+    const formPedido = $('formPedido');
+    const pedProductoBusqueda = $('pedProductoBusqueda');
+    const pedResultadosBusqueda = $('pedResultadosBusqueda');
+    const tablaPedidoProductos = $('tablaPedidoProductos').querySelector('tbody');
+
+    // Uses live inventarioCache — always reflects real-time data
+    function buscarProductoPedido() {
+        const term = pedProductoBusqueda.value.toLowerCase().trim();
+        if (term.length < 2) { pedResultadosBusqueda.innerHTML = ''; pedResultadosBusqueda.classList.remove('open'); return; }
+        const products = inventarioCache.filter(p =>
+            (p.referencia || '').toLowerCase().includes(term) ||
+            (p.color || '').toLowerCase().includes(term) ||
+            (p.proveedor || '').toLowerCase().includes(term)
+        );
+        pedResultadosBusqueda.innerHTML = '';
+        if (products.length === 0) { pedResultadosBusqueda.innerHTML = '<div class="search-item" style="color:var(--muted)">Sin resultados</div>'; pedResultadosBusqueda.classList.add('open'); return; }
+        products.forEach(p => {
+            const div = document.createElement('div'); div.classList.add('search-item');
+            const cant = p.unidadMedida === 'metros' ? fmtCantidad(p.metros, p.centimetros, 'metros') : fmtCantidad(p.unidades, 0, 'unidades');
+            const prov = p.proveedor ? ` [${p.proveedor}]` : '';
+            div.innerHTML = `<strong>${p.referencia} - ${p.color}</strong> <span style="color:var(--muted)">(${cant})${prov} $${fmtCOP(p.valor)}</span>`;
+            div.onclick = () => {
+                productosEnPedido.push({ id: p.id, ref: p.referencia, color: p.color, unidadMedida: p.unidadMedida, cantidad: '', metros: 0, centimetros: 0, unidades: 0 });
+                renderProductosPedido();
+                pedResultadosBusqueda.classList.remove('open');
+                pedProductoBusqueda.value = '';
+                setTimeout(() => pedProductoBusqueda.focus(), 100);
+            };
+            pedResultadosBusqueda.appendChild(div);
+        });
+        pedResultadosBusqueda.classList.add('open');
+    }
+
+    function renderProductosPedido() {
+        tablaPedidoProductos.innerHTML = '';
+        if (productosEnPedido.length === 0) { tablaPedidoProductos.innerHTML = '<tr><td colspan="3" class="empty">Sin productos</td></tr>'; return; }
+        productosEnPedido.forEach((p, i) => {
+            const row = tablaPedidoProductos.insertRow();
+            const mVal = p.metros || '';
+            const cmVal = p.centimetros || '';
+            const uVal = p.unidades || '';
+            const cantInput = p.unidadMedida === 'metros'
+                ? `<input type="number" class="form-input" style="width:60px;display:inline" placeholder="m" min="0" value="${mVal}" oninput="window._pedCantChanged(${i},'m',this.value)"> . <input type="number" class="form-input" style="width:50px;display:inline" placeholder="cm" min="0" max="99" value="${cmVal}" oninput="window._pedCantChanged(${i},'cm',this.value)">`
+                : `<input type="number" class="form-input" style="width:80px" placeholder="und" min="0" value="${uVal}" oninput="window._pedCantChanged(${i},'u',this.value)">`;
+            row.innerHTML = `<td>${p.ref} - ${p.color}</td><td>${cantInput}</td><td><button class="btn btn-danger btn-xs" onclick="window._pedRemove(${i})"><i class="fas fa-trash"></i></button></td>`;
+        });
+    }
+
+    window._pedCantChanged = (i, type, val) => {
+        if (i < 0 || i >= productosEnPedido.length) return;
+        if (type === 'm') productosEnPedido[i].metros = parseInt(val) || 0;
+        else if (type === 'cm') productosEnPedido[i].centimetros = parseInt(val) || 0;
+        else if (type === 'u') productosEnPedido[i].unidades = parseInt(val) || 0;
+    };
+    window._pedRemove = (i) => { productosEnPedido.splice(i, 1); renderProductosPedido(); };
+
+    async function crearPedido(e) {
+        e.preventDefault();
+        const cliente = $('pedCliente').value.trim();
+        const obs = $('pedObservaciones').value.trim();
+        if (!cliente) { toast("Cliente obligatorio.", 'error'); return; }
+        if (productosEnPedido.length === 0) { toast("Agregue al menos un producto.", 'error'); return; }
+        const pedido = {
+            cliente, observaciones: obs, productos: productosEnPedido.map(p => ({ id: p.id, ref: p.ref, color: p.color, unidadMedida: p.unidadMedida, metros: p.metros, centimetros: p.centimetros, unidades: p.unidades })),
+            estado: 'pendiente', creadoPor: userName(), createdAt: new Date(), facturado: false
+        };
+        try {
+            await addDoc(pedidosCol, pedido);
+            toast("Pedido creado!");
+            productosEnPedido = []; renderProductosPedido();
+            formPedido.reset();
+            cargarPedidos();
+        } catch (e) { toast("Error al crear pedido.", 'error'); }
+    }
+
+    function cargarPedidos() {
+        const container = $('listaPedidos');
+        container.innerHTML = '<div class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        onSnapshot(pedidosCol, (snapshot) => {
+            container.innerHTML = '';
+            if (snapshot.empty) { container.innerHTML = '<div class="empty"><i class="fas fa-inbox"></i> Sin pedidos activos</div>'; updatePedidosBadge(0); return; }
+            const settings = loadSettings();
+            let pendingCount = 0;
+            const docs = [];
+            snapshot.forEach(d => docs.push({ id: d.id, ...d.data() }));
+            docs.sort((a, b) => { const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt); const db2 = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt); return db2 - da; });
+            docs.forEach(ped => {
+                if (!ped.facturado) pendingCount++;
+                const created = ped.createdAt?.toDate ? ped.createdAt.toDate() : new Date(ped.createdAt);
+                const elapsedMin = (Date.now() - created.getTime()) / 60000;
+                const limit = settings.pedidoTimer;
+                let timerClass = 'ok', timerIcon = 'fa-clock';
+                if (!ped.facturado) {
+                    if (elapsedMin > limit) { timerClass = 'danger'; timerIcon = 'fa-exclamation-triangle'; }
+                    else if (elapsedMin > limit * 0.7) { timerClass = 'warning'; }
+                }
+                const timerText = elapsedMin < 60 ? `${Math.round(elapsedMin)}min` : `${Math.round(elapsedMin / 60)}h`;
+                const estadoChip = ped.facturado ? '<span class="chip ok"><i class="fas fa-check"></i> Facturado</span>' : `<span class="timer-badge ${timerClass}"><i class="fas ${timerIcon}"></i> ${timerText}</span>`;
+                const prodsHtml = ped.productos.map(p => `${p.ref} - ${p.color}`).join(', ');
+                let actions = '';
+                if (!ped.facturado) {
+                    actions = `<button class="btn btn-primary btn-xs btn-enviar-facturacion" data-id="${ped.id}"><i class="fas fa-file-invoice"></i> Enviar a Facturación</button> <button class="btn btn-danger btn-xs btn-eliminar-pedido" data-id="${ped.id}"><i class="fas fa-trash"></i></button>`;
+                }
+                const card = document.createElement('div'); card.className = 'order-card';
+                card.innerHTML = `<div class="order-header"><div><div class="order-title">${ped.cliente}</div><div class="order-meta">${created.toLocaleString('es-CO')} · ${ped.creadoPor || ''}</div></div><div>${estadoChip}</div></div><div style="font-size:12px;color:var(--muted);margin-bottom:8px">${prodsHtml}</div>${ped.observaciones ? `<div style="font-size:12px;color:var(--text);margin-bottom:8px"><i class="fas fa-sticky-note"></i> ${ped.observaciones}</div>` : ''}<div class="btn-group">${actions}</div>`;
+                container.appendChild(card);
+            });
+            updatePedidosBadge(pendingCount);
+            // Attach event listeners
+            container.querySelectorAll('.btn-enviar-facturacion').forEach(btn => {
+                btn.addEventListener('click', () => enviarPedidoAFacturacion(btn.dataset.id));
+            });
+            container.querySelectorAll('.btn-eliminar-pedido').forEach(btn => {
+                btn.addEventListener('click', () => eliminarPedido(btn.dataset.id));
+            });
+        }, () => { container.innerHTML = '<div class="empty" style="color:var(--danger)">Error cargando pedidos.</div>'; });
+    }
+
+    function updatePedidosBadge(count) {
+        const badge = $('pedidosBadge');
+        if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+        else { badge.classList.add('hidden'); }
+    }
+
+    async function enviarPedidoAFacturacion(pedidoId) {
+        try {
+            const snap = await getDoc(doc(db, "pedidos_china", pedidoId));
+            if (!snap.exists()) { toast("Pedido no encontrado.", 'error'); return; }
+            const ped = snap.data();
+            // Switch to facturacion tab
+            showModule('facturacion');
+            // Pre-fill client
+            facCliente.value = ped.cliente;
+            toast("Pedido cargado. Agregue los productos y cree la factura.", 'info');
+            // Mark as sent to facturacion
+            await updateDoc(doc(db, "pedidos_china", pedidoId), { facturado: true, facturadoPor: userName(), facturadoFecha: new Date() });
+        } catch (e) { toast("Error al enviar a facturación.", 'error'); }
+    }
+
+    async function eliminarPedido(pedidoId) {
+        const ok = await showConfirm("¿Eliminar este pedido?", "Eliminar Pedido");
+        if (!ok) return;
+        try { await deleteDoc(doc(db, "pedidos_china", pedidoId)); toast("Pedido eliminado."); }
+        catch (e) { toast("Error al eliminar.", 'error'); }
+    }
+
+    // === EVENT LISTENERS ===
+    formInventario.addEventListener('submit', guardarProducto);
+    btnCancelarEdicion.addEventListener('click', resetFormInventario);
+    $('btnExportarInventario').addEventListener('click', exportarInventarioAExcel);
+    $('btnExportarFacturas').addEventListener('click', exportarFacturasAExcel);
+
+    if (facProductoBusqueda) {
+        facProductoBusqueda.addEventListener('input', buscarProductoInline);
+        document.addEventListener('click', (e) => {
+            if (resultadosBusquedaInline && !facProductoBusqueda.contains(e.target) && !resultadosBusquedaInline.contains(e.target)) resultadosBusquedaInline.classList.remove('open');
+        });
+    }
+
+    if (pedProductoBusqueda) {
+        pedProductoBusqueda.addEventListener('input', buscarProductoPedido);
+        document.addEventListener('click', (e) => {
+            if (pedResultadosBusqueda && !pedProductoBusqueda.contains(e.target) && !pedResultadosBusqueda.contains(e.target)) pedResultadosBusqueda.classList.remove('open');
+        });
+    }
+
+    inputBuscarInventario.addEventListener('input', () => { invCurrentPage = 1; filtrarInventario(); });
+    inputBuscarFacturas.addEventListener('input', () => { facCurrentPage = 1; filtrarFacturas(); });
+
+    $('btnInvPrev').addEventListener('click', () => { if (invCurrentPage > 1) { invCurrentPage--; paginateInventario(); } });
+    $('btnInvNext').addEventListener('click', () => { invCurrentPage++; paginateInventario(); });
+    $('btnFacPrev').addEventListener('click', () => { if (facCurrentPage > 1) { facCurrentPage--; paginateFacturas(); } });
+    $('btnFacNext').addEventListener('click', () => { facCurrentPage++; paginateFacturas(); });
+
+    btnAgregarProductoFactura.addEventListener('click', agregarProductoAListaFactura);
+    btnCrearFactura.addEventListener('click', crearFactura);
+
+    inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
+    $('cerrarBuscarProducto').addEventListener('click', () => $('moduloBuscarProducto').classList.remove('open'));
+
+    // Facturas table delegation
+    tablaFacturas.addEventListener('click', (event) => {
+        const btn = event.target.closest('button');
+        if (!btn) return;
+        if (btn.classList.contains('btn-abonar')) {
+            abrirModalAbonar(btn.dataset.id, parseFloat(btn.dataset.saldo), btn.dataset.cliente, parseFloat(btn.dataset.valortotal));
+        } else if (btn.classList.contains('btn-ver-abonos')) {
+            const row = btn.closest('tr');
+            let abonosData = [];
+            try { abonosData = JSON.parse(row.dataset.abonos || '[]'); } catch (e) {}
+            mostrarHistorialAbonos(abonosData);
+        } else if (btn.classList.contains('btn-generate-pdf')) {
+            generarFacturaPDF(btn.dataset.id);
+        } else if (btn.classList.contains('btn-eliminar-factura')) {
+            eliminarFactura(btn.dataset.id);
+        } else if (btn.classList.contains('btn-despachar')) {
+            marcarDespachado(btn.dataset.id);
+        }
+    });
+
+    $('cerrarAbonar').addEventListener('click', () => { $('abonarModal').classList.remove('open'); resetFormAbonar(); });
+    $('cerrarHistorialAbonos').addEventListener('click', () => $('historialModal').classList.remove('open'));
+    $('formAbonar').addEventListener('submit', guardarAbono);
+
+    formPedido.addEventListener('submit', crearPedido);
+
+    // Close modals on backdrop click
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('open');
+        });
+    });
+
+    // === PREVENT ACCIDENTAL REFRESH WHEN INVOICE IN PROGRESS ===
+    window.addEventListener('beforeunload', (e) => {
+        if (productosEnFactura.length > 0 || facCliente.value.trim() !== '') {
+            e.preventDefault();
+            e.returnValue = '⚠️ Tienes una factura en progreso. Si actualizas perderás los datos. ¿Deseas continuar?';
+            return e.returnValue;
+        }
+    });
+
+    // === INITIALIZATION ===
+    const todayColombia = getTodayColombiaISO();
+    if (invFechaHora) invFechaHora.value = todayColombia;
+    if (facFechaHora) facFechaHora.value = todayColombia;
+    if (abonoFecha) abonoFecha.value = todayColombia;
+    showModule('inventario');
+    // Check Firebase for pending invoice draft with deducted inventory
+    checkPendingDraftOnLoad();
+
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario y Facturación - China</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root{--primary:#2563eb;--primary-dark:#1d4ed8;--primary-light:#dbeafe;--danger:#ef4444;--danger-dark:#dc2626;--success:#22c55e;--success-dark:#16a34a;--warning:#f59e0b;--info:#0ea5e9;--purple:#8b5cf6;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--radius:14px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);--shadow-lg:0 10px 25px rgba(0,0,0,.1)}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    .app{max-width:1200px;margin:0 auto;padding:16px}
+
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:var(--radius);margin-bottom:16px;box-shadow:var(--shadow-lg)}
+    .topbar .brand{display:flex;align-items:center;gap:12px;color:#fff}
+    .topbar .brand .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--purple));display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff}
+    .topbar .brand h1{font-size:16px;font-weight:800;letter-spacing:-.3px}
+    .topbar .brand .sub{font-size:11px;color:#94a3b8;font-weight:500}
+    .topbar .actions{display:flex;align-items:center;gap:10px}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:rgba(255,255,255,.1);color:#e2e8f0;border:1px solid rgba(255,255,255,.1)}
+
+    .nav-tabs{display:flex;gap:6px;margin-bottom:16px;background:var(--card);padding:6px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);flex-wrap:wrap}
+    .nav-tab{padding:10px 18px;border-radius:10px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .nav-tab:hover{background:var(--bg);color:var(--text)}
+    .nav-tab.active{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3)}
+    .nav-tab .badge{background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+
+    .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+    .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+    .card-title{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
+    .card-title i{color:var(--primary)}
+
+    .module{display:none}
+    .module.active{display:block}
+
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+    .form-group{display:flex;flex-direction:column;gap:4px}
+    .form-group.full{grid-column:1/-1}
+    .form-label{font-size:12px;font-weight:600;color:var(--muted)}
+    .form-input{padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;background:#fff;transition:border-color .2s,box-shadow .2s;outline:none;width:100%}
+    .form-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .form-input[readonly]{background:#f8fafc;color:var(--muted)}
+    select.form-input{cursor:pointer}
+
+    .radio-group{display:flex;gap:12px;flex-wrap:wrap}
+    .radio-label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer;padding:8px 14px;border:1.5px solid var(--border);border-radius:10px;transition:all .2s}
+    .radio-label:has(input:checked){border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark);font-weight:600}
+    .radio-label input[type="radio"]{accent-color:var(--primary)}
+
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25)}
+    .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.35)}
+    .btn-danger{background:linear-gradient(135deg,var(--danger),var(--danger-dark));color:#fff}
+    .btn-danger:hover:not(:disabled){transform:translateY(-1px)}
+    .btn-success{background:linear-gradient(135deg,var(--success),var(--success-dark));color:#fff}
+    .btn-info{background:linear-gradient(135deg,var(--info),#0369a1);color:#fff}
+    .btn-secondary{background:#f1f5f9;color:var(--text);border:1.5px solid var(--border)}
+    .btn-secondary:hover{background:#e2e8f0}
+    .btn-ghost{background:transparent;color:var(--muted);padding:8px 12px}
+    .btn-ghost:hover{background:var(--bg);color:var(--text)}
+    .btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+    .btn-xs{padding:4px 8px;font-size:11px;border-radius:6px}
+    .btn-group{display:flex;gap:8px;flex-wrap:wrap}
+
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--bg);color:var(--muted)}
+    .chip.ok{background:rgba(34,197,94,.1);color:#16a34a}
+    .chip.danger{background:rgba(239,68,68,.1);color:#dc2626}
+    .chip.warning{background:rgba(245,158,11,.1);color:#d97706}
+    .chip.info{background:rgba(14,165,233,.1);color:#0284c7}
+    .chip.purple{background:rgba(139,92,246,.1);color:#7c3aed}
+
+    .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;align-items:center;gap:12px}
+    .stat-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+    .stat-icon.blue{background:var(--primary-light);color:var(--primary)}
+    .stat-icon.green{background:rgba(34,197,94,.1);color:var(--success)}
+    .stat-icon.red{background:rgba(239,68,68,.1);color:var(--danger)}
+    .stat-icon.orange{background:rgba(245,158,11,.1);color:var(--warning)}
+    .stat-label{font-size:11px;color:var(--muted);font-weight:500}
+    .stat-value{font-size:18px;font-weight:800;color:var(--text)}
+
+    .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead{background:linear-gradient(135deg,#f8fafc,#f1f5f9)}
+    th{padding:10px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1.5px solid var(--border)}
+    td{padding:10px 14px;border-bottom:1px solid #f1f5f9}
+    tbody tr:hover{background:rgba(37,99,235,.02)}
+    tbody tr:last-child td{border-bottom:none}
+
+    .pager{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:8px 0}
+    .pager-label{font-size:12px;color:var(--muted);font-weight:500}
+
+    .modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);justify-content:center;align-items:flex-start;padding:40px 16px;overflow-y:auto}
+    .modal.open{display:flex}
+    .modal-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:500px;animation:modalIn .2s ease}
+    .modal-card.lg{max-width:700px}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+    .modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
+    .modal-body{padding:20px}
+    .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
+    @keyframes modalIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+    .toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;color:#fff;z-index:2000;transform:translateY(100px);opacity:0;transition:all .3s;display:flex;align-items:center;gap:8px;max-width:400px;box-shadow:var(--shadow-lg)}
+    .toast.show{transform:translateY(0);opacity:1}
+    .toast.success{background:linear-gradient(135deg,var(--success),var(--success-dark))}
+    .toast.error{background:linear-gradient(135deg,var(--danger),var(--danger-dark))}
+    .toast.info{background:linear-gradient(135deg,var(--primary),var(--primary-dark))}
+
+    .search-results{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:50;box-shadow:var(--shadow-lg);display:none}
+    .search-results.open{display:block}
+    .search-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f8fafc;transition:background .15s}
+    .search-item:hover{background:var(--primary-light)}
+    .search-item:last-child{border-bottom:none}
+
+    .product-detail{background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:10px}
+    .product-detail p{font-size:13px;margin-bottom:4px}
+
+    .empty{text-align:center;padding:40px;color:var(--muted)}
+    .empty i{font-size:32px;margin-bottom:10px;display:block}
+
+    .draft-banner{background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.05));border:1.5px solid rgba(245,158,11,.3);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .draft-banner .draft-text{font-size:13px;font-weight:600;color:#92400e;display:flex;align-items:center;gap:8px}
+
+    .order-card{border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;transition:border-color .2s}
+    .order-card:hover{border-color:var(--primary)}
+    .order-card .order-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+    .order-card .order-title{font-weight:700;font-size:14px}
+    .order-card .order-meta{font-size:12px;color:var(--muted)}
+
+    .timer-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700}
+    .timer-badge.ok{background:rgba(34,197,94,.1);color:#16a34a}
+    .timer-badge.warning{background:rgba(245,158,11,.15);color:#d97706}
+    .timer-badge.danger{background:rgba(239,68,68,.15);color:#dc2626;animation:pulse 1.5s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+    .hidden{display:none!important}
+
+    #pdfTemplate{width:210mm;padding:20mm;box-sizing:border-box;background:#fff;font-family:'Inter',sans-serif;color:#333;display:none;position:relative}
+    #pdfTemplate .pdf-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20mm;padding-bottom:10mm;border-bottom:2px solid var(--primary)}
+    #pdfTemplate .pdf-header h1{font-size:2.5em;font-weight:700;color:var(--primary)}
+    #pdfTemplate .pdf-header .company-info{text-align:right;font-size:1em}
+    #pdfTemplate .pdf-info{display:flex;justify-content:space-between;margin-bottom:20mm;border-bottom:1px solid #eee;padding-bottom:10mm;font-size:1em}
+    #pdfTemplate .pdf-info div{width:48%}
+    #pdfTemplate .pdf-info strong{display:block;margin-bottom:5px;color:#555}
+    #pdfTemplate .pdf-items table{width:100%;border-collapse:collapse;margin-bottom:20mm}
+    #pdfTemplate .pdf-items th,#pdfTemplate .pdf-items td{border:1px solid #eee;padding:10px;text-align:left}
+    #pdfTemplate .pdf-items th{background-color:#e0f2f7;font-weight:600;color:#0284c7}
+    #pdfTemplate .pdf-totals{text-align:right;margin-top:20mm;padding-top:10mm;border-top:2px solid var(--primary)}
+    #pdfTemplate .pdf-totals div{margin-bottom:10px}
+    #pdfTemplate .pdf-totals strong{font-size:1.2em}
+    #pdfTemplate .pdf-footer{text-align:center;font-size:.8em;color:#777;margin-top:auto;padding-top:10mm;border-top:1px solid #eee}
+
+    @media(max-width:768px){.topbar{flex-direction:column;gap:10px;text-align:center}.topbar .actions{justify-content:center}.summary-cards{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo"><i class="fas fa-boxes-stacked"></i></div>
+      <div><h1>Inventario y Facturación</h1><div class="sub">Sistema China - La Zapatería</div></div>
+    </div>
+    <div class="actions">
+      <div class="pill" id="userPill"><i class="fas fa-user"></i> <strong>...</strong></div>
+      <button class="btn btn-ghost" style="color:#94a3b8" onclick="location.href='https://userlink2024.github.io/lazapateria/paneldecuentas.html'"><i class="fas fa-arrow-left"></i> Volver</button>
+      <button class="btn btn-ghost" style="color:#94a3b8" id="btnSettings" title="Configuración"><i class="fas fa-gear"></i></button>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="inventario"><i class="fas fa-warehouse"></i> Inventario</button>
+    <button class="nav-tab" data-tab="facturacion"><i class="fas fa-file-invoice-dollar"></i> Facturación <span class="badge hidden" id="draftBadge">Borrador</span></button>
+    <button class="nav-tab" data-tab="facturas"><i class="fas fa-receipt"></i> Facturas</button>
+    <button class="nav-tab" data-tab="pedidos"><i class="fas fa-clipboard-list"></i> Pedidos <span class="badge hidden" id="pedidosBadge">0</span></button>
+  </div>
+
+  <!-- INVENTARIO -->
+  <div id="modInventario" class="module active">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title" id="formInventarioTitle"><i class="fas fa-plus-circle"></i> Agregar Producto</div>
+        <div class="btn-group">
+          <button class="btn btn-secondary btn-sm" id="btnImportarInventario"><i class="fas fa-file-import"></i> Importar</button>
+          <button class="btn btn-primary btn-sm" id="btnExportarInventario"><i class="fas fa-file-export"></i> Exportar</button>
+        </div>
+      </div>
+      <form id="formInventario">
+        <input type="hidden" id="invProductId">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Fecha</label><input type="date" id="invFechaHora" class="form-input" required></div>
+          <div class="form-group"><label class="form-label">Referencia</label><input type="text" id="invReferencia" class="form-input" required placeholder="Ej: espejos 7 lineas"></div>
+          <div class="form-group"><label class="form-label">Color</label><input type="text" id="invColor" class="form-input" required placeholder="Ej: oro rosa"></div>
+          <div class="form-group"><label class="form-label">Proveedor de China</label><input type="text" id="invProveedor" class="form-input" placeholder="Opcional"></div>
+          <div class="form-group full"><label class="form-label">Unidad de Medida</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="unidadMedida" value="metros" id="radioMetros" required> Metros con Centímetros</label>
+              <label class="radio-label"><input type="radio" name="unidadMedida" value="unidades" id="radioUnidades" required> Unidades</label>
+            </div>
+          </div>
+          <div id="camposMetros" class="form-group full hidden">
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Metros</label><input type="number" id="invMetros" class="form-input" min="0" value="0"></div>
+              <div class="form-group"><label class="form-label">Centímetros</label><input type="number" id="invCentimetros" class="form-input" min="0" max="99" value="0"></div>
+            </div>
+          </div>
+          <div id="camposUnidades" class="form-group full hidden">
+            <div class="form-group"><label class="form-label">Unidades</label><input type="number" id="invUnidades" class="form-input" min="0" value="0"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Valor</label><input type="text" id="invValor" class="form-input currency-input" required placeholder="Ej: 120.000"></div>
+          <div class="form-group" style="display:flex;align-items:flex-end">
+            <div class="btn-group">
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+              <button type="button" id="btnCancelarEdicion" class="btn btn-danger hidden"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </form>
+      <input type="file" id="inputImportarInventario" accept=".xlsx,.xls,.csv" class="hidden">
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-list"></i> Lista de Inventario</div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <input type="text" id="inputBuscarInventario" class="form-input" placeholder="🔍 Buscar por referencia, color o proveedor...">
+      </div>
+      <div class="table-wrap">
+        <table id="tablaInventario"><thead><tr>
+          <th>Fecha</th><th>Referencia</th><th>Color</th><th>Stock</th><th>Vendido</th><th>Valor</th><th>Proveedor</th><th>Usuario</th><th>Acciones</th>
+        </tr></thead><tbody><tr><td colspan="9" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr></tbody></table>
+      </div>
+      <div class="pager hidden" id="inventarioPager">
+        <button class="btn btn-secondary btn-sm" id="btnInvPrev"><i class="fas fa-chevron-left"></i> Anterior</button>
+        <span class="pager-label" id="invPageLabel"></span>
+        <button class="btn btn-secondary btn-sm" id="btnInvNext">Siguiente <i class="fas fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FACTURACION -->
+  <div id="modFacturacion" class="module">
+    <div class="draft-banner hidden" id="draftBannerEl">
+      <div class="draft-text"><i class="fas fa-clock-rotate-left"></i> Tienes una factura en borrador guardada</div>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-primary" id="btnRestaurarBorrador"><i class="fas fa-rotate-left"></i> Restaurar</button>
+        <button class="btn btn-sm btn-danger" id="btnDescartarBorrador"><i class="fas fa-trash"></i> Descartar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-file-invoice-dollar"></i> Crear Factura</div>
+        <button class="btn btn-secondary btn-sm" id="btnGuardarBorrador"><i class="fas fa-floppy-disk"></i> Guardar Borrador</button>
+      </div>
+      <form id="formFacturacion">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Fecha</label><input type="date" id="facFechaHora" class="form-input" required></div>
+          <div class="form-group"><label class="form-label">Cliente</label><input type="text" id="facCliente" class="form-input" required placeholder="Nombre del cliente"></div>
+          <div class="form-group"><label class="form-label">Número de Factura</label><input type="text" id="facNumeroFactura" class="form-input" placeholder="Opcional, se genera automático"></div>
+          <div class="form-group"><label class="form-label">Tipo de Pago</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="tipoPago" value="contado" id="radioContado" required> Contado</label>
+              <label class="radio-label"><input type="radio" name="tipoPago" value="credito" id="radioCredito" required> Crédito</label>
+            </div>
+          </div>
+          <div id="subTipoContado" class="form-group full hidden"><label class="form-label">Método de pago</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="metodoPago" value="efectivo" id="radioEfectivo"> Efectivo</label>
+              <label class="radio-label"><input type="radio" name="metodoPago" value="transferencia" id="radioTransferencia"> Transferencia</label>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px"><i class="fas fa-search"></i> Agregar Productos a la Factura</div>
+      <div class="form-group" style="position:relative">
+        <label class="form-label">Buscar Producto</label>
+        <input type="text" id="facProductoBusqueda" class="form-input" placeholder="Escribe referencia, color o proveedor..." autocomplete="off">
+        <div id="resultadosBusquedaInline" class="search-results"></div>
+      </div>
+      <input type="hidden" id="facProducto">
+      <div id="detalleProductoFactura" class="product-detail hidden">
+        <p><strong>Producto:</strong> <span id="prodNombreFac"></span></p>
+        <p><strong>Disponible:</strong> <span id="prodCantidadFac"></span></p>
+        <p><strong>Proveedor:</strong> <span id="prodProveedorFac"></span></p>
+        <div class="form-grid" style="margin-top:10px">
+          <div class="form-group"><label class="form-label">Valor Unitario</label><input type="text" id="facValorUnitarioEditable" class="form-input currency-input"></div>
+        </div>
+        <input type="hidden" id="facProductId"><input type="hidden" id="facProductUnit"><input type="hidden" id="facProductMetros"><input type="hidden" id="facProductCentimetros"><input type="hidden" id="facProductUnidades"><input type="hidden" id="facProductValorUnitario"><input type="hidden" id="facProductProveedor">
+        <div id="camposDescuentoMetros" class="hidden" style="margin-top:10px">
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">Metros a Descontar</label><input type="number" id="descMetros" class="form-input" min="0" value="0"></div>
+            <div class="form-group"><label class="form-label">Centímetros</label><input type="number" id="descCentimetros" class="form-input" min="0" max="99" value="0"></div>
+          </div>
+        </div>
+        <div id="camposDescuentoUnidades" class="hidden" style="margin-top:10px">
+          <div class="form-group"><label class="form-label">Unidades a Descontar</label><input type="number" id="descUnidades" class="form-input" min="0" value="0"></div>
+        </div>
+        <button type="button" id="btnAgregarProductoFactura" class="btn btn-primary" style="margin-top:12px"><i class="fas fa-plus"></i> Agregar a Factura</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px"><i class="fas fa-shopping-cart"></i> Productos en Factura</div>
+      <div class="table-wrap">
+        <table id="tablaProductosFactura"><thead><tr>
+          <th>Producto (Proveedor)</th><th>Cantidad</th><th>Valor Unit.</th><th>Subtotal</th><th>Acciones</th>
+        </tr></thead><tbody><tr><td colspan="5" class="empty">No hay productos agregados.</td></tr></tbody></table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:18px;font-weight:800"><i class="fas fa-calculator" style="color:var(--primary)"></i> Total: <span id="facValorTotalDisplay">$0</span></div>
+        <input type="hidden" id="facValorTotal">
+        <button type="button" id="btnCrearFactura" class="btn btn-primary"><i class="fas fa-check-circle"></i> Crear Factura</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FACTURAS -->
+  <div id="modFacturas" class="module">
+    <div class="summary-cards">
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-file-invoice-dollar"></i></div><div><div class="stat-label">Total Facturado</div><div class="stat-value" id="totalFacturadoDisplay">$0</div></div></div>
+      <div class="stat-card"><div class="stat-icon red"><i class="fas fa-clock"></i></div><div><div class="stat-label">Crédito Pendiente</div><div class="stat-value" id="creditoPendienteDisplay">$0</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-hand-holding-dollar"></i></div><div><div class="stat-label">Total Abonado</div><div class="stat-value" id="totalAbonadoDisplay">$0</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-receipt"></i> Facturas Emitidas</div>
+        <button class="btn btn-primary btn-sm" id="btnExportarFacturas"><i class="fas fa-file-export"></i> Exportar CSV</button>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <input type="text" id="inputBuscarFacturas" class="form-input" placeholder="🔍 Buscar por código, cliente, producto...">
+      </div>
+      <div class="table-wrap">
+        <table id="tablaFacturas"><thead><tr>
+          <th>Código</th><th>Fecha</th><th>Cliente</th><th>Tipo Pago</th><th>Productos</th><th>Total</th><th>Saldo</th><th>Despacho</th><th>Acciones</th>
+        </tr></thead><tbody><tr><td colspan="9" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr></tbody></table>
+      </div>
+      <div class="pager hidden" id="facturasPager">
+        <button class="btn btn-secondary btn-sm" id="btnFacPrev"><i class="fas fa-chevron-left"></i> Anterior</button>
+        <span class="pager-label" id="facPageLabel"></span>
+        <button class="btn btn-secondary btn-sm" id="btnFacNext">Siguiente <i class="fas fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PEDIDOS -->
+  <div id="modPedidos" class="module">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-clipboard-list"></i> Nueva Orden de Pedido</div>
+      </div>
+      <form id="formPedido">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Cliente</label><input type="text" id="pedCliente" class="form-input" required placeholder="Nombre del cliente"></div>
+          <div class="form-group"><label class="form-label">Observaciones</label><input type="text" id="pedObservaciones" class="form-input" placeholder="Notas adicionales"></div>
+        </div>
+        <div class="form-group" style="position:relative;margin-top:10px">
+          <label class="form-label">Agregar Producto al Pedido</label>
+          <input type="text" id="pedProductoBusqueda" class="form-input" placeholder="Buscar producto..." autocomplete="off">
+          <div id="pedResultadosBusqueda" class="search-results"></div>
+        </div>
+        <div class="table-wrap" style="margin-top:10px">
+          <table id="tablaPedidoProductos"><thead><tr><th>Producto</th><th>Cantidad</th><th>Acciones</th></tr></thead>
+          <tbody><tr><td colspan="3" class="empty">Sin productos</td></tr></tbody></table>
+        </div>
+        <div class="btn-group" style="margin-top:12px;justify-content:flex-end">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Crear Pedido</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-list-check"></i> Pedidos Activos</div>
+      </div>
+      <div id="listaPedidos"><div class="empty"><i class="fas fa-inbox"></i> Sin pedidos activos</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="confirmModal">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="confirmTitle"><i class="fas fa-question-circle" style="color:var(--primary)"></i> Confirmar</h3><button class="btn btn-ghost" onclick="closeConfirmModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body"><p id="confirmMessage"></p></div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button><button class="btn btn-primary" id="confirmOkBtn">Aceptar</button></div>
+  </div>
+</div>
+
+<div class="modal" id="abonarModal">
+  <div class="modal-card">
+    <div class="modal-head"><h3><i class="fas fa-hand-holding-dollar" style="color:var(--success)"></i> Registrar Abono</h3><button class="btn btn-ghost" id="cerrarAbonar"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <form id="formAbonar">
+        <input type="hidden" id="abonoFacturaId">
+        <p style="margin-bottom:4px"><strong>Factura:</strong> <span id="abonoFacturaInfo"></span></p>
+        <p style="margin-bottom:12px"><strong>Saldo Pendiente:</strong> <span id="abonoSaldoPendiente" style="color:var(--danger);font-weight:700"></span></p>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Fecha del Abono</label><input type="date" id="abonoFecha" class="form-input" required></div>
+          <div class="form-group"><label class="form-label">Monto del Abono</label><input type="text" id="abonoMonto" class="form-input currency-input" required></div>
+        </div>
+        <div style="margin-top:12px;text-align:right"><button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Guardar Abono</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="historialModal">
+  <div class="modal-card">
+    <div class="modal-head"><h3><i class="fas fa-history" style="color:var(--info)"></i> Historial de Abonos</h3><button class="btn btn-ghost" id="cerrarHistorialAbonos"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body" id="historialAbonosContent"></div>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="modal-card">
+    <div class="modal-head"><h3><i class="fas fa-gear" style="color:var(--muted)"></i> Configuración de Tiempos</h3><button class="btn btn-ghost" id="cerrarSettings"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Tiempo de retardo para pedidos (minutos)</label>
+        <input type="number" id="settPedidoTimer" class="form-input" min="1" value="30" placeholder="30">
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">El sistema avisará cuando un pedido supere este tiempo sin ser facturado.</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tiempo máximo de despacho (horas)</label>
+        <input type="number" id="settDespachoTimer" class="form-input" min="1" value="48" placeholder="48">
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">El sistema avisará cuando una factura supere este tiempo sin ser despachada.</p>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="btnGuardarSettings"><i class="fas fa-save"></i> Guardar</button></div>
+  </div>
+</div>
+
+<div class="modal" id="moduloBuscarProducto">
+  <div class="modal-card">
+    <div class="modal-head"><h3><i class="fas fa-search" style="color:var(--primary)"></i> Buscar Producto</h3><button class="btn btn-ghost" id="cerrarBuscarProducto"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <input type="text" id="inputBuscarProducto" class="form-input" placeholder="Escribe para buscar...">
+      <div id="resultadosBusqueda" style="margin-top:10px;max-height:250px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toastEl"><i class="fas fa-check-circle"></i> <span id="toastMsg"></span></div>
+
+<!-- PDF TEMPLATE (hidden) -->
+<div id="pdfTemplate">
+  <div class="pdf-header"><h1>FACTURA</h1><div class="company-info"><p><strong>La Zapatería</strong></p><p>Calle 21 # 22 - 38 San Francisco</p><p>Bucaramanga</p></div></div>
+  <div class="pdf-info"><div><strong>Factura No:</strong> <span id="pdfFacturaCodigo"></span><br><strong>Fecha:</strong> <span id="pdfFacturaFecha"></span><br><strong>Tipo de Pago:</strong> <span id="pdfFacturaTipoPago"></span></div><div><strong>Cliente:</strong> <span id="pdfFacturaCliente"></span></div></div>
+  <div class="pdf-items"><table><thead><tr><th>Producto (Proveedor)</th><th>Cantidad</th><th>Valor Unitario</th><th>Subtotal</th></tr></thead><tbody id="pdfFacturaItems"></tbody></table></div>
+  <div class="pdf-totals"><div><strong>Valor Total:</strong> <span id="pdfFacturaValorTotal"></span></div><div><strong>Saldo Pendiente:</strong> <span id="pdfFacturaSaldoPendiente"></span></div></div>
+  <div class="pdf-footer"><p>Gracias por tu compra.</p><p>Sistema de Inventario y Facturación - La Zapatería</p></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, setDoc, query, where, onSnapshot, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCwGpyvoUfbXE4rpPfLmHSdOK_VI4mT24M",
+        authDomain: "lazapateria-ce24f.firebaseapp.com",
+        projectId: "lazapateria-ce24f",
+        storageBucket: "lazapateria-ce24f.firebaseapp.com",
+        messagingSenderId: "642571845821",
+        appId: "1:642571845821:web:45858a0abc0df728fd77d4",
+        measurementId: "G-6JCF33H0K1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const inventarioCol = collection(db, "inventario");
+    const facturasCol = collection(db, "facturas");
+    const pedidosCol = collection(db, "pedidos_china");
+    const borradorCol = collection(db, "facturas_borrador");
+
     // === SESSION DETECTION ===
     let currentUser = null;
     function loadCurrentUser() {
