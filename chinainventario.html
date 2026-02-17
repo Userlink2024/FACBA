@@ -438,6 +438,42 @@
   </div>
 </div>
 
+<div class="modal" id="editarPedidoModal">
+  <div class="modal-card" style="max-width:700px">
+    <div class="modal-head"><h3><i class="fas fa-edit" style="color:var(--primary)"></i> Detalles del Pedido</h3><button class="btn btn-ghost" id="cerrarEditarPedido"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="editPedidoId">
+      <div class="form-group">
+        <label class="form-label">Cliente</label>
+        <input type="text" id="editPedidoCliente" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observaciones</label>
+        <textarea id="editPedidoObservaciones" class="form-input" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Productos</label>
+        <table class="table">
+          <thead><tr><th>Producto</th><th>Cantidad</th><th>Acciones</th></tr></thead>
+          <tbody id="editPedidoProductos"></tbody>
+        </table>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+          <input type="text" id="editPedidoBusquedaInput" class="form-input" placeholder="Buscar producto para agregar..." style="flex:1">
+        </div>
+        <div id="editPedidoBusqueda" class="search-results" style="margin-top:8px"></div>
+      </div>
+      <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--muted)">
+        <div><strong>Creado por:</strong> <span id="editPedidoCreadoPor"></span></div>
+        <div><strong>Fecha:</strong> <span id="editPedidoFecha"></span></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="btnCancelarEditPedido">Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarEditPedido"><i class="fas fa-save"></i> Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="moduloBuscarProducto">
   <div class="modal-card">
     <div class="modal-head"><h3><i class="fas fa-search" style="color:var(--primary)"></i> Buscar Producto</h3><button class="btn btn-ghost" id="cerrarBuscarProducto"><i class="fas fa-xmark"></i></button></div>
@@ -1523,17 +1559,16 @@
             div.innerHTML = `<strong>${p.referencia} - ${p.color}</strong> <span style="color:var(--muted)">(${cant})${prov} $${fmtCOP(p.valor)}</span>`;
             div.onclick = () => {
                 productosEnPedido.push({ id: p.id, ref: p.referencia, color: p.color, unidadMedida: p.unidadMedida, cantidad: '', metros: 0, centimetros: 0, unidades: 0 });
-                renderProductosPedido();
+                renderProductosPedido(true); // true = focus on quantity input of newly added product
                 pedResultadosBusqueda.classList.remove('open');
                 pedProductoBusqueda.value = '';
-                setTimeout(() => pedProductoBusqueda.focus(), 100);
             };
             pedResultadosBusqueda.appendChild(div);
         });
         pedResultadosBusqueda.classList.add('open');
     }
 
-    function renderProductosPedido() {
+    function renderProductosPedido(focusLastRow = false) {
         tablaPedidoProductos.innerHTML = '';
         if (productosEnPedido.length === 0) { tablaPedidoProductos.innerHTML = '<tr><td colspan="3" class="empty">Sin productos</td></tr>'; return; }
         productosEnPedido.forEach((p, i) => {
@@ -1541,11 +1576,20 @@
             const mVal = p.metros || '';
             const cmVal = p.centimetros || '';
             const uVal = p.unidades || '';
+            const inputId = `pedInput_${i}`;
             const cantInput = p.unidadMedida === 'metros'
-                ? `<input type="number" class="form-input" style="width:60px;display:inline" placeholder="m" min="0" value="${mVal}" oninput="window._pedCantChanged(${i},'m',this.value)"> . <input type="number" class="form-input" style="width:50px;display:inline" placeholder="cm" min="0" max="99" value="${cmVal}" oninput="window._pedCantChanged(${i},'cm',this.value)">`
-                : `<input type="number" class="form-input" style="width:80px" placeholder="und" min="0" value="${uVal}" oninput="window._pedCantChanged(${i},'u',this.value)">`;
+                ? `<input type="number" id="${inputId}" class="form-input" style="width:60px;display:inline" placeholder="m" min="0" value="${mVal}" oninput="window._pedCantChanged(${i},'m',this.value)"> . <input type="number" class="form-input" style="width:50px;display:inline" placeholder="cm" min="0" max="99" value="${cmVal}" oninput="window._pedCantChanged(${i},'cm',this.value)">`
+                : `<input type="number" id="${inputId}" class="form-input" style="width:80px" placeholder="und" min="0" value="${uVal}" oninput="window._pedCantChanged(${i},'u',this.value)">`;
             row.innerHTML = `<td>${p.ref} - ${p.color}</td><td>${cantInput}</td><td><button class="btn btn-danger btn-xs" onclick="window._pedRemove(${i})"><i class="fas fa-trash"></i></button></td>`;
         });
+        // Focus on the last added product's quantity input
+        if (focusLastRow && productosEnPedido.length > 0) {
+            const lastIndex = productosEnPedido.length - 1;
+            setTimeout(() => {
+                const input = document.getElementById(`pedInput_${lastIndex}`);
+                if (input) input.focus();
+            }, 100);
+        }
     }
 
     window._pedCantChanged = (i, type, val) => {
@@ -1604,7 +1648,11 @@
                     actions = `<button class="btn btn-primary btn-xs btn-enviar-facturacion" data-id="${ped.id}"><i class="fas fa-file-invoice"></i> Enviar a Facturación</button> <button class="btn btn-danger btn-xs btn-eliminar-pedido" data-id="${ped.id}"><i class="fas fa-trash"></i></button>`;
                 }
                 const card = document.createElement('div'); card.className = 'order-card';
+                card.style.cursor = 'pointer';
                 card.innerHTML = `<div class="order-header"><div><div class="order-title">${ped.cliente}</div><div class="order-meta">${created.toLocaleString('es-CO')} · ${ped.creadoPor || ''}</div></div><div>${estadoChip}</div></div><div style="font-size:12px;color:var(--muted);margin-bottom:8px">${prodsHtml}</div>${ped.observaciones ? `<div style="font-size:12px;color:var(--text);margin-bottom:8px"><i class="fas fa-sticky-note"></i> ${ped.observaciones}</div>` : ''}<div class="btn-group">${actions}</div>`;
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('button')) abrirEditarPedido(ped.id);
+                });
                 container.appendChild(card);
             });
             updatePedidosBadge(pendingCount);
@@ -1645,6 +1693,108 @@
         try { await deleteDoc(doc(db, "pedidos_china", pedidoId)); toast("Pedido eliminado."); }
         catch (e) { toast("Error al eliminar.", 'error'); }
     }
+
+    // === EDIT PEDIDO MODAL ===
+    let editPedidoProductos = [];
+    async function abrirEditarPedido(pedidoId) {
+        try {
+            const snap = await getDoc(doc(db, "pedidos_china", pedidoId));
+            if (!snap.exists()) { toast("Pedido no encontrado.", 'error'); return; }
+            const ped = snap.data();
+            $('editPedidoId').value = pedidoId;
+            $('editPedidoCliente').value = ped.cliente || '';
+            $('editPedidoObservaciones').value = ped.observaciones || '';
+            $('editPedidoCreadoPor').textContent = ped.creadoPor || 'Desconocido';
+            const created = ped.createdAt?.toDate ? ped.createdAt.toDate() : new Date(ped.createdAt);
+            $('editPedidoFecha').textContent = created.toLocaleString('es-CO');
+            editPedidoProductos = ped.productos.map(p => ({ ...p }));
+            renderEditPedidoProductos();
+            $('editarPedidoModal').classList.add('open');
+        } catch (e) { toast("Error al cargar pedido.", 'error'); }
+    }
+
+    function renderEditPedidoProductos() {
+        const tbody = $('editPedidoProductos');
+        tbody.innerHTML = '';
+        if (editPedidoProductos.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="empty">Sin productos</td></tr>'; return; }
+        editPedidoProductos.forEach((p, i) => {
+            const row = tbody.insertRow();
+            const mVal = p.metros || '';
+            const cmVal = p.centimetros || '';
+            const uVal = p.unidades || '';
+            const inputId = `editPedInput_${i}`;
+            const cantInput = p.unidadMedida === 'metros'
+                ? `<input type="number" id="${inputId}" class="form-input" style="width:60px;display:inline" placeholder="m" min="0" value="${mVal}" oninput="window._editPedCantChanged(${i},'m',this.value)"> . <input type="number" class="form-input" style="width:50px;display:inline" placeholder="cm" min="0" max="99" value="${cmVal}" oninput="window._editPedCantChanged(${i},'cm',this.value)">`
+                : `<input type="number" id="${inputId}" class="form-input" style="width:80px" placeholder="und" min="0" value="${uVal}" oninput="window._editPedCantChanged(${i},'u',this.value)">`;
+            row.innerHTML = `<td>${p.ref} - ${p.color}</td><td>${cantInput}</td><td><button class="btn btn-danger btn-xs" onclick="window._editPedRemove(${i})"><i class="fas fa-trash"></i></button></td>`;
+        });
+    }
+
+    window._editPedCantChanged = (i, type, val) => {
+        if (i < 0 || i >= editPedidoProductos.length) return;
+        if (type === 'm') editPedidoProductos[i].metros = parseInt(val) || 0;
+        else if (type === 'cm') editPedidoProductos[i].centimetros = parseInt(val) || 0;
+        else if (type === 'u') editPedidoProductos[i].unidades = parseInt(val) || 0;
+    };
+
+    window._editPedRemove = (i) => { editPedidoProductos.splice(i, 1); renderEditPedidoProductos(); };
+
+    function buscarProductoParaEditPedido() {
+        const input = $('editPedidoBusquedaInput');
+        const container = $('editPedidoBusqueda');
+        const term = (input.value || '').toLowerCase().trim();
+        if (term.length < 2) { container.innerHTML = ''; container.classList.remove('open'); return; }
+        const products = inventarioCache.filter(p =>
+            (p.referencia || '').toLowerCase().includes(term) ||
+            (p.color || '').toLowerCase().includes(term) ||
+            (p.proveedor || '').toLowerCase().includes(term)
+        );
+        container.innerHTML = '';
+        if (products.length === 0) { container.innerHTML = '<div class="search-item" style="color:var(--muted)">Sin resultados</div>'; container.classList.add('open'); return; }
+        products.forEach(p => {
+            const div = document.createElement('div'); div.classList.add('search-item');
+            const cant = p.unidadMedida === 'metros' ? fmtCantidad(p.metros, p.centimetros, 'metros') : fmtCantidad(p.unidades, 0, 'unidades');
+            const prov = p.proveedor ? ` [${p.proveedor}]` : '';
+            div.innerHTML = `<strong>${p.referencia} - ${p.color}</strong> <span style="color:var(--muted)">(${cant})${prov}</span>`;
+            div.onclick = () => {
+                editPedidoProductos.push({ id: p.id, ref: p.referencia, color: p.color, unidadMedida: p.unidadMedida, metros: 0, centimetros: 0, unidades: 0 });
+                renderEditPedidoProductos();
+                container.innerHTML = ''; container.classList.remove('open');
+                input.value = '';
+            };
+            container.appendChild(div);
+        });
+        container.classList.add('open');
+    }
+
+    async function guardarEditPedido() {
+        const pedidoId = $('editPedidoId').value;
+        const cliente = $('editPedidoCliente').value.trim();
+        const obs = $('editPedidoObservaciones').value.trim();
+        if (!cliente) { toast("Cliente obligatorio.", 'error'); return; }
+        if (editPedidoProductos.length === 0) { toast("Debe tener al menos un producto.", 'error'); return; }
+        try {
+            await updateDoc(doc(db, "pedidos_china", pedidoId), {
+                cliente,
+                observaciones: obs,
+                productos: editPedidoProductos
+            });
+            toast("Pedido actualizado!");
+            $('editarPedidoModal').classList.remove('open');
+        } catch (e) { toast("Error al guardar.", 'error'); }
+    }
+
+    $('cerrarEditarPedido').addEventListener('click', () => $('editarPedidoModal').classList.remove('open'));
+    $('btnCancelarEditPedido').addEventListener('click', () => $('editarPedidoModal').classList.remove('open'));
+    $('btnGuardarEditPedido').addEventListener('click', guardarEditPedido);
+    $('editPedidoBusquedaInput').addEventListener('input', buscarProductoParaEditPedido);
+    document.addEventListener('click', (e) => {
+        const input = $('editPedidoBusquedaInput');
+        const container = $('editPedidoBusqueda');
+        if (input && container && !input.contains(e.target) && !container.contains(e.target)) {
+            container.classList.remove('open');
+        }
+    });
 
     // === EVENT LISTENERS ===
     formInventario.addEventListener('submit', guardarProducto);
