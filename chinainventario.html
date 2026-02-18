@@ -247,11 +247,8 @@
   <!-- FACTURACION -->
   <div id="modFacturacion" class="module">
     <div class="draft-banner hidden" id="draftBannerEl">
-      <div class="draft-text"><i class="fas fa-clock-rotate-left"></i> Tienes una factura en borrador guardada</div>
-      <div class="btn-group">
-        <button class="btn btn-sm btn-primary" id="btnRestaurarBorrador"><i class="fas fa-rotate-left"></i> Restaurar</button>
-        <button class="btn btn-sm btn-danger" id="btnDescartarBorrador"><i class="fas fa-trash"></i> Descartar</button>
-      </div>
+      <div class="draft-text"><i class="fas fa-clock-rotate-left"></i> Borradores guardados</div>
+      <div id="draftListContainer" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;width:100%"></div>
     </div>
     <div class="card">
       <div class="card-header">
@@ -767,7 +764,7 @@
         if (tab) tab.classList.add('active');
 
         if (tabName === 'inventario') { resetFormInventario(); cargarInventario(); }
-        else if (tabName === 'facturacion') { resetFormFacturacion(); loadDraft().then(d => updateDraftUI(d)); }
+        else if (tabName === 'facturacion') { resetFormFacturacion(); refreshDraftsUI(); }
         else if (tabName === 'facturas') { resetBusquedaFacturas(); cargarFacturas(); }
         else if (tabName === 'pedidos') { cargarPedidos(); }
     }
@@ -821,6 +818,7 @@
     }
 
     function resetFormFacturacion() {
+        currentDraftKey = null;
         facFechaHora.value = getTodayColombiaISO();
         facCliente.value = '';
         if (facNumeroFactura) facNumeroFactura.value = '';
@@ -853,61 +851,84 @@
         if (abonoFecha) abonoFecha.value = getTodayColombiaISO();
     }
 
-    // === DRAFT INVOICE SYSTEM (FIREBASE AUTO-SAVE) ===
-    // Each user gets one draft document: facturas_borrador/{usuario}
-    // This syncs across devices — if user closes tab on tablet, can resume on PC
-    let cachedDraft = null; // local cache to avoid extra reads
+    // === DRAFT INVOICE SYSTEM (FIREBASE — MULTIPLE DRAFTS BY INVOICE NUMBER) ===
+    // Each draft is saved as: facturas_borrador/china_{userId}_{invoiceNumber}
+    // Multiple drafts can coexist, each identified by its invoice number.
+    let allDraftsCache = []; // array of { docId, ...draftData }
+    let currentDraftKey = null; // docId of the draft currently being edited
 
-    function getDraftDocRef() {
+    function getDraftDocId(invoiceNum) {
         const userId = currentUser?.usuario || 'unknown';
-        return doc(db, "facturas_borrador", `china_${userId}`);
+        const key = (invoiceNum || '').trim().replace(/[\/\s]/g, '_') || 'sin_numero';
+        return `china_${userId}_${key}`;
+    }
+
+    function getDraftDocRef(invoiceNum) {
+        return doc(db, "facturas_borrador", getDraftDocId(invoiceNum));
     }
 
     // Auto-save silently to Firebase on every product add/remove
     async function autoSaveDraft() {
+        const numFactura = facNumeroFactura ? facNumeroFactura.value.trim() : '';
         if (productosEnFactura.length === 0 && !facCliente.value.trim()) {
-            await deleteDraftFromFirebase();
+            if (currentDraftKey) { await deleteDraftByDocId(currentDraftKey); currentDraftKey = null; }
             return;
         }
+        const docId = getDraftDocId(numFactura);
+        // If user changed the invoice number, delete the old draft
+        if (currentDraftKey && currentDraftKey !== docId) {
+            await deleteDraftByDocId(currentDraftKey);
+        }
+        currentDraftKey = docId;
         const draft = {
             usuario: currentUser?.usuario || 'unknown',
             nombreUsuario: userName(),
             fecha: facFechaHora.value,
             cliente: facCliente.value,
-            numeroFactura: facNumeroFactura ? facNumeroFactura.value : '',
+            numeroFactura: numFactura,
             tipoPago: document.querySelector('input[name="tipoPago"]:checked')?.value || '',
             metodoPago: document.querySelector('input[name="metodoPago"]:checked')?.value || '',
             productos: productosEnFactura,
             savedAt: new Date().toISOString()
         };
         try {
-            await setDoc(getDraftDocRef(), draft);
-            cachedDraft = draft;
-            updateDraftUI(draft);
-        } catch (e) { /* silent fail — don't interrupt user flow */ }
+            await setDoc(doc(db, "facturas_borrador", docId), draft);
+            await refreshDraftsUI();
+        } catch (e) { /* silent fail */ }
     }
 
-    // Manual save with toast
+    // Manual save with toast — requires invoice number
     async function saveDraft() {
+        const numFactura = facNumeroFactura ? facNumeroFactura.value.trim() : '';
+        if (!numFactura) { toast('Ingrese un número de factura para guardar el borrador.', 'error'); if (facNumeroFactura) facNumeroFactura.focus(); return; }
+        if (productosEnFactura.length === 0 && !facCliente.value.trim()) { toast('No hay datos para guardar.', 'error'); return; }
         await autoSaveDraft();
-        if (productosEnFactura.length > 0 || facCliente.value.trim()) toast('Borrador guardado en la nube', 'info');
+        toast(`Borrador "${numFactura}" guardado en la nube`, 'info');
     }
 
-    // Load draft from Firebase
-    async function loadDraft() {
+    // Load ALL drafts for current user from Firebase
+    async function loadAllDrafts() {
+        const userId = currentUser?.usuario || 'unknown';
         try {
-            const snap = await getDoc(getDraftDocRef());
-            if (snap.exists()) { cachedDraft = snap.data(); return cachedDraft; }
-            cachedDraft = null;
-            return null;
-        } catch (e) { return null; }
+            const q = query(borradorCol, where("usuario", "==", userId));
+            const snap = await getDocs(q);
+            allDraftsCache = [];
+            snap.forEach(d => allDraftsCache.push({ docId: d.id, ...d.data() }));
+            return allDraftsCache;
+        } catch (e) { return []; }
     }
 
-    // Restore: re-populate form + products array (inventory already deducted in Firebase)
-    async function restoreDraft() {
-        const draft = cachedDraft || await loadDraft();
-        if (!draft) return;
-        showModule('facturacion');
+    // Restore a specific draft by its docId
+    async function restoreDraftByDocId(docId) {
+        const draft = allDraftsCache.find(d => d.docId === docId);
+        if (!draft) { toast('Borrador no encontrado.', 'error'); return; }
+        // If there's an active invoice with unsaved products, warn
+        if (productosEnFactura.length > 0) {
+            const ok = await showConfirm('Ya tienes productos en la factura actual. ¿Deseas descartarlos y cargar este borrador?', 'Cargar Borrador');
+            if (!ok) return;
+        }
+        resetFormFacturacion();
+        currentDraftKey = docId;
         facFechaHora.value = draft.fecha || getTodayColombiaISO();
         facCliente.value = draft.cliente || '';
         if (facNumeroFactura) facNumeroFactura.value = draft.numeroFactura || '';
@@ -916,7 +937,7 @@
         productosEnFactura = draft.productos || [];
         renderProductosEnFactura();
         calcularTotalFactura();
-        toast(`Factura restaurada con ${productosEnFactura.length} producto(s). Continúa donde quedaste.`, 'info');
+        toast(`Borrador "${draft.numeroFactura || 'sin número'}" restaurado con ${productosEnFactura.length} producto(s).`, 'info');
     }
 
     // Rollback helper: returns products to inventory
@@ -943,70 +964,111 @@
         return restored;
     }
 
-    // Discard: return ALL products to inventory, then delete draft from Firebase
-    async function discardDraftAndRollback() {
-        const draft = cachedDraft || await loadDraft();
-        if (!draft || !draft.productos || draft.productos.length === 0) {
-            await deleteDraftFromFirebase();
+    // Discard a specific draft: return products to inventory, then delete
+    async function discardDraftByDocId(docId) {
+        const draft = allDraftsCache.find(d => d.docId === docId);
+        if (!draft) return;
+        if (draft.productos && draft.productos.length > 0) {
+            const ok = await showConfirm(
+                `Se devolverán ${draft.productos.length} producto(s) al inventario y se descartará el borrador "${draft.numeroFactura || 'sin número'}". ¿Continuar?`,
+                'Descartar Borrador'
+            );
+            if (!ok) return;
+            const restored = await rollbackProducts(draft.productos);
+            toast(`Borrador descartado. ${restored} producto(s) devueltos al inventario.`, 'info');
+        } else {
             toast('Borrador descartado');
-            return;
         }
-        const ok = await showConfirm(
-            `Se devolverán ${draft.productos.length} producto(s) al inventario y se descartará la factura en progreso. ¿Continuar?`,
-            'Descartar Factura'
-        );
-        if (!ok) return;
-        const restored = await rollbackProducts(draft.productos);
-        productosEnFactura = [];
-        renderProductosEnFactura();
-        calcularTotalFactura();
-        await deleteDraftFromFirebase();
-        toast(`Borrador descartado. ${restored} producto(s) devueltos al inventario.`, 'info');
+        await deleteDraftByDocId(docId);
+        // If this was the active draft, clear the form
+        if (currentDraftKey === docId) {
+            currentDraftKey = null;
+            productosEnFactura = [];
+            renderProductosEnFactura();
+            calcularTotalFactura();
+        }
     }
 
-    async function deleteDraftFromFirebase() {
-        try { await deleteDoc(getDraftDocRef()); } catch (e) { /* ignore */ }
-        cachedDraft = null;
-        updateDraftUI(null);
+    async function deleteDraftByDocId(docId) {
+        try { await deleteDoc(doc(db, "facturas_borrador", docId)); } catch (e) { /* ignore */ }
+        allDraftsCache = allDraftsCache.filter(d => d.docId !== docId);
+        renderDraftsUI();
     }
 
+    // Silent delete (used after successfully creating an invoice)
     async function discardDraftSilent() {
-        await deleteDraftFromFirebase();
+        if (currentDraftKey) {
+            try { await deleteDoc(doc(db, "facturas_borrador", currentDraftKey)); } catch (e) { /* ignore */ }
+            allDraftsCache = allDraftsCache.filter(d => d.docId !== currentDraftKey);
+            currentDraftKey = null;
+        }
+        renderDraftsUI();
     }
 
-    function updateDraftUI(draft) {
+    // Render drafts list in the banner
+    function renderDraftsUI() {
         const banner = $('draftBannerEl');
         const badge = $('draftBadge');
-        const hasProducts = draft && draft.productos && draft.productos.length > 0;
-        const hasData = draft && (hasProducts || (draft.cliente && draft.cliente.trim()));
-        if (hasData) { banner.classList.remove('hidden'); badge.classList.remove('hidden'); }
-        else { banner.classList.add('hidden'); badge.classList.add('hidden'); }
-    }
-
-    // Check for pending draft on page load — if products were deducted, ask user
-    async function checkPendingDraftOnLoad() {
-        const draft = await loadDraft();
-        if (!draft || !draft.productos || draft.productos.length === 0) {
-            updateDraftUI(null);
+        const container = $('draftListContainer');
+        if (allDraftsCache.length === 0) {
+            banner.classList.add('hidden');
+            badge.classList.add('hidden');
+            if (container) container.innerHTML = '';
             return;
         }
-        updateDraftUI(draft);
-        const continuar = await showConfirm(
-            `Se encontró una factura en progreso con ${draft.productos.length} producto(s) (cliente: "${draft.cliente || 'sin nombre'}", usuario: ${draft.nombreUsuario || 'desconocido'}). El inventario ya fue descontado.\n\n¿Deseas CONTINUAR la factura donde quedaste?\n\n(Si eliges "Cancelar", los productos se devolverán al inventario)`,
-            'Factura en Progreso Detectada'
-        );
-        if (continuar) {
-            await restoreDraft();
-        } else {
-            const restored = await rollbackProducts(draft.productos);
-            await deleteDraftFromFirebase();
-            toast(`${restored} producto(s) devueltos al inventario.`, 'info');
+        banner.classList.remove('hidden');
+        badge.classList.remove('hidden');
+        badge.textContent = allDraftsCache.length;
+        if (!container) return;
+        container.innerHTML = '';
+        allDraftsCache.forEach(d => {
+            const numLabel = d.numeroFactura || 'Sin número';
+            const clienteLabel = d.cliente || 'Sin cliente';
+            const prodCount = (d.productos || []).length;
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:rgba(255,255,255,.7);border-radius:8px;font-size:12px;';
+            row.innerHTML = `<div style="flex:1;min-width:0"><strong style="color:var(--primary)">#${numLabel}</strong> · ${clienteLabel} · ${prodCount} prod.</div><div class="btn-group"><button class="btn btn-sm btn-primary draft-restore-btn" data-docid="${d.docId}" style="font-size:11px;padding:4px 10px"><i class="fas fa-rotate-left"></i> Restaurar</button><button class="btn btn-sm btn-danger draft-discard-btn" data-docid="${d.docId}" style="font-size:11px;padding:4px 10px"><i class="fas fa-trash"></i></button></div>`;
+            container.appendChild(row);
+        });
+        container.querySelectorAll('.draft-restore-btn').forEach(btn => {
+            btn.addEventListener('click', () => restoreDraftByDocId(btn.dataset.docid));
+        });
+        container.querySelectorAll('.draft-discard-btn').forEach(btn => {
+            btn.addEventListener('click', () => discardDraftByDocId(btn.dataset.docid));
+        });
+    }
+
+    async function refreshDraftsUI() {
+        await loadAllDrafts();
+        renderDraftsUI();
+    }
+
+    // Check for pending drafts on page load
+    async function checkPendingDraftOnLoad() {
+        await loadAllDrafts();
+        renderDraftsUI();
+        if (allDraftsCache.length === 0) return;
+        // If there's exactly one draft with products, offer to restore immediately
+        const withProducts = allDraftsCache.filter(d => d.productos && d.productos.length > 0);
+        if (withProducts.length === 1) {
+            const draft = withProducts[0];
+            const continuar = await showConfirm(
+                `Se encontró un borrador "${draft.numeroFactura || 'sin número'}" con ${draft.productos.length} producto(s) (cliente: "${draft.cliente || 'sin nombre'}"). El inventario ya fue descontado.\n\n¿Deseas CONTINUAR la factura?\n\n(Si eliges "Cancelar", los productos se devolverán al inventario)`,
+                'Borrador en Progreso Detectado'
+            );
+            if (continuar) {
+                await restoreDraftByDocId(draft.docId);
+            } else {
+                const restored = await rollbackProducts(draft.productos);
+                await deleteDraftByDocId(draft.docId);
+                toast(`${restored} producto(s) devueltos al inventario.`, 'info');
+            }
+        } else if (withProducts.length > 1) {
+            toast(`Se encontraron ${withProducts.length} borradores con productos pendientes. Revisa la pestaña Facturación.`, 'info');
         }
     }
 
     $('btnGuardarBorrador').addEventListener('click', saveDraft);
-    $('btnRestaurarBorrador').addEventListener('click', restoreDraft);
-    $('btnDescartarBorrador').addEventListener('click', discardDraftAndRollback);
 
     // === INVENTORY CRUD ===
     async function cargarInventario() {
@@ -1847,11 +1909,58 @@
             const snap = await getDoc(doc(db, "pedidos_china", pedidoId));
             if (!snap.exists()) { toast("Pedido no encontrado.", 'error'); return; }
             const ped = snap.data();
-            // Switch to facturacion tab
+            // Switch to facturacion tab (resets form)
             showModule('facturacion');
-            // Pre-fill client
+            // Pre-fill client & observations
             facCliente.value = ped.cliente;
-            toast("Pedido cargado. Agregue los productos y cree la factura.", 'info');
+            // Load each order product into the invoice product list
+            let loaded = 0, skipped = 0;
+            for (const p of (ped.productos || [])) {
+                try {
+                    const invSnap = await getDoc(doc(db, "inventario", p.id));
+                    if (!invSnap.exists()) { skipped++; continue; }
+                    const invData = invSnap.data();
+                    const unidadMedida = p.unidadMedida || invData.unidadMedida;
+                    const valorUnitario = invData.valor || 0;
+                    let metrosADescontar = 0, centimetrosADescontar = 0, unidadesADescontar = 0, cantidadFacturada = 0;
+                    if (unidadMedida === 'metros') {
+                        metrosADescontar = parseInt(p.metros) || 0;
+                        centimetrosADescontar = parseInt(p.centimetros) || 0;
+                        cantidadFacturada = metrosADescontar + centimetrosADescontar / 100;
+                        const disponibleCm = (parseInt(invData.metros) || 0) * 100 + (parseInt(invData.centimetros) || 0);
+                        const solicitadoCm = metrosADescontar * 100 + centimetrosADescontar;
+                        if (solicitadoCm <= 0) { skipped++; continue; }
+                        if (solicitadoCm > disponibleCm) { toast(`${p.ref} - ${p.color}: cantidad solicitada supera inventario. Se omitió.`, 'error'); skipped++; continue; }
+                        const finalCm = disponibleCm - solicitadoCm;
+                        await updateDoc(doc(db, "inventario", p.id), { metros: Math.floor(finalCm / 100), centimetros: finalCm % 100 });
+                    } else {
+                        unidadesADescontar = parseInt(p.unidades) || 0;
+                        cantidadFacturada = unidadesADescontar;
+                        const disponible = parseInt(invData.unidades) || 0;
+                        if (unidadesADescontar <= 0) { skipped++; continue; }
+                        if (unidadesADescontar > disponible) { toast(`${p.ref} - ${p.color}: cantidad solicitada supera inventario. Se omitió.`, 'error'); skipped++; continue; }
+                        await updateDoc(doc(db, "inventario", p.id), { unidades: disponible - unidadesADescontar });
+                    }
+                    const subtotal = cantidadFacturada * valorUnitario;
+                    productosEnFactura.push({
+                        id: p.id,
+                        referenciaColor: `${p.ref} - ${p.color}`,
+                        unidadMedida,
+                        cantidadFacturada,
+                        metrosFacturados: metrosADescontar,
+                        centimetrosFacturados: centimetrosADescontar,
+                        unidadesFacturadas: unidadesADescontar,
+                        valorUnitario,
+                        subtotal,
+                        proveedor: invData.proveedor || ''
+                    });
+                    loaded++;
+                } catch (err) { skipped++; }
+            }
+            renderProductosEnFactura();
+            calcularTotalFactura();
+            if (loaded > 0) autoSaveDraft();
+            toast(`Pedido cargado con ${loaded} producto(s).${skipped > 0 ? ` ${skipped} omitido(s).` : ''} Revise y cree la factura.`, 'info');
             // Mark as sent to facturacion
             await updateDoc(doc(db, "pedidos_china", pedidoId), { facturado: true, facturadoPor: userName(), facturadoFecha: new Date() });
         } catch (e) { toast("Error al enviar a facturación.", 'error'); }
