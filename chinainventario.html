@@ -996,12 +996,13 @@
     }
 
     // Silent delete (used after successfully creating an invoice)
-    async function discardDraftSilent() {
-        if (currentDraftKey) {
-            try { await deleteDoc(doc(db, "facturas_borrador", currentDraftKey)); } catch (e) { /* ignore */ }
-            allDraftsCache = allDraftsCache.filter(d => d.docId !== currentDraftKey);
-            currentDraftKey = null;
-        }
+    // Deletes ONLY the draft that matches the current invoice number/doc key.
+    async function discardDraftSilent(invoiceNumber = '') {
+        const targetDocId = currentDraftKey || getDraftDocId(invoiceNumber);
+        if (!targetDocId) return;
+        try { await deleteDoc(doc(db, "facturas_borrador", targetDocId)); } catch (e) { /* ignore */ }
+        allDraftsCache = allDraftsCache.filter(d => d.docId !== targetDocId);
+        if (currentDraftKey === targetDocId) currentDraftKey = null;
         renderDraftsUI();
     }
 
@@ -1520,8 +1521,8 @@
         const nuevaFactura = { codigoRegistro, fechaHora, cliente, tipoPago, metodoPago, productos: productosEnFactura, valorTotal, saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, abonos: [], createdAt: new Date(), creadoPor: userName(), despachado: false, despachadoFecha: null };
         try {
             await addDoc(facturasCol, nuevaFactura);
+            await discardDraftSilent(numeroFacturaManual);
             toast("Factura creada con éxito!");
-            discardDraftSilent();
             resetFormFacturacion();
         } catch (e) { toast("Error al crear factura.", 'error'); }
     }
