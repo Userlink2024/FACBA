@@ -502,7 +502,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Valor Unitario</label>
-        <input type="number" id="editFacturaValorUnitario" class="form-input" placeholder="Valor unitario" min="0">
+        <input type="text" id="editFacturaValorUnitario" class="form-input currency-input" placeholder="Valor unitario">
       </div>
     </div>
     <div class="modal-foot">
@@ -607,14 +607,15 @@
 
     function setupCurrencyInput(input) {
         if (!input) return;
-        input.addEventListener('focus', () => {
-            const raw = parseCurrency(input.value);
-            input.value = raw > 0 ? raw : '';
-        });
-        input.addEventListener('blur', () => {
-            const raw = parseCurrency(input.value);
-            input.value = raw > 0 ? fmtCOP(raw) : '';
-        });
+
+        const formatFromInput = () => {
+            const digits = String(input.value || '').replace(/\D/g, '');
+            if (!digits) { input.value = ''; return; }
+            input.value = fmtCOP(parseInt(digits, 10) || 0);
+        };
+
+        input.addEventListener('input', formatFromInput);
+        input.addEventListener('blur', formatFromInput);
     }
 
     // === TOAST NOTIFICATIONS ===
@@ -1231,7 +1232,7 @@
                 const productoData = {
                     fechaHora: getTodayColombiaISO(), referencia: ref, color: col, unidadMedida: unidad === 'metros' ? 'metros' : 'unidades',
                     metros: parseInt(r.Metros || r.metros || 0) || 0, centimetros: parseInt(r.Centimetros || r.centimetros || 0) || 0,
-                    unidades: parseInt(r.Unidades || r.unidades || 0) || 0, valor: parseFloat(r.Valor || r.valor || 0) || 0,
+                    unidades: parseInt(r.Unidades || r.unidades || 0) || 0, valor: parseCurrency(r.Valor || r.valor || 0) || 0,
                     proveedor: String(r.Proveedor || r.proveedor || '').trim(), creadoPor: userName(), ultimoUsuario: userName(), ultimaModificacion: new Date().toISOString()
                 };
                 await addDoc(inventarioCol, productoData);
@@ -1406,7 +1407,7 @@
                 $('editFacturaUnidades').max = totalUnidades;
             }
             $('editFacturaCantDisponible').textContent = disponibleDisplay;
-            $('editFacturaValorUnitario').value = p.valorUnitario;
+            $('editFacturaValorUnitario').value = fmtCOP(p.valorUnitario || 0);
             
             // Open modal
             $('editarProductoFacturaModal').classList.add('open');
@@ -1421,7 +1422,7 @@
         if (index < 0 || index >= productosEnFactura.length) return;
         
         const p = productosEnFactura[index];
-        const valorUnitario = parseFloat($('editFacturaValorUnitario').value) || 0;
+        const valorUnitario = parseCurrency($('editFacturaValorUnitario').value) || 0;
         
         if (valorUnitario <= 0) { toast("Valor unitario debe ser mayor a 0.", 'error'); return; }
         
