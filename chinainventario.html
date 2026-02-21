@@ -1139,7 +1139,7 @@
         const start = (invCurrentPage - 1) * PAGE_SIZE;
         filtered.forEach((r, i) => { if (i < start || i >= start + PAGE_SIZE) r.dataset.hiddenByPage = '1'; });
         applyRowVisibility(rows);
-        if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
+        if (pager) { pager.classList.toggle('hidden', total <= PAGE_SIZE); }
         if (label) label.textContent = `Página ${invCurrentPage} de ${totalPages} (${total} registros)`;
         if (prev) prev.disabled = invCurrentPage <= 1;
         if (next) next.disabled = invCurrentPage >= totalPages;
@@ -1606,7 +1606,7 @@
         const start = (facCurrentPage - 1) * PAGE_SIZE;
         filtered.forEach((r, i) => { if (i < start || i >= start + PAGE_SIZE) r.dataset.hiddenByPage = '1'; });
         applyRowVisibility(rows);
-        if (pager) pager.style.display = total > PAGE_SIZE ? 'flex' : 'none';
+        if (pager) { pager.classList.toggle('hidden', total <= PAGE_SIZE); }
         if (label) label.textContent = `Página ${facCurrentPage} de ${totalPages} (${total} registros)`;
         if (prev) prev.disabled = facCurrentPage <= 1;
         if (next) next.disabled = facCurrentPage >= totalPages;
