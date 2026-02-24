@@ -272,6 +272,7 @@
               <label class="radio-label"><input type="radio" name="metodoPago" value="transferencia" id="radioTransferencia"> Transferencia</label>
             </div>
           </div>
+          <div class="form-group full"><label class="form-label">Observaciones</label><textarea id="facObservaciones" class="form-input" rows="2" placeholder="Notas adicionales para la factura"></textarea></div>
         </div>
       </form>
     </div>
@@ -529,6 +530,7 @@
 <div id="pdfTemplate">
   <div class="pdf-header"><h1>FACTURA</h1><div class="company-info"><p><strong>La Zapatería</strong></p><p>Calle 21 # 22 - 38 San Francisco</p><p>Bucaramanga</p></div></div>
   <div class="pdf-info"><div><strong>Factura No:</strong> <span id="pdfFacturaCodigo"></span><br><strong>Fecha:</strong> <span id="pdfFacturaFecha"></span><br><strong>Tipo de Pago:</strong> <span id="pdfFacturaTipoPago"></span></div><div><strong>Cliente:</strong> <span id="pdfFacturaCliente"></span></div></div>
+  <div id="pdfFacturaObservaciones" style="margin-bottom:10mm;font-size:1em;color:#555;display:none"><strong>Observaciones:</strong> <span id="pdfFacturaObsText"></span></div>
   <div class="pdf-items"><table><thead><tr><th>Producto (Proveedor)</th><th>Cantidad</th><th>Valor Unitario</th><th>Subtotal</th></tr></thead><tbody id="pdfFacturaItems"></tbody></table></div>
   <div class="pdf-totals"><div><strong>Valor Total:</strong> <span id="pdfFacturaValorTotal"></span></div><div><strong>Saldo Pendiente:</strong> <span id="pdfFacturaSaldoPendiente"></span></div></div>
   <div class="pdf-footer"><p>Gracias por tu compra.</p><p>Sistema de Inventario y Facturación - La Zapatería</p></div>
@@ -742,6 +744,7 @@
     const pdfFacturaFecha = $('pdfFacturaFecha');
     const pdfFacturaTipoPago = $('pdfFacturaTipoPago');
     const pdfFacturaCliente = $('pdfFacturaCliente');
+    const pdfFacturaObservaciones = $('pdfFacturaObservaciones');
     const pdfFacturaItems = $('pdfFacturaItems');
     const pdfFacturaValorTotal = $('pdfFacturaValorTotal');
     const pdfFacturaSaldoPendiente = $('pdfFacturaSaldoPendiente');
@@ -823,6 +826,7 @@
         facFechaHora.value = getTodayColombiaISO();
         facCliente.value = '';
         if (facNumeroFactura) facNumeroFactura.value = '';
+        if ($('facObservaciones')) $('facObservaciones').value = '';
         radioContado.checked = false; radioCredito.checked = false;
         if (subTipoContado) subTipoContado.classList.add('hidden');
         if (radioEfectivo) radioEfectivo.checked = false;
@@ -889,6 +893,7 @@
             numeroFactura: numFactura,
             tipoPago: document.querySelector('input[name="tipoPago"]:checked')?.value || '',
             metodoPago: document.querySelector('input[name="metodoPago"]:checked')?.value || '',
+            observaciones: $('facObservaciones') ? $('facObservaciones').value : '',
             productos: productosEnFactura,
             savedAt: new Date().toISOString()
         };
@@ -933,6 +938,7 @@
         facFechaHora.value = draft.fecha || getTodayColombiaISO();
         facCliente.value = draft.cliente || '';
         if (facNumeroFactura) facNumeroFactura.value = draft.numeroFactura || '';
+        if ($('facObservaciones')) $('facObservaciones').value = draft.observaciones || '';
         if (draft.tipoPago === 'contado') { radioContado.checked = true; handleTipoPagoChange(); if (draft.metodoPago === 'efectivo') radioEfectivo.checked = true; else if (draft.metodoPago === 'transferencia') radioTransferencia.checked = true; }
         else if (draft.tipoPago === 'credito') { radioCredito.checked = true; handleTipoPagoChange(); }
         productosEnFactura = draft.productos || [];
@@ -1518,8 +1524,9 @@
         if (productosEnFactura.length === 0) { toast("Agregue al menos un producto.", 'error'); return; }
         const valorTotal = parseFloat(facValorTotal.value);
         const now = new Date();
+        const observaciones = $('facObservaciones') ? $('facObservaciones').value.trim() : '';
         const codigoRegistro = numeroFacturaManual || `${now.getFullYear()}${('0'+(now.getMonth()+1)).slice(-2)}${('0'+now.getDate()).slice(-2)}${('0'+now.getHours()).slice(-2)}${('0'+now.getMinutes()).slice(-2)}${('0'+now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
-        const nuevaFactura = { codigoRegistro, fechaHora, cliente, tipoPago, metodoPago, productos: productosEnFactura, valorTotal, saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, abonos: [], createdAt: new Date(), creadoPor: userName(), despachado: false, despachadoFecha: null };
+        const nuevaFactura = { codigoRegistro, fechaHora, cliente, tipoPago, metodoPago, observaciones, productos: productosEnFactura, valorTotal, saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, abonos: [], createdAt: new Date(), creadoPor: userName(), despachado: false, despachadoFecha: null };
         try {
             await addDoc(facturasCol, nuevaFactura);
             await discardDraftSilent(numeroFacturaManual);
@@ -1684,6 +1691,12 @@
             pdfFacturaFecha.textContent = f.fechaHora || 'N/A';
             pdfFacturaTipoPago.textContent = f.tipoPago === 'credito' ? 'Credito' : 'Contado';
             pdfFacturaCliente.textContent = f.cliente || 'N/A';
+            if (f.observaciones && f.observaciones.trim()) {
+                pdfFacturaObservaciones.style.display = 'block';
+                $('pdfFacturaObsText').textContent = f.observaciones;
+            } else {
+                pdfFacturaObservaciones.style.display = 'none';
+            }
             pdfFacturaItems.innerHTML = '';
             if (f.productos && f.productos.length > 0) {
                 f.productos.forEach(item => {
@@ -1915,6 +1928,7 @@
             showModule('facturacion');
             // Pre-fill client & observations
             facCliente.value = ped.cliente;
+            if ($('facObservaciones') && ped.observaciones) $('facObservaciones').value = ped.observaciones;
             // Load each order product into the invoice product list
             let loaded = 0, skipped = 0;
             for (const p of (ped.productos || [])) {
