@@ -306,6 +306,9 @@
         </div>
     </div>
 
+    <!-- Datalist for material autocomplete -->
+    <datalist id="materialesGuardadosList"></datalist>
+
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
@@ -476,13 +479,10 @@
         }
 
         function updateMaterialesDatalist() {
-            let dl = document.getElementById('materialesGuardadosList');
-            if (!dl) {
-                dl = document.createElement('datalist');
-                dl.id = 'materialesGuardadosList';
-                document.body.appendChild(dl);
+            const dl = document.getElementById('materialesGuardadosList');
+            if (dl) {
+                dl.innerHTML = clientMateriales.map(n => `<option value="${n}">`).join('');
             }
-            dl.innerHTML = clientMateriales.map(n => `<option value="${n}">`).join('');
         }
 
         async function saveNewMaterialNames(nombres) {
@@ -888,6 +888,7 @@
         
         document.getElementById('newOrderBtn').addEventListener('click', () => {
             document.getElementById('orderModal').classList.remove('hidden');
+            updateMaterialesDatalist();
             addMaterialRow(); // Add first material row
         });
         document.getElementById('closeOrderModal').addEventListener('click', () => {
