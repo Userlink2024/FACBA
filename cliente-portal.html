@@ -315,6 +315,7 @@
         let currentClient = null;
         let pedidos = [];
         let materiales = [];
+        let clientMateriales = [];
 
         // ==================== TIMEZONE FIX ====================
         // Parsear fecha de input sin problemas de timezone (Colombia UTC-5)
@@ -455,6 +456,46 @@
         function loadClientData() {
             loadPedidos();
             loadMateriales();
+            loadClientMateriales();
+        }
+
+        async function loadClientMateriales() {
+            try {
+                const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    clientMateriales = snap.data().nombres || [];
+                } else {
+                    clientMateriales = [];
+                }
+                updateMaterialesDatalist();
+            } catch (error) {
+                console.error('Error cargando materiales guardados:', error);
+                clientMateriales = [];
+            }
+        }
+
+        function updateMaterialesDatalist() {
+            let dl = document.getElementById('materialesGuardadosList');
+            if (!dl) {
+                dl = document.createElement('datalist');
+                dl.id = 'materialesGuardadosList';
+                document.body.appendChild(dl);
+            }
+            dl.innerHTML = clientMateriales.map(n => `<option value="${n}">`).join('');
+        }
+
+        async function saveNewMaterialNames(nombres) {
+            const nuevos = nombres.filter(n => n && !clientMateriales.includes(n));
+            if (nuevos.length === 0) return;
+            clientMateriales = [...clientMateriales, ...nuevos];
+            try {
+                const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
+                await setDoc(docRef, { nombres: clientMateriales }, { merge: true });
+                updateMaterialesDatalist();
+            } catch (error) {
+                console.error('Error guardando materiales:', error);
+            }
         }
 
         function loadPedidos() {
@@ -666,35 +707,20 @@
 
         function addMaterialRow() {
             const container = document.getElementById('materialesContainer');
+            materialCount++;
             const row = document.createElement('div');
             row.className = 'material-row space-y-2';
             row.innerHTML = `
                 <div class="grid grid-cols-12 gap-2 items-end">
-                    <div class="col-span-4">
+                    <div class="col-span-5">
                         <label class="block text-xs text-gray-400 mb-1">Material</label>
-                        <select class="mat-tipo w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="cuero">Cuero</option>
-                            <option value="suela">Suela</option>
-                            <option value="forro">Forro</option>
-                            <option value="hilo">Hilo</option>
-                            <option value="plantilla">Plantilla</option>
-                            <option value="pegante">Pegante</option>
-                            <option value="herrajes">Herrajes</option>
-                            <option value="cordones">Cordones</option>
-                            <option value="tela">Tela</option>
-                            <option value="sintetico">Sintético</option>
-                            <option value="otro">✏️ Otro (personalizado)</option>
-                        </select>
-                    </div>
-                    <div class="col-span-3 mat-custom-container hidden">
-                        <label class="block text-xs text-gray-400 mb-1">Nombre Material</label>
-                        <input type="text" class="mat-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba el nombre">
+                        <input type="text" list="materialesGuardadosList" class="mat-nombre w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba o seleccione un material">
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs text-gray-400 mb-1">Cantidad</label>
                         <input type="number" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" step="0.1">
                     </div>
-                    <div class="col-span-2">
+                    <div class="col-span-4">
                         <label class="block text-xs text-gray-400 mb-1">Unidad</label>
                         <select class="mat-unidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="metros">Metros</option>
@@ -708,7 +734,7 @@
                             <option value="otro_unidad">Otra...</option>
                         </select>
                     </div>
-                    <div class="col-span-2 unidad-custom-container hidden">
+                    <div class="col-span-3 unidad-custom-container hidden">
                         <label class="block text-xs text-gray-400 mb-1">Nombre Unidad</label>
                         <input type="text" class="unidad-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: yardas, galones...">
                     </div>
@@ -720,18 +746,8 @@
                 </div>
             `;
             
-            const select = row.querySelector('.mat-tipo');
-            const customContainer = row.querySelector('.mat-custom-container');
             const unidadSelect = row.querySelector('.mat-unidad');
             const unidadCustomContainer = row.querySelector('.unidad-custom-container');
-            
-            select.addEventListener('change', () => {
-                if (select.value === 'otro') {
-                    customContainer.classList.remove('hidden');
-                } else {
-                    customContainer.classList.add('hidden');
-                }
-            });
             
             unidadSelect.addEventListener('change', () => {
                 if (unidadSelect.value === 'otro_unidad') {
@@ -764,29 +780,25 @@
             // Collect materials
             const materialRows = document.querySelectorAll('.material-row');
             const materialesList = [];
+            const nombresUsados = [];
             
             materialRows.forEach(row => {
-                const tipoSelect = row.querySelector('.mat-tipo').value;
-                const customName = row.querySelector('.mat-custom')?.value?.trim() || '';
+                const nombre = row.querySelector('.mat-nombre')?.value?.trim() || '';
                 const cantidadMat = parseFloat(row.querySelector('.mat-cantidad').value) || 0;
                 const unidadSelect = row.querySelector('.mat-unidad').value;
                 const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
                 
-                // Si es "otro", usar el nombre personalizado
-                const tipo = tipoSelect === 'otro' ? 'personalizado' : tipoSelect;
-                const nombre = tipoSelect === 'otro' && customName ? customName : tipoSelect.charAt(0).toUpperCase() + tipoSelect.slice(1);
-                
-                // Si es "otro_unidad", usar la unidad personalizada
                 const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
                 
-                if (cantidadMat > 0) {
+                if (nombre && cantidadMat > 0) {
                     materialesList.push({
                         nombre,
-                        tipo,
+                        tipo: nombre.toLowerCase(),
                         cantidad: cantidadMat,
                         unidad,
                         recibido: false
                     });
+                    nombresUsados.push(nombre);
                 }
             });
             
@@ -828,6 +840,11 @@
                     fecha: Timestamp.now(),
                     leido: false
                 });
+                
+                // Save new material names for future autocomplete
+                if (nombresUsados.length > 0) {
+                    await saveNewMaterialNames(nombresUsados);
+                }
                 
                 showToast('Pedido enviado correctamente', 'success');
                 document.getElementById('orderModal').classList.add('hidden');
