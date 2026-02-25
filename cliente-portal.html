@@ -11,6 +11,13 @@
         @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
         .animate-slide-in { animation: slide-in 0.3s ease-out; }
         .pulse-ring::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid currentColor; animation: pulse-ring 1.5s infinite; }
+        .mat-autocomplete-wrap { position: relative; }
+        .mat-autocomplete-dd { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 60; max-height: 180px; overflow-y: auto; background: #1e293b; border: 1px solid #475569; border-radius: 0.5rem; margin-top: 2px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .mat-autocomplete-dd.show { display: block; }
+        .mat-autocomplete-dd .ac-option { padding: 10px 12px; color: #e2e8f0; font-size: 0.875rem; cursor: pointer; border-bottom: 1px solid #334155; }
+        .mat-autocomplete-dd .ac-option:last-child { border-bottom: none; }
+        .mat-autocomplete-dd .ac-option:hover, .mat-autocomplete-dd .ac-option:active { background: #3b82f6; color: #fff; }
+        .mat-autocomplete-dd .ac-empty { padding: 10px 12px; color: #94a3b8; font-size: 0.8rem; text-align: center; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -306,9 +313,6 @@
         </div>
     </div>
 
-    <!-- Datalist for material autocomplete -->
-    <datalist id="materialesGuardadosList"></datalist>
-
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
@@ -479,9 +483,22 @@
         }
 
         function updateMaterialesDatalist() {
-            const dl = document.getElementById('materialesGuardadosList');
-            if (dl) {
-                dl.innerHTML = clientMateriales.map(n => `<option value="${n}">`).join('');
+            // Refresh all open autocomplete dropdowns with current clientMateriales
+            document.querySelectorAll('.mat-autocomplete-dd').forEach(dd => {
+                const input = dd.parentElement.querySelector('.mat-nombre');
+                const filter = (input?.value || '').toLowerCase();
+                renderAutocompleteOptions(dd, filter);
+            });
+        }
+
+        function renderAutocompleteOptions(dropdown, filter) {
+            const filtered = clientMateriales.filter(n => n.toLowerCase().includes(filter));
+            if (filtered.length === 0) {
+                dropdown.innerHTML = clientMateriales.length === 0
+                    ? '<div class="ac-empty">Aún no tienes materiales guardados.<br>Escribe uno nuevo y se guardará al enviar el pedido.</div>'
+                    : '<div class="ac-empty">No hay coincidencias</div>';
+            } else {
+                dropdown.innerHTML = filtered.map(n => `<div class="ac-option">${n}</div>`).join('');
             }
         }
 
@@ -489,10 +506,10 @@
             const nuevos = nombres.filter(n => n && !clientMateriales.includes(n));
             if (nuevos.length === 0) return;
             clientMateriales = [...clientMateriales, ...nuevos];
+            updateMaterialesDatalist();
             try {
                 const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
                 await setDoc(docRef, { nombres: clientMateriales }, { merge: true });
-                updateMaterialesDatalist();
             } catch (error) {
                 console.error('Error guardando materiales:', error);
             }
@@ -714,7 +731,10 @@
                 <div class="grid grid-cols-12 gap-2 items-end">
                     <div class="col-span-5">
                         <label class="block text-xs text-gray-400 mb-1">Material</label>
-                        <input type="text" list="materialesGuardadosList" class="mat-nombre w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba o seleccione un material">
+                        <div class="mat-autocomplete-wrap">
+                            <input type="text" class="mat-nombre w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba o toque para ver" autocomplete="off">
+                            <div class="mat-autocomplete-dd"></div>
+                        </div>
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs text-gray-400 mb-1">Cantidad</label>
@@ -746,6 +766,45 @@
                 </div>
             `;
             
+            // Custom autocomplete for material name
+            const matInput = row.querySelector('.mat-nombre');
+            const dropdown = row.querySelector('.mat-autocomplete-dd');
+
+            matInput.addEventListener('focus', () => {
+                renderAutocompleteOptions(dropdown, matInput.value.toLowerCase());
+                dropdown.classList.add('show');
+            });
+
+            matInput.addEventListener('input', () => {
+                renderAutocompleteOptions(dropdown, matInput.value.toLowerCase());
+                dropdown.classList.add('show');
+            });
+
+            dropdown.addEventListener('mousedown', (e) => {
+                // mousedown instead of click to fire before blur
+                const option = e.target.closest('.ac-option');
+                if (option) {
+                    matInput.value = option.textContent;
+                    dropdown.classList.remove('show');
+                }
+            });
+
+            // Also handle touchend for mobile
+            dropdown.addEventListener('touchend', (e) => {
+                const option = e.target.closest('.ac-option');
+                if (option) {
+                    e.preventDefault();
+                    matInput.value = option.textContent;
+                    dropdown.classList.remove('show');
+                    matInput.blur();
+                }
+            });
+
+            matInput.addEventListener('blur', () => {
+                // Small delay so click/touch on dropdown can fire first
+                setTimeout(() => dropdown.classList.remove('show'), 200);
+            });
+
             const unidadSelect = row.querySelector('.mat-unidad');
             const unidadCustomContainer = row.querySelector('.unidad-custom-container');
             
