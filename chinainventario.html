@@ -98,11 +98,11 @@
 
     .modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);justify-content:center;align-items:flex-start;padding:40px 16px;overflow-y:auto}
     .modal.open{display:flex}
-    .modal-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:500px;animation:modalIn .2s ease}
+    .modal-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:500px;animation:modalIn .2s ease;overflow:visible}
     .modal-card.lg{max-width:700px}
     .modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
     .modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
-    .modal-body{padding:20px}
+    .modal-body{padding:20px;overflow:visible}
     .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
     @keyframes modalIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 
@@ -156,7 +156,7 @@
     #pdfTemplate .pdf-totals strong{font-size:1.2em}
     #pdfTemplate .pdf-footer{text-align:center;font-size:.8em;color:#777;margin-top:auto;padding-top:10mm;border-top:1px solid #eee}
 
-    @media(max-width:768px){.topbar{flex-direction:column;gap:10px;text-align:center}.topbar .actions{justify-content:center}.summary-cards{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}}
+    @media(max-width:768px){.topbar{flex-direction:column;gap:10px;text-align:center}.topbar .actions{justify-content:center}.summary-cards{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}#modDashboard>div[style*="grid-template-columns"]{grid-template-columns:1fr!important}}
   </style>
 </head>
 <body>
@@ -174,14 +174,46 @@
   </div>
 
   <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="inventario"><i class="fas fa-warehouse"></i> Inventario</button>
+    <button class="nav-tab active" data-tab="dashboard"><i class="fas fa-chart-pie"></i> Dashboard</button>
+    <button class="nav-tab" data-tab="inventario"><i class="fas fa-warehouse"></i> Inventario</button>
     <button class="nav-tab" data-tab="facturacion"><i class="fas fa-file-invoice-dollar"></i> Facturación <span class="badge hidden" id="draftBadge">Borrador</span></button>
     <button class="nav-tab" data-tab="facturas"><i class="fas fa-receipt"></i> Facturas</button>
     <button class="nav-tab" data-tab="pedidos"><i class="fas fa-clipboard-list"></i> Pedidos <span class="badge hidden" id="pedidosBadge">0</span></button>
   </div>
 
+  <!-- DASHBOARD -->
+  <div id="modDashboard" class="module active">
+    <div class="summary-cards" id="dashSummaryCards">
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-boxes-stacked"></i></div><div><div class="stat-label">Productos en Inventario</div><div class="stat-value" id="dashTotalProductos">0</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-file-invoice-dollar"></i></div><div><div class="stat-label">Total Facturado</div><div class="stat-value" id="dashTotalFacturado">$0</div></div></div>
+      <div class="stat-card"><div class="stat-icon red"><i class="fas fa-clock"></i></div><div><div class="stat-label">Crédito Pendiente</div><div class="stat-value" id="dashCreditoPendiente">$0</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-clipboard-list"></i></div><div><div class="stat-label">Pedidos Pendientes</div><div class="stat-value" id="dashPedidosPendientes">0</div></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i> Novedades</div></div>
+        <div id="dashNovedades" style="max-height:340px;overflow-y:auto"><div class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i class="fas fa-chart-bar" style="color:var(--primary)"></i> Resumen de Facturas</div></div>
+        <canvas id="dashChartFacturas" height="200" style="width:100%;max-height:300px"></canvas>
+        <div id="dashChartLegend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;font-size:12px;font-weight:600"></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i class="fas fa-truck" style="color:var(--danger)"></i> Despachos Retrasados</div></div>
+        <div id="dashDespachos" style="max-height:300px;overflow-y:auto"><div class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i class="fas fa-clock-rotate-left" style="color:var(--purple)"></i> Pedidos Pendientes</div></div>
+        <div id="dashPedidosList" style="max-height:300px;overflow-y:auto"><div class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</div></div>
+      </div>
+    </div>
+  </div>
+
   <!-- INVENTARIO -->
-  <div id="modInventario" class="module active">
+  <div id="modInventario" class="module">
     <div class="card">
       <div class="card-header">
         <div class="card-title" id="formInventarioTitle"><i class="fas fa-plus-circle"></i> Agregar Producto</div>
@@ -455,10 +487,10 @@
           <thead><tr><th>Producto</th><th>Cantidad</th><th>Acciones</th></tr></thead>
           <tbody id="editPedidoProductos"></tbody>
         </table>
-        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-          <input type="text" id="editPedidoBusquedaInput" class="form-input" placeholder="Buscar producto para agregar..." style="flex:1">
+        <div style="margin-top:8px;position:relative">
+          <input type="text" id="editPedidoBusquedaInput" class="form-input" placeholder="Buscar producto para agregar..." autocomplete="off">
+          <div id="editPedidoBusqueda" class="search-results"></div>
         </div>
-        <div id="editPedidoBusqueda" class="search-results" style="margin-top:8px"></div>
       </div>
       <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--muted)">
         <div><strong>Creado por:</strong> <span id="editPedidoCreadoPor"></span></div>
@@ -767,7 +799,8 @@
         const tab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
         if (tab) tab.classList.add('active');
 
-        if (tabName === 'inventario') { resetFormInventario(); cargarInventario(); }
+        if (tabName === 'dashboard') { cargarDashboard(); }
+        else if (tabName === 'inventario') { resetFormInventario(); cargarInventario(); }
         else if (tabName === 'facturacion') { resetFormFacturacion(); refreshDraftsUI(); }
         else if (tabName === 'facturas') { resetBusquedaFacturas(); cargarFacturas(); }
         else if (tabName === 'pedidos') { cargarPedidos(); }
@@ -1544,10 +1577,18 @@
             totalFacturado = 0; totalCreditoPendiente = 0; totalAbonado = 0;
             if (snapshot.empty) { tablaFacturas.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-receipt"></i> No hay facturas emitidas.</td></tr>'; totalFacturadoDisplay.textContent = '$0'; creditoPendienteDisplay.textContent = '$0'; totalAbonadoDisplay.textContent = '$0'; return; }
             const settings = loadSettings();
-            snapshot.forEach((docSnap) => {
-                const f = docSnap.data();
+            // Collect and sort by codigoRegistro (consecutive number) ascending
+            const allDocs = [];
+            snapshot.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
+            allDocs.sort((a, b) => {
+                const na = parseInt(String(a.codigoRegistro || '0').replace(/\D/g, '')) || 0;
+                const nb = parseInt(String(b.codigoRegistro || '0').replace(/\D/g, '')) || 0;
+                return na - nb;
+            });
+            allDocs.forEach((f) => {
+                const docId = f.id;
                 const row = tablaFacturas.insertRow();
-                row.dataset.id = docSnap.id;
+                row.dataset.id = docId;
                 row.dataset.abonos = JSON.stringify(f.abonos || []);
                 totalFacturado += parseFloat(f.valorTotal) || 0;
                 if (f.abonos && Array.isArray(f.abonos)) f.abonos.forEach(a => { totalAbonado += parseFloat(a.montoAbono) || 0; });
@@ -1577,11 +1618,11 @@
                     else despachoHtml = `<span class="timer-badge ok"><i class="fas fa-clock"></i> ${Math.round(elapsed)}h</span>`;
                 }
                 let acciones = '';
-                if (f.abonos && f.abonos.length > 0) acciones += `<button class="btn btn-info btn-xs btn-ver-abonos" data-id="${docSnap.id}">Abonos (${f.abonos.length})</button> `;
-                if (f.tipoPago === 'credito' && saldo > 0) acciones += `<button class="btn btn-success btn-xs btn-abonar" data-id="${docSnap.id}" data-saldo="${saldo}" data-cliente="${f.cliente}" data-valortotal="${f.valorTotal}">Abonar</button> `;
-                if (!f.despachado) acciones += `<button class="btn btn-secondary btn-xs btn-despachar" data-id="${docSnap.id}"><i class="fas fa-truck"></i></button> `;
-                acciones += `<button class="btn btn-secondary btn-xs btn-generate-pdf" data-id="${docSnap.id}"><i class="fas fa-file-pdf"></i></button> `;
-                acciones += `<button class="btn btn-danger btn-xs btn-eliminar-factura" data-id="${docSnap.id}"><i class="fas fa-trash"></i></button>`;
+                if (f.abonos && f.abonos.length > 0) acciones += `<button class="btn btn-info btn-xs btn-ver-abonos" data-id="${docId}">Abonos (${f.abonos.length})</button> `;
+                if (f.tipoPago === 'credito' && saldo > 0) acciones += `<button class="btn btn-success btn-xs btn-abonar" data-id="${docId}" data-saldo="${saldo}" data-cliente="${f.cliente}" data-valortotal="${f.valorTotal}">Abonar</button> `;
+                if (!f.despachado) acciones += `<button class="btn btn-secondary btn-xs btn-despachar" data-id="${docId}"><i class="fas fa-truck"></i></button> `;
+                acciones += `<button class="btn btn-secondary btn-xs btn-generate-pdf" data-id="${docId}"><i class="fas fa-file-pdf"></i></button> `;
+                acciones += `<button class="btn btn-danger btn-xs btn-eliminar-factura" data-id="${docId}"><i class="fas fa-trash"></i></button>`;
                 row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora}</td><td>${f.cliente}</td><td>${tipoPagoDisplay}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${productosDisplay}">${productosDisplay}</td><td>$${fmtCOP(f.valorTotal)}</td><td>${saldoDisplay}</td><td>${despachoHtml}</td><td><div class="btn-group">${acciones}</div></td>`;
             });
             totalFacturadoDisplay.textContent = '$' + fmtCOP(totalFacturado);
@@ -1780,6 +1821,192 @@
             });
         } catch (e) { resultadosBusqueda.innerHTML = '<div style="padding:12px;color:var(--danger)">Error buscando.</div>'; }
     }
+
+    // === DASHBOARD ===
+    let _dashUnsubs = [];
+    function cargarDashboard() {
+        // Cleanup previous listeners
+        _dashUnsubs.forEach(u => u());
+        _dashUnsubs = [];
+
+        // 1) Inventory count
+        _dashUnsubs.push(onSnapshot(inventarioCol, (snap) => {
+            $('dashTotalProductos').textContent = snap.size;
+        }, () => {}));
+
+        // 2) Facturas stats + chart + despachos retrasados
+        _dashUnsubs.push(onSnapshot(facturasCol, (snap) => {
+            let totalFact = 0, creditoPend = 0, contadoCount = 0, creditoCount = 0, despachadoCount = 0, sinDespachar = 0;
+            const settings = loadSettings();
+            const despachosRetrasados = [];
+            const facturasRecientes = [];
+
+            snap.forEach(d => {
+                const f = d.data();
+                const val = parseFloat(f.valorTotal) || 0;
+                totalFact += val;
+
+                if (f.tipoPago === 'credito') {
+                    creditoCount++;
+                    let saldo = f.saldoPendiente !== undefined && f.saldoPendiente !== null ? parseFloat(f.saldoPendiente) : val;
+                    creditoPend += saldo;
+                } else { contadoCount++; }
+
+                if (f.despachado) { despachadoCount++; }
+                else {
+                    sinDespachar++;
+                    const created = f.createdAt?.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
+                    const elapsed = (Date.now() - created.getTime()) / 3600000;
+                    if (elapsed > settings.despachoTimer) {
+                        despachosRetrasados.push({ codigo: f.codigoRegistro || 'N/A', cliente: f.cliente, horas: Math.round(elapsed) });
+                    }
+                }
+                facturasRecientes.push({ fecha: f.fechaHora, val });
+            });
+
+            $('dashTotalFacturado').textContent = '$' + fmtCOP(totalFact);
+            $('dashCreditoPendiente').textContent = '$' + fmtCOP(creditoPend);
+
+            // Despachos retrasados list
+            const dContainer = $('dashDespachos');
+            if (despachosRetrasados.length === 0) {
+                dContainer.innerHTML = '<div class="empty" style="padding:20px"><i class="fas fa-check-circle" style="color:var(--success)"></i> Sin despachos retrasados</div>';
+            } else {
+                dContainer.innerHTML = despachosRetrasados.map(d => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f1f5f9">
+                        <div><strong style="font-size:13px">${d.codigo}</strong><div style="font-size:11px;color:var(--muted)">${d.cliente}</div></div>
+                        <span class="timer-badge danger"><i class="fas fa-exclamation-triangle"></i> ${d.horas}h</span>
+                    </div>`).join('');
+            }
+
+            // Chart — simple bar chart via canvas
+            drawDashChart(contadoCount, creditoCount, despachadoCount, sinDespachar);
+
+        }, () => {}));
+
+        // 3) Pedidos pendientes
+        _dashUnsubs.push(onSnapshot(pedidosCol, (snap) => {
+            const pendientes = [];
+            let pendCount = 0;
+            const settings = loadSettings();
+            snap.forEach(d => {
+                const p = d.data();
+                if (!p.facturado) {
+                    pendCount++;
+                    const created = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+                    const elapsedMin = (Date.now() - created.getTime()) / 60000;
+                    const timerClass = elapsedMin > settings.pedidoTimer ? 'danger' : elapsedMin > settings.pedidoTimer * 0.7 ? 'warning' : 'ok';
+                    const timerText = elapsedMin < 60 ? `${Math.round(elapsedMin)}min` : `${Math.round(elapsedMin / 60)}h`;
+                    pendientes.push({ cliente: p.cliente, productos: p.productos.map(pr => pr.ref + ' - ' + pr.color).join(', '), timerClass, timerText, creadoPor: p.creadoPor || '' });
+                }
+            });
+            $('dashPedidosPendientes').textContent = pendCount;
+
+            const pContainer = $('dashPedidosList');
+            if (pendientes.length === 0) {
+                pContainer.innerHTML = '<div class="empty" style="padding:20px"><i class="fas fa-check-circle" style="color:var(--success)"></i> Sin pedidos pendientes</div>';
+            } else {
+                pContainer.innerHTML = pendientes.map(p => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f1f5f9">
+                        <div><strong style="font-size:13px">${p.cliente}</strong><div style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.productos}</div></div>
+                        <span class="timer-badge ${p.timerClass}"><i class="fas fa-clock"></i> ${p.timerText}</span>
+                    </div>`).join('');
+            }
+
+            // Novedades
+            const nContainer = $('dashNovedades');
+            const novedades = [];
+            if (pendCount > 0) novedades.push({ icon: 'fa-clipboard-list', color: 'var(--warning)', text: `${pendCount} pedido(s) pendiente(s) de facturación` });
+            nContainer._pendientesData = { pendCount };
+            updateNovedadesPanel();
+        }, () => {}));
+    }
+
+    function updateNovedadesPanel() {
+        const nContainer = $('dashNovedades');
+        const novedades = [];
+        const pendCount = parseInt($('dashPedidosPendientes').textContent) || 0;
+        const creditoPend = $('dashCreditoPendiente').textContent;
+        const despachosHtml = $('dashDespachos').innerHTML;
+        const tieneRetrasados = !despachosHtml.includes('Sin despachos retrasados');
+
+        if (pendCount > 0) novedades.push({ icon: 'fa-clipboard-list', color: 'var(--warning)', text: `${pendCount} pedido(s) pendiente(s) de facturación` });
+        if (creditoPend !== '$0') novedades.push({ icon: 'fa-credit-card', color: 'var(--danger)', text: `Crédito pendiente: ${creditoPend}` });
+        if (tieneRetrasados) novedades.push({ icon: 'fa-truck', color: 'var(--danger)', text: 'Hay facturas con despacho retrasado' });
+
+        if (novedades.length === 0) {
+            nContainer.innerHTML = '<div class="empty" style="padding:20px"><i class="fas fa-check-circle" style="color:var(--success)"></i> Todo al día, sin novedades</div>';
+        } else {
+            nContainer.innerHTML = novedades.map(n => `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f1f5f9">
+                    <i class="fas ${n.icon}" style="color:${n.color};font-size:16px;width:20px;text-align:center"></i>
+                    <span style="font-size:13px;font-weight:600;color:var(--text)">${n.text}</span>
+                </div>`).join('');
+        }
+    }
+
+    function drawDashChart(contado, credito, despachado, sinDespachar) {
+        const canvas = $('dashChartFacturas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = 200 * dpr;
+        ctx.scale(dpr, dpr);
+        const W = rect.width, H = 200;
+        ctx.clearRect(0, 0, W, H);
+
+        const data = [
+            { label: 'Contado', value: contado, color: '#2563eb' },
+            { label: 'Crédito', value: credito, color: '#f59e0b' },
+            { label: 'Despachado', value: despachado, color: '#22c55e' },
+            { label: 'Sin Despachar', value: sinDespachar, color: '#ef4444' }
+        ];
+        const maxVal = Math.max(...data.map(d => d.value), 1);
+        const barW = Math.min(50, (W - 80) / data.length - 10);
+        const startX = (W - (data.length * (barW + 10) - 10)) / 2;
+        const chartH = H - 40;
+
+        data.forEach((d, i) => {
+            const x = startX + i * (barW + 10);
+            const barH = (d.value / maxVal) * (chartH - 20);
+            const y = chartH - barH;
+
+            // Bar with rounded top
+            ctx.fillStyle = d.color;
+            ctx.beginPath();
+            const r = Math.min(4, barW / 2);
+            ctx.moveTo(x, chartH);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.lineTo(x + barW - r, y);
+            ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+            ctx.lineTo(x + barW, chartH);
+            ctx.closePath();
+            ctx.fill();
+
+            // Value on top
+            ctx.fillStyle = '#374151';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.value, x + barW / 2, y - 6);
+
+            // Label below
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.fillText(d.label, x + barW / 2, chartH + 14);
+        });
+
+        // Legend
+        const legend = $('dashChartLegend');
+        if (legend) {
+            legend.innerHTML = data.map(d => `<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:${d.color}"></span>${d.label}: ${d.value}</span>`).join('');
+        }
+    }
+
+    // Load dashboard on init
+    cargarDashboard();
 
     // === PEDIDOS (ORDER MANAGEMENT) ===
     let productosEnPedido = [];
