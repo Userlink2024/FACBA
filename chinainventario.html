@@ -1577,13 +1577,13 @@
             totalFacturado = 0; totalCreditoPendiente = 0; totalAbonado = 0;
             if (snapshot.empty) { tablaFacturas.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-receipt"></i> No hay facturas emitidas.</td></tr>'; totalFacturadoDisplay.textContent = '$0'; creditoPendienteDisplay.textContent = '$0'; totalAbonadoDisplay.textContent = '$0'; return; }
             const settings = loadSettings();
-            // Collect and sort by codigoRegistro (consecutive number) ascending
+            // Collect and sort by codigoRegistro (consecutive number) descending — highest first
             const allDocs = [];
             snapshot.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
             allDocs.sort((a, b) => {
                 const na = parseInt(String(a.codigoRegistro || '0').replace(/\D/g, '')) || 0;
                 const nb = parseInt(String(b.codigoRegistro || '0').replace(/\D/g, '')) || 0;
-                return na - nb;
+                return nb - na;
             });
             allDocs.forEach((f) => {
                 const docId = f.id;
