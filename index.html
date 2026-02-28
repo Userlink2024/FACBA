@@ -107,7 +107,7 @@
 
         <!-- Version -->
         <div class="text-center mt-6">
-            <p class="text-gray-600 text-xs">Versión 1.0.0 | 2024</p>
+            <p class="text-gray-600 text-xs">Versión 1.0.0 | <span id="appYear"></span></p>
         </div>
     </div>
 
@@ -126,6 +126,8 @@
         const btnText = document.getElementById('btnText');
         const btnIcon = document.getElementById('btnIcon');
         const btnSpinner = document.getElementById('btnSpinner');
+
+        document.getElementById('appYear').textContent = new Date().getFullYear();
 
         // Toggle password visibility
         togglePassword.addEventListener('click', () => {
