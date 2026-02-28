@@ -1422,6 +1422,12 @@ function switchTab(tabName) {
 // ==================== EVENT LISTENERS ====================
 
 function setupEventListeners() {
+    // Prevent browser autofill on search fields
+    setTimeout(() => {
+        const s = document.getElementById('searchOrders');
+        if (s && s.value) { s.value = ''; renderOrdersTable(); }
+    }, 100);
+
     document.getElementById('logoutBtn').addEventListener('click', logout);
     
     document.querySelectorAll('.tab-btn').forEach(btn => {
