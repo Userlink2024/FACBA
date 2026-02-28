@@ -405,7 +405,7 @@
         import { checkAuthAndRedirect, logout, ROLES } from './js/auth.js';
         import { getNavigationMenu, getRoleName } from './js/roles.js';
         import { formatCurrency, formatDateTime, formatTime, isLate, getDayStart, showToast, showConfirm } from './js/utils.js';
-        import { auth, db, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, onSnapshot, Timestamp, createUserWithEmailAndPassword } from './js/firebase-init.js';
+        import { auth, db, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, Timestamp, createUserWithEmailAndPassword } from './js/firebase-init.js';
         import { initNotifications } from './js/notifications.js';
 
         let employees = [];
@@ -550,6 +550,9 @@
                                         <i class="fas fa-user-slash"></i>
                                     </button>
                                 `}
+                                <button class="p-2 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition delete-employee-btn" data-uid="${emp.uid}" data-name="${emp.nombre}" title="Eliminar empleado">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -575,6 +578,15 @@
                     const confirmed = await showConfirm('Levantar Sanción', `¿Está seguro de levantar la sanción a ${btn.dataset.name}?`);
                     if (confirmed) {
                         await liftSanction(btn.dataset.uid);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.delete-employee-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const confirmed = await showConfirm('Eliminar Empleado', `¿Está seguro de eliminar a ${btn.dataset.name}? Esta acción no se puede deshacer.`);
+                    if (confirmed) {
+                        await deleteEmployee(btn.dataset.uid);
                     }
                 });
             });
@@ -836,6 +848,24 @@
             } catch (error) {
                 console.error('Error levantando sanción:', error);
                 showToast('Error al levantar sanción', 'error');
+            }
+        }
+
+        // Eliminar empleado
+        async function deleteEmployee(uid) {
+            try {
+                if (auth.currentUser && uid === auth.currentUser.uid) {
+                    showToast('No puede eliminar su propio usuario', 'warning');
+                    return;
+                }
+
+                await deleteDoc(doc(db, 'users', uid));
+                showToast('Empleado eliminado correctamente', 'success');
+                await loadEmployees();
+
+            } catch (error) {
+                console.error('Error eliminando empleado:', error);
+                showToast('Error al eliminar empleado', 'error');
             }
         }
 
