@@ -40,7 +40,10 @@
                         <p id="clientName" class="text-white text-sm font-medium">-</p>
                         <p class="text-gray-400 text-xs">Cliente</p>
                     </div>
-                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition">
+                    <button id="settingsBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Configuración">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Cerrar sesión">
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </div>
@@ -205,7 +208,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Cantidad de Pares</label>
-                            <input type="number" id="orderCantidad" required min="1" placeholder="100" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="orderCantidad" required placeholder="100" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
                     
@@ -307,6 +310,129 @@
                     <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition">
                         <i class="fas fa-user-plus mr-2"></i>
                         Registrarse
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal (Change Password) -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-gray-700 animate-slide-in">
+            <div class="p-6 border-b border-gray-700 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-cog text-blue-500"></i>
+                    Configuración
+                </h3>
+                <button id="closeSettingsModal" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="changePasswordForm" class="p-6 space-y-5">
+                <div class="bg-blue-900/30 border border-blue-700/50 rounded-xl p-4">
+                    <p class="text-blue-300 text-sm flex items-start gap-2">
+                        <i class="fas fa-lock mt-0.5"></i>
+                        <span>Cambiar contraseña de acceso al portal</span>
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Contraseña Actual</label>
+                    <div class="relative">
+                        <input type="password" id="currentPassword" required placeholder="••••••••" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
+                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="currentPassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Nueva Contraseña</label>
+                    <div class="relative">
+                        <input type="password" id="newPassword" required minlength="4" placeholder="Mínimo 4 caracteres" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
+                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="newPassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Confirmar Nueva Contraseña</label>
+                    <div class="relative">
+                        <input type="password" id="confirmPassword" required minlength="4" placeholder="Repita la nueva contraseña" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
+                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="confirmPassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" id="cancelSettingsModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div id="editOrderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-2xl max-w-2xl w-full mx-4 shadow-2xl border border-gray-700 max-h-[90vh] overflow-y-auto animate-slide-in">
+            <div class="sticky top-0 bg-gray-800 p-6 border-b border-gray-700 flex items-center justify-between z-10">
+                <h3 class="text-xl font-bold text-white">
+                    <i class="fas fa-edit mr-2 text-amber-500"></i>
+                    Editar Pedido
+                </h3>
+                <button id="closeEditOrderModal" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="editOrderForm" class="p-6 space-y-6">
+                <input type="hidden" id="editOrderId">
+                <div class="space-y-4">
+                    <h4 class="text-white font-medium border-b border-gray-700 pb-2">📋 Información del Pedido</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Referencia / Modelo</label>
+                            <input type="text" id="editModelo" required placeholder="Ej: Bota Industrial 2024" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Cantidad de Pares</label>
+                            <input type="text" id="editCantidad" required placeholder="100" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Tallas (separadas por coma)</label>
+                            <input type="text" id="editTallas" placeholder="38, 39, 40, 41, 42" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Fecha Entrega Esperada</label>
+                            <input type="date" id="editFechaEntrega" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">🎨 Color Principal</label>
+                            <input type="text" id="editColor" required placeholder="Ej: Negro, Café, Miel..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Color Secundario (opcional)</label>
+                            <input type="text" id="editColorSecundario" placeholder="Ej: Beige, Blanco..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Especificaciones / Notas Adicionales</label>
+                        <textarea id="editNotas" rows="2" placeholder="Acabados, detalles especiales, instrucciones..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4 border-t border-gray-700">
+                    <button type="button" id="cancelEditOrderModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Guardar Cambios
                     </button>
                 </div>
             </form>
@@ -630,7 +756,7 @@
                                 <div class="flex flex-wrap gap-2">
                                     ${pedido.materiales.map(m => `
                                         <span class="px-2 py-1 bg-gray-700/50 rounded text-xs text-gray-300">
-                                            ${m.nombre}: ${m.cantidad} ${m.unidad}
+                                            ${m.nombre}: ${m.cantidad} ${m.unidad}${m.talla ? ` (T:${m.talla})` : ''}
                                             ${m.recibido ? '<i class="fas fa-check text-green-500 ml-1"></i>' : '<i class="fas fa-clock text-amber-500 ml-1"></i>'}
                                         </span>
                                     `).join('')}
@@ -638,11 +764,15 @@
                             </div>
                         ` : ''}
                         
-                        ${pedido.estado !== 'entregado' ? `
-                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end">
+                        ${pedido.estado === 'pendiente' ? `
+                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end gap-2">
+                                <button class="edit-pedido-btn px-4 py-2 bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
+                                    <i class="fas fa-edit"></i>
+                                    Modificar
+                                </button>
                                 <button class="delete-pedido-btn px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
                                     <i class="fas fa-trash"></i>
-                                    Eliminar Pedido
+                                    Eliminar
                                 </button>
                             </div>
                         ` : ''}
@@ -650,7 +780,10 @@
                 `;
             }).join('');
             
-            // Event listeners para eliminar
+            // Event listeners para editar y eliminar
+            document.querySelectorAll('.edit-pedido-btn').forEach(btn => {
+                btn.addEventListener('click', () => openEditOrder(btn.dataset.id));
+            });
             document.querySelectorAll('.delete-pedido-btn').forEach(btn => {
                 btn.addEventListener('click', () => deletePedido(btn.dataset.id));
             });
@@ -710,7 +843,7 @@
                                         <i class="fas fa-${mat.recibido ? 'check-circle text-green-500' : 'clock text-amber-500'}"></i>
                                         <span class="text-gray-300 text-sm">${mat.nombre}</span>
                                     </div>
-                                    <span class="text-gray-400 text-sm">${mat.cantidad} ${mat.unidad}</span>
+                                    <span class="text-gray-400 text-sm">${mat.cantidad} ${mat.unidad}${mat.talla ? ` · T:${mat.talla}` : ''}</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -729,7 +862,7 @@
             row.className = 'material-row space-y-2';
             row.innerHTML = `
                 <div class="grid grid-cols-12 gap-2 items-end">
-                    <div class="col-span-5">
+                    <div class="col-span-4">
                         <label class="block text-xs text-gray-400 mb-1">Material</label>
                         <div class="mat-autocomplete-wrap">
                             <input type="text" class="mat-nombre w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba o toque para ver" autocomplete="off">
@@ -738,9 +871,13 @@
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs text-gray-400 mb-1">Cantidad</label>
-                        <input type="number" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" step="0.1">
+                        <input type="text" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0">
                     </div>
-                    <div class="col-span-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs text-gray-400 mb-1">Talla</label>
+                        <input type="text" class="mat-talla w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: 38">
+                    </div>
+                    <div class="col-span-3">
                         <label class="block text-xs text-gray-400 mb-1">Unidad</label>
                         <select class="mat-unidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="metros">Metros</option>
@@ -824,14 +961,15 @@
             e.preventDefault();
             
             const modelo = document.getElementById('orderModelo').value.trim();
-            const cantidad = parseInt(document.getElementById('orderCantidad').value) || 0;
+            const cantidadRaw = document.getElementById('orderCantidad').value.trim();
+            const cantidad = parseInt(cantidadRaw) || 0;
             const tallas = document.getElementById('orderTallas').value.trim();
             const fechaEntrega = document.getElementById('orderFechaEntrega').value;
             const color = document.getElementById('orderColor').value.trim();
             const colorSecundario = document.getElementById('orderColorSecundario').value.trim();
             const notas = document.getElementById('orderNotas').value.trim();
             
-            if (!modelo || cantidad <= 0 || !fechaEntrega || !color) {
+            if (!modelo || !cantidadRaw || !fechaEntrega || !color) {
                 showToast('Complete los campos requeridos (incluido el color)', 'warning');
                 return;
             }
@@ -843,17 +981,19 @@
             
             materialRows.forEach(row => {
                 const nombre = row.querySelector('.mat-nombre')?.value?.trim() || '';
-                const cantidadMat = parseFloat(row.querySelector('.mat-cantidad').value) || 0;
+                const cantidadMat = row.querySelector('.mat-cantidad')?.value?.trim() || '';
+                const tallaMat = row.querySelector('.mat-talla')?.value?.trim() || '';
                 const unidadSelect = row.querySelector('.mat-unidad').value;
                 const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
                 
                 const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
                 
-                if (nombre && cantidadMat > 0) {
+                if (nombre && cantidadMat) {
                     materialesList.push({
                         nombre,
                         tipo: nombre.toLowerCase(),
                         cantidad: cantidadMat,
+                        talla: tallaMat,
                         unidad,
                         recibido: false
                     });
@@ -916,6 +1056,118 @@
             }
         }
 
+        // ==================== EDIT ORDER ====================
+        function openEditOrder(pedidoId) {
+            const pedido = pedidos.find(p => p.id === pedidoId);
+            if (!pedido) return;
+            
+            document.getElementById('editOrderId').value = pedidoId;
+            document.getElementById('editModelo').value = pedido.modelo || '';
+            document.getElementById('editCantidad').value = pedido.cantidad || '';
+            document.getElementById('editTallas').value = pedido.tallas || '';
+            document.getElementById('editColor').value = pedido.color || '';
+            document.getElementById('editColorSecundario').value = pedido.color_secundario || '';
+            document.getElementById('editNotas').value = pedido.notas || '';
+            
+            // Format date for input
+            if (pedido.fecha_entrega_esperada?.toDate) {
+                const d = pedido.fecha_entrega_esperada.toDate();
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                document.getElementById('editFechaEntrega').value = `${yyyy}-${mm}-${dd}`;
+            }
+            
+            document.getElementById('editOrderModal').classList.remove('hidden');
+        }
+
+        async function submitEditOrder(e) {
+            e.preventDefault();
+            
+            const pedidoId = document.getElementById('editOrderId').value;
+            const modelo = document.getElementById('editModelo').value.trim();
+            const cantidadRaw = document.getElementById('editCantidad').value.trim();
+            const cantidad = parseInt(cantidadRaw) || 0;
+            const tallas = document.getElementById('editTallas').value.trim();
+            const fechaEntrega = document.getElementById('editFechaEntrega').value;
+            const color = document.getElementById('editColor').value.trim();
+            const colorSecundario = document.getElementById('editColorSecundario').value.trim();
+            const notas = document.getElementById('editNotas').value.trim();
+            
+            if (!modelo || !cantidadRaw || !fechaEntrega || !color) {
+                showToast('Complete los campos requeridos', 'warning');
+                return;
+            }
+            
+            try {
+                await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+                    modelo,
+                    cantidad,
+                    cantidad_texto: cantidadRaw,
+                    tallas,
+                    color,
+                    color_secundario: colorSecundario,
+                    fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
+                    notas
+                });
+                
+                showToast('Pedido actualizado correctamente', 'success');
+                document.getElementById('editOrderModal').classList.add('hidden');
+            } catch (error) {
+                console.error('Error actualizando pedido:', error);
+                showToast('Error al actualizar el pedido', 'error');
+            }
+        }
+
+        // ==================== CHANGE PASSWORD ====================
+        async function changePassword(e) {
+            e.preventDefault();
+            
+            const currentPass = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            
+            if (!currentPass || !newPass || !confirmPass) {
+                showToast('Complete todos los campos', 'warning');
+                return;
+            }
+            
+            if (newPass !== confirmPass) {
+                showToast('Las contraseñas nuevas no coinciden', 'error');
+                return;
+            }
+            
+            if (newPass.length < 4) {
+                showToast('La contraseña debe tener mínimo 4 caracteres', 'warning');
+                return;
+            }
+            
+            try {
+                // Verify current password
+                const clientDoc = await getDoc(doc(db, 'clientes', currentClient.id));
+                if (!clientDoc.exists() || clientDoc.data().password !== currentPass) {
+                    showToast('Contraseña actual incorrecta', 'error');
+                    return;
+                }
+                
+                await updateDoc(doc(db, 'clientes', currentClient.id), {
+                    password: newPass
+                });
+                
+                // Update session
+                currentClient.password = newPass;
+                localStorage.setItem('ca_client_session', JSON.stringify(currentClient));
+                
+                showToast('Contraseña cambiada exitosamente', 'success');
+                document.getElementById('settingsModal').classList.add('hidden');
+                document.getElementById('changePasswordForm').reset();
+                
+            } catch (error) {
+                console.error('Error cambiando contraseña:', error);
+                showToast('Error al cambiar la contraseña', 'error');
+            }
+        }
+
         // ==================== TABS ====================
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -958,6 +1210,44 @@
         });
         document.getElementById('addMaterialBtn').addEventListener('click', addMaterialRow);
         document.getElementById('orderForm').addEventListener('submit', submitOrder);
+        
+        // Settings modal (change password)
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        });
+        document.getElementById('closeSettingsModal').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('changePasswordForm').reset();
+        });
+        document.getElementById('cancelSettingsModal').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('changePasswordForm').reset();
+        });
+        document.getElementById('changePasswordForm').addEventListener('submit', changePassword);
+        
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-pass-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const input = document.getElementById(btn.dataset.target);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('fa-eye', 'fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('fa-eye-slash', 'fa-eye');
+                }
+            });
+        });
+        
+        // Edit order modal
+        document.getElementById('closeEditOrderModal').addEventListener('click', () => {
+            document.getElementById('editOrderModal').classList.add('hidden');
+        });
+        document.getElementById('cancelEditOrderModal').addEventListener('click', () => {
+            document.getElementById('editOrderModal').classList.add('hidden');
+        });
+        document.getElementById('editOrderForm').addEventListener('submit', submitEditOrder);
         
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.tab));
