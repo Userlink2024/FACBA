@@ -443,9 +443,13 @@
 
     <footer class="border-t border-gray-800 mt-12 py-6">
         <div class="max-w-7xl mx-auto px-4 text-center">
-            <p class="text-gray-600 text-sm">C&A Manufacturas © 2024 - Bucaramanga, Colombia</p>
+            <p class="text-gray-600 text-sm">C&A Manufacturas © <span id="currentYear"></span> - Bucaramanga, Colombia</p>
         </div>
     </footer>
+
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
 
     <script type="module" src="js/finanzas.js"></script>
 </body>
