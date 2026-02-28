@@ -5,12 +5,13 @@
 import { checkAuthAndRedirect, logout, ROLES } from './auth.js';
 import { getNavigationMenu, getRoleName } from './roles.js';
 import { formatCurrency, getWeekStart, showToast, showConfirm } from './utils.js';
-import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, onSnapshot, Timestamp } from './firebase-init.js';
+import { auth, db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, onSnapshot, Timestamp, EmailAuthProvider, reauthenticateWithCredential } from './firebase-init.js';
 import { initNotifications } from './notifications.js';
 
 let orders = [];
 let employees = [];
 let inventory = [];
+let pedidoToDelete = null;
 
 // Inicializar
 async function init() {
@@ -907,7 +908,7 @@ function renderPedidosCliente() {
                     </div>
                 ` : ''}
                 
-                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap gap-2">
+                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap items-center gap-2">
                     ${pedido.estado === 'pendiente' || pedido.estado === 'materiales_recibidos' ? `
                         <button class="iniciar-produccion-btn px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
                             <i class="fas fa-play mr-1"></i>Iniciar Producción
@@ -923,6 +924,9 @@ function renderPedidosCliente() {
                             <i class="fas fa-truck mr-1"></i>Marcar Entregado
                         </button>
                     ` : ''}
+                    <button class="eliminar-pedido-btn ml-auto px-3 py-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-sm rounded-lg transition flex items-center gap-1.5" data-id="${pedido.id}" data-modelo="${pedido.modelo}" data-cliente="${pedido.cliente_nombre || ''}">
+                        <i class="fas fa-trash-alt"></i>Eliminar
+                    </button>
                 </div>
             </div>
         `;
@@ -944,6 +948,86 @@ function renderPedidosCliente() {
     document.querySelectorAll('.entregar-pedido-btn').forEach(btn => {
         btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'entregado'));
     });
+
+    document.querySelectorAll('.eliminar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => openDeletePedidoModal(btn.dataset.id, btn.dataset.modelo, btn.dataset.cliente));
+    });
+}
+
+function openDeletePedidoModal(pedidoId, modelo, clienteNombre) {
+    pedidoToDelete = pedidoId;
+    document.getElementById('deletePedidoName').textContent = `"${modelo}" de ${clienteNombre}`;
+    document.getElementById('deleteConfirmPassword').value = '';
+    document.getElementById('deletePasswordError').classList.add('hidden');
+    document.getElementById('deletePedidoModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('deleteConfirmPassword').focus(), 100);
+}
+
+function closeDeletePedidoModal() {
+    pedidoToDelete = null;
+    document.getElementById('deletePedidoModal').classList.add('hidden');
+    document.getElementById('deleteConfirmPassword').value = '';
+    document.getElementById('deletePasswordError').classList.add('hidden');
+}
+
+async function deleteOrderWithPassword() {
+    const password = document.getElementById('deleteConfirmPassword').value;
+    const errorEl = document.getElementById('deletePasswordError');
+    const btnText = document.getElementById('deleteConfirmBtnText');
+    const trashIcon = document.getElementById('deleteTrashIcon');
+    const confirmBtn = document.getElementById('confirmDeletePedidoBtn');
+
+    if (!password) {
+        errorEl.querySelector('span').textContent = 'Debe ingresar su contraseña.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (!pedidoToDelete) return;
+
+    // Loading state
+    confirmBtn.disabled = true;
+    btnText.textContent = 'Eliminando...';
+    trashIcon.classList.replace('fa-trash-alt', 'fa-spinner');
+    trashIcon.classList.add('animate-spin');
+    errorEl.classList.add('hidden');
+
+    try {
+        const user = auth.currentUser;
+        const credential = EmailAuthProvider.credential(user.email, password);
+        await reauthenticateWithCredential(user, credential);
+
+        // Find and delete linked ordenes entry
+        const ordenesQuery = query(
+            collection(db, 'ordenes'),
+            where('pedido_cliente_id', '==', pedidoToDelete)
+        );
+        const ordenesSnap = await getDocs(ordenesQuery);
+        for (const ordenDoc of ordenesSnap.docs) {
+            await deleteDoc(doc(db, 'ordenes', ordenDoc.id));
+        }
+
+        // Delete from pedidos_cliente
+        await deleteDoc(doc(db, 'pedidos_cliente', pedidoToDelete));
+
+        closeDeletePedidoModal();
+        showToast('Pedido eliminado correctamente', 'success');
+
+    } catch (error) {
+        console.error('Error eliminando pedido:', error);
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            errorEl.querySelector('span').textContent = 'Contraseña incorrecta. Intente de nuevo.';
+            errorEl.classList.remove('hidden');
+        } else {
+            showToast('Error al eliminar pedido', 'error');
+            closeDeletePedidoModal();
+        }
+    } finally {
+        confirmBtn.disabled = false;
+        btnText.textContent = 'Eliminar Definitivamente';
+        trashIcon.classList.replace('fa-spinner', 'fa-trash-alt');
+        trashIcon.classList.remove('animate-spin');
+    }
 }
 
 async function recibirMaterial(pedidoId, materialIdx) {
@@ -1398,6 +1482,23 @@ function setupEventListeners() {
     document.getElementById('clienteForm')?.addEventListener('submit', saveCliente);
     document.getElementById('searchClientes')?.addEventListener('input', (e) => {
         renderClientesTable(e.target.value);
+    });
+
+    // Delete pedido modal
+    document.getElementById('cancelDeletePedidoBtn')?.addEventListener('click', closeDeletePedidoModal);
+    document.getElementById('confirmDeletePedidoBtn')?.addEventListener('click', deleteOrderWithPassword);
+    document.getElementById('deleteConfirmPassword')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') deleteOrderWithPassword();
+    });
+    document.getElementById('toggleDeletePassword')?.addEventListener('click', () => {
+        const input = document.getElementById('deleteConfirmPassword');
+        const icon = document.querySelector('#toggleDeletePassword i');
+        input.type = input.type === 'password' ? 'text' : 'password';
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+    document.getElementById('deletePedidoModal')?.addEventListener('click', (e) => {
+        if (e.target === document.getElementById('deletePedidoModal')) closeDeletePedidoModal();
     });
 }
 
