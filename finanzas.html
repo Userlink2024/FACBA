@@ -441,6 +441,60 @@
         </div>
     </div>
 
+    <!-- Delete Pedido Modal (Password Confirmation) -->
+    <div id="deletePedidoModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-red-700/50">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-14 h-14 bg-red-600/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-trash-alt text-red-400 text-2xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Eliminar Pedido</h3>
+                    <p class="text-gray-400 text-sm mt-0.5">Esta acción no se puede deshacer</p>
+                </div>
+            </div>
+
+            <div class="bg-red-900/20 border border-red-700/50 rounded-xl p-4 mb-5">
+                <p class="text-red-300 text-sm flex items-start gap-2">
+                    <i class="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+                    <span>Se eliminará el pedido <strong id="deletePedidoName" class="text-red-200"></strong> de forma permanente, incluyendo la vista del cliente y la orden de producción asociada.</span>
+                </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    <i class="fas fa-lock mr-2 text-gray-500"></i>Confirme su contraseña para continuar
+                </label>
+                <div class="relative">
+                    <input
+                        type="password"
+                        id="deleteConfirmPassword"
+                        placeholder="Ingrese su contraseña"
+                        class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 pr-12 transition"
+                    >
+                    <button type="button" id="toggleDeletePassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <p id="deletePasswordError" class="hidden text-red-400 text-sm mt-2 flex items-center gap-1.5">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Contraseña incorrecta. Intente de nuevo.</span>
+                </p>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="cancelDeletePedidoBtn" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
+                    Cancelar
+                </button>
+                <button id="confirmDeletePedidoBtn" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
+                    <i id="deleteSpinnerIcon" class="fas fa-trash-alt hidden"></i>
+                    <i id="deleteTrashIcon" class="fas fa-trash-alt"></i>
+                    <span id="deleteConfirmBtnText">Eliminar Definitivamente</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <footer class="border-t border-gray-800 mt-12 py-6">
         <div class="max-w-7xl mx-auto px-4 text-center">
             <p class="text-gray-600 text-sm">C&A Manufacturas © <span id="currentYear"></span> - Bucaramanga, Colombia</p>
