@@ -328,7 +328,9 @@
                 ordersList.innerHTML = '';
                 snapshot.forEach(doc => {
                     const order = { id: doc.id, ...doc.data() };
-                    const progress = Math.round((order.pares_hechos / order.cantidad_total) * 100) || 0;
+                    order.pares_hechos = order.pares_hechos || 0;
+                    order.cantidad_total = order.cantidad_total || 0;
+                    const progress = order.cantidad_total > 0 ? Math.round((order.pares_hechos / order.cantidad_total) * 100) : 0;
                     const remaining = order.cantidad_total - order.pares_hechos;
                     
                     ordersList.innerHTML += `
@@ -368,6 +370,8 @@
 
         // Seleccionar orden
         function selectOrder(order) {
+            order.pares_hechos = order.pares_hechos || 0;
+            order.cantidad_total = order.cantidad_total || 0;
             selectedOrder = order;
             
             document.getElementById('ordersList').parentElement.classList.add('hidden');
@@ -401,9 +405,13 @@
                 return;
             }
             
-            const remaining = selectedOrder.cantidad_total - selectedOrder.pares_hechos;
+            const remaining = (selectedOrder.cantidad_total || 0) - (selectedOrder.pares_hechos || 0);
+            if (remaining <= 0) {
+                showToast('Esta orden ya está completa', 'warning');
+                return;
+            }
             if (cantidad > remaining) {
-                showToast(`Solo quedan ${remaining} pares por hacer en esta orden`, 'warning');
+                showToast(`Solo faltan ${remaining} pares. No puede registrar ${cantidad}.`, 'warning');
                 return;
             }
             
