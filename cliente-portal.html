@@ -260,8 +260,8 @@
                         Cancelar
                     </button>
                     <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition">
-                        <i class="fas fa-paper-plane mr-2"></i>
-                        Enviar Pedido
+                        <i class="fas fa-save mr-2"></i>
+                        Guardar Pedido
                     </button>
                 </div>
             </form>
@@ -712,6 +712,7 @@
             }
             
             const statusConfig = {
+                'borrador': { color: 'bg-gray-600/20 text-gray-400', icon: 'file-alt', label: 'Borrador' },
                 'pendiente': { color: 'bg-amber-600/20 text-amber-400', icon: 'clock', label: 'Pendiente' },
                 'materiales_recibidos': { color: 'bg-blue-600/20 text-blue-400', icon: 'box', label: 'Materiales Recibidos' },
                 'en_produccion': { color: 'bg-purple-600/20 text-purple-400', icon: 'cogs', label: 'En Producción' },
@@ -775,8 +776,8 @@
                             </div>
                         ` : ''}
                         
-                        ${pedido.estado === 'pendiente' ? `
-                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end gap-2">
+                        ${pedido.estado === 'borrador' || pedido.estado === 'pendiente' ? `
+                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end gap-2 flex-wrap">
                                 <button class="edit-pedido-btn px-4 py-2 bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
                                     <i class="fas fa-edit"></i>
                                     Modificar
@@ -785,18 +786,27 @@
                                     <i class="fas fa-trash"></i>
                                     Eliminar
                                 </button>
+                                ${pedido.estado === 'borrador' ? `
+                                <button class="enviar-pedido-btn px-4 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Enviar Pedido
+                                </button>
+                                ` : ''}
                             </div>
                         ` : ''}
                     </div>
                 `;
             }).join('');
             
-            // Event listeners para editar y eliminar
+            // Event listeners para editar, eliminar y enviar
             document.querySelectorAll('.edit-pedido-btn').forEach(btn => {
                 btn.addEventListener('click', () => openEditOrder(btn.dataset.id));
             });
             document.querySelectorAll('.delete-pedido-btn').forEach(btn => {
                 btn.addEventListener('click', () => deletePedido(btn.dataset.id));
+            });
+            document.querySelectorAll('.enviar-pedido-btn').forEach(btn => {
+                btn.addEventListener('click', () => enviarPedido(btn.dataset.id));
             });
         }
         
@@ -811,6 +821,48 @@
             } catch (error) {
                 console.error('Error eliminando pedido:', error);
                 showToast('Error al eliminar el pedido', 'error');
+            }
+        }
+
+        async function enviarPedido(pedidoId) {
+            const pedido = pedidos.find(p => p.id === pedidoId);
+            if (!pedido) return;
+            
+            if (!confirm(`¿Está seguro de enviar el pedido "${pedido.modelo}" a la fábrica?`)) {
+                return;
+            }
+            
+            try {
+                await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+                    estado: 'pendiente'
+                });
+                
+                // Send real-time notification to factory
+                await push(ref(rtdb, 'notificaciones_fabrica'), {
+                    tipo: 'nuevo_pedido',
+                    titulo: '📦 Nuevo Pedido de Cliente',
+                    mensaje: `${currentClient.nombre} ha solicitado ${pedido.cantidad} pares de "${pedido.modelo}"`,
+                    pedido_id: pedidoId,
+                    cliente_id: currentClient.id,
+                    fecha: Date.now(),
+                    leido: false
+                });
+                
+                // Also save to Firestore notifications
+                await addDoc(collection(db, 'notificaciones'), {
+                    tipo: 'nuevo_pedido',
+                    titulo: 'Nuevo Pedido de Cliente',
+                    mensaje: `${currentClient.nombre} solicita ${pedido.cantidad} pares de "${pedido.modelo}"`,
+                    pedido_id: pedidoId,
+                    cliente_id: currentClient.id,
+                    fecha: Timestamp.now(),
+                    leido: false
+                });
+                
+                showToast('Pedido enviado a la fábrica correctamente', 'success');
+            } catch (error) {
+                console.error('Error enviando pedido:', error);
+                showToast('Error al enviar el pedido', 'error');
             }
         }
 
@@ -1030,42 +1082,21 @@
             });
             
             try {
-                const pedidoRef = await addDoc(collection(db, 'pedidos_cliente'), {
+                await addDoc(collection(db, 'pedidos_cliente'), {
                     cliente_id: currentClient.id,
                     cliente_nombre: currentClient.nombre,
                     modelo,
                     cantidad,
+                    cantidad_texto: cantidadRaw,
                     tallas,
                     color,
                     color_secundario: colorSecundario,
                     fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
                     notas,
                     materiales: materialesList,
-                    estado: 'pendiente',
+                    estado: 'borrador',
                     pares_hechos: 0,
                     fecha_creacion: Timestamp.now()
-                });
-                
-                // Send real-time notification to factory
-                await push(ref(rtdb, 'notificaciones_fabrica'), {
-                    tipo: 'nuevo_pedido',
-                    titulo: '📦 Nuevo Pedido de Cliente',
-                    mensaje: `${currentClient.nombre} ha solicitado ${cantidad} pares de "${modelo}"`,
-                    pedido_id: pedidoRef.id,
-                    cliente_id: currentClient.id,
-                    fecha: Date.now(),
-                    leido: false
-                });
-                
-                // Also save to Firestore notifications
-                await addDoc(collection(db, 'notificaciones'), {
-                    tipo: 'nuevo_pedido',
-                    titulo: 'Nuevo Pedido de Cliente',
-                    mensaje: `${currentClient.nombre} solicita ${cantidad} pares de "${modelo}"`,
-                    pedido_id: pedidoRef.id,
-                    cliente_id: currentClient.id,
-                    fecha: Timestamp.now(),
-                    leido: false
                 });
                 
                 // Save new material names for future autocomplete
@@ -1073,7 +1104,7 @@
                     await saveNewMaterialNames(nombresUsados);
                 }
                 
-                showToast('Pedido enviado correctamente', 'success');
+                showToast('Pedido guardado como borrador', 'success');
                 document.getElementById('orderModal').classList.add('hidden');
                 document.getElementById('orderForm').reset();
                 document.getElementById('materialesContainer').innerHTML = '';
