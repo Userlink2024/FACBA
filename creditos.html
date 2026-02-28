@@ -2,1631 +2,598 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mi Crédito - Portal de Clientes</title>
-    <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Mi Crédito">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%232563eb' width='100' height='100' rx='20'/><text x='50' y='65' text-anchor='middle' fill='white' font-size='50'>💳</text></svg>">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Producción - C&A Cloud Factory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #2563eb;
-            --primary-dark: #1d4ed8;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --bg-color: #f1f5f9;
-            --card-bg: #ffffff;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-        }
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-color);
-            min-height: 100vh;
-            margin: 0;
-            padding: 0;
-        }
-        .auth-screen {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-            padding: 20px;
-        }
-        .auth-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px 30px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-        }
-        .auth-logo {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .auth-logo i {
-            font-size: 48px;
-            color: var(--primary-color);
-        }
-        .auth-logo h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin: 10px 0 5px;
-        }
-        .auth-logo p {
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-        .auth-tabs {
-            display: flex;
-            margin-bottom: 25px;
-            background: var(--bg-color);
-            border-radius: 10px;
-            padding: 4px;
-        }
-        .auth-tab {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            border: none;
-            background: transparent;
-            border-radius: 8px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .auth-tab.active {
-            background: white;
-            color: var(--primary-color);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .auth-form { display: none; }
-        .auth-form.active { display: block; }
-        .form-floating { margin-bottom: 15px; }
-        .form-floating > .form-control {
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
-            padding: 16px 12px;
-            height: auto;
-        }
-        .form-floating > .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-        }
-        .btn-primary-custom {
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            border: none;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .btn-primary-custom:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
-        }
-        .pending-screen {
-            min-height: 100vh;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            padding: 20px;
-            text-align: center;
-        }
-        .pending-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px 30px;
-            max-width: 400px;
-        }
-        .pending-card i {
-            font-size: 64px;
-            color: var(--warning-color);
-        }
-        .pending-card h2 {
-            margin: 20px 0 10px;
-            color: var(--text-primary);
-        }
-        .pending-card p {
-            color: var(--text-secondary);
-        }
-        .app-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .app-header h1 {
-            font-size: 18px;
-            margin: 0;
-            font-weight: 600;
-        }
-        .header-user {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .header-user-name {
-            font-size: 14px;
-            font-weight: 500;
-        }
-        .btn-logout {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .app-container { display: none; padding-bottom: 80px; }
-        .dashboard-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            padding: 25px 20px;
-            margin: -1px -1px 20px;
-        }
-        .welcome-text {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-        .user-name-display {
-            font-size: 22px;
-            font-weight: 700;
-            margin: 5px 0;
-        }
-        .balance-card {
-            background: rgba(255,255,255,0.15);
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 15px;
-        }
-        .balance-label {
-            font-size: 12px;
-            opacity: 0.8;
-        }
-        .balance-amount {
-            font-size: 28px;
-            font-weight: 700;
-        }
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            padding: 0 20px;
-            margin-top: -30px;
-        }
-        .quick-action-btn {
-            background: white;
-            border: none;
-            border-radius: 12px;
-            padding: 20px 15px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .quick-action-btn:hover { transform: translateY(-3px); }
-        .quick-action-btn i {
-            font-size: 28px;
-            color: var(--primary-color);
-            margin-bottom: 8px;
-        }
-        .quick-action-btn span {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-            padding: 20px 20px 10px;
-        }
-        .loan-card {
-            background: white;
-            margin: 10px 20px;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .loan-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .loan-amount {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        .loan-status {
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-        .loan-status.active {
-            background: #dcfce7;
-            color: #16a34a;
-        }
-        .loan-status.pending {
-            background: #fef3c7;
-            color: #d97706;
-        }
-        .loan-status.rejected {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-        .loan-status.completed {
-            background: #e0e7ff;
-            color: #4f46e5;
-        }
-        .loan-details {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            font-size: 12px;
-        }
-        .loan-detail-item label {
-            color: var(--text-secondary);
-            display: block;
-        }
-        .loan-detail-item span {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .progress-bar-custom {
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 3px;
-            margin-top: 12px;
-            overflow: hidden;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            background: var(--success-color);
-            border-radius: 3px;
-        }
-        .movement-item {
-            background: white;
-            margin: 8px 20px;
-            border-radius: 10px;
-            padding: 12px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-        .movement-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .movement-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-        .movement-icon.payment {
-            background: #dcfce7;
-            color: #16a34a;
-        }
-        .movement-icon.loan {
-            background: #dbeafe;
-            color: #2563eb;
-        }
-        .movement-text h4 {
-            margin: 0;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .movement-text p {
-            margin: 0;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        .movement-amount {
-            font-weight: 700;
-            font-size: 14px;
-        }
-        .movement-amount.positive { color: var(--success-color); }
-        .movement-amount.negative { color: var(--danger-color); }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-            z-index: 100;
-        }
-        .bottom-nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 11px;
-            padding: 5px 15px;
-            border-radius: 10px;
-            transition: all 0.3s;
-            cursor: pointer;
-            border: none;
-            background: none;
-        }
-        .bottom-nav-item i { font-size: 22px; margin-bottom: 3px; }
-        .bottom-nav-item.active {
-            color: var(--primary-color);
-            background: rgba(37, 99, 235, 0.1);
-        }
-        .view { display: none; }
-        .view.active { display: block; }
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-secondary);
-        }
-        .empty-state i {
-            font-size: 48px;
-            opacity: 0.5;
-            margin-bottom: 15px;
-        }
-        .modal-content { border-radius: 16px; }
-        .modal-header { border-bottom: none; padding: 20px 20px 10px; }
-        .modal-body { padding: 10px 20px 20px; }
-        .modal-footer { border-top: none; }
-        .loading-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        .loading-overlay.show { display: flex; }
-        .spinner-custom {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e2e8f0;
-            border-top-color: var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .alert-floating {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10000;
-            min-width: 300px;
-            max-width: 90%;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-        .form-section {
-            background: white;
-            margin: 15px;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .form-section h3 {
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: var(--text-primary);
-        }
-        .prestamista-info {
-            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-            border: 1px solid #86efac;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 15px;
-        }
-        .prestamista-info i { color: #16a34a; }
-        .cuota-preview {
-            background: var(--bg-color);
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-            margin-top: 15px;
-        }
-        .cuota-preview .amount {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-        .cuota-preview .label {
-            font-size: 12px;
-            color: var(--text-secondary);
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slide-out {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes bounce-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
+        .animate-slide-out { animation: slide-out 0.3s ease-out; }
+        .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
+        .btn-register {
+            min-height: 80px;
+            font-size: 1.5rem;
+        }
+        @media (max-width: 640px) {
+            .btn-register {
+                min-height: 100px;
+                font-size: 1.75rem;
+            }
         }
     </style>
 </head>
-<body>
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner-custom"></div>
-    </div>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900">
+    
+    <!-- Navbar -->
+    <nav class="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-shoe-prints text-white"></i>
+                    </div>
+                    <span class="text-white font-bold text-lg hidden sm:block">C&A Cloud Factory</span>
+                </div>
 
-    <!-- Auth Screen -->
-    <div class="auth-screen" id="authScreen">
-        <div class="auth-card">
-            <div class="auth-logo">
-                <i class="bi bi-wallet2"></i>
-                <h1>Mi Crédito</h1>
-                <p>Portal de Clientes</p>
+                <div id="navMenu" class="hidden md:flex items-center gap-2"></div>
+
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p id="userName" class="text-white text-sm font-medium">-</p>
+                        <p id="userRole" class="text-gray-400 text-xs">-</p>
+                    </div>
+                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Cerrar Sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
             </div>
-            <div class="auth-tabs">
-                <button class="auth-tab active" onclick="switchAuthTab('login')">Iniciar Sesión</button>
-                <button class="auth-tab" onclick="switchAuthTab('register')">Registrarse</button>
-            </div>
-            <div class="auth-form active" id="loginForm">
-                <div class="form-floating">
-                    <input type="email" class="form-control" id="loginEmail" placeholder="Email">
-                    <label>Correo electrónico</label>
-                </div>
-                <div class="form-floating">
-                    <input type="password" class="form-control" id="loginPassword" placeholder="Contraseña">
-                    <label>Contraseña</label>
-                </div>
-                <button class="btn-primary-custom" onclick="loginUser()">
-                    <i class="bi bi-box-arrow-in-right me-2"></i>Ingresar
-                </button>
-            </div>
-            <div class="auth-form" id="registerForm">
-                <div class="form-floating">
-                    <input type="text" class="form-control" id="regName" placeholder="Nombre">
-                    <label>Nombre completo</label>
-                </div>
-                <div class="form-floating">
-                    <input type="text" class="form-control" id="regCedula" placeholder="Cédula">
-                    <label>Cédula / Documento</label>
-                </div>
-                <div class="form-floating">
-                    <input type="tel" class="form-control" id="regPhone" placeholder="Teléfono">
-                    <label>Teléfono</label>
-                </div>
-                <div class="form-floating">
-                    <input type="email" class="form-control" id="regEmail" placeholder="Email">
-                    <label>Correo electrónico</label>
-                </div>
-                <div class="form-floating">
-                    <input type="password" class="form-control" id="regPassword" placeholder="Contraseña">
-                    <label>Contraseña</label>
-                </div>
-                <div class="form-floating">
-                    <input type="text" class="form-control" id="regCodigoPrestamista" placeholder="Código">
-                    <label>Código del Prestamista</label>
-                </div>
-                <small class="text-muted d-block mb-3">El código te lo proporciona tu prestamista</small>
-                <button class="btn-primary-custom" onclick="registerUser()">
-                    <i class="bi bi-person-plus me-2"></i>Crear Cuenta
-                </button>
-            </div>
+        </div>
+    </nav>
+
+    <!-- Sanction Banner -->
+    <div id="sanctionBanner" class="hidden bg-red-900/80 border-b border-red-700">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-center gap-3">
+            <i class="fas fa-ban text-red-400"></i>
+            <p class="text-red-200 font-medium">Su cuenta está sancionada. No puede registrar producción. Contacte a RRHH.</p>
         </div>
     </div>
 
-    <!-- Pending Approval Screen -->
-    <div class="pending-screen" id="pendingScreen">
-        <div class="pending-card">
-            <i class="bi bi-hourglass-split"></i>
-            <h2>Cuenta Pendiente</h2>
-            <p>Tu cuenta está siendo revisada por el prestamista. Te notificaremos cuando sea aprobada.</p>
-            <button class="btn btn-warning mt-3" onclick="logoutUser()">
-                <i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesión
-            </button>
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-white">
+                <i class="fas fa-industry mr-3 text-blue-500"></i>
+                Registro de Producción
+            </h1>
+            <p class="text-gray-400 mt-2">Registra los pares completados por orden de trabajo</p>
         </div>
-    </div>
 
-    <!-- Main App -->
-    <div class="app-container" id="appContainer">
-        <header class="app-header">
-            <h1><i class="bi bi-wallet2 me-2"></i>Mi Crédito</h1>
-            <div class="header-user">
-                <span class="header-user-name" id="headerUserName">Usuario</span>
-                <button class="btn-logout" onclick="logoutUser()">
-                    <i class="bi bi-box-arrow-right"></i>
-                </button>
-            </div>
-        </header>
-
-        <!-- Dashboard View -->
-        <div class="view active" id="dashboardView">
-            <div class="dashboard-header">
-                <div class="welcome-text">Bienvenido</div>
-                <div class="user-name-display" id="dashUserName">Usuario</div>
-                <div class="balance-card">
-                    <div class="balance-label">Deuda Total</div>
-                    <div class="balance-amount" id="totalDebt">$0</div>
+        <!-- Earnings Summary Card (Mobile First) -->
+        <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 mb-8 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <p class="text-emerald-100 text-sm mb-1">
+                        <i class="fas fa-wallet mr-2"></i>
+                        Ganancia Esta Semana
+                    </p>
+                    <p id="weekEarnings" class="text-4xl sm:text-5xl font-bold text-white">$0</p>
                 </div>
-            </div>
-            <div class="quick-actions">
-                <button class="quick-action-btn" onclick="showView('solicitar')">
-                    <i class="bi bi-plus-circle"></i>
-                    <span>Solicitar Crédito</span>
-                </button>
-                <button class="quick-action-btn" onclick="showView('prestamos')">
-                    <i class="bi bi-list-check"></i>
-                    <span>Mis Créditos</span>
-                </button>
-            </div>
-            <h3 class="section-title">Crédito Activo</h3>
-            <div id="activeLoansContainer">
-                <div class="empty-state">
-                    <i class="bi bi-inbox"></i>
-                    <p>No tienes créditos activos</p>
-                </div>
-            </div>
-            <h3 class="section-title">Últimos Movimientos</h3>
-            <div id="recentMovementsContainer">
-                <div class="empty-state">
-                    <i class="bi bi-clock-history"></i>
-                    <p>Sin movimientos recientes</p>
+                <div class="flex gap-4 sm:gap-8">
+                    <div class="text-center">
+                        <p class="text-emerald-100 text-xs mb-1">Pares Hoy</p>
+                        <p id="paresToday" class="text-2xl font-bold text-white">0</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-emerald-100 text-xs mb-1">Pares Semana</p>
+                        <p id="paresWeek" class="text-2xl font-bold text-white">0</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Solicitar Crédito View -->
-        <div class="view" id="solicitarView">
-            <div class="form-section">
-                <h3><i class="bi bi-cash-coin me-2"></i>Solicitar Crédito</h3>
-                <div class="prestamista-info" id="prestamistaInfo">
-                    <i class="bi bi-person-check me-2"></i>
-                    <span id="prestamistaName">Cargando...</span>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Monto a solicitar</label>
-                    <input type="text" class="form-control" id="solMonto" placeholder="Ej: 500.000" inputmode="numeric" oninput="formatearMontoSolicitud(); calcularPreviewSolicitud();">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Plazo (número de cuotas)</label>
-                    <input type="number" class="form-control" id="solPlazo" min="1" max="60" value="12" placeholder="Ej: 12" oninput="calcularPreviewSolicitud()">
-                    <small class="text-muted">Ingresa el número de cuotas deseado (1-60)</small>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Frecuencia de Pago</label>
-                    <select class="form-select" id="solFrecuencia" onchange="calcularPreviewSolicitud()">
-                        <option value="1">Diario</option>
-                        <option value="7">Semanal</option>
-                        <option value="15">Quincenal</option>
-                        <option value="30" selected>Mensual</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Motivo del crédito</label>
-                    <textarea class="form-control" id="solMotivo" rows="2" placeholder="¿Para qué necesitas el crédito?"></textarea>
-                </div>
-                <h6 class="mt-3 mb-2"><i class="bi bi-bank me-1"></i>Datos bancarios para desembolso</h6>
-                <div class="mb-3">
-                    <label class="form-label">Banco</label>
-                    <select class="form-select" id="solBanco">
-                        <option value="">Seleccionar banco...</option>
-                        <option value="Bancolombia">Bancolombia</option>
-                        <option value="Davivienda">Davivienda</option>
-                        <option value="BBVA">BBVA</option>
-                        <option value="Banco de Bogotá">Banco de Bogotá</option>
-                        <option value="Nequi">Nequi</option>
-                        <option value="Daviplata">Daviplata</option>
-                        <option value="Banco Popular">Banco Popular</option>
-                        <option value="Banco de Occidente">Banco de Occidente</option>
-                        <option value="Scotiabank Colpatria">Scotiabank Colpatria</option>
-                        <option value="Otro">Otro</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Número de cuenta / celular</label>
-                    <input type="text" class="form-control" id="solNumeroCuenta" placeholder="Ej: 1234567890" inputmode="numeric">
-                </div>
-                <div class="cuota-preview">
-                    <div class="label">Cuota estimada (sujeta a aprobación)</div>
-                    <div class="amount" id="previewCuota">$0</div>
-                </div>
-                <button class="btn-primary-custom mt-3" onclick="enviarSolicitud()">
-                    <i class="bi bi-send me-2"></i>Enviar Solicitud
-                </button>
+        <!-- Order Selection -->
+        <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6 mb-8">
+            <h2 class="text-lg font-semibold text-white mb-4">
+                <i class="fas fa-clipboard-list mr-2 text-amber-500"></i>
+                Seleccionar Orden de Trabajo
+            </h2>
+            
+            <div id="ordersList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <p class="text-gray-500 col-span-full text-center py-4">Cargando órdenes...</p>
             </div>
         </div>
 
-        <!-- Mis Créditos View -->
-        <div class="view" id="prestamosView">
-            <h3 class="section-title">Mis Créditos</h3>
-            <div id="allLoansContainer">
-                <div class="empty-state">
-                    <i class="bi bi-inbox"></i>
-                    <p>No tienes créditos</p>
+        <!-- Production Registration (Only visible when order is selected) -->
+        <div id="productionSection" class="hidden">
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6 mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-semibold text-white">
+                            <i class="fas fa-shoe-prints mr-2 text-blue-500"></i>
+                            Registrar Pares
+                        </h2>
+                        <p id="selectedOrderInfo" class="text-gray-400 text-sm mt-1">-</p>
+                    </div>
+                    <button id="changeOrderBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition text-sm">
+                        <i class="fas fa-exchange-alt mr-2"></i>
+                        Cambiar Orden
+                    </button>
                 </div>
-            </div>
-        </div>
 
-        <!-- Movimientos View -->
-        <div class="view" id="movimientosView">
-            <h3 class="section-title">Historial de Movimientos</h3>
-            <div id="allMovementsContainer">
-                <div class="empty-state">
-                    <i class="bi bi-clock-history"></i>
-                    <p>Sin movimientos</p>
+                <!-- Big Buttons for Quick Registration -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <button class="btn-register bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2 register-btn" data-cantidad="1">
+                        <i class="fas fa-shoe-prints text-2xl"></i>
+                        <span>+1 Par</span>
+                    </button>
+                    <button class="btn-register bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2 register-btn" data-cantidad="5">
+                        <i class="fas fa-shoe-prints text-2xl"></i>
+                        <span>+5 Pares</span>
+                    </button>
+                    <button class="btn-register bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2 register-btn" data-cantidad="10">
+                        <i class="fas fa-shoe-prints text-2xl"></i>
+                        <span>+10 Pares</span>
+                    </button>
+                    <button class="btn-register bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg flex flex-col items-center justify-center gap-2" id="customAmountBtn">
+                        <i class="fas fa-edit text-2xl"></i>
+                        <span>Otro</span>
+                    </button>
+                </div>
+
+                <!-- Custom Amount Input (Hidden by default) -->
+                <div id="customAmountSection" class="hidden mb-6 animate-bounce-in">
+                    <div class="flex gap-4">
+                        <input 
+                            type="number" 
+                            id="customAmount" 
+                            min="1" 
+                            max="100"
+                            placeholder="Cantidad de pares"
+                            class="flex-1 px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                        <button id="registerCustomBtn" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition">
+                            <i class="fas fa-check mr-2"></i>
+                            Registrar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Success Animation -->
+                <div id="successAnimation" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div class="bg-emerald-600 rounded-2xl p-8 text-center animate-bounce-in">
+                        <i class="fas fa-check-circle text-6xl text-white mb-4"></i>
+                        <p id="successMessage" class="text-2xl font-bold text-white">¡+10 Pares Registrados!</p>
+                        <p id="successEarnings" class="text-emerald-100 mt-2">+$50,000</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Mis Solicitudes View -->
-        <div class="view" id="solicitudesView">
-            <h3 class="section-title">Mis Solicitudes</h3>
-            <div id="solicitudesContainer">
-                <div class="empty-state">
-                    <i class="bi bi-file-earmark-text"></i>
-                    <p>No has enviado solicitudes</p>
-                </div>
+        <!-- Today's Production Log -->
+        <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">
+                <i class="fas fa-history mr-2 text-purple-500"></i>
+                Mi Producción de Hoy
+            </h2>
+            
+            <div id="todayProductionList" class="space-y-3 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 text-center py-4">Sin registros hoy</p>
             </div>
         </div>
+    </main>
 
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <button class="bottom-nav-item active" onclick="showView('dashboard')">
-                <i class="bi bi-house"></i>
-                <span>Inicio</span>
-            </button>
-            <button class="bottom-nav-item" onclick="showView('solicitar')">
-                <i class="bi bi-plus-circle"></i>
-                <span>Solicitar</span>
-            </button>
-            <button class="bottom-nav-item" onclick="showView('solicitudes')">
-                <i class="bi bi-file-earmark-text"></i>
-                <span>Solicitudes</span>
-            </button>
-            <button class="bottom-nav-item" onclick="showView('prestamos')">
-                <i class="bi bi-credit-card"></i>
-                <span>Créditos</span>
-            </button>
-        </nav>
-    </div>
-
-    <!-- Modal Ver Detalle Crédito -->
-    <div class="modal fade" id="detalleModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detalle del Crédito</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="detalleModalBody">
-                </div>
-            </div>
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-600 text-sm">C&A Manufacturas © 2024 - Bucaramanga, Colombia</p>
         </div>
-    </div>
+    </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // ==================== PWA (Manifest + Service Worker) ====================
-        const manifestData = {
-            name: 'Mi Crédito - Portal de Clientes',
-            short_name: 'Mi Crédito',
-            description: 'Portal de clientes para consultar créditos, movimientos y solicitar préstamos',
-            start_url: window.location.href.split('?')[0],
-            display: 'standalone',
-            background_color: '#f1f5f9',
-            theme_color: '#2563eb',
-            orientation: 'portrait-primary',
-            icons: [
-                {
-                    src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%232563eb" width="512" height="512" rx="80"/><text x="256" y="320" text-anchor="middle" fill="white" font-size="260">💳</text></svg>',
-                    sizes: '512x512',
-                    type: 'image/svg+xml',
-                    purpose: 'any maskable'
-                },
-                {
-                    src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect fill="%232563eb" width="192" height="192" rx="30"/><text x="96" y="125" text-anchor="middle" fill="white" font-size="100">💳</text></svg>',
-                    sizes: '192x192',
-                    type: 'image/svg+xml',
-                    purpose: 'any'
-                }
-            ]
-        };
-
-        const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
-        const manifestURL = URL.createObjectURL(manifestBlob);
-        const manifestLink = document.createElement('link');
-        manifestLink.rel = 'manifest';
-        manifestLink.href = manifestURL;
-        document.head.appendChild(manifestLink);
-
-        if ('serviceWorker' in navigator) {
-            const swCode = `
-                const CACHE_NAME = 'creditos-app-v1';
-                const urlsToCache = [
-                    './'
-                ];
-
-                self.addEventListener('install', (event) => {
-                    event.waitUntil(
-                        caches.open(CACHE_NAME).then((cache) => {
-                            return cache.addAll(urlsToCache);
-                        })
-                    );
-                    self.skipWaiting();
-                });
-
-                self.addEventListener('activate', (event) => {
-                    event.waitUntil(
-                        caches.keys().then((cacheNames) => {
-                            return Promise.all(
-                                cacheNames.filter((name) => name !== CACHE_NAME)
-                                    .map((name) => caches.delete(name))
-                            );
-                        })
-                    );
-                    self.clients.claim();
-                });
-
-                self.addEventListener('fetch', (event) => {
-                    if (event.request.method !== 'GET') return;
-
-                    event.respondWith(
-                        fetch(event.request)
-                            .then((response) => {
-                                if (response.status === 200) {
-                                    const responseClone = response.clone();
-                                    caches.open(CACHE_NAME).then((cache) => {
-                                        cache.put(event.request, responseClone);
-                                    });
-                                }
-                                return response;
-                            })
-                            .catch(() => {
-                                return caches.match(event.request);
-                            })
-                    );
-                });
-            `;
-
-            const swBlob = new Blob([swCode], { type: 'application/javascript' });
-            const swURL = URL.createObjectURL(swBlob);
-
-            navigator.serviceWorker.register(swURL, { scope: './' })
-                .then((registration) => {
-                    console.log('Service Worker registrado:', registration.scope);
-                })
-                .catch((error) => {
-                    console.log('Error al registrar Service Worker:', error);
-                });
-        }
-    </script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, get, set, push, update, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        // Firebase config - MISMA que prestamos.html
-        const firebaseConfig = {
-            apiKey: "AIzaSyBVtSkeQe1WZna6nKC4vGxd4ISaRBQ5SVY",
-            authDomain: "facba-a160c.firebaseapp.com",
-            databaseURL: "https://facba-a160c-default-rtdb.firebaseio.com",
-            projectId: "facba-a160c",
-            storageBucket: "facba-a160c.firebasestorage.app",
-            messagingSenderId: "585530132394",
-            appId: "1:585530132394:web:a25cda63f883f786804dd3",
-            measurementId: "G-S29LSYM8TQ"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
+        import { checkAuthAndRedirect, logout, getCurrentUserData, ROLES } from './js/auth.js';
+        import { getNavigationMenu, getRoleName } from './js/roles.js';
+        import { formatCurrency, formatTime, getWeekStart, getDayStart, showToast, showConfirm } from './js/utils.js';
+        import { db, collection, doc, getDoc, getDocs, addDoc, updateDoc, query, where, orderBy, onSnapshot, Timestamp, increment } from './js/firebase-init.js';
+        import { initNotifications } from './js/notifications.js';
 
         let currentUser = null;
-        let clienteData = null;
-        let prestamistaUid = null;
-        let prestamosCliente = [];
-        let movimientosCliente = [];
-        let solicitudesCliente = [];
+        let currentUserData = null;
+        let selectedOrder = null;
+        let userTarifa = 0;
 
-        // Utility functions
-        function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
-        function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
-
-        function showAlert(message, type = 'info') {
-            const existing = document.querySelector('.alert-floating');
-            if (existing) existing.remove();
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type} alert-floating alert-dismissible fade show`;
-            alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-            document.body.appendChild(alert);
-            setTimeout(() => alert.remove(), 4000);
-        }
-
-        function parseCOP(value) {
-            const raw = String(value ?? '').replace(/[^0-9]/g, '');
-            return parseInt(raw || '0', 10) || 0;
-        }
-
-        function formatCOPInput(value) {
-            const n = parseCOP(value);
-            return n ? n.toLocaleString('es-CO') : '';
-        }
-
-        function formatMoney(amount) {
-            return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount || 0);
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            // Si es formato YYYY-MM-DD (sin hora), parsear como fecha local para evitar desfase por zona horaria
-            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-                const [y, m, d] = dateStr.split('-').map(Number);
-                const fecha = new Date(y, m - 1, d);
-                return fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Bogota' });
-            }
-            // Para ISO completo (con hora), forzar zona Colombia
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return '-';
-            return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Bogota' });
-        }
-
-        // Auth functions
-        window.switchAuthTab = function(tab) {
-            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-            if (tab === 'login') {
-                document.querySelector('.auth-tab:first-child').classList.add('active');
-                document.getElementById('loginForm').classList.add('active');
-            } else {
-                document.querySelector('.auth-tab:last-child').classList.add('active');
-                document.getElementById('registerForm').classList.add('active');
-            }
-        };
-
-        window.loginUser = async function() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            if (!email || !password) {
-                showAlert('Ingresa email y contraseña', 'warning');
-                return;
-            }
-            showLoading();
+        // Inicializar
+        async function init() {
             try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (e) {
-                showAlert('Error: ' + e.message, 'danger');
-            } finally {
-                hideLoading();
-            }
-        };
-
-        window.registerUser = async function() {
-            const nombre = document.getElementById('regName').value.trim();
-            const cedula = document.getElementById('regCedula').value.trim();
-            const telefono = document.getElementById('regPhone').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-            const codigoPrestamista = document.getElementById('regCodigoPrestamista').value.trim();
-
-            if (!nombre || !cedula || !telefono || !email || !password || !codigoPrestamista) {
-                showAlert('Completa todos los campos', 'warning');
-                return;
-            }
-            if (password.length < 6) {
-                showAlert('La contraseña debe tener al menos 6 caracteres', 'warning');
-                return;
-            }
-
-            showLoading();
-            try {
-                // Verificar que el código del prestamista existe
-                const prestamistasSnap = await get(ref(db, 'prestamos_app/users'));
-                let prestamistaEncontrado = null;
-                const codigoUpper = codigoPrestamista.toUpperCase();
+                const { user, userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO]);
                 
-                if (prestamistasSnap.exists()) {
-                    const prestamistas = prestamistasSnap.val();
-                    for (const uid in prestamistas) {
-                        // El código es los primeros 8 caracteres del UID en mayúsculas
-                        const codigoGenerado = uid.substring(0, 8).toUpperCase();
-                        if (codigoGenerado === codigoUpper || uid === codigoPrestamista) {
-                            prestamistaEncontrado = uid;
-                            break;
-                        }
-                    }
-                }
-
-                if (!prestamistaEncontrado) {
-                    showAlert('Código de prestamista no válido', 'danger');
-                    return;
-                }
-
-                // Crear cuenta de cliente
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await updateProfile(userCredential.user, { displayName: nombre });
-
-                // Guardar datos del cliente
-                await set(ref(db, `prestamos_app/clientes/${userCredential.user.uid}`), {
-                    nombre,
-                    cedula,
-                    telefono,
-                    email,
-                    prestamistaUid: prestamistaEncontrado,
-                    estado: 'pendiente',
-                    fechaRegistro: new Date().toISOString()
-                });
-
-                // Notificar al prestamista
-                await push(ref(db, `prestamos_app/users/${prestamistaEncontrado}/clientesPendientes`), {
-                    clienteUid: userCredential.user.uid,
-                    nombre,
-                    cedula,
-                    telefono,
-                    email,
-                    fechaSolicitud: new Date().toISOString()
-                });
-                showAlert('Registro exitoso. Tu cuenta está pendiente de aprobación.', 'success');
-            } catch (e) {
-                showAlert('Error: ' + e.message, 'danger');
-            } finally {
-                hideLoading();
-            }
-        };
-
-        window.logoutUser = async function() {
-            await signOut(auth);
-            location.reload();
-        };
-
-        // View management
-        window.showView = function(viewName) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
-            document.getElementById(viewName + 'View').classList.add('active');
-            document.querySelector(`.bottom-nav-item[onclick="showView('${viewName}')"]`).classList.add('active');
-        };
-
-        // Calcular preview de solicitud
-        window.calcularPreviewSolicitud = function() {
-            const monto = parseCOP(document.getElementById('solMonto').value);
-            const plazo = parseInt(document.getElementById('solPlazo').value) || 12;
-            const frecuencia = parseInt(document.getElementById('solFrecuencia').value) || 30;
-            const interesMensualPct = 10; // 10% estimado (sujeto a aprobación del prestamista)
-            // Interés es MENSUAL: calcular meses que cubre el crédito
-            const mesesCredito = Math.ceil(plazo * frecuencia / 30);
-            const totalInteres = monto * (interesMensualPct / 100) * mesesCredito;
-            const totalPagar = monto + totalInteres;
-            const cuotaEstimada = Math.ceil(totalPagar / plazo);
-            document.getElementById('previewCuota').textContent = formatMoney(cuotaEstimada);
-        };
-
-        window.formatearMontoSolicitud = function() {
-            const input = document.getElementById('solMonto');
-            const formatted = formatCOPInput(input.value);
-            input.value = formatted;
-        };
-
-        // Enviar solicitud de crédito
-        window.enviarSolicitud = async function() {
-            if (!clienteData || !prestamistaUid) {
-                showAlert('Error de sesión', 'danger');
-                return;
-            }
-
-            const monto = parseCOP(document.getElementById('solMonto').value);
-            const plazo = parseInt(document.getElementById('solPlazo').value);
-            const frecuencia = parseInt(document.getElementById('solFrecuencia').value);
-            const motivo = document.getElementById('solMotivo').value.trim();
-            const banco = document.getElementById('solBanco').value;
-            const numeroCuenta = document.getElementById('solNumeroCuenta').value.trim();
-
-            if (!monto || monto < 10000) {
-                showAlert('Ingresa un monto válido (mínimo $10,000)', 'warning');
-                return;
-            }
-
-            showLoading();
-            try {
-                await push(ref(db, `prestamos_app/users/${prestamistaUid}/solicitudesCredito`), {
-                    clienteUid: currentUser.uid,
-                    clienteNombre: clienteData.nombre,
-                    clienteCedula: clienteData.cedula,
-                    clienteTelefono: clienteData.telefono,
-                    clienteEmail: clienteData.email,
-                    montoSolicitado: monto,
-                    plazoSolicitado: plazo,
-                    frecuenciaSolicitada: frecuencia,
-                    motivo,
-                    banco: banco || '',
-                    numeroCuenta: numeroCuenta || '',
-                    estado: 'pendiente',
-                    fechaSolicitud: new Date().toISOString()
-                });
-
-                hideLoading();
-                showAlert('Solicitud enviada. Tu prestamista la revisará pronto.', 'success');
-                document.getElementById('solMonto').value = '';
-                document.getElementById('solMotivo').value = '';
-                document.getElementById('solBanco').value = '';
-                document.getElementById('solNumeroCuenta').value = '';
-                
-                // Recargar datos para que aparezca en Mis Solicitudes
-                await cargarDatosCliente();
-                showView('solicitudes');
-            } catch (e) {
-                hideLoading();
-                showAlert('Error: ' + e.message, 'danger');
-            }
-        };
-
-        // Cargar datos del cliente
-        async function cargarDatosCliente() {
-            if (!currentUser || !prestamistaUid) return;
-
-            try {
-                // Cargar préstamos del cliente desde el prestamista
-                const prestamosSnap = await get(ref(db, `prestamos_app/users/${prestamistaUid}/prestamos`));
-                prestamosCliente = [];
-                movimientosCliente = [];
-
-                if (prestamosSnap.exists()) {
-                    const allPrestamos = prestamosSnap.val();
-                    for (const id in allPrestamos) {
-                        const p = allPrestamos[id];
-                        if (p.clienteUid === currentUser.uid || p.cedula === clienteData.cedula) {
-                            // Normalizar campos entre formato prestamos.html y creditos.html
-                            const monto = p.capital || p.monto || 0;
-                            const fecha = p.fechaApertura || p.fecha || '';
-                            const interes = p.interes || 0;
-                            const valorInteres = p.valorInteres || 0;
-                            const frecuencia = p.frecuencia || 30;
-                            let totalAbonado = p.totalAbonado || 0;
-                            let cuotasPagadas = p.cuotasPagadas || 0;
-                            // Si tiene array de pagos, calcular cuotas pagadas y total abonado por cuotas
-                            if (Array.isArray(p.pagos)) {
-                                cuotasPagadas = p.pagos.filter(pg => pg.pagada).length;
-                                totalAbonado = p.pagos.filter(pg => pg.pagada).reduce((sum, pg) => sum + (pg.valor || pg.monto || 0), 0);
-                            }
-                            // Sumar abonos adicionales (capital/interés) si existen
-                            let totalAbonosExtra = 0;
-                            if (Array.isArray(p.abonos)) {
-                                totalAbonosExtra = p.abonos.reduce((sum, ab) => sum + (ab.monto || 0), 0);
-                                totalAbonado += totalAbonosExtra;
-                            }
-                            prestamosCliente.push({
-                                id, ...p,
-                                monto,
-                                fecha,
-                                interes,
-                                valorInteres,
-                                frecuencia,
-                                totalAbonado,
-                                cuotasPagadas
-                            });
-                        }
-                    }
-                }
-
-                // Construir movimientos desde los datos del préstamo
-                prestamosCliente.forEach(prestamo => {
-                    // Cuotas pagadas del calendario de pagos
-                    if (Array.isArray(prestamo.pagos)) {
-                        prestamo.pagos.forEach((pg, idx) => {
-                            if (pg.pagada) {
-                                movimientosCliente.push({
-                                    id: `pago_${prestamo.id}_${idx}`,
-                                    tipo: 'abono',
-                                    subtipo: 'cuota',
-                                    prestamoId: prestamo.id,
-                                    prestamoNombre: prestamo.nombre || prestamo.monto,
-                                    monto: pg.valor || pg.monto || 0,
-                                    fecha: pg.fechaPago || pg.fecha,
-                                    descripcion: `Cuota ${pg.numero || (idx + 1)} de ${prestamo.cuotas}`
-                                });
-                            }
-                        });
-                    }
-                    // Abonos adicionales (capital/interés)
-                    if (Array.isArray(prestamo.abonos)) {
-                        prestamo.abonos.forEach((ab, idx) => {
-                            movimientosCliente.push({
-                                id: `abono_${prestamo.id}_${idx}`,
-                                tipo: 'abono',
-                                subtipo: ab.tipo || 'capital',
-                                prestamoId: prestamo.id,
-                                prestamoNombre: prestamo.nombre || prestamo.monto,
-                                monto: ab.monto || 0,
-                                fecha: ab.fecha,
-                                descripcion: ab.tipo === 'interes' ? 'Abono a Interés' : 'Abono a Capital'
-                            });
-                        });
-                    }
-                });
-
-                // También cargar abonos de la colección separada (legacy)
-                const abonosSnap = await get(ref(db, `prestamos_app/users/${prestamistaUid}/abonos`));
-                if (abonosSnap.exists()) {
-                    const allAbonos = abonosSnap.val();
-                    for (const id in allAbonos) {
-                        const a = allAbonos[id];
-                        const prestamo = prestamosCliente.find(p => p.id === a.prestamoId);
-                        if (prestamo) {
-                            // Evitar duplicados si ya se cargó desde el prestamo
-                            if (!movimientosCliente.find(m => m.fecha === a.fecha && m.monto === a.monto && m.prestamoId === a.prestamoId)) {
-                                movimientosCliente.push({ id, tipo: 'abono', subtipo: 'legacy', prestamoId: a.prestamoId, ...a });
-                            }
-                        }
-                    }
-                }
-
-                // Cargar solicitudes del cliente
-                const solicitudesSnap = await get(ref(db, `prestamos_app/users/${prestamistaUid}/solicitudesCredito`));
-                solicitudesCliente = [];
-                if (solicitudesSnap.exists()) {
-                    const allSolicitudes = solicitudesSnap.val();
-                    for (const id in allSolicitudes) {
-                        const s = allSolicitudes[id];
-                        if (s.clienteUid === currentUser.uid) {
-                            solicitudesCliente.push({ id, ...s });
-                        }
-                    }
-                }
-
-                renderDashboard();
-                renderPrestamos();
-                renderMovimientos();
-                renderSolicitudes();
-            } catch (e) {
-                console.error('Error cargando datos:', e);
-            }
-        }
-
-        function renderDashboard() {
-            // Calcular deuda total
-            let deudaTotal = 0;
-            const prestamosActivos = prestamosCliente.filter(p => {
-                const saldo = (p.totalPagar || 0) - (p.totalAbonado || 0);
-                if (saldo > 0) deudaTotal += saldo;
-                return saldo > 0;
-            });
-
-            document.getElementById('totalDebt').textContent = formatMoney(deudaTotal);
-
-            // Render préstamos activos
-            const container = document.getElementById('activeLoansContainer');
-            if (prestamosActivos.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="bi bi-inbox"></i><p>No tienes créditos activos</p></div>';
-            } else {
-                container.innerHTML = prestamosActivos.slice(0, 2).map(p => renderLoanCard(p)).join('');
-            }
-
-            // Render movimientos recientes
-            const movContainer = document.getElementById('recentMovementsContainer');
-            const recentMov = movimientosCliente.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 5);
-            if (recentMov.length === 0) {
-                movContainer.innerHTML = '<div class="empty-state"><i class="bi bi-clock-history"></i><p>Sin movimientos recientes</p></div>';
-            } else {
-                movContainer.innerHTML = recentMov.map(m => renderMovementItem(m)).join('');
-            }
-        }
-
-        function getFrecuenciaText(freq) {
-            const f = parseInt(freq);
-            if (f === 1) return 'Diario';
-            if (f === 7) return 'Semanal';
-            if (f === 15) return 'Quincenal';
-            if (f === 30) return 'Mensual';
-            return freq ? `Cada ${freq} días` : 'Mensual';
-        }
-
-        function renderLoanCard(p) {
-            const saldo = (p.totalPagar || 0) - (p.totalAbonado || 0);
-            const progreso = p.totalPagar > 0 ? ((p.totalAbonado || 0) / p.totalPagar * 100).toFixed(0) : 0;
-            const cuotasPagadas = p.cuotasPagadas || 0;
-            const totalCuotas = p.cuotas || 1;
-
-            return `
-                <div class="loan-card" onclick="verDetallePrestamo('${p.id}')">
-                    <div class="loan-card-header">
-                        <span class="loan-amount">${formatMoney(p.monto)}</span>
-                        <span class="loan-status active">Activo</span>
-                    </div>
-                    <div class="loan-details">
-                        <div class="loan-detail-item">
-                            <label>Saldo</label>
-                            <span>${formatMoney(saldo)}</span>
-                        </div>
-                        <div class="loan-detail-item">
-                            <label>Cuota</label>
-                            <span>${formatMoney(p.valorCuota)}</span>
-                        </div>
-                        <div class="loan-detail-item">
-                            <label>Interés</label>
-                            <span>${p.interes || 0}%</span>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between mt-1 mb-1">
-                        <small class="text-muted">${cuotasPagadas}/${totalCuotas} cuotas · ${getFrecuenciaText(p.frecuencia)}</small>
-                    </div>
-                    <div class="progress-bar-custom">
-                        <div class="progress-bar-fill" style="width: ${progreso}%"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getMovementLabel(m) {
-            if (m.descripcion) return m.descripcion;
-            if (m.subtipo === 'cuota') return 'Pago de cuota';
-            if (m.subtipo === 'interes') return 'Abono a Interés';
-            if (m.subtipo === 'capital') return 'Abono a Capital';
-            if (m.tipo === 'abono') return 'Pago realizado';
-            return 'Préstamo';
-        }
-
-        function getMovementIcon(m) {
-            if (m.subtipo === 'cuota') return 'bi-check-circle';
-            if (m.subtipo === 'interes') return 'bi-percent';
-            if (m.subtipo === 'capital') return 'bi-cash-stack';
-            return m.tipo === 'abono' ? 'bi-arrow-up-circle' : 'bi-cash-coin';
-        }
-
-        function renderMovementItem(m) {
-            return `
-                <div class="movement-item">
-                    <div class="movement-info">
-                        <div class="movement-icon ${m.tipo === 'abono' ? 'payment' : 'loan'}">
-                            <i class="bi ${getMovementIcon(m)}"></i>
-                        </div>
-                        <div class="movement-text">
-                            <h4>${getMovementLabel(m)}</h4>
-                            <p>${formatDate(m.fecha)}</p>
-                        </div>
-                    </div>
-                    <span class="movement-amount ${m.tipo === 'abono' ? 'positive' : 'negative'}">
-                        ${m.tipo === 'abono' ? '-' : '+'}${formatMoney(m.monto)}
-                    </span>
-                </div>
-            `;
-        }
-
-        function renderPrestamos() {
-            const container = document.getElementById('allLoansContainer');
-            if (prestamosCliente.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="bi bi-inbox"></i><p>No tienes créditos</p></div>';
-                return;
-            }
-            container.innerHTML = prestamosCliente.map(p => {
-                const saldo = (p.totalPagar || 0) - (p.totalAbonado || 0);
-                const status = saldo <= 0 ? 'completed' : 'active';
-                const statusText = saldo <= 0 ? 'Pagado' : 'Activo';
-                const progreso = p.totalPagar > 0 ? ((p.totalAbonado || 0) / p.totalPagar * 100).toFixed(0) : 0;
-                const cuotasPagadas = p.cuotasPagadas || 0;
-
-                // Desembolso info
-                const desemb = p.desembolso || {};
-                let desembolsoHTML = '';
-                if (desemb.desembolsado) {
-                    desembolsoHTML = `<div class="alert alert-success py-1 px-2 mt-2 mb-0 small"><i class="bi bi-check-circle me-1"></i>Desembolsado${desemb.banco ? ` - ${desemb.banco}` : ''}${desemb.numeroCuenta ? ` (${desemb.numeroCuenta})` : ''}</div>`;
-                } else {
-                    desembolsoHTML = `<div class="alert alert-warning py-1 px-2 mt-2 mb-0 small"><i class="bi bi-hourglass-split me-1"></i>Pendiente de desembolso${desemb.banco ? ` · ${desemb.banco}` : ''}${desemb.numeroCuenta ? ` (${desemb.numeroCuenta})` : ''}</div>`;
-                }
-
-                return `
-                    <div class="loan-card" onclick="verDetallePrestamo('${p.id}')">
-                        <div class="loan-card-header">
-                            <span class="loan-amount">${formatMoney(p.monto)}</span>
-                            <span class="loan-status ${status}">${statusText}</span>
-                        </div>
-                        <div class="loan-details">
-                            <div class="loan-detail-item">
-                                <label>Fecha</label>
-                                <span>${formatDate(p.fecha)}</span>
-                            </div>
-                            <div class="loan-detail-item">
-                                <label>Interés</label>
-                                <span>${p.interes || 0}%</span>
-                            </div>
-                            <div class="loan-detail-item">
-                                <label>Saldo</label>
-                                <span>${formatMoney(saldo)}</span>
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between mt-1 mb-1">
-                            <small class="text-muted">${cuotasPagadas}/${p.cuotas} cuotas · ${getFrecuenciaText(p.frecuencia)}</small>
-                        </div>
-                        <div class="progress-bar-custom">
-                            <div class="progress-bar-fill" style="width: ${progreso}%"></div>
-                        </div>
-                        ${desembolsoHTML}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderMovimientos() {
-            const container = document.getElementById('allMovementsContainer');
-            const allMov = [...movimientosCliente].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-            
-            if (allMov.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="bi bi-clock-history"></i><p>Sin movimientos</p></div>';
-                return;
-            }
-            container.innerHTML = allMov.map(m => renderMovementItem(m)).join('');
-        }
-
-        function renderSolicitudes() {
-            const container = document.getElementById('solicitudesContainer');
-            if (solicitudesCliente.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="bi bi-file-earmark-text"></i><p>No has enviado solicitudes</p></div>';
-                return;
-            }
-            
-            const sorted = [...solicitudesCliente].sort((a, b) => new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud));
-            container.innerHTML = sorted.map(s => {
-                let estadoClass = 'bg-warning text-dark';
-                let estadoIcon = 'bi-hourglass-split';
-                let estadoText = 'Pendiente';
-                
-                if (s.estado === 'aprobado') {
-                    estadoClass = 'bg-success';
-                    estadoIcon = 'bi-check-circle';
-                    estadoText = 'Aprobado';
-                } else if (s.estado === 'rechazado') {
-                    estadoClass = 'bg-danger';
-                    estadoIcon = 'bi-x-circle';
-                    estadoText = 'Rechazado';
-                }
-                
-                return `
-                    <div class="loan-card mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="loan-amount">${formatMoney(s.montoSolicitado)}</span>
-                            <span class="badge ${estadoClass}"><i class="${estadoIcon} me-1"></i>${estadoText}</span>
-                        </div>
-                        <div class="loan-details">
-                            <div class="loan-detail-item">
-                                <label>Cuotas</label>
-                                <span>${s.plazoSolicitado}</span>
-                            </div>
-                            <div class="loan-detail-item">
-                                <label>Frecuencia</label>
-                                <span>${getFrecuenciaText(s.frecuenciaSolicitada)}</span>
-                            </div>
-                            <div class="loan-detail-item">
-                                <label>Fecha</label>
-                                <span>${formatDate(s.fechaSolicitud)}</span>
-                            </div>
-                        </div>
-                        ${s.banco ? `<small class="text-muted d-block mt-2"><i class="bi bi-bank me-1"></i>${s.banco}${s.numeroCuenta ? ` - ${s.numeroCuenta}` : ''}</small>` : ''}
-                        ${s.motivo ? `<small class="text-muted d-block mt-1"><i class="bi bi-chat-text me-1"></i>${s.motivo}</small>` : ''}
-                        ${s.estado === 'rechazado' && s.motivoRechazo ? `<div class="alert alert-danger py-2 mt-2 mb-0 small"><i class="bi bi-exclamation-triangle me-1"></i>${s.motivoRechazo}</div>` : ''}
-                        ${s.estado === 'aprobado' ? `<div class="alert alert-success py-2 mt-2 mb-0 small"><i class="bi bi-check2-circle me-1"></i>¡Tu crédito ha sido aprobado! Revisa la sección de Créditos.</div>` : ''}
-                        ${s.estado === 'pendiente' ? `<div class="alert alert-info py-2 mt-2 mb-0 small"><i class="bi bi-info-circle me-1"></i>Tu solicitud está siendo revisada por tu prestamista.</div>` : ''}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        window.verDetallePrestamo = async function(prestamoId) {
-            const prestamo = prestamosCliente.find(p => p.id === prestamoId);
-            if (!prestamo) return;
-
-            const saldo = (prestamo.totalPagar || 0) - (prestamo.totalAbonado || 0);
-            
-            // Obtener pagos de cuotas del calendario
-            const pagosCuotas = Array.isArray(prestamo.pagos)
-                ? prestamo.pagos.filter(pg => pg.pagada).map((pg, idx) => ({
-                    tipo: 'cuota',
-                    numero: pg.numero || (idx + 1),
-                    monto: pg.valor || pg.monto || 0,
-                    fecha: pg.fechaPago || pg.fecha,
-                    totalCuotas: prestamo.cuotas
-                }))
-                : [];
-            
-            // Obtener abonos adicionales (capital/interés)
-            const abonosExtra = Array.isArray(prestamo.abonos)
-                ? prestamo.abonos.map(ab => ({
-                    tipo: ab.tipo || 'capital',
-                    monto: ab.monto || 0,
-                    fecha: ab.fecha,
-                    descripcion: ab.tipo === 'interes' ? 'Abono a Interés' : 'Abono a Capital'
-                }))
-                : [];
-            
-            // Combinar y ordenar por fecha
-            const todosLosPagos = [...pagosCuotas, ...abonosExtra].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-            // Desembolso info
-            const desemb = prestamo.desembolso || {};
-            let desembolsoHTML = '';
-            if (desemb.desembolsado) {
-                desembolsoHTML = `
-                    <div class="alert alert-success py-2 mt-2 mb-0">
-                        <div class="d-flex align-items-center mb-1"><i class="bi bi-check-circle-fill me-2"></i><strong>Desembolsado</strong></div>
-                        ${desemb.banco ? `<small class="d-block">Banco: ${desemb.banco}</small>` : ''}
-                        ${desemb.numeroCuenta ? `<small class="d-block">Cuenta: ${desemb.numeroCuenta}</small>` : ''}
-                        ${desemb.fechaDesembolso ? `<small class="d-block">Fecha: ${formatDate(desemb.fechaDesembolso)}</small>` : ''}
-                    </div>`;
-            } else {
-                desembolsoHTML = `
-                    <div class="alert alert-warning py-2 mt-2 mb-0">
-                        <div class="d-flex align-items-center"><i class="bi bi-hourglass-split me-2"></i><strong>Pendiente de desembolso</strong></div>
-                        ${desemb.banco ? `<small class="d-block">Banco: ${desemb.banco}</small>` : ''}
-                        ${desemb.numeroCuenta ? `<small class="d-block">Cuenta: ${desemb.numeroCuenta}</small>` : ''}
-                        <small class="text-muted">Tu prestamista aún no ha registrado el desembolso.</small>
-                    </div>`;
-            }
-
-            const modalBody = document.getElementById('detalleModalBody');
-            modalBody.innerHTML = `
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Monto prestado:</span>
-                        <strong>${formatMoney(prestamo.monto)}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Interés:</span>
-                        <strong>${prestamo.interes || 0}% × ${prestamo.mesesCredito || Math.ceil((prestamo.cuotas || 1) * (prestamo.frecuencia || 30) / 30)} mes(es) = ${formatMoney(prestamo.valorInteres || 0)}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Total a pagar:</span>
-                        <strong>${formatMoney(prestamo.totalPagar)}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Abonado:</span>
-                        <strong class="text-success">${formatMoney(prestamo.totalAbonado || 0)}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Saldo pendiente:</span>
-                        <strong class="text-danger">${formatMoney(saldo)}</strong>
-                    </div>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Fecha inicio:</span>
-                        <span>${formatDate(prestamo.fecha)}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Cuotas:</span>
-                        <span>${prestamo.cuotasPagadas || 0} de ${prestamo.cuotas}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Valor cuota:</span>
-                        <span>${formatMoney(prestamo.valorCuota)}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Frecuencia:</span>
-                        <span>${getFrecuenciaText(prestamo.frecuencia)}</span>
-                    </div>
-                </div>
-                <h6 class="mt-3 mb-2"><i class="bi bi-bank me-1"></i>Estado de Desembolso</h6>
-                ${desembolsoHTML}
-                <h6 class="mt-4 mb-3"><i class="bi bi-list-check me-1"></i>Calendario de Cuotas</h6>
-                ${Array.isArray(prestamo.pagos) && prestamo.pagos.length > 0
-                    ? prestamo.pagos.map(pg => `
-                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <div>
-                                <span class="${pg.pagada ? 'text-success' : 'text-muted'}">
-                                    <i class="bi ${pg.pagada ? 'bi-check-circle-fill' : 'bi-circle'} me-1"></i>
-                                    Cuota ${pg.numero}
-                                </span>
-                                <small class="text-muted d-block">${formatDate(pg.fecha)}</small>
-                                ${pg.pagada && pg.fechaPago ? `<small class="text-success d-block">Pagada el ${formatDate(pg.fechaPago)}</small>` : ''}
-                            </div>
-                            <div class="text-end">
-                                <strong class="${pg.pagada ? 'text-success' : ''}">${formatMoney(pg.valor || pg.monto || 0)}</strong>
-                                ${pg.pagada ? '<br><span class="badge bg-success" style="font-size:0.65rem">Pagada</span>' : '<br><span class="badge bg-secondary" style="font-size:0.65rem">Pendiente</span>'}
-                            </div>
-                        </div>
-                    `).join('')
-                    : '<p class="text-muted text-center">Sin calendario de cuotas</p>'
-                }
-                ${abonosExtra.length > 0 ? `
-                    <h6 class="mt-4 mb-3"><i class="bi bi-cash-stack me-1"></i>Abonos Adicionales</h6>
-                    ${abonosExtra.map(ab => `
-                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <div>
-                                <span class="${ab.tipo === 'interes' ? 'text-info' : 'text-primary'}">
-                                    <i class="bi ${ab.tipo === 'interes' ? 'bi-percent' : 'bi-cash-stack'} me-1"></i>
-                                    ${ab.descripcion}
-                                </span>
-                                <small class="text-muted d-block">${formatDate(ab.fecha)}</small>
-                            </div>
-                            <strong class="text-success">${formatMoney(ab.monto)}</strong>
-                        </div>
-                    `).join('')}
-                ` : ''}
-            `;
-
-            new bootstrap.Modal(document.getElementById('detalleModal')).show();
-        };
-
-        // Auth state listener
-        onAuthStateChanged(auth, async (user) => {
-            hideLoading();
-            if (user) {
                 currentUser = user;
+                currentUserData = userData;
+                userTarifa = userData.tarifa_par || 5000;
                 
-                // Verificar si es cliente registrado
-                const clienteSnap = await get(ref(db, `prestamos_app/clientes/${user.uid}`));
+                document.getElementById('userName').textContent = userData.nombre;
+                document.getElementById('userRole').textContent = getRoleName(userData.rol);
                 
-                if (!clienteSnap.exists()) {
-                    // No es un cliente, cerrar sesión
-                    showAlert('Esta cuenta no está registrada como cliente', 'danger');
-                    await signOut(auth);
-                    return;
+                generateNavMenu(userData.rol);
+                
+                // Inicializar notificaciones globales
+                initNotifications(user.uid);
+                
+                // Verificar sanción
+                if (userData.estado === 'sancionado') {
+                    document.getElementById('sanctionBanner').classList.remove('hidden');
+                    disableProduction();
                 }
-
-                clienteData = clienteSnap.val();
-                prestamistaUid = clienteData.prestamistaUid;
-
-                // Verificar estado del cliente
-                if (clienteData.estado === 'pendiente') {
-                    document.getElementById('authScreen').style.display = 'none';
-                    document.getElementById('pendingScreen').style.display = 'flex';
-                    document.getElementById('appContainer').style.display = 'none';
-                    return;
-                }
-
-                if (clienteData.estado === 'rechazado') {
-                    showAlert('Tu solicitud fue rechazada. Contacta al prestamista.', 'danger');
-                    await signOut(auth);
-                    return;
-                }
-
-                // Cliente aprobado
-                document.getElementById('authScreen').style.display = 'none';
-                document.getElementById('pendingScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-
-                // Actualizar UI
-                const displayName = clienteData.nombre || user.email;
-                document.getElementById('headerUserName').textContent = displayName;
-                document.getElementById('dashUserName').textContent = displayName;
-
-                // Cargar info del prestamista
-                try {
-                    const prestamistaSnap = await get(ref(db, `prestamos_app/users/${prestamistaUid}/perfil`));
-                    if (prestamistaSnap.exists()) {
-                        const prestamista = prestamistaSnap.val();
-                        document.getElementById('prestamistaName').textContent = prestamista.nombre || 'Tu prestamista';
-                    }
-                } catch (e) {
-                    console.log('Error cargando prestamista:', e);
-                }
-
-                cargarDatosCliente();
-
-            } else {
-                currentUser = null;
-                clienteData = null;
-                prestamistaUid = null;
-                document.getElementById('authScreen').style.display = 'flex';
-                document.getElementById('pendingScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'none';
+                
+                // Cargar datos
+                await loadEarnings();
+                await loadActiveOrders();
+                listenToTodayProduction();
+                
+                // Event listeners
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('Error de autenticación:', error);
             }
-        });
+        }
+
+        function generateNavMenu(rol) {
+            const menu = getNavigationMenu(rol);
+            const navMenu = document.getElementById('navMenu');
+            navMenu.innerHTML = menu.map(item => `
+                <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${window.location.pathname.includes(item.href.replace('.html', '')) && item.href !== 'dashboard.html' ? 'bg-gray-700/50 text-white' : ''}">
+                    <i class="fas ${item.icon}"></i>
+                    <span>${item.name}</span>
+                </a>
+            `).join('');
+        }
+
+        function disableProduction() {
+            const buttons = document.querySelectorAll('.register-btn, #customAmountBtn, #registerCustomBtn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            });
+        }
+
+        // Cargar ganancias
+        async function loadEarnings() {
+            try {
+                const weekStart = getWeekStart();
+                const today = getDayStart();
+                
+                const weekQuery = query(
+                    collection(db, 'produccion_logs'),
+                    where('uid_operario', '==', currentUser.uid),
+                    where('fecha', '>=', Timestamp.fromDate(weekStart))
+                );
+                
+                const snapshot = await getDocs(weekQuery);
+                
+                let weekEarnings = 0;
+                let weekPares = 0;
+                let todayPares = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    weekEarnings += data.monto_ganado || 0;
+                    weekPares += data.cantidad || 0;
+                    
+                    const fecha = data.fecha.toDate();
+                    if (fecha >= today) {
+                        todayPares += data.cantidad || 0;
+                    }
+                });
+                
+                document.getElementById('weekEarnings').textContent = formatCurrency(weekEarnings);
+                document.getElementById('paresWeek').textContent = weekPares;
+                document.getElementById('paresToday').textContent = todayPares;
+                
+            } catch (error) {
+                console.error('Error cargando ganancias:', error);
+            }
+        }
+
+        // Cargar órdenes activas
+        async function loadActiveOrders() {
+            try {
+                const ordersQuery = query(
+                    collection(db, 'ordenes'),
+                    where('estado', '==', 'activa'),
+                    orderBy('fecha_creacion', 'desc')
+                );
+                
+                const snapshot = await getDocs(ordersQuery);
+                const ordersList = document.getElementById('ordersList');
+                
+                if (snapshot.empty) {
+                    ordersList.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">No hay órdenes activas disponibles</p>';
+                    return;
+                }
+                
+                ordersList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const order = { id: doc.id, ...doc.data() };
+                    order.pares_hechos = order.pares_hechos || 0;
+                    order.cantidad_total = order.cantidad_total || 0;
+                    const progress = order.cantidad_total > 0 ? Math.round((order.pares_hechos / order.cantidad_total) * 100) : 0;
+                    const remaining = order.cantidad_total - order.pares_hechos;
+                    
+                    ordersList.innerHTML += `
+                        <div class="order-card bg-gray-700/50 hover:bg-gray-700 rounded-xl p-4 cursor-pointer transition border-2 border-transparent hover:border-blue-500" data-order='${JSON.stringify(order)}'>
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <p class="text-white font-semibold">${order.cliente}</p>
+                                    <p class="text-gray-400 text-sm">${order.modelo}</p>
+                                </div>
+                                <span class="px-2 py-1 bg-amber-600/20 text-amber-400 text-xs rounded-full">
+                                    Faltan ${remaining}
+                                </span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: ${progress}%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span>${order.pares_hechos} de ${order.cantidad_total} pares</span>
+                                <span>${progress}%</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Agregar event listeners a las tarjetas
+                document.querySelectorAll('.order-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const order = JSON.parse(card.dataset.order);
+                        selectOrder(order);
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error cargando órdenes:', error);
+            }
+        }
+
+        // Seleccionar orden
+        function selectOrder(order) {
+            order.pares_hechos = order.pares_hechos || 0;
+            order.cantidad_total = order.cantidad_total || 0;
+            selectedOrder = order;
+            
+            document.getElementById('ordersList').parentElement.classList.add('hidden');
+            document.getElementById('productionSection').classList.remove('hidden');
+            
+            const remaining = order.cantidad_total - order.pares_hechos;
+            document.getElementById('selectedOrderInfo').innerHTML = `
+                <span class="text-white font-medium">${order.cliente}</span> - ${order.modelo} 
+                <span class="text-amber-400">(Faltan ${remaining} pares)</span>
+            `;
+        }
+
+        // Cambiar orden
+        function changeOrder() {
+            selectedOrder = null;
+            document.getElementById('ordersList').parentElement.classList.remove('hidden');
+            document.getElementById('productionSection').classList.add('hidden');
+            document.getElementById('customAmountSection').classList.add('hidden');
+            loadActiveOrders();
+        }
+
+        // Registrar producción
+        async function registerProduction(cantidad) {
+            if (!selectedOrder) {
+                showToast('Seleccione una orden primero', 'warning');
+                return;
+            }
+            
+            if (currentUserData.estado === 'sancionado') {
+                showToast('Su cuenta está sancionada. No puede registrar producción.', 'error');
+                return;
+            }
+            
+            const remaining = (selectedOrder.cantidad_total || 0) - (selectedOrder.pares_hechos || 0);
+            if (remaining <= 0) {
+                showToast('Esta orden ya está completa', 'warning');
+                return;
+            }
+            if (cantidad > remaining) {
+                showToast(`Solo faltan ${remaining} pares. No puede registrar ${cantidad}.`, 'warning');
+                return;
+            }
+            
+            try {
+                const monto = cantidad * userTarifa;
+                
+                // Agregar log de producción
+                await addDoc(collection(db, 'produccion_logs'), {
+                    uid_operario: currentUser.uid,
+                    nombre_operario: currentUserData.nombre,
+                    id_orden: selectedOrder.id,
+                    orden_cliente: selectedOrder.cliente,
+                    orden_modelo: selectedOrder.modelo,
+                    cantidad: cantidad,
+                    tarifa: userTarifa,
+                    monto_ganado: monto,
+                    fecha: Timestamp.now()
+                });
+                
+                // Actualizar orden
+                await updateDoc(doc(db, 'ordenes', selectedOrder.id), {
+                    pares_hechos: increment(cantidad)
+                });
+                
+                // Sincronizar con pedido del cliente si existe
+                if (selectedOrder.pedido_cliente_id) {
+                    await updateDoc(doc(db, 'pedidos_cliente', selectedOrder.pedido_cliente_id), {
+                        pares_hechos: increment(cantidad)
+                    });
+                }
+                
+                // Actualizar orden seleccionada
+                selectedOrder.pares_hechos += cantidad;
+                
+                // Mostrar animación de éxito
+                showSuccessAnimation(cantidad, monto);
+                
+                // Actualizar ganancias
+                await loadEarnings();
+                
+                // Verificar si la orden está completa
+                if (selectedOrder.pares_hechos >= selectedOrder.cantidad_total) {
+                    await updateDoc(doc(db, 'ordenes', selectedOrder.id), {
+                        estado: 'completada'
+                    });
+                    
+                    // Sincronizar estado con pedido del cliente
+                    if (selectedOrder.pedido_cliente_id) {
+                        await updateDoc(doc(db, 'pedidos_cliente', selectedOrder.pedido_cliente_id), {
+                            estado: 'completado',
+                            fecha_completado: Timestamp.now()
+                        });
+                    }
+                    
+                    showToast('¡Orden completada!', 'success');
+                    changeOrder();
+                } else {
+                    // Actualizar info de orden
+                    const remaining = selectedOrder.cantidad_total - selectedOrder.pares_hechos;
+                    document.getElementById('selectedOrderInfo').innerHTML = `
+                        <span class="text-white font-medium">${selectedOrder.cliente}</span> - ${selectedOrder.modelo} 
+                        <span class="text-amber-400">(Faltan ${remaining} pares)</span>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error registrando producción:', error);
+                showToast('Error al registrar producción', 'error');
+            }
+        }
+
+        // Mostrar animación de éxito
+        function showSuccessAnimation(cantidad, monto) {
+            const animation = document.getElementById('successAnimation');
+            document.getElementById('successMessage').textContent = `¡+${cantidad} ${cantidad === 1 ? 'Par' : 'Pares'} Registrado${cantidad === 1 ? '' : 's'}!`;
+            document.getElementById('successEarnings').textContent = `+${formatCurrency(monto)}`;
+            
+            animation.classList.remove('hidden');
+            
+            setTimeout(() => {
+                animation.classList.add('hidden');
+            }, 1500);
+        }
+
+        // Escuchar producción de hoy en tiempo real
+        function listenToTodayProduction() {
+            const today = getDayStart();
+            
+            const todayQuery = query(
+                collection(db, 'produccion_logs'),
+                where('uid_operario', '==', currentUser.uid),
+                where('fecha', '>=', Timestamp.fromDate(today)),
+                orderBy('fecha', 'desc')
+            );
+            
+            onSnapshot(todayQuery, (snapshot) => {
+                const list = document.getElementById('todayProductionList');
+                
+                if (snapshot.empty) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin registros hoy</p>';
+                    return;
+                }
+                
+                list.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const log = doc.data();
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-shoe-prints text-blue-500 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-white font-medium">${log.orden_cliente} - ${log.orden_modelo}</p>
+                                    <p class="text-gray-500 text-sm">${formatTime(log.fecha)}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-white font-bold text-lg">${log.cantidad} pares</p>
+                                <p class="text-emerald-400 font-medium">${formatCurrency(log.monto_ganado)}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Cambiar orden
+            document.getElementById('changeOrderBtn').addEventListener('click', changeOrder);
+            
+            // Botones de registro rápido
+            document.querySelectorAll('.register-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cantidad = parseInt(btn.dataset.cantidad);
+                    registerProduction(cantidad);
+                });
+            });
+            
+            // Botón de cantidad personalizada
+            document.getElementById('customAmountBtn').addEventListener('click', () => {
+                const section = document.getElementById('customAmountSection');
+                section.classList.toggle('hidden');
+                if (!section.classList.contains('hidden')) {
+                    document.getElementById('customAmount').focus();
+                }
+            });
+            
+            // Registrar cantidad personalizada
+            document.getElementById('registerCustomBtn').addEventListener('click', () => {
+                const input = document.getElementById('customAmount');
+                const cantidad = parseInt(input.value);
+                
+                if (!cantidad || cantidad < 1) {
+                    showToast('Ingrese una cantidad válida', 'warning');
+                    return;
+                }
+                
+                if (cantidad > 100) {
+                    showToast('Máximo 100 pares por registro', 'warning');
+                    return;
+                }
+                
+                registerProduction(cantidad);
+                input.value = '';
+                document.getElementById('customAmountSection').classList.add('hidden');
+            });
+            
+            // Enter en input de cantidad
+            document.getElementById('customAmount').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('registerCustomBtn').click();
+                }
+            });
+        }
+
+        // Iniciar
+        init();
     </script>
 </body>
 </html>
