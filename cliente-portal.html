@@ -426,6 +426,17 @@
                         <textarea id="editNotas" rows="2" placeholder="Acabados, detalles especiales, instrucciones..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                     </div>
                 </div>
+
+                <!-- Materiales a Entregar (Editar) -->
+                <div class="space-y-4">
+                    <h4 class="text-white font-medium border-b border-gray-700 pb-2">📦 Materiales que Entregará</h4>
+                    <div id="editMaterialesContainer" class="space-y-3"></div>
+                    <button type="button" id="addEditMaterialBtn" class="w-full py-2 border-2 border-dashed border-gray-600 hover:border-blue-500 text-gray-400 hover:text-blue-400 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Agregar Material
+                    </button>
+                </div>
+
                 <div class="flex gap-3 pt-4 border-t border-gray-700">
                     <button type="button" id="cancelEditOrderModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
                         Cancelar
@@ -855,8 +866,8 @@
         // ==================== ORDERS ====================
         let materialCount = 0;
 
-        function addMaterialRow() {
-            const container = document.getElementById('materialesContainer');
+        function addMaterialRow(targetContainerId, prefill) {
+            const container = document.getElementById(targetContainerId || 'materialesContainer');
             materialCount++;
             const row = document.createElement('div');
             row.className = 'material-row space-y-2';
@@ -954,6 +965,23 @@
             });
             
             row.querySelector('.remove-mat-btn').addEventListener('click', () => row.remove());
+            
+            // Prefill values if editing existing material
+            if (prefill) {
+                if (prefill.nombre) row.querySelector('.mat-nombre').value = prefill.nombre;
+                if (prefill.cantidad) row.querySelector('.mat-cantidad').value = prefill.cantidad;
+                if (prefill.talla) row.querySelector('.mat-talla').value = prefill.talla;
+                // Check if unidad matches a standard option
+                const standardUnidades = ['metros','pies','decimetros','pares','unidades','kilos','litros','rollos'];
+                if (prefill.unidad && standardUnidades.includes(prefill.unidad)) {
+                    unidadSelect.value = prefill.unidad;
+                } else if (prefill.unidad) {
+                    unidadSelect.value = 'otro_unidad';
+                    unidadCustomContainer.classList.remove('hidden');
+                    row.querySelector('.unidad-custom').value = prefill.unidad;
+                }
+            }
+            
             container.appendChild(row);
         }
 
@@ -1078,6 +1106,16 @@
                 document.getElementById('editFechaEntrega').value = `${yyyy}-${mm}-${dd}`;
             }
             
+            // Populate existing materials
+            const editMatContainer = document.getElementById('editMaterialesContainer');
+            editMatContainer.innerHTML = '';
+            updateMaterialesDatalist();
+            if (pedido.materiales && pedido.materiales.length > 0) {
+                pedido.materiales.forEach(m => {
+                    addMaterialRow('editMaterialesContainer', m);
+                });
+            }
+            
             document.getElementById('editOrderModal').classList.remove('hidden');
         }
 
@@ -1099,6 +1137,33 @@
                 return;
             }
             
+            // Collect materials from edit modal
+            const editMatRows = document.getElementById('editMaterialesContainer').querySelectorAll('.material-row');
+            const editMaterialesList = [];
+            const editNombresUsados = [];
+            
+            editMatRows.forEach(row => {
+                const nombre = row.querySelector('.mat-nombre')?.value?.trim() || '';
+                const cantidadMat = row.querySelector('.mat-cantidad')?.value?.trim() || '';
+                const tallaMat = row.querySelector('.mat-talla')?.value?.trim() || '';
+                const unidadSelect = row.querySelector('.mat-unidad').value;
+                const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
+                
+                const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
+                
+                if (nombre && cantidadMat) {
+                    editMaterialesList.push({
+                        nombre,
+                        tipo: nombre.toLowerCase(),
+                        cantidad: cantidadMat,
+                        talla: tallaMat,
+                        unidad,
+                        recibido: false
+                    });
+                    editNombresUsados.push(nombre);
+                }
+            });
+            
             try {
                 await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
                     modelo,
@@ -1108,8 +1173,14 @@
                     color,
                     color_secundario: colorSecundario,
                     fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
-                    notas
+                    notas,
+                    materiales: editMaterialesList
                 });
+                
+                // Save new material names for future autocomplete
+                if (editNombresUsados.length > 0) {
+                    await saveNewMaterialNames(editNombresUsados);
+                }
                 
                 showToast('Pedido actualizado correctamente', 'success');
                 document.getElementById('editOrderModal').classList.add('hidden');
@@ -1208,7 +1279,8 @@
         document.getElementById('cancelOrderModal').addEventListener('click', () => {
             document.getElementById('orderModal').classList.add('hidden');
         });
-        document.getElementById('addMaterialBtn').addEventListener('click', addMaterialRow);
+        document.getElementById('addMaterialBtn').addEventListener('click', () => addMaterialRow());
+        document.getElementById('addEditMaterialBtn').addEventListener('click', () => addMaterialRow('editMaterialesContainer'));
         document.getElementById('orderForm').addEventListener('submit', submitOrder);
         
         // Settings modal (change password)
