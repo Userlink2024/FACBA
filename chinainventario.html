@@ -346,7 +346,15 @@
         </tr></thead><tbody><tr><td colspan="5" class="empty">No hay productos agregados.</td></tr></tbody></table>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px">
-        <div style="font-size:18px;font-weight:800"><i class="fas fa-calculator" style="color:var(--primary)"></i> Total: <span id="facValorTotalDisplay">$0</span></div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:12px;font-weight:700;color:var(--muted)"><i class="fas fa-percent" style="color:var(--warning)"></i> Descuento</label>
+            <input type="text" id="facDescuento" class="form-input currency-input" style="width:120px;padding:6px 10px;font-size:14px;font-weight:700" placeholder="$0" value="">
+          </div>
+          <div style="font-size:18px;font-weight:800"><i class="fas fa-calculator" style="color:var(--primary)"></i> Subtotal: <span id="facSubtotalDisplay">$0</span></div>
+          <div id="facDescuentoInfo" style="font-size:14px;font-weight:700;color:var(--danger);display:none"><i class="fas fa-arrow-down"></i> Desc: -<span id="facDescuentoDisplay">$0</span></div>
+          <div style="font-size:18px;font-weight:800;color:var(--success)"><i class="fas fa-receipt" style="color:var(--success)"></i> Total: <span id="facValorTotalDisplay">$0</span></div>
+        </div>
         <input type="hidden" id="facValorTotal">
         <button type="button" id="btnCrearFactura" class="btn btn-primary"><i class="fas fa-check-circle"></i> Crear Factura</button>
       </div>
@@ -564,6 +572,7 @@
   <div class="pdf-info"><div><strong>Factura No:</strong> <span id="pdfFacturaCodigo"></span><br><strong>Fecha:</strong> <span id="pdfFacturaFecha"></span><br><strong>Tipo de Pago:</strong> <span id="pdfFacturaTipoPago"></span></div><div><strong>Cliente:</strong> <span id="pdfFacturaCliente"></span></div></div>
   <div id="pdfFacturaObservaciones" style="margin-bottom:10mm;font-size:1em;color:#555;display:none"><strong>Observaciones:</strong> <span id="pdfFacturaObsText"></span></div>
   <div class="pdf-items"><table><thead><tr><th>Producto (Proveedor)</th><th>Cantidad</th><th>Valor Unitario</th><th>Subtotal</th></tr></thead><tbody id="pdfFacturaItems"></tbody></table></div>
+  <div id="pdfFacturaDescuentoWrap" style="display:none;margin-bottom:4mm"><div style="text-align:right;font-size:1em;color:#dc2626"><strong>Descuento:</strong> -<span id="pdfFacturaDescuento"></span></div></div>
   <div class="pdf-totals"><div><strong>Valor Total:</strong> <span id="pdfFacturaValorTotal"></span></div><div><strong>Saldo Pendiente:</strong> <span id="pdfFacturaSaldoPendiente"></span></div></div>
   <div class="pdf-footer"><p>Gracias por tu compra.</p><p>Sistema de Inventario y Facturación - La Zapatería</p></div>
 </div>
@@ -745,6 +754,10 @@
     const descMetros = $('descMetros');
     const descCentimetros = $('descCentimetros');
     const descUnidades = $('descUnidades');
+    const facSubtotalDisplay = $('facSubtotalDisplay');
+    const facDescuento = $('facDescuento');
+    const facDescuentoInfo = $('facDescuentoInfo');
+    const facDescuentoDisplay = $('facDescuentoDisplay');
     const facValorTotalDisplay = $('facValorTotalDisplay');
     const facValorTotal = $('facValorTotal');
     const facProductId = $('facProductId');
@@ -864,6 +877,10 @@
         if (subTipoContado) subTipoContado.classList.add('hidden');
         if (radioEfectivo) radioEfectivo.checked = false;
         if (radioTransferencia) radioTransferencia.checked = false;
+        facDescuento.value = '';
+        facSubtotalDisplay.textContent = '$0';
+        facDescuentoInfo.style.display = 'none';
+        facDescuentoDisplay.textContent = '$0';
         facValorTotalDisplay.textContent = '$0';
         facValorTotal.value = 0;
         facProducto.value = '';
@@ -927,6 +944,7 @@
             tipoPago: document.querySelector('input[name="tipoPago"]:checked')?.value || '',
             metodoPago: document.querySelector('input[name="metodoPago"]:checked')?.value || '',
             observaciones: $('facObservaciones') ? $('facObservaciones').value : '',
+            descuento: facDescuento.value || '',
             productos: productosEnFactura,
             savedAt: new Date().toISOString()
         };
@@ -972,6 +990,7 @@
         facCliente.value = draft.cliente || '';
         if (facNumeroFactura) facNumeroFactura.value = draft.numeroFactura || '';
         if ($('facObservaciones')) $('facObservaciones').value = draft.observaciones || '';
+        facDescuento.value = draft.descuento || '';
         if (draft.tipoPago === 'contado') { radioContado.checked = true; handleTipoPagoChange(); if (draft.metodoPago === 'efectivo') radioEfectivo.checked = true; else if (draft.metodoPago === 'transferencia') radioTransferencia.checked = true; }
         else if (draft.tipoPago === 'credito') { radioCredito.checked = true; handleTipoPagoChange(); }
         productosEnFactura = draft.productos || [];
@@ -1537,8 +1556,17 @@
     $('btnGuardarEditFactura').addEventListener('click', guardarEditProductoFactura);
 
     function calcularTotalFactura() {
-        let total = 0;
-        productosEnFactura.forEach(p => total += p.subtotal);
+        let subtotal = 0;
+        productosEnFactura.forEach(p => subtotal += p.subtotal);
+        const descuentoVal = parseCurrency(facDescuento.value) || 0;
+        const total = Math.max(0, subtotal - descuentoVal);
+        facSubtotalDisplay.textContent = '$' + fmtCOP(subtotal);
+        if (descuentoVal > 0) {
+            facDescuentoInfo.style.display = '';
+            facDescuentoDisplay.textContent = '$' + fmtCOP(descuentoVal);
+        } else {
+            facDescuentoInfo.style.display = 'none';
+        }
         facValorTotalDisplay.textContent = '$' + fmtCOP(total);
         facValorTotal.value = total;
     }
@@ -1555,11 +1583,12 @@
         if (!tipoPago) { toast("Seleccione tipo de pago.", 'error'); return; }
         if (tipoPago === 'contado' && !metodoPago) { toast("Seleccione método de pago.", 'error'); return; }
         if (productosEnFactura.length === 0) { toast("Agregue al menos un producto.", 'error'); return; }
+        const descuentoVal = parseCurrency(facDescuento.value) || 0;
         const valorTotal = parseFloat(facValorTotal.value);
         const now = new Date();
         const observaciones = $('facObservaciones') ? $('facObservaciones').value.trim() : '';
         const codigoRegistro = numeroFacturaManual || `${now.getFullYear()}${('0'+(now.getMonth()+1)).slice(-2)}${('0'+now.getDate()).slice(-2)}${('0'+now.getHours()).slice(-2)}${('0'+now.getMinutes()).slice(-2)}${('0'+now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
-        const nuevaFactura = { codigoRegistro, fechaHora, cliente, tipoPago, metodoPago, observaciones, productos: productosEnFactura, valorTotal, saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, abonos: [], createdAt: new Date(), creadoPor: userName(), despachado: false, despachadoFecha: null };
+        const nuevaFactura = { codigoRegistro, fechaHora, cliente, tipoPago, metodoPago, observaciones, productos: productosEnFactura, descuento: descuentoVal, valorTotal, saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, abonos: [], createdAt: new Date(), creadoPor: userName(), despachado: false, despachadoFecha: null };
         try {
             await addDoc(facturasCol, nuevaFactura);
             await discardDraftSilent(numeroFacturaManual);
@@ -1623,7 +1652,8 @@
                 if (!f.despachado) acciones += `<button class="btn btn-secondary btn-xs btn-despachar" data-id="${docId}"><i class="fas fa-truck"></i></button> `;
                 acciones += `<button class="btn btn-secondary btn-xs btn-generate-pdf" data-id="${docId}"><i class="fas fa-file-pdf"></i></button> `;
                 acciones += `<button class="btn btn-danger btn-xs btn-eliminar-factura" data-id="${docId}"><i class="fas fa-trash"></i></button>`;
-                row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora}</td><td>${f.cliente}</td><td>${tipoPagoDisplay}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${productosDisplay}">${productosDisplay}</td><td>$${fmtCOP(f.valorTotal)}</td><td>${saldoDisplay}</td><td>${despachoHtml}</td><td><div class="btn-group">${acciones}</div></td>`;
+                const descHtml = f.descuento && parseFloat(f.descuento) > 0 ? `<div style="font-size:10px;color:var(--danger);font-weight:700"><i class="fas fa-arrow-down"></i> Desc: -$${fmtCOP(f.descuento)}</div>` : '';
+                row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora}</td><td>${f.cliente}</td><td>${tipoPagoDisplay}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${productosDisplay}">${productosDisplay}</td><td>$${fmtCOP(f.valorTotal)}${descHtml}</td><td>${saldoDisplay}</td><td>${despachoHtml}</td><td><div class="btn-group">${acciones}</div></td>`;
             });
             totalFacturadoDisplay.textContent = '$' + fmtCOP(totalFacturado);
             creditoPendienteDisplay.textContent = '$' + fmtCOP(totalCreditoPendiente);
@@ -1746,6 +1776,14 @@
                     const prov = item.proveedor ? ` (${item.proveedor})` : '';
                     row.innerHTML = `<td>${item.referenciaColor}${prov}</td><td>${cant}</td><td>$${fmtCOP(item.valorUnitario)}</td><td>$${fmtCOP(item.subtotal)}</td>`;
                 });
+            }
+            const pdfDescWrap = $('pdfFacturaDescuentoWrap');
+            const pdfDescVal = $('pdfFacturaDescuento');
+            if (f.descuento && parseFloat(f.descuento) > 0) {
+                pdfDescWrap.style.display = 'block';
+                pdfDescVal.textContent = '$' + fmtCOP(f.descuento);
+            } else {
+                pdfDescWrap.style.display = 'none';
             }
             pdfFacturaValorTotal.textContent = '$' + fmtCOP(f.valorTotal);
             let saldoPDF = f.saldoPendiente !== undefined ? parseFloat(f.saldoPendiente) : parseFloat(f.valorTotal || 0);
@@ -2348,6 +2386,7 @@
 
     btnAgregarProductoFactura.addEventListener('click', agregarProductoAListaFactura);
     btnCrearFactura.addEventListener('click', crearFactura);
+    facDescuento.addEventListener('input', calcularTotalFactura);
 
     inputBuscarProducto.addEventListener('input', buscarProductoParaFacturacion);
     $('cerrarBuscarProducto').addEventListener('click', () => $('moduloBuscarProducto').classList.remove('open'));
