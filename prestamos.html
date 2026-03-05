@@ -730,6 +730,7 @@
                                             <div class="card-value" id="cajaDisponible">$0</div>
                                             <div class="card-label">Caja Disponible</div>
                                             <small class="text-muted">Caja Inicial: <span id="cajaInicialLabel">$0</span></small>
+                                            <small class="text-muted" id="ajustesCapitalLabel" style="display:none;"></small>
                                         </div>
                                     </div>
                                     <div class="dropdown">
@@ -1502,6 +1503,7 @@
         let prestamos = [];
         let currentClienteId = null;
         let cajaInicial = 0;
+        let ajustesCapital = 0;
         let manualCuotasFechas = null;
         let bancos = [];
 
@@ -1697,6 +1699,7 @@
                 prestamos = [];
                 currentClienteId = null;
                 cajaInicial = 0;
+                ajustesCapital = 0;
                 manualCuotasFechas = null;
                 bancos = [];
                 BASE_PATH = '';
@@ -1798,6 +1801,7 @@
                 document.getElementById('appContainer').style.display = 'block';
                 cargarDatos();
                 cargarCaja();
+                cargarAjustesCapital();
                 cargarBancos();
             } else {
                 // Not logged in
@@ -2714,7 +2718,7 @@
         }
 
         function calcularCajaDisponible(totalCapitalActivo, totalRecaudado) {
-            return Math.max(0, (cajaInicial || 0) - (totalCapitalActivo || 0) + (totalRecaudado || 0));
+            return Math.max(0, (cajaInicial || 0) + (ajustesCapital || 0) - (totalCapitalActivo || 0) + (totalRecaudado || 0));
         }
 
         async function editarCajaInicial() {
@@ -2836,17 +2840,11 @@
 
             showLoading(true);
             try {
-                const nuevaCaja = (cajaInicial || 0) + monto;
-                if (nuevaCaja < 0) {
-                    showAlert('El ajuste dejaría la Caja Inicial en negativo. Operación cancelada.', 'danger');
-                    playBeep('error');
-                    showLoading(false);
-                    return;
-                }
-                const cajaRef = ref(db, `${BASE_PATH}/config/cajaInicial`);
-                await set(cajaRef, nuevaCaja);
-                const tipoMsg = monto > 0 ? 'Ampliación' : 'Reducción';
-                showAlert(`${tipoMsg} de capital: ${formatMoney(Math.abs(monto))}. Nueva Caja Inicial: ${formatMoney(nuevaCaja)}`, 'success');
+                const nuevoAjuste = (ajustesCapital || 0) + monto;
+                const ajusteRef = ref(db, `${BASE_PATH}/config/ajustesCapital`);
+                await set(ajusteRef, nuevoAjuste);
+                const tipoMsg = monto > 0 ? 'Ingreso' : 'Retiro';
+                showAlert(`${tipoMsg} de capital: ${formatMoney(Math.abs(monto))}. Ajustes acumulados: ${formatMoney(nuevoAjuste)}`, 'success');
                 playBeep('success');
             } catch (error) {
                 console.error('Error:', error);
@@ -3327,6 +3325,16 @@
             });
         }
 
+        function cargarAjustesCapital() {
+            const ajusteRef = ref(db, `${BASE_PATH}/config/ajustesCapital`);
+            onValue(ajusteRef, (snapshot) => {
+                ajustesCapital = snapshot.exists() ? (snapshot.val() || 0) : 0;
+                actualizarDashboard();
+            }, (error) => {
+                console.error('Error loading ajustes capital:', error);
+            });
+        }
+
         function calcularTotales() {
             let totalCapitalActivo = 0;
             let totalRecaudado = 0;
@@ -3435,6 +3443,15 @@
             const cajaDisponible = calcularCajaDisponible(totalCapital, totalRecaudado);
             document.getElementById('cajaDisponible').textContent = formatMoney(cajaDisponible);
             document.getElementById('cajaInicialLabel').textContent = formatMoney(cajaInicial || 0);
+            const ajustesLabel = document.getElementById('ajustesCapitalLabel');
+            if (ajustesLabel) {
+                if (ajustesCapital !== 0) {
+                    ajustesLabel.textContent = `Ajustes: ${ajustesCapital >= 0 ? '+' : ''}${formatMoney(ajustesCapital)}`;
+                    ajustesLabel.style.display = 'block';
+                } else {
+                    ajustesLabel.style.display = 'none';
+                }
+            }
         }
 
         // Render clients list
