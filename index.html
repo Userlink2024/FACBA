@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="C&A Factory">
+    <link rel="manifest" href="manifest.json">
     <title>C&A Cloud Factory - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -109,7 +114,52 @@
         <div class="text-center mt-6">
             <p class="text-gray-600 text-xs">Versión 1.0.0 | <span id="appYear"></span></p>
         </div>
+
+        <!-- Install App Button -->
+        <div id="installContainer" class="hidden mt-4">
+            <button id="installBtn" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-xl shadow-lg transition duration-200 flex items-center justify-center gap-3">
+                <i class="fas fa-mobile-alt text-lg"></i>
+                <span>Instalar App en mi Dispositivo</span>
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
     </div>
+
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('[SW] Registered:', reg.scope))
+                    .catch(err => console.log('[SW] Registration failed:', err));
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installContainer').classList.remove('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#installBtn') && deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choice) => {
+                    if (choice.outcome === 'accepted') {
+                        document.getElementById('installContainer').classList.add('hidden');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('installContainer').classList.add('hidden');
+            deferredPrompt = null;
+        });
+    </script>
 
     <script type="module">
         import { login, redirectByRole, onAuthChange, getUserData } from './js/auth.js';
