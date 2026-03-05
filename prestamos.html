@@ -1027,9 +1027,15 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted">Ingresa el monto de la ampliación de capital. Este valor se sumará a la Caja Inicial.</p>
-                    <label class="form-label">Monto de ampliación</label>
-                    <input type="text" id="aumentoCapitalInput" class="form-control" inputmode="numeric" placeholder="Ej: 1000000" oninput="formatearMoneda(this)">
+                    <p class="text-muted">Ingresa el monto a ajustar. Usa valor positivo para sumar o negativo para restar de la Caja Inicial.</p>
+                    <label class="form-label">Monto de ajuste</label>
+                    <div class="input-group">
+                        <select class="form-select" id="aumentoCapitalSigno" style="max-width: 70px;">
+                            <option value="+">+</option>
+                            <option value="-">−</option>
+                        </select>
+                        <input type="text" id="aumentoCapitalInput" class="form-control" inputmode="numeric" placeholder="Ej: 1000000" oninput="formatearMoneda(this)">
+                    </div>
                     <div id="aumentoCapitalError" class="text-danger mt-2" style="display:none;">Valor inválido.</div>
                 </div>
                 <div class="modal-footer">
@@ -1300,6 +1306,32 @@
         </div>
     </div>
 
+    <!-- Modal Historial de Créditos Pagados -->
+    <div class="modal fade" id="historialModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #667eea); color: white;">
+                    <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Historial de Créditos Pagados</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="historialSearch" placeholder="Buscar por nombre o celular..." oninput="filtrarHistorial()">
+                    </div>
+                    <div id="historialTotalInfo" class="text-muted small mb-2"></div>
+                    <div id="historialListContainer" style="min-height: 200px;"></div>
+                    <nav id="historialPaginacion" class="mt-3" style="display:none;">
+                        <ul class="pagination pagination-sm justify-content-center mb-0" id="historialPaginas"></ul>
+                    </nav>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Confirmación/Prompt Genérico -->
     <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -1542,6 +1574,10 @@
             });
         };
         window.registrarAbono = registrarAbono;
+        window.abrirHistorial = abrirHistorial;
+        window.filtrarHistorial = filtrarHistorial;
+        window.irPaginaHistorial = irPaginaHistorial;
+        window.verDetalleDesdeHistorial = verDetalleDesdeHistorial;
 
         // ==================== AUTH SYSTEM ====================
         function switchAuthTab(tab) {
@@ -2796,18 +2832,25 @@
 
         async function aumentarCapital() {
             const monto = await showAumentoCapitalModal();
-            if (monto === null || monto <= 0) return;
+            if (monto === null || monto === 0) return;
 
             showLoading(true);
             try {
                 const nuevaCaja = (cajaInicial || 0) + monto;
+                if (nuevaCaja < 0) {
+                    showAlert('El ajuste dejaría la Caja Inicial en negativo. Operación cancelada.', 'danger');
+                    playBeep('error');
+                    showLoading(false);
+                    return;
+                }
                 const cajaRef = ref(db, `${BASE_PATH}/config/cajaInicial`);
                 await set(cajaRef, nuevaCaja);
-                showAlert(`Ampliación de capital: ${formatMoney(monto)}. Nueva Caja Inicial: ${formatMoney(nuevaCaja)}`, 'success');
+                const tipoMsg = monto > 0 ? 'Ampliación' : 'Reducción';
+                showAlert(`${tipoMsg} de capital: ${formatMoney(Math.abs(monto))}. Nueva Caja Inicial: ${formatMoney(nuevaCaja)}`, 'success');
                 playBeep('success');
             } catch (error) {
                 console.error('Error:', error);
-                showAlert('No se pudo registrar la ampliación de capital. Verifica tu conexión.', 'danger');
+                showAlert('No se pudo registrar el ajuste de capital. Verifica tu conexión.', 'danger');
                 playBeep('error');
             }
             showLoading(false);
@@ -2839,9 +2882,10 @@
                         inputEl.select();
                         return;
                     }
+                    const signo = document.getElementById('aumentoCapitalSigno').value;
                     cleanup();
                     modal.hide();
-                    resolve(monto);
+                    resolve(signo === '-' ? -monto : monto);
                 };
 
                 const onKey = (e) => {
@@ -3397,7 +3441,7 @@
         function renderClientes(filtro = '') {
             const container = document.getElementById('clientesList');
             const clientesActivos = prestamos.filter(p => p.activo);
-            const clientesCompletados = prestamos.filter(p => !p.activo);
+            const hayCompletados = prestamos.some(p => !p.activo);
 
             const clientesFiltrados = filtro 
                 ? clientesActivos.filter(p => 
@@ -3405,13 +3449,7 @@
                     p.celular.includes(filtro))
                 : clientesActivos;
 
-            const completadosFiltrados = filtro
-                ? clientesCompletados.filter(p =>
-                    p.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
-                    (p.celular || '').includes(filtro))
-                : clientesCompletados;
-
-            if (clientesFiltrados.length === 0 && completadosFiltrados.length === 0) {
+            if (clientesFiltrados.length === 0 && !hayCompletados) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="bi bi-inbox"></i>
@@ -3480,47 +3518,20 @@
                         </div>
                     `;
                 }).join('');
-            } else if (completadosFiltrados.length > 0) {
+            } else if (hayCompletados) {
                 html += `<div class="text-center text-muted py-3 mx-3"><i class="bi bi-check-circle me-2"></i>No hay préstamos activos actualmente</div>`;
             }
 
-            // Completed clients (history)
-            if (completadosFiltrados.length > 0) {
+            // Completed clients - show button to open historial modal
+            const totalCompletados = prestamos.filter(p => !p.activo).length;
+            if (totalCompletados > 0) {
                 html += `
-                    <div class="p-3 mt-2">
-                        <h6 class="text-muted mb-0"><i class="bi bi-clock-history me-2"></i>Historial de Créditos Pagados (${completadosFiltrados.length})</h6>
+                    <div class="p-3 mt-2 text-center">
+                        <button class="btn btn-outline-primary w-100" onclick="abrirHistorial()" style="border-color: #6f42c1; color: #6f42c1;">
+                            <i class="bi bi-clock-history me-2"></i>Ver Historial de Créditos Pagados (${totalCompletados})
+                        </button>
                     </div>
                 `;
-                html += completadosFiltrados.map(cliente => {
-                    const cuotasPagadas = Array.isArray(cliente.pagos) ? cliente.pagos.filter(p => p.pagada).length : 0;
-                    const totalPagadoCuotas = Array.isArray(cliente.pagos) ? cliente.pagos.filter(p => p.pagada).reduce((sum, p) => sum + p.valor, 0) : 0;
-                    const totalAbonos = Array.isArray(cliente.abonos) ? cliente.abonos.reduce((sum, a) => sum + (a?.monto || 0), 0) : 0;
-                    const totalPagado = totalPagadoCuotas + totalAbonos;
-
-                    return `
-                        <div class="client-card" onclick="verDetalle('${cliente.id}')" style="border-left-color: #6f42c1; opacity: 0.85;">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="client-name">${cliente.nombre}</div>
-                                    <div class="client-phone"><i class="bi bi-phone me-1"></i>${cliente.celular || '-'}</div>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Pagado</span>
-                                    <div class="fw-bold mt-1">${formatMoney(cliente.capital)}</div>
-                                </div>
-                            </div>
-                            <div class="client-progress">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <small>${cuotasPagadas}/${cliente.cuotas} cuotas</small>
-                                    <small class="text-success">Total pagado: ${formatMoney(totalPagado)}</small>
-                                </div>
-                                <div class="progress">
-                                    <div class="progress-bar bg-success" style="width: 100%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
             }
 
             container.innerHTML = html;
@@ -3821,6 +3832,119 @@
             }
 
             showLoading(false);
+        }
+
+        // ==================== HISTORIAL MODAL ====================
+        let historialPaginaActual = 1;
+        const HISTORIAL_POR_PAGINA = 10;
+
+        function abrirHistorial() {
+            historialPaginaActual = 1;
+            document.getElementById('historialSearch').value = '';
+            renderHistorialModal();
+            const modal = getBsModal('historialModal');
+            modal.show();
+        }
+
+        function filtrarHistorial() {
+            historialPaginaActual = 1;
+            renderHistorialModal();
+        }
+
+        function irPaginaHistorial(pagina) {
+            historialPaginaActual = pagina;
+            renderHistorialModal();
+        }
+
+        function renderHistorialModal() {
+            const filtro = (document.getElementById('historialSearch').value || '').trim().toLowerCase();
+            const completados = prestamos.filter(p => !p.activo);
+
+            const filtrados = filtro
+                ? completados.filter(p =>
+                    p.nombre.toLowerCase().includes(filtro) ||
+                    (p.celular || '').includes(filtro))
+                : completados;
+
+            const totalPaginas = Math.max(1, Math.ceil(filtrados.length / HISTORIAL_POR_PAGINA));
+            if (historialPaginaActual > totalPaginas) historialPaginaActual = totalPaginas;
+
+            const inicio = (historialPaginaActual - 1) * HISTORIAL_POR_PAGINA;
+            const paginados = filtrados.slice(inicio, inicio + HISTORIAL_POR_PAGINA);
+
+            const infoEl = document.getElementById('historialTotalInfo');
+            infoEl.textContent = filtrados.length === 0
+                ? 'No se encontraron créditos pagados.'
+                : `Mostrando ${inicio + 1}-${inicio + paginados.length} de ${filtrados.length} crédito(s) pagado(s)`;
+
+            const container = document.getElementById('historialListContainer');
+
+            if (paginados.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-inbox" style="font-size:2rem;"></i><p class="mt-2">No hay créditos pagados</p></div>';
+            } else {
+                container.innerHTML = paginados.map(cliente => {
+                    const cuotasPagadas = Array.isArray(cliente.pagos) ? cliente.pagos.filter(p => p.pagada).length : 0;
+                    const totalPagadoCuotas = Array.isArray(cliente.pagos) ? cliente.pagos.filter(p => p.pagada).reduce((sum, p) => sum + p.valor, 0) : 0;
+                    const totalAbonos = Array.isArray(cliente.abonos) ? cliente.abonos.reduce((sum, a) => sum + (a?.monto || 0), 0) : 0;
+                    const totalPagado = totalPagadoCuotas + totalAbonos;
+                    const ganancia = (cliente.totalPagar || 0) - (cliente.capital || 0);
+
+                    return `
+                        <div class="card mb-2" style="cursor:pointer; border-left: 4px solid #6f42c1;" onclick="verDetalleDesdeHistorial('${cliente.id}')">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>${cliente.nombre}</strong>
+                                        <div class="text-muted small"><i class="bi bi-phone me-1"></i>${cliente.celular || '-'}</div>
+                                        <div class="text-muted small"><i class="bi bi-calendar me-1"></i>Apertura: ${formatDate(cliente.fechaApertura)}</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-success mb-1"><i class="bi bi-check-circle me-1"></i>Pagado</span>
+                                        <div class="fw-bold">${formatMoney(cliente.capital)}</div>
+                                        <small class="text-success">+${formatMoney(ganancia)} ganancia</small>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <small class="text-muted">${cuotasPagadas}/${cliente.cuotas} cuotas · ${cliente.interes}% interés</small>
+                                    <small class="text-primary">Total: ${formatMoney(totalPagado)}</small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Pagination
+            const paginacionEl = document.getElementById('historialPaginacion');
+            const paginasEl = document.getElementById('historialPaginas');
+
+            if (totalPaginas <= 1) {
+                paginacionEl.style.display = 'none';
+            } else {
+                paginacionEl.style.display = 'block';
+                let paginasHTML = '';
+
+                paginasHTML += `<li class="page-item ${historialPaginaActual === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); irPaginaHistorial(${historialPaginaActual - 1})">‹</a>
+                </li>`;
+
+                for (let i = 1; i <= totalPaginas; i++) {
+                    paginasHTML += `<li class="page-item ${i === historialPaginaActual ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); irPaginaHistorial(${i})">${i}</a>
+                    </li>`;
+                }
+
+                paginasHTML += `<li class="page-item ${historialPaginaActual === totalPaginas ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); irPaginaHistorial(${historialPaginaActual + 1})">›</a>
+                </li>`;
+
+                paginasEl.innerHTML = paginasHTML;
+            }
+        }
+
+        function verDetalleDesdeHistorial(id) {
+            getBsModal('historialModal').hide();
+            setTimeout(() => verDetalle(id), 300);
         }
 
         // Show/hide loading
