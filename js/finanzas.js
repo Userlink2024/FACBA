@@ -5,12 +5,13 @@
 import { checkAuthAndRedirect, logout, ROLES } from './auth.js';
 import { getNavigationMenu, getRoleName } from './roles.js';
 import { formatCurrency, getWeekStart, showToast, showConfirm } from './utils.js';
-import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, onSnapshot, Timestamp } from './firebase-init.js';
+import { auth, db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, onSnapshot, Timestamp, EmailAuthProvider, reauthenticateWithCredential } from './firebase-init.js';
 import { initNotifications } from './notifications.js';
 
 let orders = [];
 let employees = [];
 let inventory = [];
+let pedidoToDelete = null;
 
 // Inicializar
 async function init() {
@@ -19,8 +20,11 @@ async function init() {
         
         document.getElementById('userName').textContent = userData.nombre;
         document.getElementById('userRole').textContent = getRoleName(userData.rol);
+        document.getElementById('mobileUserName').textContent = userData.nombre;
+        document.getElementById('mobileUserRole').textContent = getRoleName(userData.rol);
         
         generateNavMenu(userData.rol);
+        setupMobileMenu();
         
         // Inicializar notificaciones globales
         initNotifications(user.uid);
@@ -45,12 +49,28 @@ async function init() {
 function generateNavMenu(rol) {
     const menu = getNavigationMenu(rol);
     const navMenu = document.getElementById('navMenu');
+    const mobileNavMenu = document.getElementById('mobileNavMenu');
     navMenu.innerHTML = menu.map(item => `
         <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${item.href === 'finanzas.html' ? 'bg-gray-700/50 text-white' : ''}">
             <i class="fas ${item.icon}"></i>
             <span>${item.name}</span>
         </a>
     `).join('');
+
+    mobileNavMenu.innerHTML = menu.map(item => `
+        <a href="${item.href}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition ${item.href === 'finanzas.html' ? 'bg-blue-600/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}">
+            <i class="fas ${item.icon} w-5 text-center"></i>
+            <span>${item.name}</span>
+        </a>
+    `).join('');
+}
+
+function setupMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const overlay = document.getElementById('mobileMenuOverlay');
+    document.getElementById('mobileMenuBtn').addEventListener('click', () => menu.classList.remove('hidden'));
+    document.getElementById('closeMobileMenu').addEventListener('click', () => menu.classList.add('hidden'));
+    overlay.addEventListener('click', () => menu.classList.add('hidden'));
 }
 
 // ==================== ÓRDENES ====================
@@ -870,6 +890,14 @@ function renderPedidosCliente() {
                                 <i class="fas fa-shoe-prints mr-1 text-blue-400"></i><strong>Cantidad:</strong> ${pedido.cantidad} pares
                             </p>
                         </div>
+                        ${pedido.color ? `
+                        <div class="mt-3 p-3 bg-gradient-to-r from-pink-900/30 to-purple-900/30 border border-pink-700/50 rounded-lg">
+                            <p class="text-white font-medium text-sm">
+                                <i class="fas fa-palette mr-2 text-pink-400"></i>🎨 <strong>Color Principal:</strong> 
+                                <span class="text-pink-300 font-bold">${pedido.color}</span>
+                                ${pedido.color_secundario ? `<span class="text-gray-400 mx-2">|</span><strong>Secundario:</strong> <span class="text-purple-300">${pedido.color_secundario}</span>` : ''}
+                            </p>
+                        </div>` : ''}
                         ${pedido.notas ? `
                         <div class="mt-3 p-2 bg-gray-800/50 rounded-lg">
                             <p class="text-gray-400 text-sm"><i class="fas fa-sticky-note mr-1 text-yellow-400"></i><strong>Notas:</strong> ${pedido.notas}</p>
@@ -899,7 +927,7 @@ function renderPedidosCliente() {
                     </div>
                 ` : ''}
                 
-                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap gap-2">
+                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap items-center gap-2">
                     ${pedido.estado === 'pendiente' || pedido.estado === 'materiales_recibidos' ? `
                         <button class="iniciar-produccion-btn px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition" data-id="${pedido.id}">
                             <i class="fas fa-play mr-1"></i>Iniciar Producción
@@ -915,6 +943,9 @@ function renderPedidosCliente() {
                             <i class="fas fa-truck mr-1"></i>Marcar Entregado
                         </button>
                     ` : ''}
+                    <button class="eliminar-pedido-btn ml-auto px-3 py-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-sm rounded-lg transition flex items-center gap-1.5" data-id="${pedido.id}" data-modelo="${pedido.modelo}" data-cliente="${pedido.cliente_nombre || ''}">
+                        <i class="fas fa-trash-alt"></i>Eliminar
+                    </button>
                 </div>
             </div>
         `;
@@ -936,6 +967,86 @@ function renderPedidosCliente() {
     document.querySelectorAll('.entregar-pedido-btn').forEach(btn => {
         btn.addEventListener('click', () => cambiarEstadoPedido(btn.dataset.id, 'entregado'));
     });
+
+    document.querySelectorAll('.eliminar-pedido-btn').forEach(btn => {
+        btn.addEventListener('click', () => openDeletePedidoModal(btn.dataset.id, btn.dataset.modelo, btn.dataset.cliente));
+    });
+}
+
+function openDeletePedidoModal(pedidoId, modelo, clienteNombre) {
+    pedidoToDelete = pedidoId;
+    document.getElementById('deletePedidoName').textContent = `"${modelo}" de ${clienteNombre}`;
+    document.getElementById('deleteConfirmPassword').value = '';
+    document.getElementById('deletePasswordError').classList.add('hidden');
+    document.getElementById('deletePedidoModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('deleteConfirmPassword').focus(), 100);
+}
+
+function closeDeletePedidoModal() {
+    pedidoToDelete = null;
+    document.getElementById('deletePedidoModal').classList.add('hidden');
+    document.getElementById('deleteConfirmPassword').value = '';
+    document.getElementById('deletePasswordError').classList.add('hidden');
+}
+
+async function deleteOrderWithPassword() {
+    const password = document.getElementById('deleteConfirmPassword').value;
+    const errorEl = document.getElementById('deletePasswordError');
+    const btnText = document.getElementById('deleteConfirmBtnText');
+    const trashIcon = document.getElementById('deleteTrashIcon');
+    const confirmBtn = document.getElementById('confirmDeletePedidoBtn');
+
+    if (!password) {
+        errorEl.querySelector('span').textContent = 'Debe ingresar su contraseña.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (!pedidoToDelete) return;
+
+    // Loading state
+    confirmBtn.disabled = true;
+    btnText.textContent = 'Eliminando...';
+    trashIcon.classList.replace('fa-trash-alt', 'fa-spinner');
+    trashIcon.classList.add('animate-spin');
+    errorEl.classList.add('hidden');
+
+    try {
+        const user = auth.currentUser;
+        const credential = EmailAuthProvider.credential(user.email, password);
+        await reauthenticateWithCredential(user, credential);
+
+        // Find and delete linked ordenes entry
+        const ordenesQuery = query(
+            collection(db, 'ordenes'),
+            where('pedido_cliente_id', '==', pedidoToDelete)
+        );
+        const ordenesSnap = await getDocs(ordenesQuery);
+        for (const ordenDoc of ordenesSnap.docs) {
+            await deleteDoc(doc(db, 'ordenes', ordenDoc.id));
+        }
+
+        // Delete from pedidos_cliente
+        await deleteDoc(doc(db, 'pedidos_cliente', pedidoToDelete));
+
+        closeDeletePedidoModal();
+        showToast('Pedido eliminado correctamente', 'success');
+
+    } catch (error) {
+        console.error('Error eliminando pedido:', error);
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            errorEl.querySelector('span').textContent = 'Contraseña incorrecta. Intente de nuevo.';
+            errorEl.classList.remove('hidden');
+        } else {
+            showToast('Error al eliminar pedido', 'error');
+            closeDeletePedidoModal();
+        }
+    } finally {
+        confirmBtn.disabled = false;
+        btnText.textContent = 'Eliminar Definitivamente';
+        trashIcon.classList.replace('fa-spinner', 'fa-trash-alt');
+        trashIcon.classList.remove('animate-spin');
+    }
 }
 
 async function recibirMaterial(pedidoId, materialIdx) {
@@ -1122,7 +1233,14 @@ async function loadClientes() {
             snapshot.forEach(docSnap => {
                 clientes.push({ id: docSnap.id, ...docSnap.data() });
             });
+            console.log('Clientes cargados:', clientes.length);
             renderClientesTable();
+        }, (error) => {
+            console.error('Error en snapshot clientes:', error);
+            const tbody = document.getElementById('clientesTableBody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-red-400">Error al cargar clientes. Verifique los permisos de Firebase.</td></tr>';
+            }
         });
     } catch (error) {
         console.error('Error cargando clientes:', error);
@@ -1132,6 +1250,12 @@ async function loadClientes() {
 function renderClientesTable(filter = '') {
     const tbody = document.getElementById('clientesTableBody');
     if (!tbody) return;
+    
+    // Si no hay clientes, mostrar mensaje
+    if (clientes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No hay clientes registrados. Cree uno nuevo o espere a que se registren desde el portal.</td></tr>';
+        return;
+    }
     
     let filtered = clientes.filter(c => {
         const searchMatch = c.nombre?.toLowerCase().includes(filter.toLowerCase()) ||
@@ -1317,6 +1441,12 @@ function switchTab(tabName) {
 // ==================== EVENT LISTENERS ====================
 
 function setupEventListeners() {
+    // Prevent browser autofill on search fields
+    setTimeout(() => {
+        const s = document.getElementById('searchOrders');
+        if (s && s.value) { s.value = ''; renderOrdersTable(); }
+    }, 100);
+
     document.getElementById('logoutBtn').addEventListener('click', logout);
     
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1377,6 +1507,23 @@ function setupEventListeners() {
     document.getElementById('clienteForm')?.addEventListener('submit', saveCliente);
     document.getElementById('searchClientes')?.addEventListener('input', (e) => {
         renderClientesTable(e.target.value);
+    });
+
+    // Delete pedido modal
+    document.getElementById('cancelDeletePedidoBtn')?.addEventListener('click', closeDeletePedidoModal);
+    document.getElementById('confirmDeletePedidoBtn')?.addEventListener('click', deleteOrderWithPassword);
+    document.getElementById('deleteConfirmPassword')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') deleteOrderWithPassword();
+    });
+    document.getElementById('toggleDeletePassword')?.addEventListener('click', () => {
+        const input = document.getElementById('deleteConfirmPassword');
+        const icon = document.querySelector('#toggleDeletePassword i');
+        input.type = input.type === 'password' ? 'text' : 'password';
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+    document.getElementById('deletePedidoModal')?.addEventListener('click', (e) => {
+        if (e.target === document.getElementById('deletePedidoModal')) closeDeletePedidoModal();
     });
 }
 
