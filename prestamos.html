@@ -3323,47 +3323,54 @@
             hoy.setHours(0, 0, 0, 0);
 
             prestamos.forEach(p => {
+                // Capital prestado: solo préstamos activos
                 if (p.activo) {
                     totalCapital += p.capital;
-                    
-                    let pagosRealizados = 0;
-                    let abonosCapital = 0;
-                    let abonosInteres = 0;
-                    let diasMora = 0;
+                }
 
+                // Recaudado y ganancias: TODOS los préstamos (activos + completados)
+                let pagosRealizados = 0;
+                let abonosCapital = 0;
+                let abonosInteres = 0;
+                let diasMora = 0;
+
+                if (Array.isArray(p.pagos)) {
                     p.pagos.forEach(pago => {
                         if (pago.pagada) {
                             pagosRealizados += pago.valor;
-                        } else {
+                        } else if (p.activo) {
                             const fechaPago = parseLocalDate(pago.fecha);
-                            fechaPago.setHours(0, 0, 0, 0);
-                            const diff = Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
-                            if (diff > diasMora) diasMora = diff;
+                            if (fechaPago) {
+                                fechaPago.setHours(0, 0, 0, 0);
+                                const diff = Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
+                                if (diff > diasMora) diasMora = diff;
+                            }
                         }
                     });
+                }
 
-                    if (Array.isArray(p.abonos)) {
-                        p.abonos.forEach(ab => {
-                            const monto = ab?.monto || 0;
-                            if ((ab?.tipo || '').toLowerCase() === 'interes') {
-                                abonosInteres += monto;
-                            } else {
-                                abonosCapital += monto;
-                            }
-                        });
-                    }
+                if (Array.isArray(p.abonos)) {
+                    p.abonos.forEach(ab => {
+                        const monto = ab?.monto || 0;
+                        if ((ab?.tipo || '').toLowerCase() === 'interes') {
+                            abonosInteres += monto;
+                        } else {
+                            abonosCapital += monto;
+                        }
+                    });
+                }
 
-                    const totalRecaudadoPrestamo = pagosRealizados + abonosCapital + abonosInteres;
+                const totalRecaudadoPrestamo = pagosRealizados + abonosCapital + abonosInteres;
+                totalRecaudado += totalRecaudadoPrestamo;
 
-                    totalRecaudado += totalRecaudadoPrestamo;
+                // Calcular ganancias (solo del interés recaudado) - de TODOS los préstamos
+                const ratioInteresCuotas = (p.totalPagar > 0) ? (p.valorInteres / p.totalPagar) : 0;
+                const interesRecaudadoPorCuotas = pagosRealizados * ratioInteresCuotas;
+                const interesRecaudadoTotal = interesRecaudadoPorCuotas + abonosInteres;
+                totalGanancias += Math.min(p.valorInteres || 0, interesRecaudadoTotal);
 
-                    // Calcular ganancias (solo del interés recaudado)
-                    const ratioInteresCuotas = (p.totalPagar > 0) ? (p.valorInteres / p.totalPagar) : 0;
-                    const interesRecaudadoPorCuotas = pagosRealizados * ratioInteresCuotas;
-                    const interesRecaudadoTotal = interesRecaudadoPorCuotas + abonosInteres;
-                    totalGanancias += Math.min(p.valorInteres || 0, interesRecaudadoTotal);
-
-                    // Clasificar cliente
+                // Clasificar cliente (solo activos)
+                if (p.activo) {
                     if (diasMora > 7) {
                         enMora++;
                     } else if (diasMora > 0) {
@@ -3390,6 +3397,7 @@
         function renderClientes(filtro = '') {
             const container = document.getElementById('clientesList');
             const clientesActivos = prestamos.filter(p => p.activo);
+            const clientesCompletados = prestamos.filter(p => !p.activo);
 
             const clientesFiltrados = filtro 
                 ? clientesActivos.filter(p => 
@@ -3397,7 +3405,13 @@
                     p.celular.includes(filtro))
                 : clientesActivos;
 
-            if (clientesFiltrados.length === 0) {
+            const completadosFiltrados = filtro
+                ? clientesCompletados.filter(p =>
+                    p.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
+                    (p.celular || '').includes(filtro))
+                : clientesCompletados;
+
+            if (clientesFiltrados.length === 0 && completadosFiltrados.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="bi bi-inbox"></i>
@@ -3411,56 +3425,105 @@
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
 
-            container.innerHTML = clientesFiltrados.map(cliente => {
-                const cuotasPagadas = cliente.pagos.filter(p => p.pagada).length;
-                const progreso = (cuotasPagadas / cliente.cuotas) * 100;
-                
-                // Calcular mora
-                let diasMora = 0;
-                cliente.pagos.forEach(pago => {
-                    if (!pago.pagada) {
-                        const fechaPago = parseLocalDate(pago.fecha);
-                        fechaPago.setHours(0, 0, 0, 0);
-                        const diff = Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
-                        if (diff > diasMora) diasMora = diff;
+            let html = '';
+
+            // Active clients
+            if (clientesFiltrados.length > 0) {
+                html += clientesFiltrados.map(cliente => {
+                    const cuotasPagadas = cliente.pagos.filter(p => p.pagada).length;
+                    const progreso = (cuotasPagadas / cliente.cuotas) * 100;
+                    
+                    let diasMora = 0;
+                    cliente.pagos.forEach(pago => {
+                        if (!pago.pagada) {
+                            const fechaPago = parseLocalDate(pago.fecha);
+                            if (fechaPago) {
+                                fechaPago.setHours(0, 0, 0, 0);
+                                const diff = Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
+                                if (diff > diasMora) diasMora = diff;
+                            }
+                        }
+                    });
+
+                    let cardClass = '';
+                    let moraHTML = '';
+                    
+                    if (diasMora > 7) {
+                        cardClass = 'mora';
+                        moraHTML = `<span class="badge-mora"><i class="bi bi-exclamation-triangle me-1"></i>${diasMora} días en mora</span>`;
+                    } else if (diasMora > 0) {
+                        cardClass = 'alerta';
+                        moraHTML = `<span class="badge bg-warning text-dark" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i>${diasMora} días vencido</span>`;
                     }
-                });
 
-                let cardClass = '';
-                let moraHTML = '';
-                
-                if (diasMora > 7) {
-                    cardClass = 'mora';
-                    moraHTML = `<span class="badge-mora"><i class="bi bi-exclamation-triangle me-1"></i>${diasMora} días en mora</span>`;
-                } else if (diasMora > 0) {
-                    cardClass = 'alerta';
-                    moraHTML = `<span class="badge bg-warning text-dark" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i>${diasMora} días vencido</span>`;
-                }
-
-                return `
-                    <div class="client-card ${cardClass}" onclick="verDetalle('${cliente.id}')">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="client-name">${cliente.nombre}</div>
-                                <div class="client-phone"><i class="bi bi-phone me-1"></i>${cliente.celular}</div>
+                    return `
+                        <div class="client-card ${cardClass}" onclick="verDetalle('${cliente.id}')">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="client-name">${cliente.nombre}</div>
+                                    <div class="client-phone"><i class="bi bi-phone me-1"></i>${cliente.celular}</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold">${formatMoney(cliente.valorCuota)}</div>
+                                    <small class="text-muted">por cuota</small>
+                                </div>
                             </div>
-                            <div class="text-end">
-                                <div class="fw-bold">${formatMoney(cliente.valorCuota)}</div>
-                                <small class="text-muted">por cuota</small>
+                            <div class="client-progress">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small>${cuotasPagadas}/${cliente.cuotas} cuotas</small>
+                                    ${moraHTML}
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" style="width: ${progreso}%"></div>
+                                </div>
                             </div>
                         </div>
-                        <div class="client-progress">
-                            <div class="d-flex justify-content-between mb-1">
-                                <small>${cuotasPagadas}/${cliente.cuotas} cuotas</small>
-                                ${moraHTML}
-                            </div>
-                            <div class="progress">
-                                <div class="progress-bar bg-success" style="width: ${progreso}%"></div>
-                            </div>
-                        </div>
+                    `;
+                }).join('');
+            } else if (completadosFiltrados.length > 0) {
+                html += `<div class="text-center text-muted py-3 mx-3"><i class="bi bi-check-circle me-2"></i>No hay préstamos activos actualmente</div>`;
+            }
+
+            // Completed clients (history)
+            if (completadosFiltrados.length > 0) {
+                html += `
+                    <div class="p-3 mt-2">
+                        <h6 class="text-muted mb-0"><i class="bi bi-clock-history me-2"></i>Historial de Créditos Pagados (${completadosFiltrados.length})</h6>
                     </div>
                 `;
-            }).join('');
+                html += completadosFiltrados.map(cliente => {
+                    const cuotasPagadas = Array.isArray(cliente.pagos) ? cliente.pagos.filter(p => p.pagada).length : 0;
+                    const totalPagadoCuotas = Array.isArray(cliente.pagos) ? cliente.pagos.filter(p => p.pagada).reduce((sum, p) => sum + p.valor, 0) : 0;
+                    const totalAbonos = Array.isArray(cliente.abonos) ? cliente.abonos.reduce((sum, a) => sum + (a?.monto || 0), 0) : 0;
+                    const totalPagado = totalPagadoCuotas + totalAbonos;
+
+                    return `
+                        <div class="client-card" onclick="verDetalle('${cliente.id}')" style="border-left-color: #6f42c1; opacity: 0.85;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="client-name">${cliente.nombre}</div>
+                                    <div class="client-phone"><i class="bi bi-phone me-1"></i>${cliente.celular || '-'}</div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Pagado</span>
+                                    <div class="fw-bold mt-1">${formatMoney(cliente.capital)}</div>
+                                </div>
+                            </div>
+                            <div class="client-progress">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small>${cuotasPagadas}/${cliente.cuotas} cuotas</small>
+                                    <small class="text-success">Total pagado: ${formatMoney(totalPagado)}</small>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            container.innerHTML = html;
         }
 
         // Filter clients
