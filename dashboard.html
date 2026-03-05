@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e40af">
+    <link rel="manifest" href="manifest.json">
     <title>Dashboard - C&A Cloud Factory</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -46,6 +48,9 @@
 
                 <!-- User Menu -->
                 <div class="flex items-center gap-4">
+                    <button id="mobileMenuBtn" class="md:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Menú">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
                     <div class="text-right hidden sm:block">
                         <p id="userName" class="text-white text-sm font-medium">-</p>
                         <p id="userRole" class="text-gray-400 text-xs">-</p>
@@ -76,6 +81,36 @@
             </div>
         </div>
     </nav>
+
+    <!-- Mobile Menu Drawer -->
+    <div id="mobileMenu" class="fixed inset-0 z-50 hidden">
+        <div id="mobileMenuOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="absolute left-0 top-0 bottom-0 w-72 bg-gray-800 border-r border-gray-700 shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-shoe-prints text-white"></i>
+                    </div>
+                    <span class="text-white font-bold">C&A Factory</span>
+                </div>
+                <button id="closeMobileMenu" class="p-2 text-gray-400 hover:text-white rounded-lg transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="mobileNavMenu" class="flex-1 p-4 space-y-1 overflow-y-auto"></div>
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-gray-400"></i>
+                    </div>
+                    <div>
+                        <p id="mobileUserName" class="text-white text-sm font-medium">-</p>
+                        <p id="mobileUserRole" class="text-gray-400 text-xs">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -324,9 +359,12 @@
                 // Actualizar UI con datos del usuario
                 document.getElementById('userName').textContent = userData.nombre;
                 document.getElementById('userRole').textContent = getRoleName(userData.rol);
+                document.getElementById('mobileUserName').textContent = userData.nombre;
+                document.getElementById('mobileUserRole').textContent = getRoleName(userData.rol);
                 
                 // Generar menú de navegación
                 generateNavMenu(userData.rol);
+                setupMobileMenu();
                 
                 // Cargar datos
                 loadDashboardData(userData);
@@ -352,6 +390,7 @@
         function generateNavMenu(rol) {
             const menu = getNavigationMenu(rol);
             const navMenu = document.getElementById('navMenu');
+            const mobileNavMenu = document.getElementById('mobileNavMenu');
             
             navMenu.innerHTML = menu.map(item => `
                 <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${window.location.pathname.includes(item.href) ? 'bg-gray-700/50 text-white' : ''}">
@@ -359,6 +398,21 @@
                     <span>${item.name}</span>
                 </a>
             `).join('');
+
+            mobileNavMenu.innerHTML = menu.map(item => `
+                <a href="${item.href}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition ${window.location.pathname.includes(item.href) ? 'bg-blue-600/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}">
+                    <i class="fas ${item.icon} w-5 text-center"></i>
+                    <span>${item.name}</span>
+                </a>
+            `).join('');
+        }
+
+        function setupMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            document.getElementById('mobileMenuBtn').addEventListener('click', () => menu.classList.remove('hidden'));
+            document.getElementById('closeMobileMenu').addEventListener('click', () => menu.classList.add('hidden'));
+            overlay.addEventListener('click', () => menu.classList.add('hidden'));
         }
 
         // Cargar datos del dashboard
@@ -874,6 +928,11 @@
         checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO]).then(({ user }) => {
             initNotifications(user.uid);
         }).catch(() => {});
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
     </script>
 </body>
 </html>
