@@ -11,13 +11,6 @@
         @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
         .animate-slide-in { animation: slide-in 0.3s ease-out; }
         .pulse-ring::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid currentColor; animation: pulse-ring 1.5s infinite; }
-        .mat-autocomplete-wrap { position: relative; }
-        .mat-autocomplete-dd { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 60; max-height: 180px; overflow-y: auto; background: #1e293b; border: 1px solid #475569; border-radius: 0.5rem; margin-top: 2px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-        .mat-autocomplete-dd.show { display: block; }
-        .mat-autocomplete-dd .ac-option { padding: 10px 12px; color: #e2e8f0; font-size: 0.875rem; cursor: pointer; border-bottom: 1px solid #334155; }
-        .mat-autocomplete-dd .ac-option:last-child { border-bottom: none; }
-        .mat-autocomplete-dd .ac-option:hover, .mat-autocomplete-dd .ac-option:active { background: #3b82f6; color: #fff; }
-        .mat-autocomplete-dd .ac-empty { padding: 10px 12px; color: #94a3b8; font-size: 0.8rem; text-align: center; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -40,10 +33,7 @@
                         <p id="clientName" class="text-white text-sm font-medium">-</p>
                         <p class="text-gray-400 text-xs">Cliente</p>
                     </div>
-                    <button id="settingsBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Configuración">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Cerrar sesión">
+                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition">
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </div>
@@ -208,7 +198,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Cantidad de Pares</label>
-                            <input type="text" id="orderCantidad" required placeholder="100" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="number" id="orderCantidad" required min="1" placeholder="100" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
                     
@@ -223,21 +213,34 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">🎨 Color Principal</label>
-                            <input type="text" id="orderColor" required placeholder="Ej: Negro, Café, Miel..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Color Secundario (opcional)</label>
-                            <input type="text" id="orderColorSecundario" placeholder="Ej: Beige, Blanco..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-                    
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Especificaciones / Notas Adicionales</label>
                         <textarea id="orderNotas" rows="2" placeholder="Acabados, detalles especiales, instrucciones..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                     </div>
+                </div>
+
+                <!-- Desglose por Colores -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-700 pb-2">
+                        <h4 class="text-white font-medium">🎨 Desglose por Colores</h4>
+                        <span id="paresRestantes" class="text-sm font-medium px-3 py-1 rounded-full bg-gray-700 text-gray-300">Ingrese cantidad total primero</span>
+                    </div>
+                    
+                    <div class="bg-blue-900/30 border border-blue-700/50 rounded-xl p-3">
+                        <p class="text-blue-300 text-sm flex items-start gap-2">
+                            <i class="fas fa-info-circle mt-0.5"></i>
+                            <span>Distribuya los pares totales entre los colores. La suma de pares por color debe ser igual a la cantidad total.</span>
+                        </p>
+                    </div>
+
+                    <div id="coloresContainer" class="space-y-3">
+                        <!-- Color rows will be added dynamically -->
+                    </div>
+                    
+                    <button type="button" id="addColorBtn" class="w-full py-2 border-2 border-dashed border-gray-600 hover:border-pink-500 text-gray-400 hover:text-pink-400 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Agregar Color
+                    </button>
                 </div>
 
                 <!-- Materiales a Entregar -->
@@ -260,8 +263,8 @@
                         Cancelar
                     </button>
                     <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition">
-                        <i class="fas fa-save mr-2"></i>
-                        Guardar Pedido
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Enviar Pedido
                     </button>
                 </div>
             </form>
@@ -316,140 +319,6 @@
         </div>
     </div>
 
-    <!-- Settings Modal (Change Password) -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-gray-700 animate-slide-in">
-            <div class="p-6 border-b border-gray-700 flex items-center justify-between">
-                <h3 class="text-xl font-bold text-white flex items-center gap-2">
-                    <i class="fas fa-cog text-blue-500"></i>
-                    Configuración
-                </h3>
-                <button id="closeSettingsModal" class="text-gray-400 hover:text-white transition">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <form id="changePasswordForm" class="p-6 space-y-5">
-                <div class="bg-blue-900/30 border border-blue-700/50 rounded-xl p-4">
-                    <p class="text-blue-300 text-sm flex items-start gap-2">
-                        <i class="fas fa-lock mt-0.5"></i>
-                        <span>Cambiar contraseña de acceso al portal</span>
-                    </p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Contraseña Actual</label>
-                    <div class="relative">
-                        <input type="password" id="currentPassword" required placeholder="••••••••" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
-                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="currentPassword">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Nueva Contraseña</label>
-                    <div class="relative">
-                        <input type="password" id="newPassword" required minlength="4" placeholder="Mínimo 4 caracteres" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
-                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="newPassword">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Confirmar Nueva Contraseña</label>
-                    <div class="relative">
-                        <input type="password" id="confirmPassword" required minlength="4" placeholder="Repita la nueva contraseña" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
-                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="confirmPassword">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="flex gap-3 pt-2">
-                    <button type="button" id="cancelSettingsModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
-                        <i class="fas fa-save"></i>
-                        Guardar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Edit Order Modal -->
-    <div id="editOrderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 rounded-2xl max-w-2xl w-full mx-4 shadow-2xl border border-gray-700 max-h-[90vh] overflow-y-auto animate-slide-in">
-            <div class="sticky top-0 bg-gray-800 p-6 border-b border-gray-700 flex items-center justify-between z-10">
-                <h3 class="text-xl font-bold text-white">
-                    <i class="fas fa-edit mr-2 text-amber-500"></i>
-                    Editar Pedido
-                </h3>
-                <button id="closeEditOrderModal" class="text-gray-400 hover:text-white">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <form id="editOrderForm" class="p-6 space-y-6">
-                <input type="hidden" id="editOrderId">
-                <div class="space-y-4">
-                    <h4 class="text-white font-medium border-b border-gray-700 pb-2">📋 Información del Pedido</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Referencia / Modelo</label>
-                            <input type="text" id="editModelo" required placeholder="Ej: Bota Industrial 2024" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Cantidad de Pares</label>
-                            <input type="text" id="editCantidad" required placeholder="100" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Tallas (separadas por coma)</label>
-                            <input type="text" id="editTallas" placeholder="38, 39, 40, 41, 42" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Fecha Entrega Esperada</label>
-                            <input type="date" id="editFechaEntrega" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">🎨 Color Principal</label>
-                            <input type="text" id="editColor" required placeholder="Ej: Negro, Café, Miel..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Color Secundario (opcional)</label>
-                            <input type="text" id="editColorSecundario" placeholder="Ej: Beige, Blanco..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Especificaciones / Notas Adicionales</label>
-                        <textarea id="editNotas" rows="2" placeholder="Acabados, detalles especiales, instrucciones..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
-                    </div>
-                </div>
-
-                <!-- Materiales a Entregar (Editar) -->
-                <div class="space-y-4">
-                    <h4 class="text-white font-medium border-b border-gray-700 pb-2">📦 Materiales que Entregará</h4>
-                    <div id="editMaterialesContainer" class="space-y-3"></div>
-                    <button type="button" id="addEditMaterialBtn" class="w-full py-2 border-2 border-dashed border-gray-600 hover:border-blue-500 text-gray-400 hover:text-blue-400 rounded-xl transition flex items-center justify-center gap-2">
-                        <i class="fas fa-plus"></i>
-                        Agregar Material
-                    </button>
-                </div>
-
-                <div class="flex gap-3 pt-4 border-t border-gray-700">
-                    <button type="button" id="cancelEditOrderModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
-                        <i class="fas fa-save"></i>
-                        Guardar Cambios
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
@@ -459,7 +328,6 @@
         let currentClient = null;
         let pedidos = [];
         let materiales = [];
-        let clientMateriales = [];
 
         // ==================== TIMEZONE FIX ====================
         // Parsear fecha de input sin problemas de timezone (Colombia UTC-5)
@@ -600,56 +468,6 @@
         function loadClientData() {
             loadPedidos();
             loadMateriales();
-            loadClientMateriales();
-        }
-
-        async function loadClientMateriales() {
-            try {
-                const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
-                const snap = await getDoc(docRef);
-                if (snap.exists()) {
-                    clientMateriales = snap.data().nombres || [];
-                } else {
-                    clientMateriales = [];
-                }
-                updateMaterialesDatalist();
-            } catch (error) {
-                console.error('Error cargando materiales guardados:', error);
-                clientMateriales = [];
-            }
-        }
-
-        function updateMaterialesDatalist() {
-            // Refresh all open autocomplete dropdowns with current clientMateriales
-            document.querySelectorAll('.mat-autocomplete-dd').forEach(dd => {
-                const input = dd.parentElement.querySelector('.mat-nombre');
-                const filter = (input?.value || '').toLowerCase();
-                renderAutocompleteOptions(dd, filter);
-            });
-        }
-
-        function renderAutocompleteOptions(dropdown, filter) {
-            const filtered = clientMateriales.filter(n => n.toLowerCase().includes(filter));
-            if (filtered.length === 0) {
-                dropdown.innerHTML = clientMateriales.length === 0
-                    ? '<div class="ac-empty">Aún no tienes materiales guardados.<br>Escribe uno nuevo y se guardará al enviar el pedido.</div>'
-                    : '<div class="ac-empty">No hay coincidencias</div>';
-            } else {
-                dropdown.innerHTML = filtered.map(n => `<div class="ac-option">${n}</div>`).join('');
-            }
-        }
-
-        async function saveNewMaterialNames(nombres) {
-            const nuevos = nombres.filter(n => n && !clientMateriales.includes(n));
-            if (nuevos.length === 0) return;
-            clientMateriales = [...clientMateriales, ...nuevos];
-            updateMaterialesDatalist();
-            try {
-                const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
-                await setDoc(docRef, { nombres: clientMateriales }, { merge: true });
-            } catch (error) {
-                console.error('Error guardando materiales:', error);
-            }
         }
 
         function loadPedidos() {
@@ -712,7 +530,6 @@
             }
             
             const statusConfig = {
-                'borrador': { color: 'bg-gray-600/20 text-gray-400', icon: 'file-alt', label: 'Borrador' },
                 'pendiente': { color: 'bg-amber-600/20 text-amber-400', icon: 'clock', label: 'Pendiente' },
                 'materiales_recibidos': { color: 'bg-blue-600/20 text-blue-400', icon: 'box', label: 'Materiales Recibidos' },
                 'en_produccion': { color: 'bg-purple-600/20 text-purple-400', icon: 'cogs', label: 'En Producción' },
@@ -760,6 +577,27 @@
                             </div>
                         ` : ''}
                         
+                        ${pedido.colores && pedido.colores.length > 0 ? `
+                            <div class="mb-3 p-3 bg-gradient-to-r from-pink-900/20 to-purple-900/20 border border-pink-700/30 rounded-lg">
+                                <p class="text-gray-400 text-xs mb-2"><i class="fas fa-palette mr-1 text-pink-400"></i>Desglose por colores:</p>
+                                <div class="flex flex-wrap gap-2">
+                                    ${pedido.colores.map(c => `
+                                        <span class="px-3 py-1 bg-gray-700/60 rounded-full text-sm text-white">
+                                            🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : pedido.color ? `
+                            <div class="mb-3 p-3 bg-gradient-to-r from-pink-900/20 to-purple-900/20 border border-pink-700/30 rounded-lg">
+                                <p class="text-white text-sm">
+                                    <i class="fas fa-palette mr-2 text-pink-400"></i>🎨 <strong>Color:</strong> 
+                                    <span class="text-pink-300">${pedido.color}</span>
+                                    ${pedido.color_secundario ? ` | <strong>Secundario:</strong> <span class="text-purple-300">${pedido.color_secundario}</span>` : ''}
+                                </p>
+                            </div>
+                        ` : ''}
+                        
                         ${pedido.notas ? `<p class="text-gray-500 text-sm"><i class="fas fa-sticky-note mr-1"></i>${pedido.notas}</p>` : ''}
                         
                         ${pedido.materiales && pedido.materiales.length > 0 ? `
@@ -768,7 +606,7 @@
                                 <div class="flex flex-wrap gap-2">
                                     ${pedido.materiales.map(m => `
                                         <span class="px-2 py-1 bg-gray-700/50 rounded text-xs text-gray-300">
-                                            ${m.nombre}: ${m.cantidad} ${m.unidad}${m.talla ? ` (T:${m.talla})` : ''}
+                                            ${m.nombre}: ${m.cantidad} ${m.unidad}
                                             ${m.recibido ? '<i class="fas fa-check text-green-500 ml-1"></i>' : '<i class="fas fa-clock text-amber-500 ml-1"></i>'}
                                         </span>
                                     `).join('')}
@@ -776,37 +614,21 @@
                             </div>
                         ` : ''}
                         
-                        ${pedido.estado === 'borrador' || pedido.estado === 'pendiente' ? `
-                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end gap-2 flex-wrap">
-                                <button class="edit-pedido-btn px-4 py-2 bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
-                                    <i class="fas fa-edit"></i>
-                                    Modificar
-                                </button>
+                        ${pedido.estado !== 'entregado' ? `
+                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end">
                                 <button class="delete-pedido-btn px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
                                     <i class="fas fa-trash"></i>
-                                    Eliminar
+                                    Eliminar Pedido
                                 </button>
-                                ${pedido.estado === 'borrador' ? `
-                                <button class="enviar-pedido-btn px-4 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
-                                    <i class="fas fa-paper-plane"></i>
-                                    Enviar Pedido
-                                </button>
-                                ` : ''}
                             </div>
                         ` : ''}
                     </div>
                 `;
             }).join('');
             
-            // Event listeners para editar, eliminar y enviar
-            document.querySelectorAll('.edit-pedido-btn').forEach(btn => {
-                btn.addEventListener('click', () => openEditOrder(btn.dataset.id));
-            });
+            // Event listeners para eliminar
             document.querySelectorAll('.delete-pedido-btn').forEach(btn => {
                 btn.addEventListener('click', () => deletePedido(btn.dataset.id));
-            });
-            document.querySelectorAll('.enviar-pedido-btn').forEach(btn => {
-                btn.addEventListener('click', () => enviarPedido(btn.dataset.id));
             });
         }
         
@@ -821,48 +643,6 @@
             } catch (error) {
                 console.error('Error eliminando pedido:', error);
                 showToast('Error al eliminar el pedido', 'error');
-            }
-        }
-
-        async function enviarPedido(pedidoId) {
-            const pedido = pedidos.find(p => p.id === pedidoId);
-            if (!pedido) return;
-            
-            if (!confirm(`¿Está seguro de enviar el pedido "${pedido.modelo}" a la fábrica?`)) {
-                return;
-            }
-            
-            try {
-                await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
-                    estado: 'pendiente'
-                });
-                
-                // Send real-time notification to factory
-                await push(ref(rtdb, 'notificaciones_fabrica'), {
-                    tipo: 'nuevo_pedido',
-                    titulo: '📦 Nuevo Pedido de Cliente',
-                    mensaje: `${currentClient.nombre} ha solicitado ${pedido.cantidad} pares de "${pedido.modelo}"`,
-                    pedido_id: pedidoId,
-                    cliente_id: currentClient.id,
-                    fecha: Date.now(),
-                    leido: false
-                });
-                
-                // Also save to Firestore notifications
-                await addDoc(collection(db, 'notificaciones'), {
-                    tipo: 'nuevo_pedido',
-                    titulo: 'Nuevo Pedido de Cliente',
-                    mensaje: `${currentClient.nombre} solicita ${pedido.cantidad} pares de "${pedido.modelo}"`,
-                    pedido_id: pedidoId,
-                    cliente_id: currentClient.id,
-                    fecha: Timestamp.now(),
-                    leido: false
-                });
-                
-                showToast('Pedido enviado a la fábrica correctamente', 'success');
-            } catch (error) {
-                console.error('Error enviando pedido:', error);
-                showToast('Error al enviar el pedido', 'error');
             }
         }
 
@@ -906,7 +686,7 @@
                                         <i class="fas fa-${mat.recibido ? 'check-circle text-green-500' : 'clock text-amber-500'}"></i>
                                         <span class="text-gray-300 text-sm">${mat.nombre}</span>
                                     </div>
-                                    <span class="text-gray-400 text-sm">${mat.cantidad} ${mat.unidad}${mat.talla ? ` · T:${mat.talla}` : ''}</span>
+                                    <span class="text-gray-400 text-sm">${mat.cantidad} ${mat.unidad}</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -918,29 +698,96 @@
         // ==================== ORDERS ====================
         let materialCount = 0;
 
-        function addMaterialRow(targetContainerId, prefill) {
-            const container = document.getElementById(targetContainerId || 'materialesContainer');
-            materialCount++;
+        function addColorRow() {
+            const container = document.getElementById('coloresContainer');
+            const row = document.createElement('div');
+            row.className = 'color-row';
+            row.innerHTML = `
+                <div class="grid grid-cols-12 gap-2 items-end bg-gray-700/30 rounded-xl p-3">
+                    <div class="col-span-4">
+                        <label class="block text-xs text-gray-400 mb-1">Color Principal</label>
+                        <input type="text" class="color-principal w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="Ej: Negro">
+                    </div>
+                    <div class="col-span-3">
+                        <label class="block text-xs text-gray-400 mb-1">Color Secundario</label>
+                        <input type="text" class="color-secundario w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Opcional">
+                    </div>
+                    <div class="col-span-3">
+                        <label class="block text-xs text-gray-400 mb-1">Pares</label>
+                        <input type="number" class="color-pares w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="0" min="1">
+                    </div>
+                    <div class="col-span-2 flex justify-center">
+                        <button type="button" class="remove-color-btn w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition text-sm">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            row.querySelector('.color-pares').addEventListener('input', updateParesRestantes);
+            row.querySelector('.remove-color-btn').addEventListener('click', () => {
+                row.remove();
+                updateParesRestantes();
+            });
+            container.appendChild(row);
+            updateParesRestantes();
+        }
+
+        function updateParesRestantes() {
+            const total = parseInt(document.getElementById('orderCantidad').value) || 0;
+            const rows = document.querySelectorAll('.color-row');
+            let asignados = 0;
+            rows.forEach(r => {
+                asignados += parseInt(r.querySelector('.color-pares').value) || 0;
+            });
+            const restantes = total - asignados;
+            const el = document.getElementById('paresRestantes');
+            if (total <= 0) {
+                el.textContent = 'Ingrese cantidad total primero';
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-gray-700 text-gray-300';
+            } else if (restantes === 0) {
+                el.textContent = '✓ Pares completos';
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-600/20 text-green-400';
+            } else if (restantes > 0) {
+                el.textContent = `Faltan ${restantes} pares`;
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-amber-600/20 text-amber-400';
+            } else {
+                el.textContent = `Excede en ${Math.abs(restantes)} pares`;
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-600/20 text-red-400';
+            }
+        }
+
+        function addMaterialRow() {
+            const container = document.getElementById('materialesContainer');
             const row = document.createElement('div');
             row.className = 'material-row space-y-2';
             row.innerHTML = `
                 <div class="grid grid-cols-12 gap-2 items-end">
                     <div class="col-span-4">
                         <label class="block text-xs text-gray-400 mb-1">Material</label>
-                        <div class="mat-autocomplete-wrap">
-                            <input type="text" class="mat-nombre w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba o toque para ver" autocomplete="off">
-                            <div class="mat-autocomplete-dd"></div>
-                        </div>
+                        <select class="mat-tipo w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="cuero">Cuero</option>
+                            <option value="suela">Suela</option>
+                            <option value="forro">Forro</option>
+                            <option value="hilo">Hilo</option>
+                            <option value="plantilla">Plantilla</option>
+                            <option value="pegante">Pegante</option>
+                            <option value="herrajes">Herrajes</option>
+                            <option value="cordones">Cordones</option>
+                            <option value="tela">Tela</option>
+                            <option value="sintetico">Sintético</option>
+                            <option value="otro">✏️ Otro (personalizado)</option>
+                        </select>
+                    </div>
+                    <div class="col-span-3 mat-custom-container hidden">
+                        <label class="block text-xs text-gray-400 mb-1">Nombre Material</label>
+                        <input type="text" class="mat-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba el nombre">
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs text-gray-400 mb-1">Cantidad</label>
-                        <input type="text" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0">
+                        <input type="number" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" step="0.1">
                     </div>
                     <div class="col-span-2">
-                        <label class="block text-xs text-gray-400 mb-1">Talla</label>
-                        <input type="text" class="mat-talla w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: 38">
-                    </div>
-                    <div class="col-span-3">
                         <label class="block text-xs text-gray-400 mb-1">Unidad</label>
                         <select class="mat-unidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="metros">Metros</option>
@@ -954,7 +801,7 @@
                             <option value="otro_unidad">Otra...</option>
                         </select>
                     </div>
-                    <div class="col-span-3 unidad-custom-container hidden">
+                    <div class="col-span-2 unidad-custom-container hidden">
                         <label class="block text-xs text-gray-400 mb-1">Nombre Unidad</label>
                         <input type="text" class="unidad-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: yardas, galones...">
                     </div>
@@ -966,47 +813,18 @@
                 </div>
             `;
             
-            // Custom autocomplete for material name
-            const matInput = row.querySelector('.mat-nombre');
-            const dropdown = row.querySelector('.mat-autocomplete-dd');
-
-            matInput.addEventListener('focus', () => {
-                renderAutocompleteOptions(dropdown, matInput.value.toLowerCase());
-                dropdown.classList.add('show');
-            });
-
-            matInput.addEventListener('input', () => {
-                renderAutocompleteOptions(dropdown, matInput.value.toLowerCase());
-                dropdown.classList.add('show');
-            });
-
-            dropdown.addEventListener('mousedown', (e) => {
-                // mousedown instead of click to fire before blur
-                const option = e.target.closest('.ac-option');
-                if (option) {
-                    matInput.value = option.textContent;
-                    dropdown.classList.remove('show');
-                }
-            });
-
-            // Also handle touchend for mobile
-            dropdown.addEventListener('touchend', (e) => {
-                const option = e.target.closest('.ac-option');
-                if (option) {
-                    e.preventDefault();
-                    matInput.value = option.textContent;
-                    dropdown.classList.remove('show');
-                    matInput.blur();
-                }
-            });
-
-            matInput.addEventListener('blur', () => {
-                // Small delay so click/touch on dropdown can fire first
-                setTimeout(() => dropdown.classList.remove('show'), 200);
-            });
-
+            const select = row.querySelector('.mat-tipo');
+            const customContainer = row.querySelector('.mat-custom-container');
             const unidadSelect = row.querySelector('.mat-unidad');
             const unidadCustomContainer = row.querySelector('.unidad-custom-container');
+            
+            select.addEventListener('change', () => {
+                if (select.value === 'otro') {
+                    customContainer.classList.remove('hidden');
+                } else {
+                    customContainer.classList.add('hidden');
+                }
+            });
             
             unidadSelect.addEventListener('change', () => {
                 if (unidadSelect.value === 'otro_unidad') {
@@ -1017,23 +835,6 @@
             });
             
             row.querySelector('.remove-mat-btn').addEventListener('click', () => row.remove());
-            
-            // Prefill values if editing existing material
-            if (prefill) {
-                if (prefill.nombre) row.querySelector('.mat-nombre').value = prefill.nombre;
-                if (prefill.cantidad) row.querySelector('.mat-cantidad').value = prefill.cantidad;
-                if (prefill.talla) row.querySelector('.mat-talla').value = prefill.talla;
-                // Check if unidad matches a standard option
-                const standardUnidades = ['metros','pies','decimetros','pares','unidades','kilos','litros','rollos'];
-                if (prefill.unidad && standardUnidades.includes(prefill.unidad)) {
-                    unidadSelect.value = prefill.unidad;
-                } else if (prefill.unidad) {
-                    unidadSelect.value = 'otro_unidad';
-                    unidadCustomContainer.classList.remove('hidden');
-                    row.querySelector('.unidad-custom').value = prefill.unidad;
-                }
-            }
-            
             container.appendChild(row);
         }
 
@@ -1041,232 +842,124 @@
             e.preventDefault();
             
             const modelo = document.getElementById('orderModelo').value.trim();
-            const cantidadRaw = document.getElementById('orderCantidad').value.trim();
-            const cantidad = parseInt(cantidadRaw) || 0;
+            const cantidad = parseInt(document.getElementById('orderCantidad').value) || 0;
             const tallas = document.getElementById('orderTallas').value.trim();
             const fechaEntrega = document.getElementById('orderFechaEntrega').value;
-            const color = document.getElementById('orderColor').value.trim();
-            const colorSecundario = document.getElementById('orderColorSecundario').value.trim();
             const notas = document.getElementById('orderNotas').value.trim();
             
-            if (!modelo || !cantidadRaw || !fechaEntrega || !color) {
-                showToast('Complete los campos requeridos (incluido el color)', 'warning');
+            if (!modelo || cantidad <= 0 || !fechaEntrega) {
+                showToast('Complete los campos requeridos', 'warning');
+                return;
+            }
+            
+            // Collect colors breakdown
+            const colorRows = document.querySelectorAll('.color-row');
+            const coloresList = [];
+            let totalParesColores = 0;
+            
+            colorRows.forEach(row => {
+                const colorPrincipal = row.querySelector('.color-principal').value.trim();
+                const colorSec = row.querySelector('.color-secundario').value.trim();
+                const pares = parseInt(row.querySelector('.color-pares').value) || 0;
+                
+                if (colorPrincipal && pares > 0) {
+                    coloresList.push({
+                        color: colorPrincipal,
+                        color_secundario: colorSec,
+                        pares: pares
+                    });
+                    totalParesColores += pares;
+                }
+            });
+            
+            if (coloresList.length === 0) {
+                showToast('Agregue al menos un color con sus pares', 'warning');
+                return;
+            }
+            
+            if (totalParesColores !== cantidad) {
+                showToast(`La suma de pares por color (${totalParesColores}) no coincide con la cantidad total (${cantidad})`, 'warning');
                 return;
             }
             
             // Collect materials
             const materialRows = document.querySelectorAll('.material-row');
             const materialesList = [];
-            const nombresUsados = [];
             
             materialRows.forEach(row => {
-                const nombre = row.querySelector('.mat-nombre')?.value?.trim() || '';
-                const cantidadMat = row.querySelector('.mat-cantidad')?.value?.trim() || '';
-                const tallaMat = row.querySelector('.mat-talla')?.value?.trim() || '';
+                const tipoSelect = row.querySelector('.mat-tipo').value;
+                const customName = row.querySelector('.mat-custom')?.value?.trim() || '';
+                const cantidadMat = parseFloat(row.querySelector('.mat-cantidad').value) || 0;
                 const unidadSelect = row.querySelector('.mat-unidad').value;
                 const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
                 
+                const tipo = tipoSelect === 'otro' ? 'personalizado' : tipoSelect;
+                const nombre = tipoSelect === 'otro' && customName ? customName : tipoSelect.charAt(0).toUpperCase() + tipoSelect.slice(1);
                 const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
                 
-                if (nombre && cantidadMat) {
+                if (cantidadMat > 0) {
                     materialesList.push({
                         nombre,
-                        tipo: nombre.toLowerCase(),
+                        tipo,
                         cantidad: cantidadMat,
-                        talla: tallaMat,
                         unidad,
                         recibido: false
                     });
-                    nombresUsados.push(nombre);
                 }
             });
+
+            // Build color summary for backward compatibility
+            const colorResumen = coloresList.map(c => `${c.color} (${c.pares})`).join(', ');
             
             try {
-                await addDoc(collection(db, 'pedidos_cliente'), {
+                const pedidoRef = await addDoc(collection(db, 'pedidos_cliente'), {
                     cliente_id: currentClient.id,
                     cliente_nombre: currentClient.nombre,
                     modelo,
                     cantidad,
-                    cantidad_texto: cantidadRaw,
                     tallas,
-                    color,
-                    color_secundario: colorSecundario,
+                    colores: coloresList,
+                    color: colorResumen,
+                    color_secundario: '',
                     fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
                     notas,
                     materiales: materialesList,
-                    estado: 'borrador',
+                    estado: 'pendiente',
                     pares_hechos: 0,
                     fecha_creacion: Timestamp.now()
                 });
                 
-                // Save new material names for future autocomplete
-                if (nombresUsados.length > 0) {
-                    await saveNewMaterialNames(nombresUsados);
-                }
+                // Send real-time notification to factory
+                await push(ref(rtdb, 'notificaciones_fabrica'), {
+                    tipo: 'nuevo_pedido',
+                    titulo: '📦 Nuevo Pedido de Cliente',
+                    mensaje: `${currentClient.nombre} ha solicitado ${cantidad} pares de "${modelo}" (${coloresList.length} colores)`,
+                    pedido_id: pedidoRef.id,
+                    cliente_id: currentClient.id,
+                    fecha: Date.now(),
+                    leido: false
+                });
                 
-                showToast('Pedido guardado como borrador', 'success');
+                // Also save to Firestore notifications
+                await addDoc(collection(db, 'notificaciones'), {
+                    tipo: 'nuevo_pedido',
+                    titulo: 'Nuevo Pedido de Cliente',
+                    mensaje: `${currentClient.nombre} solicita ${cantidad} pares de "${modelo}" (${coloresList.length} colores)`,
+                    pedido_id: pedidoRef.id,
+                    cliente_id: currentClient.id,
+                    fecha: Timestamp.now(),
+                    leido: false
+                });
+                
+                showToast('Pedido enviado correctamente', 'success');
                 document.getElementById('orderModal').classList.add('hidden');
                 document.getElementById('orderForm').reset();
                 document.getElementById('materialesContainer').innerHTML = '';
+                document.getElementById('coloresContainer').innerHTML = '';
                 
             } catch (error) {
                 console.error('Error enviando pedido:', error);
                 showToast('Error al enviar pedido', 'error');
-            }
-        }
-
-        // ==================== EDIT ORDER ====================
-        function openEditOrder(pedidoId) {
-            const pedido = pedidos.find(p => p.id === pedidoId);
-            if (!pedido) return;
-            
-            document.getElementById('editOrderId').value = pedidoId;
-            document.getElementById('editModelo').value = pedido.modelo || '';
-            document.getElementById('editCantidad').value = pedido.cantidad || '';
-            document.getElementById('editTallas').value = pedido.tallas || '';
-            document.getElementById('editColor').value = pedido.color || '';
-            document.getElementById('editColorSecundario').value = pedido.color_secundario || '';
-            document.getElementById('editNotas').value = pedido.notas || '';
-            
-            // Format date for input
-            if (pedido.fecha_entrega_esperada?.toDate) {
-                const d = pedido.fecha_entrega_esperada.toDate();
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const dd = String(d.getDate()).padStart(2, '0');
-                document.getElementById('editFechaEntrega').value = `${yyyy}-${mm}-${dd}`;
-            }
-            
-            // Populate existing materials
-            const editMatContainer = document.getElementById('editMaterialesContainer');
-            editMatContainer.innerHTML = '';
-            updateMaterialesDatalist();
-            if (pedido.materiales && pedido.materiales.length > 0) {
-                pedido.materiales.forEach(m => {
-                    addMaterialRow('editMaterialesContainer', m);
-                });
-            }
-            
-            document.getElementById('editOrderModal').classList.remove('hidden');
-        }
-
-        async function submitEditOrder(e) {
-            e.preventDefault();
-            
-            const pedidoId = document.getElementById('editOrderId').value;
-            const modelo = document.getElementById('editModelo').value.trim();
-            const cantidadRaw = document.getElementById('editCantidad').value.trim();
-            const cantidad = parseInt(cantidadRaw) || 0;
-            const tallas = document.getElementById('editTallas').value.trim();
-            const fechaEntrega = document.getElementById('editFechaEntrega').value;
-            const color = document.getElementById('editColor').value.trim();
-            const colorSecundario = document.getElementById('editColorSecundario').value.trim();
-            const notas = document.getElementById('editNotas').value.trim();
-            
-            if (!modelo || !cantidadRaw || !fechaEntrega || !color) {
-                showToast('Complete los campos requeridos', 'warning');
-                return;
-            }
-            
-            // Collect materials from edit modal
-            const editMatRows = document.getElementById('editMaterialesContainer').querySelectorAll('.material-row');
-            const editMaterialesList = [];
-            const editNombresUsados = [];
-            
-            editMatRows.forEach(row => {
-                const nombre = row.querySelector('.mat-nombre')?.value?.trim() || '';
-                const cantidadMat = row.querySelector('.mat-cantidad')?.value?.trim() || '';
-                const tallaMat = row.querySelector('.mat-talla')?.value?.trim() || '';
-                const unidadSelect = row.querySelector('.mat-unidad').value;
-                const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
-                
-                const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
-                
-                if (nombre && cantidadMat) {
-                    editMaterialesList.push({
-                        nombre,
-                        tipo: nombre.toLowerCase(),
-                        cantidad: cantidadMat,
-                        talla: tallaMat,
-                        unidad,
-                        recibido: false
-                    });
-                    editNombresUsados.push(nombre);
-                }
-            });
-            
-            try {
-                await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
-                    modelo,
-                    cantidad,
-                    cantidad_texto: cantidadRaw,
-                    tallas,
-                    color,
-                    color_secundario: colorSecundario,
-                    fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
-                    notas,
-                    materiales: editMaterialesList
-                });
-                
-                // Save new material names for future autocomplete
-                if (editNombresUsados.length > 0) {
-                    await saveNewMaterialNames(editNombresUsados);
-                }
-                
-                showToast('Pedido actualizado correctamente', 'success');
-                document.getElementById('editOrderModal').classList.add('hidden');
-            } catch (error) {
-                console.error('Error actualizando pedido:', error);
-                showToast('Error al actualizar el pedido', 'error');
-            }
-        }
-
-        // ==================== CHANGE PASSWORD ====================
-        async function changePassword(e) {
-            e.preventDefault();
-            
-            const currentPass = document.getElementById('currentPassword').value;
-            const newPass = document.getElementById('newPassword').value;
-            const confirmPass = document.getElementById('confirmPassword').value;
-            
-            if (!currentPass || !newPass || !confirmPass) {
-                showToast('Complete todos los campos', 'warning');
-                return;
-            }
-            
-            if (newPass !== confirmPass) {
-                showToast('Las contraseñas nuevas no coinciden', 'error');
-                return;
-            }
-            
-            if (newPass.length < 4) {
-                showToast('La contraseña debe tener mínimo 4 caracteres', 'warning');
-                return;
-            }
-            
-            try {
-                // Verify current password
-                const clientDoc = await getDoc(doc(db, 'clientes', currentClient.id));
-                if (!clientDoc.exists() || clientDoc.data().password !== currentPass) {
-                    showToast('Contraseña actual incorrecta', 'error');
-                    return;
-                }
-                
-                await updateDoc(doc(db, 'clientes', currentClient.id), {
-                    password: newPass
-                });
-                
-                // Update session
-                currentClient.password = newPass;
-                localStorage.setItem('ca_client_session', JSON.stringify(currentClient));
-                
-                showToast('Contraseña cambiada exitosamente', 'success');
-                document.getElementById('settingsModal').classList.add('hidden');
-                document.getElementById('changePasswordForm').reset();
-                
-            } catch (error) {
-                console.error('Error cambiando contraseña:', error);
-                showToast('Error al cambiar la contraseña', 'error');
             }
         }
 
@@ -1301,56 +994,25 @@
         
         document.getElementById('newOrderBtn').addEventListener('click', () => {
             document.getElementById('orderModal').classList.remove('hidden');
-            updateMaterialesDatalist();
+            document.getElementById('coloresContainer').innerHTML = '';
+            document.getElementById('materialesContainer').innerHTML = '';
+            addColorRow(); // Add first color row
             addMaterialRow(); // Add first material row
         });
         document.getElementById('closeOrderModal').addEventListener('click', () => {
             document.getElementById('orderModal').classList.add('hidden');
+            document.getElementById('coloresContainer').innerHTML = '';
+            document.getElementById('materialesContainer').innerHTML = '';
         });
         document.getElementById('cancelOrderModal').addEventListener('click', () => {
             document.getElementById('orderModal').classList.add('hidden');
+            document.getElementById('coloresContainer').innerHTML = '';
+            document.getElementById('materialesContainer').innerHTML = '';
         });
-        document.getElementById('addMaterialBtn').addEventListener('click', () => addMaterialRow());
-        document.getElementById('addEditMaterialBtn').addEventListener('click', () => addMaterialRow('editMaterialesContainer'));
+        document.getElementById('addColorBtn').addEventListener('click', addColorRow);
+        document.getElementById('orderCantidad').addEventListener('input', updateParesRestantes);
+        document.getElementById('addMaterialBtn').addEventListener('click', addMaterialRow);
         document.getElementById('orderForm').addEventListener('submit', submitOrder);
-        
-        // Settings modal (change password)
-        document.getElementById('settingsBtn').addEventListener('click', () => {
-            document.getElementById('settingsModal').classList.remove('hidden');
-        });
-        document.getElementById('closeSettingsModal').addEventListener('click', () => {
-            document.getElementById('settingsModal').classList.add('hidden');
-            document.getElementById('changePasswordForm').reset();
-        });
-        document.getElementById('cancelSettingsModal').addEventListener('click', () => {
-            document.getElementById('settingsModal').classList.add('hidden');
-            document.getElementById('changePasswordForm').reset();
-        });
-        document.getElementById('changePasswordForm').addEventListener('submit', changePassword);
-        
-        // Toggle password visibility
-        document.querySelectorAll('.toggle-pass-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const input = document.getElementById(btn.dataset.target);
-                const icon = btn.querySelector('i');
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.classList.replace('fa-eye', 'fa-eye-slash');
-                } else {
-                    input.type = 'password';
-                    icon.classList.replace('fa-eye-slash', 'fa-eye');
-                }
-            });
-        });
-        
-        // Edit order modal
-        document.getElementById('closeEditOrderModal').addEventListener('click', () => {
-            document.getElementById('editOrderModal').classList.add('hidden');
-        });
-        document.getElementById('cancelEditOrderModal').addEventListener('click', () => {
-            document.getElementById('editOrderModal').classList.add('hidden');
-        });
-        document.getElementById('editOrderForm').addEventListener('submit', submitEditOrder);
         
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.tab));
