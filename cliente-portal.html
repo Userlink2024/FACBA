@@ -153,12 +153,38 @@
                 <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="materiales">
                     <i class="fas fa-cubes mr-2"></i>Mis Materiales
                 </button>
+                <button class="tab-btn px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" data-tab="historial">
+                    <i class="fas fa-history mr-2"></i>Historial
+                </button>
             </div>
 
             <!-- Pedidos Tab -->
             <div id="pedidosTab" class="tab-content">
                 <div id="pedidosList" class="space-y-4">
                     <p class="text-gray-500 text-center py-8">Cargando pedidos...</p>
+                </div>
+            </div>
+
+            <!-- Historial Tab -->
+            <div id="historialTab" class="tab-content hidden">
+                <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-white">
+                            <i class="fas fa-history mr-2 text-blue-500"></i>
+                            Historial de Pedidos
+                        </h3>
+                        <select id="historialFilter" class="bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="todos">Todos</option>
+                            <option value="entregado">Entregados</option>
+                            <option value="completado">Completados</option>
+                            <option value="en_produccion">En Producción</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="borrador">Borradores</option>
+                        </select>
+                    </div>
+                    <div id="historialList" class="space-y-4">
+                        <p class="text-gray-500 text-center py-4">Sin historial</p>
+                    </div>
                 </div>
             </div>
 
@@ -182,6 +208,40 @@
             </div>
         </div>
     </main>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] hidden">
+        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-700 animate-slide-in">
+            <div class="flex items-center gap-3 mb-4">
+                <div id="confirmIconWrap" class="w-12 h-12 rounded-xl flex items-center justify-center bg-red-600/20">
+                    <i id="confirmIcon" class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                </div>
+                <h3 id="confirmTitle" class="text-xl font-bold text-white">Confirmar</h3>
+            </div>
+            <p id="confirmMessage" class="text-gray-300 mb-6 leading-relaxed"></p>
+            <div class="flex gap-3 justify-end">
+                <button id="confirmCancelBtn" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition font-medium">Cancelar</button>
+                <button id="confirmOkBtn" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition font-medium">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt Modal (for selecting color to duplicate) -->
+    <div id="promptModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] hidden">
+        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-700 animate-slide-in">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600/20">
+                    <i class="fas fa-palette text-blue-500 text-xl"></i>
+                </div>
+                <h3 id="promptTitle" class="text-xl font-bold text-white">Seleccionar</h3>
+            </div>
+            <p id="promptMessage" class="text-gray-300 mb-4 leading-relaxed"></p>
+            <div id="promptOptions" class="space-y-2 mb-6 max-h-48 overflow-y-auto"></div>
+            <div class="flex gap-3 justify-end">
+                <button id="promptCancelBtn" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition font-medium">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- New Order Modal -->
     <div id="orderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
@@ -492,6 +552,83 @@
             }, 3000);
         }
 
+        // ==================== CONFIRM MODAL ====================
+        function showConfirm(title, message, options = {}) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmModal');
+                const iconWrap = document.getElementById('confirmIconWrap');
+                const icon = document.getElementById('confirmIcon');
+                const okBtn = document.getElementById('confirmOkBtn');
+                
+                document.getElementById('confirmTitle').textContent = title;
+                document.getElementById('confirmMessage').textContent = message;
+                
+                // Style based on type
+                const type = options.type || 'danger';
+                if (type === 'danger') {
+                    iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center bg-red-600/20';
+                    icon.className = 'fas fa-exclamation-triangle text-red-500 text-xl';
+                    okBtn.className = 'px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition font-medium';
+                } else if (type === 'info') {
+                    iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600/20';
+                    icon.className = 'fas fa-paper-plane text-blue-500 text-xl';
+                    okBtn.className = 'px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition font-medium';
+                }
+                
+                okBtn.textContent = options.confirmText || 'Confirmar';
+                
+                modal.classList.remove('hidden');
+                
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    document.getElementById('confirmCancelBtn').removeEventListener('click', onCancel);
+                    okBtn.removeEventListener('click', onConfirm);
+                    modal.removeEventListener('click', onBackdrop);
+                };
+                const onCancel = () => { cleanup(); resolve(false); };
+                const onConfirm = () => { cleanup(); resolve(true); };
+                const onBackdrop = (e) => { if (e.target === modal) { cleanup(); resolve(false); } };
+                
+                document.getElementById('confirmCancelBtn').addEventListener('click', onCancel);
+                okBtn.addEventListener('click', onConfirm);
+                modal.addEventListener('click', onBackdrop);
+            });
+        }
+
+        // ==================== PROMPT MODAL ====================
+        function showPromptModal(title, message, optionsList) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('promptModal');
+                document.getElementById('promptTitle').textContent = title;
+                document.getElementById('promptMessage').textContent = message;
+                
+                const optionsContainer = document.getElementById('promptOptions');
+                optionsContainer.innerHTML = optionsList.map((opt, i) => `
+                    <button class="prompt-option-btn w-full text-left px-4 py-3 bg-gray-700/50 hover:bg-blue-600 text-gray-300 hover:text-white rounded-xl transition flex items-center gap-3 group" data-value="${opt}">
+                        <span class="w-8 h-8 rounded-lg bg-gray-600 group-hover:bg-blue-500 flex items-center justify-center text-sm font-bold text-white transition">${i + 1}</span>
+                        <span class="font-medium">${opt}</span>
+                    </button>
+                `).join('');
+                
+                modal.classList.remove('hidden');
+                
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    document.getElementById('promptCancelBtn').removeEventListener('click', onCancel);
+                    modal.removeEventListener('click', onBackdrop);
+                };
+                const onCancel = () => { cleanup(); resolve(null); };
+                const onBackdrop = (e) => { if (e.target === modal) { cleanup(); resolve(null); } };
+                
+                optionsContainer.querySelectorAll('.prompt-option-btn').forEach(btn => {
+                    btn.addEventListener('click', () => { cleanup(); resolve(btn.dataset.value); });
+                });
+                
+                document.getElementById('promptCancelBtn').addEventListener('click', onCancel);
+                modal.addEventListener('click', onBackdrop);
+            });
+        }
+
         // ==================== AUTH ====================
         function checkSession() {
             const session = localStorage.getItem('ca_client_session');
@@ -671,6 +808,7 @@
                 document.getElementById('totalPares').textContent = totalPares;
                 
                 renderPedidos();
+                renderHistorial();
             });
         }
 
@@ -843,9 +981,8 @@
         }
         
         async function deletePedido(pedidoId) {
-            if (!confirm('¿Está seguro de eliminar este pedido? Esta acción no se puede deshacer.')) {
-                return;
-            }
+            const confirmed = await showConfirm('Eliminar Pedido', '¿Está seguro de eliminar este pedido? Esta acción no se puede deshacer.', { type: 'danger', confirmText: 'Eliminar' });
+            if (!confirmed) return;
             
             try {
                 await deleteDoc(doc(db, 'pedidos_cliente', pedidoId));
@@ -860,9 +997,8 @@
             const pedido = pedidos.find(p => p.id === pedidoId);
             if (!pedido) return;
             
-            if (!confirm(`¿Está seguro de enviar el pedido "${pedido.modelo}" a la fábrica?`)) {
-                return;
-            }
+            const confirmed = await showConfirm('Enviar Pedido', `¿Está seguro de enviar el pedido "${pedido.modelo}" a la fábrica? Una vez enviado, la fábrica podrá verlo.`, { type: 'info', confirmText: 'Enviar' });
+            if (!confirmed) return;
             
             try {
                 await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
@@ -947,6 +1083,83 @@
             }).join('');
         }
 
+        // ==================== HISTORIAL ====================
+        function renderHistorial() {
+            const container = document.getElementById('historialList');
+            const filter = document.getElementById('historialFilter').value;
+            
+            let filtered = [...pedidos].sort((a, b) => {
+                const fa = a.fecha_creacion?.toDate?.() || new Date(0);
+                const fb = b.fecha_creacion?.toDate?.() || new Date(0);
+                return fb - fa;
+            });
+            
+            if (filter !== 'todos') {
+                filtered = filtered.filter(p => p.estado === filter);
+            }
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-gray-600 text-4xl mb-3"></i>
+                        <p class="text-gray-500">No hay pedidos en el historial${filter !== 'todos' ? ' con este filtro' : ''}</p>
+                    </div>`;
+                return;
+            }
+            
+            const statusConfig = {
+                'borrador': { color: 'border-gray-500', bg: 'bg-gray-600/20', text: 'text-gray-400', icon: 'file-alt', label: 'Borrador', dot: 'bg-gray-500' },
+                'pendiente': { color: 'border-amber-500', bg: 'bg-amber-600/20', text: 'text-amber-400', icon: 'clock', label: 'Pendiente', dot: 'bg-amber-500' },
+                'materiales_recibidos': { color: 'border-blue-500', bg: 'bg-blue-600/20', text: 'text-blue-400', icon: 'box', label: 'Mat. Recibidos', dot: 'bg-blue-500' },
+                'en_produccion': { color: 'border-purple-500', bg: 'bg-purple-600/20', text: 'text-purple-400', icon: 'cogs', label: 'En Producción', dot: 'bg-purple-500' },
+                'completado': { color: 'border-green-500', bg: 'bg-green-600/20', text: 'text-green-400', icon: 'check-circle', label: 'Completado', dot: 'bg-green-500' },
+                'entregado': { color: 'border-emerald-500', bg: 'bg-emerald-600/20', text: 'text-emerald-400', icon: 'truck', label: 'Entregado', dot: 'bg-emerald-500' }
+            };
+            
+            container.innerHTML = `<div class="relative">
+                <div class="absolute left-[18px] top-0 bottom-0 w-0.5 bg-gray-700"></div>
+                ${filtered.map(pedido => {
+                    const s = statusConfig[pedido.estado] || statusConfig['pendiente'];
+                    const fechaCreacion = pedido.fecha_creacion?.toDate?.() ? pedido.fecha_creacion.toDate().toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                    const fechaEntrega = pedido.fecha_entrega_esperada?.toDate?.() ? pedido.fecha_entrega_esperada.toDate().toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                    const progress = pedido.pares_hechos ? Math.round((pedido.pares_hechos / pedido.cantidad) * 100) : 0;
+                    
+                    const coloresResumen = pedido.colores && pedido.colores.length > 0
+                        ? pedido.colores.map(c => `<span class="px-2 py-0.5 bg-pink-900/30 border border-pink-700/30 rounded text-xs text-pink-300">🎨 ${c.color}: ${c.pares}p</span>`).join(' ')
+                        : pedido.color ? `<span class="px-2 py-0.5 bg-pink-900/30 border border-pink-700/30 rounded text-xs text-pink-300">🎨 ${pedido.color}</span>` : '';
+                    
+                    const materialesResumen = pedido.materiales && pedido.materiales.length > 0
+                        ? `<div class="flex flex-wrap gap-1 mt-2">${pedido.materiales.map(m => `<span class="px-2 py-0.5 bg-gray-700/50 rounded text-xs text-gray-400">${m.nombre}: ${m.cantidad} ${m.unidad}${m.recibido ? ' ✓' : ''}</span>`).join('')}</div>`
+                        : '';
+                    
+                    return `
+                        <div class="relative pl-10 pb-6">
+                            <div class="absolute left-[11px] top-1 w-4 h-4 rounded-full ${s.dot} border-2 border-gray-800 z-10"></div>
+                            <div class="bg-gray-700/30 rounded-xl p-4 border-l-2 ${s.color}">
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h4 class="text-white font-semibold">${pedido.modelo}</h4>
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.text}">
+                                            <i class="fas fa-${s.icon} mr-1"></i>${s.label}
+                                        </span>
+                                    </div>
+                                    <span class="text-gray-500 text-xs">#${pedido.id.slice(-6).toUpperCase()}</span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 mb-2">
+                                    <span><i class="fas fa-calendar-plus mr-1 text-green-500"></i>Creado: ${fechaCreacion}</span>
+                                    <span><i class="fas fa-calendar-check mr-1 text-amber-500"></i>Entrega: ${fechaEntrega}</span>
+                                    <span><i class="fas fa-shoe-prints mr-1 text-blue-500"></i>${pedido.cantidad} pares</span>
+                                    ${pedido.pares_hechos ? `<span><i class="fas fa-hammer mr-1 text-purple-500"></i>Hechos: ${pedido.pares_hechos} (${progress}%)</span>` : ''}
+                                </div>
+                                ${coloresResumen ? `<div class="flex flex-wrap gap-1 mb-1">${coloresResumen}</div>` : ''}
+                                ${materialesResumen}
+                                ${pedido.notas ? `<p class="text-gray-500 text-xs mt-2"><i class="fas fa-sticky-note mr-1"></i>${pedido.notas}</p>` : ''}
+                            </div>
+                        </div>`;
+                }).join('')}
+            </div>`;
+        }
+
         // ==================== ORDERS ====================
         let materialCount = 0;
 
@@ -1028,7 +1241,7 @@
             container.appendChild(tallaRow);
         }
 
-        function duplicarTallas(targetRow) {
+        async function duplicarTallas(targetRow) {
             // Find all color rows that have tallas filled in (excluding the target row)
             const allColorRows = document.querySelectorAll('.color-row');
             const coloresConTallas = [];
@@ -1052,16 +1265,12 @@
                 return;
             }
 
-            // Build options string for prompt
-            const opciones = coloresConTallas.map((c, i) => `${i + 1}. ${c.colorName}`).join('\n');
-            const seleccion = prompt(`¿De cuál color desea duplicar las tallas?\n\nEscriba el nombre del color:\n${opciones}`);
+            const opciones = coloresConTallas.map(c => c.colorName);
+            const seleccion = await showPromptModal('Duplicar Tallas', '¿De cuál color desea duplicar las tallas?', opciones);
             if (!seleccion) return;
 
-            const found = coloresConTallas.find(c => c.colorName.toLowerCase() === seleccion.trim().toLowerCase());
-            if (!found) {
-                showToast(`No se encontró el color "${seleccion}". Escriba el nombre exacto.`, 'warning');
-                return;
-            }
+            const found = coloresConTallas.find(c => c.colorName === seleccion);
+            if (!found) return;
 
             // Clear existing tallas in target
             const tallasContainer = targetRow.querySelector('.tallas-container');
@@ -1788,6 +1997,9 @@
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.tab));
         });
+        
+        // Historial filter
+        document.getElementById('historialFilter').addEventListener('change', renderHistorial);
         
         // Enter key for login
         document.getElementById('clientPassword').addEventListener('keypress', (e) => {
