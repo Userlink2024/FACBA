@@ -390,7 +390,12 @@
                     const remaining = order.cantidad_total - order.pares_hechos;
                     
                     const coloresHtml = order.colores && order.colores.length > 0
-                        ? `<div class="flex flex-wrap gap-1 mt-2">${order.colores.map(c => `<span class="px-2 py-0.5 bg-pink-900/30 border border-pink-700/40 rounded-full text-xs text-pink-300">🎨 ${c.color}: ${c.pares}p${c.tallas ? ' (T:' + c.tallas + ')' : ''}</span>`).join('')}</div>`
+                        ? `<div class="space-y-1 mt-2">${order.colores.map(c => {
+                            const tallasInfo = Array.isArray(c.tallas) && c.tallas.length > 0
+                                ? `<div class="flex flex-wrap gap-1 mt-0.5">${c.tallas.map(t => `<span class="px-1.5 py-0.5 bg-blue-900/30 rounded text-[10px] text-blue-300">T${t.talla}:${t.pares}</span>`).join('')}</div>`
+                                : '';
+                            return `<div class="bg-pink-900/20 border border-pink-700/30 rounded-lg px-2 py-1"><span class="text-xs text-pink-300">🎨 ${c.color}: ${c.pares}p</span>${tallasInfo}</div>`;
+                        }).join('')}</div>`
                         : order.color ? `<p class="text-pink-300 text-xs mt-1"><i class="fas fa-palette mr-1"></i>${order.color}</p>` : '';
 
                     ordersList.innerHTML += `
@@ -438,7 +443,12 @@
             
             const remaining = order.cantidad_total - order.pares_hechos;
             const coloresInfo = order.colores && order.colores.length > 0
-                ? ` <span class="text-pink-300">[${order.colores.map(c => `${c.color}: ${c.pares}p${c.tallas ? ' T:' + c.tallas : ''}`).join(' | ')}]</span>`
+                ? ` <span class="text-pink-300">[${order.colores.map(c => {
+                    const tallasStr = Array.isArray(c.tallas) && c.tallas.length > 0 
+                        ? ' T:' + c.tallas.map(t => `${t.talla}(${t.pares})`).join(',') 
+                        : '';
+                    return `${c.color}: ${c.pares}p${tallasStr}`;
+                }).join(' | ')}]</span>`
                 : order.color ? ` <span class="text-pink-300">[${order.color}]</span>` : '';
             document.getElementById('selectedOrderInfo').innerHTML = `
                 <span class="text-white font-medium">${order.cliente}</span> - ${order.modelo}${coloresInfo}
