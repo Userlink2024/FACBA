@@ -731,9 +731,14 @@
                             <span class="tallas-status text-xs font-medium px-2 py-0.5 rounded-full bg-gray-700 text-gray-400">Sin tallas</span>
                         </div>
                         <div class="tallas-container space-y-1"></div>
-                        <button type="button" class="add-talla-btn w-full py-1.5 border border-dashed border-gray-600 hover:border-blue-500 text-gray-500 hover:text-blue-400 rounded-lg transition text-xs flex items-center justify-center gap-1">
-                            <i class="fas fa-plus"></i> Agregar Talla
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" class="add-talla-btn flex-1 py-1.5 border border-dashed border-gray-600 hover:border-blue-500 text-gray-500 hover:text-blue-400 rounded-lg transition text-xs flex items-center justify-center gap-1">
+                                <i class="fas fa-plus"></i> Agregar Talla
+                            </button>
+                            <button type="button" class="duplicar-tallas-btn flex-1 py-1.5 border border-dashed border-gray-600 hover:border-green-500 text-gray-500 hover:text-green-400 rounded-lg transition text-xs flex items-center justify-center gap-1">
+                                <i class="fas fa-copy"></i> Duplicar tallas de...
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -747,6 +752,7 @@
                 updateParesRestantes();
             });
             row.querySelector('.add-talla-btn').addEventListener('click', () => addTallaRow(row));
+            row.querySelector('.duplicar-tallas-btn').addEventListener('click', () => duplicarTallas(row));
             container.appendChild(row);
             addTallaRow(row); // Add first talla row
             updateParesRestantes();
@@ -769,6 +775,57 @@
                 updateTallasStatus(colorRow);
             });
             container.appendChild(tallaRow);
+        }
+
+        function duplicarTallas(targetRow) {
+            // Find all color rows that have tallas filled in (excluding the target row)
+            const allColorRows = document.querySelectorAll('.color-row');
+            const coloresConTallas = [];
+            allColorRows.forEach(row => {
+                if (row === targetRow) return;
+                const colorName = row.querySelector('.color-principal').value.trim();
+                const tallaRows = row.querySelectorAll('.talla-row');
+                const tallas = [];
+                tallaRows.forEach(tr => {
+                    const talla = tr.querySelector('.talla-numero').value.trim();
+                    const pares = tr.querySelector('.talla-pares').value.trim();
+                    if (talla && pares) tallas.push({ talla, pares });
+                });
+                if (colorName && tallas.length > 0) {
+                    coloresConTallas.push({ colorName, tallas, row });
+                }
+            });
+
+            if (coloresConTallas.length === 0) {
+                showToast('No hay otros colores con tallas para duplicar', 'warning');
+                return;
+            }
+
+            // Build options string for prompt
+            const opciones = coloresConTallas.map((c, i) => `${i + 1}. ${c.colorName}`).join('\n');
+            const seleccion = prompt(`¿De cuál color desea duplicar las tallas?\n\nEscriba el nombre del color:\n${opciones}`);
+            if (!seleccion) return;
+
+            const found = coloresConTallas.find(c => c.colorName.toLowerCase() === seleccion.trim().toLowerCase());
+            if (!found) {
+                showToast(`No se encontró el color "${seleccion}". Escriba el nombre exacto.`, 'warning');
+                return;
+            }
+
+            // Clear existing tallas in target
+            const tallasContainer = targetRow.querySelector('.tallas-container');
+            tallasContainer.innerHTML = '';
+
+            // Copy tallas from source
+            found.tallas.forEach(t => {
+                addTallaRow(targetRow);
+                const lastRow = tallasContainer.lastElementChild;
+                lastRow.querySelector('.talla-numero').value = t.talla;
+                lastRow.querySelector('.talla-pares').value = t.pares;
+            });
+
+            updateTallasStatus(targetRow);
+            showToast(`Tallas duplicadas de "${found.colorName}"`, 'success');
         }
 
         function updateTallasStatus(colorRow) {
