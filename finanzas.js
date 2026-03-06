@@ -20,8 +20,11 @@ async function init() {
         
         document.getElementById('userName').textContent = userData.nombre;
         document.getElementById('userRole').textContent = getRoleName(userData.rol);
+        document.getElementById('mobileUserName').textContent = userData.nombre;
+        document.getElementById('mobileUserRole').textContent = getRoleName(userData.rol);
         
         generateNavMenu(userData.rol);
+        setupMobileMenu();
         
         // Inicializar notificaciones globales
         initNotifications(user.uid);
@@ -46,12 +49,28 @@ async function init() {
 function generateNavMenu(rol) {
     const menu = getNavigationMenu(rol);
     const navMenu = document.getElementById('navMenu');
+    const mobileNavMenu = document.getElementById('mobileNavMenu');
     navMenu.innerHTML = menu.map(item => `
         <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${item.href === 'finanzas.html' ? 'bg-gray-700/50 text-white' : ''}">
             <i class="fas ${item.icon}"></i>
             <span>${item.name}</span>
         </a>
     `).join('');
+
+    mobileNavMenu.innerHTML = menu.map(item => `
+        <a href="${item.href}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition ${item.href === 'finanzas.html' ? 'bg-blue-600/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}">
+            <i class="fas ${item.icon} w-5 text-center"></i>
+            <span>${item.name}</span>
+        </a>
+    `).join('');
+}
+
+function setupMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const overlay = document.getElementById('mobileMenuOverlay');
+    document.getElementById('mobileMenuBtn').addEventListener('click', () => menu.classList.remove('hidden'));
+    document.getElementById('closeMobileMenu').addEventListener('click', () => menu.classList.add('hidden'));
+    overlay.addEventListener('click', () => menu.classList.add('hidden'));
 }
 
 // ==================== ÓRDENES ====================
@@ -871,10 +890,20 @@ function renderPedidosCliente() {
                                 <i class="fas fa-shoe-prints mr-1 text-blue-400"></i><strong>Cantidad:</strong> ${pedido.cantidad} pares
                             </p>
                         </div>
-                        ${pedido.color ? `
+                        ${pedido.colores && pedido.colores.length > 0 ? `
+                        <div class="mt-3 p-3 bg-gradient-to-r from-pink-900/30 to-purple-900/30 border border-pink-700/50 rounded-lg">
+                            <p class="text-gray-400 text-xs mb-2"><i class="fas fa-palette mr-1 text-pink-400"></i>Desglose por colores:</p>
+                            <div class="flex flex-wrap gap-2">
+                                ${pedido.colores.map(c => `
+                                    <span class="px-3 py-1 bg-gray-700/60 rounded-full text-sm text-white">
+                                        🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>` : pedido.color ? `
                         <div class="mt-3 p-3 bg-gradient-to-r from-pink-900/30 to-purple-900/30 border border-pink-700/50 rounded-lg">
                             <p class="text-white font-medium text-sm">
-                                <i class="fas fa-palette mr-2 text-pink-400"></i>🎨 <strong>Color Principal:</strong> 
+                                <i class="fas fa-palette mr-2 text-pink-400"></i>🎨 <strong>Color:</strong> 
                                 <span class="text-pink-300 font-bold">${pedido.color}</span>
                                 ${pedido.color_secundario ? `<span class="text-gray-400 mx-2">|</span><strong>Secundario:</strong> <span class="text-purple-300">${pedido.color_secundario}</span>` : ''}
                             </p>
@@ -1090,6 +1119,8 @@ async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
                     fecha_creacion: Timestamp.now(),
                     pedido_cliente_id: pedidoId,
                     tallas: pedido.tallas || '',
+                    colores: pedido.colores || [],
+                    color: pedido.color || '',
                     notas: pedido.notas || ''
                 });
             }
