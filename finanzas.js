@@ -808,7 +808,10 @@ let pedidosCliente = [];
 
 async function loadPedidosCliente() {
     try {
-        const q = query(collection(db, 'pedidos_cliente'), orderBy('fecha_creacion', 'desc'));
+        const q = query(
+            collection(db, 'pedidos_cliente'),
+            where('estado', 'in', ['pendiente', 'materiales_recibidos', 'en_produccion', 'completado', 'entregado'])
+        );
         
         onSnapshot(q, (snapshot) => {
             pedidosCliente = [];
@@ -817,7 +820,6 @@ async function loadPedidosCliente() {
             
             snapshot.forEach(docSnap => {
                 const pedido = { id: docSnap.id, ...docSnap.data() };
-                if (pedido.estado === 'borrador') return; // No mostrar borradores a la fábrica
                 pedidosCliente.push(pedido);
                 
                 if (pedido.estado === 'pendiente') pendientes++;
@@ -827,6 +829,13 @@ async function loadPedidosCliente() {
                 if (pedido.materiales) {
                     porRecibir += pedido.materiales.filter(m => !m.recibido).length;
                 }
+            });
+            
+            // Sort client-side (no orderBy in query to avoid composite index requirement)
+            pedidosCliente.sort((a, b) => {
+                const fa = a.fecha_creacion?.toDate?.() || new Date(0);
+                const fb = b.fecha_creacion?.toDate?.() || new Date(0);
+                return fb - fa;
             });
             
             document.getElementById('pedidosPendientesCount').textContent = pendientes;
