@@ -749,7 +749,12 @@
                 const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
                 const snap = await getDoc(docRef);
                 if (snap.exists()) {
-                    clientMateriales = snap.data().nombres || [];
+                    const raw = snap.data().nombres || [];
+                    clientMateriales = [...new Set(raw)];
+                    // Auto-clean duplicates if found
+                    if (clientMateriales.length !== raw.length) {
+                        await setDoc(docRef, { nombres: clientMateriales }, { merge: true });
+                    }
                 } else {
                     clientMateriales = [];
                 }
@@ -771,9 +776,10 @@
         }
 
         async function saveNewMaterialNames(nombres) {
-            const nuevos = nombres.filter(n => n && !clientMateriales.includes(n));
+            const uniqueNombres = [...new Set(nombres)];
+            const nuevos = uniqueNombres.filter(n => n && !clientMateriales.includes(n));
             if (nuevos.length === 0) return;
-            clientMateriales = [...clientMateriales, ...nuevos];
+            clientMateriales = [...new Set([...clientMateriales, ...nuevos])];
             try {
                 const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
                 await setDoc(docRef, { nombres: clientMateriales }, { merge: true });
