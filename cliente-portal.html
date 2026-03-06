@@ -202,15 +202,9 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Tallas (separadas por coma)</label>
-                            <input type="text" id="orderTallas" placeholder="38, 39, 40, 41, 42" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Fecha Entrega Esperada</label>
-                            <input type="date" id="orderFechaEntrega" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Fecha Entrega Esperada</label>
+                        <input type="date" id="orderFechaEntrega" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     
                     <div>
@@ -229,7 +223,7 @@
                     <div class="bg-blue-900/30 border border-blue-700/50 rounded-xl p-3">
                         <p class="text-blue-300 text-sm flex items-start gap-2">
                             <i class="fas fa-info-circle mt-0.5"></i>
-                            <span>Distribuya los pares totales entre los colores. La suma de pares por color debe ser igual a la cantidad total.</span>
+                            <span>Distribuya los pares totales entre los colores con sus tallas. La suma de pares por color debe ser igual a la cantidad total.</span>
                         </p>
                     </div>
 
@@ -580,11 +574,12 @@
                         ${pedido.colores && pedido.colores.length > 0 ? `
                             <div class="mb-3 p-3 bg-gradient-to-r from-pink-900/20 to-purple-900/20 border border-pink-700/30 rounded-lg">
                                 <p class="text-gray-400 text-xs mb-2"><i class="fas fa-palette mr-1 text-pink-400"></i>Desglose por colores:</p>
-                                <div class="flex flex-wrap gap-2">
+                                <div class="space-y-2">
                                     ${pedido.colores.map(c => `
-                                        <span class="px-3 py-1 bg-gray-700/60 rounded-full text-sm text-white">
-                                            🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares
-                                        </span>
+                                        <div class="flex flex-wrap items-center gap-2 bg-gray-800/40 rounded-lg px-3 py-2">
+                                            <span class="text-white text-sm font-medium">🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares</span>
+                                            ${c.tallas ? `<span class="text-blue-300 text-xs"><i class="fas fa-ruler mr-1"></i>${c.tallas}</span>` : ''}
+                                        </div>
                                     `).join('')}
                                 </div>
                             </div>
@@ -703,23 +698,29 @@
             const row = document.createElement('div');
             row.className = 'color-row';
             row.innerHTML = `
-                <div class="grid grid-cols-12 gap-2 items-end bg-gray-700/30 rounded-xl p-3">
-                    <div class="col-span-4">
-                        <label class="block text-xs text-gray-400 mb-1">Color Principal</label>
-                        <input type="text" class="color-principal w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="Ej: Negro">
+                <div class="bg-gray-700/30 rounded-xl p-3 space-y-2">
+                    <div class="grid grid-cols-12 gap-2 items-end">
+                        <div class="col-span-4">
+                            <label class="block text-xs text-gray-400 mb-1">Color Principal</label>
+                            <input type="text" class="color-principal w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="Ej: Negro">
+                        </div>
+                        <div class="col-span-3">
+                            <label class="block text-xs text-gray-400 mb-1">Color Secundario</label>
+                            <input type="text" class="color-secundario w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Opcional">
+                        </div>
+                        <div class="col-span-3">
+                            <label class="block text-xs text-gray-400 mb-1">Pares</label>
+                            <input type="number" class="color-pares w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="0" min="1">
+                        </div>
+                        <div class="col-span-2 flex justify-center">
+                            <button type="button" class="remove-color-btn w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition text-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-span-3">
-                        <label class="block text-xs text-gray-400 mb-1">Color Secundario</label>
-                        <input type="text" class="color-secundario w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Opcional">
-                    </div>
-                    <div class="col-span-3">
-                        <label class="block text-xs text-gray-400 mb-1">Pares</label>
-                        <input type="number" class="color-pares w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="0" min="1">
-                    </div>
-                    <div class="col-span-2 flex justify-center">
-                        <button type="button" class="remove-color-btn w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition text-sm">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1"><i class="fas fa-ruler mr-1"></i>Tallas para este color (separadas por coma)</label>
+                        <input type="text" class="color-tallas w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: 38, 39, 40, 41, 42">
                     </div>
                 </div>
             `;
@@ -843,7 +844,6 @@
             
             const modelo = document.getElementById('orderModelo').value.trim();
             const cantidad = parseInt(document.getElementById('orderCantidad').value) || 0;
-            const tallas = document.getElementById('orderTallas').value.trim();
             const fechaEntrega = document.getElementById('orderFechaEntrega').value;
             const notas = document.getElementById('orderNotas').value.trim();
             
@@ -861,12 +861,14 @@
                 const colorPrincipal = row.querySelector('.color-principal').value.trim();
                 const colorSec = row.querySelector('.color-secundario').value.trim();
                 const pares = parseInt(row.querySelector('.color-pares').value) || 0;
+                const tallas = row.querySelector('.color-tallas').value.trim();
                 
                 if (colorPrincipal && pares > 0) {
                     coloresList.push({
                         color: colorPrincipal,
                         color_secundario: colorSec,
-                        pares: pares
+                        pares: pares,
+                        tallas: tallas
                     });
                     totalParesColores += pares;
                 }
@@ -908,8 +910,9 @@
                 }
             });
 
-            // Build color summary for backward compatibility
+            // Build summaries for backward compatibility
             const colorResumen = coloresList.map(c => `${c.color} (${c.pares})`).join(', ');
+            const allTallas = [...new Set(coloresList.flatMap(c => c.tallas ? c.tallas.split(',').map(t => t.trim()) : []))].filter(Boolean).join(', ');
             
             try {
                 const pedidoRef = await addDoc(collection(db, 'pedidos_cliente'), {
@@ -917,7 +920,7 @@
                     cliente_nombre: currentClient.nombre,
                     modelo,
                     cantidad,
-                    tallas,
+                    tallas: allTallas,
                     colores: coloresList,
                     color: colorResumen,
                     color_secundario: '',
