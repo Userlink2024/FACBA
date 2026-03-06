@@ -208,8 +208,38 @@ async function saveOrder(e) {
 
 async function deleteOrder(id) {
     try {
+        // Get order data before deleting to check for linked pedido_cliente
+        const orderDoc = await getDoc(doc(db, 'ordenes', id));
+        const orderData = orderDoc.exists() ? orderDoc.data() : null;
+        
+        // Delete associated produccion_logs so dashboard stats update correctly
+        const logsQuery = query(collection(db, 'produccion_logs'), where('id_orden', '==', id));
+        const logsSnapshot = await getDocs(logsQuery);
+        const deletePromises = [];
+        logsSnapshot.forEach(logDoc => {
+            deletePromises.push(deleteDoc(doc(db, 'produccion_logs', logDoc.id)));
+        });
+        await Promise.all(deletePromises);
+        
+        // Revert pares_hechos on linked pedido_cliente if exists
+        if (orderData && orderData.pedido_cliente_id) {
+            try {
+                const pedidoRef = doc(db, 'pedidos_cliente', orderData.pedido_cliente_id);
+                const pedidoSnap = await getDoc(pedidoRef);
+                if (pedidoSnap.exists()) {
+                    await updateDoc(pedidoRef, {
+                        pares_hechos: 0,
+                        estado: 'pendiente'
+                    });
+                }
+            } catch (e) {
+                console.warn('No se pudo revertir pedido cliente:', e);
+            }
+        }
+        
+        // Delete the order itself
         await deleteDoc(doc(db, 'ordenes', id));
-        showToast('Orden eliminada', 'success');
+        showToast('Orden eliminada y producción descontada', 'success');
     } catch (error) {
         console.error('Error eliminando orden:', error);
         showToast('Error al eliminar', 'error');
@@ -787,6 +817,7 @@ async function loadPedidosCliente() {
             
             snapshot.forEach(docSnap => {
                 const pedido = { id: docSnap.id, ...docSnap.data() };
+                if (pedido.estado === 'borrador') return; // No mostrar borradores a la fábrica
                 pedidosCliente.push(pedido);
                 
                 if (pedido.estado === 'pendiente') pendientes++;
@@ -1033,13 +1064,19 @@ async function deleteOrderWithPassword() {
         const credential = EmailAuthProvider.credential(user.email, password);
         await reauthenticateWithCredential(user, credential);
 
-        // Find and delete linked ordenes entry
+        // Find and delete linked ordenes + their produccion_logs
         const ordenesQuery = query(
             collection(db, 'ordenes'),
             where('pedido_cliente_id', '==', pedidoToDelete)
         );
         const ordenesSnap = await getDocs(ordenesQuery);
         for (const ordenDoc of ordenesSnap.docs) {
+            // Delete produccion_logs linked to this orden
+            const logsQ = query(collection(db, 'produccion_logs'), where('id_orden', '==', ordenDoc.id));
+            const logsSnap = await getDocs(logsQ);
+            for (const logDoc of logsSnap.docs) {
+                await deleteDoc(doc(db, 'produccion_logs', logDoc.id));
+            }
             await deleteDoc(doc(db, 'ordenes', ordenDoc.id));
         }
 
