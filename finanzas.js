@@ -893,11 +893,12 @@ function renderPedidosCliente() {
                         ${pedido.colores && pedido.colores.length > 0 ? `
                         <div class="mt-3 p-3 bg-gradient-to-r from-pink-900/30 to-purple-900/30 border border-pink-700/50 rounded-lg">
                             <p class="text-gray-400 text-xs mb-2"><i class="fas fa-palette mr-1 text-pink-400"></i>Desglose por colores:</p>
-                            <div class="flex flex-wrap gap-2">
+                            <div class="space-y-2">
                                 ${pedido.colores.map(c => `
-                                    <span class="px-3 py-1 bg-gray-700/60 rounded-full text-sm text-white">
-                                        🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares
-                                    </span>
+                                    <div class="flex flex-wrap items-center gap-2 bg-gray-800/40 rounded-lg px-3 py-2">
+                                        <span class="text-white text-sm font-medium">🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares</span>
+                                        ${c.tallas ? `<span class="text-blue-300 text-xs"><i class="fas fa-ruler mr-1"></i>${c.tallas}</span>` : ''}
+                                    </div>
                                 `).join('')}
                             </div>
                         </div>` : pedido.color ? `
