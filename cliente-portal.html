@@ -267,8 +267,8 @@
                         Cancelar
                     </button>
                     <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition">
-                        <i class="fas fa-paper-plane mr-2"></i>
-                        Enviar Pedido
+                        <i class="fas fa-save mr-2"></i>
+                        Guardar Pedido
                     </button>
                 </div>
             </form>
@@ -815,6 +815,14 @@
                                 ` : ''}
                             </div>
                         ` : ''}
+                        ${pedido.estado === 'completado' || pedido.estado === 'entregado' ? `
+                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end gap-2 flex-wrap">
+                                <button class="reposicion-pedido-btn px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
+                                    <i class="fas fa-redo"></i>
+                                    Reposición
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -828,6 +836,9 @@
             });
             document.querySelectorAll('.enviar-pedido-btn').forEach(btn => {
                 btn.addEventListener('click', () => enviarPedido(btn.dataset.id));
+            });
+            document.querySelectorAll('.reposicion-pedido-btn').forEach(btn => {
+                btn.addEventListener('click', () => reponerPedido(btn.dataset.id));
             });
         }
         
@@ -1354,6 +1365,58 @@
                 console.error('Error guardando pedido:', error);
                 showToast('Error al guardar pedido', 'error');
             }
+        }
+
+        // ==================== REPOSICIÓN ====================
+        function reponerPedido(pedidoId) {
+            const pedido = pedidos.find(p => p.id === pedidoId);
+            if (!pedido) return;
+            
+            // Open new order modal with prefilled data
+            document.getElementById('orderModal').classList.remove('hidden');
+            document.getElementById('coloresContainer').innerHTML = '';
+            document.getElementById('materialesContainer').innerHTML = '';
+            
+            // Fill form fields
+            document.getElementById('orderModelo').value = pedido.modelo || '';
+            document.getElementById('orderCantidad').value = pedido.cantidad || '';
+            document.getElementById('orderNotas').value = pedido.notas || '';
+            
+            // Don't copy date - let user set a new delivery date
+            
+            // Recreate color rows with tallas
+            if (pedido.colores && pedido.colores.length > 0) {
+                pedido.colores.forEach(c => {
+                    addColorRow();
+                    const lastRow = document.getElementById('coloresContainer').lastElementChild;
+                    lastRow.querySelector('.color-principal').value = c.color || '';
+                    lastRow.querySelector('.color-secundario').value = c.color_secundario || '';
+                    lastRow.querySelector('.color-pares').value = c.pares || '';
+                    
+                    // Clear the default first talla row and add prefilled ones
+                    if (Array.isArray(c.tallas) && c.tallas.length > 0) {
+                        const tallasContainer = lastRow.querySelector('.tallas-container');
+                        tallasContainer.innerHTML = '';
+                        c.tallas.forEach(t => {
+                            addTallaRow(lastRow);
+                            const lastTalla = tallasContainer.lastElementChild;
+                            lastTalla.querySelector('.talla-numero').value = t.talla;
+                            lastTalla.querySelector('.talla-pares').value = t.pares;
+                        });
+                        updateTallasStatus(lastRow);
+                    }
+                });
+            } else {
+                addColorRow();
+            }
+            
+            // Recreate material rows
+            if (pedido.materiales && pedido.materiales.length > 0) {
+                pedido.materiales.forEach(m => addMaterialRow('materialesContainer', m));
+            }
+            
+            updateParesRestantes();
+            showToast('Datos del pedido cargados. Modifique lo necesario y guarde.', 'info');
         }
 
         // ==================== EDIT ORDER ====================
