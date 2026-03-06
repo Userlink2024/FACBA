@@ -390,7 +390,7 @@
                     const remaining = order.cantidad_total - order.pares_hechos;
                     
                     const coloresHtml = order.colores && order.colores.length > 0
-                        ? `<div class="flex flex-wrap gap-1 mt-2">${order.colores.map(c => `<span class="px-2 py-0.5 bg-pink-900/30 border border-pink-700/40 rounded-full text-xs text-pink-300">🎨 ${c.color}: ${c.pares}p</span>`).join('')}</div>`
+                        ? `<div class="flex flex-wrap gap-1 mt-2">${order.colores.map(c => `<span class="px-2 py-0.5 bg-pink-900/30 border border-pink-700/40 rounded-full text-xs text-pink-300">🎨 ${c.color}: ${c.pares}p${c.tallas ? ' (T:' + c.tallas + ')' : ''}</span>`).join('')}</div>`
                         : order.color ? `<p class="text-pink-300 text-xs mt-1"><i class="fas fa-palette mr-1"></i>${order.color}</p>` : '';
 
                     ordersList.innerHTML += `
@@ -438,7 +438,7 @@
             
             const remaining = order.cantidad_total - order.pares_hechos;
             const coloresInfo = order.colores && order.colores.length > 0
-                ? ` <span class="text-pink-300">[${order.colores.map(c => `${c.color}: ${c.pares}p`).join(', ')}]</span>`
+                ? ` <span class="text-pink-300">[${order.colores.map(c => `${c.color}: ${c.pares}p${c.tallas ? ' T:' + c.tallas : ''}`).join(' | ')}]</span>`
                 : order.color ? ` <span class="text-pink-300">[${order.color}]</span>` : '';
             document.getElementById('selectedOrderInfo').innerHTML = `
                 <span class="text-white font-medium">${order.cliente}</span> - ${order.modelo}${coloresInfo}
