@@ -576,9 +576,15 @@
                                 <p class="text-gray-400 text-xs mb-2"><i class="fas fa-palette mr-1 text-pink-400"></i>Desglose por colores:</p>
                                 <div class="space-y-2">
                                     ${pedido.colores.map(c => `
-                                        <div class="flex flex-wrap items-center gap-2 bg-gray-800/40 rounded-lg px-3 py-2">
-                                            <span class="text-white text-sm font-medium">🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares</span>
-                                            ${c.tallas ? `<span class="text-blue-300 text-xs"><i class="fas fa-ruler mr-1"></i>${c.tallas}</span>` : ''}
+                                        <div class="bg-gray-800/40 rounded-lg px-3 py-2">
+                                            <div class="flex flex-wrap items-center gap-2 mb-1">
+                                                <span class="text-white text-sm font-medium">🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares</span>
+                                            </div>
+                                            ${Array.isArray(c.tallas) && c.tallas.length > 0 ? `
+                                                <div class="flex flex-wrap gap-1 mt-1">
+                                                    ${c.tallas.map(t => `<span class="px-2 py-0.5 bg-blue-900/30 border border-blue-700/40 rounded text-xs text-blue-300">T${t.talla}: ${t.pares}p</span>`).join('')}
+                                                </div>
+                                            ` : typeof c.tallas === 'string' && c.tallas ? `<span class="text-blue-300 text-xs"><i class="fas fa-ruler mr-1"></i>${c.tallas}</span>` : ''}
                                         </div>
                                     `).join('')}
                                 </div>
@@ -698,7 +704,7 @@
             const row = document.createElement('div');
             row.className = 'color-row';
             row.innerHTML = `
-                <div class="bg-gray-700/30 rounded-xl p-3 space-y-2">
+                <div class="bg-gray-700/30 rounded-xl p-3 space-y-3">
                     <div class="grid grid-cols-12 gap-2 items-end">
                         <div class="col-span-4">
                             <label class="block text-xs text-gray-400 mb-1">Color Principal</label>
@@ -709,7 +715,7 @@
                             <input type="text" class="color-secundario w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Opcional">
                         </div>
                         <div class="col-span-3">
-                            <label class="block text-xs text-gray-400 mb-1">Pares</label>
+                            <label class="block text-xs text-gray-400 mb-1">Total Pares</label>
                             <input type="number" class="color-pares w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="0" min="1">
                         </div>
                         <div class="col-span-2 flex justify-center">
@@ -718,20 +724,72 @@
                             </button>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1"><i class="fas fa-ruler mr-1"></i>Tallas para este color (separadas por coma)</label>
-                        <input type="text" class="color-tallas w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: 38, 39, 40, 41, 42">
+                    <!-- Desglose por tallas -->
+                    <div class="bg-gray-800/40 rounded-lg p-2 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400"><i class="fas fa-ruler mr-1 text-blue-400"></i>Desglose por tallas</span>
+                            <span class="tallas-status text-xs font-medium px-2 py-0.5 rounded-full bg-gray-700 text-gray-400">Sin tallas</span>
+                        </div>
+                        <div class="tallas-container space-y-1"></div>
+                        <button type="button" class="add-talla-btn w-full py-1.5 border border-dashed border-gray-600 hover:border-blue-500 text-gray-500 hover:text-blue-400 rounded-lg transition text-xs flex items-center justify-center gap-1">
+                            <i class="fas fa-plus"></i> Agregar Talla
+                        </button>
                     </div>
                 </div>
             `;
 
-            row.querySelector('.color-pares').addEventListener('input', updateParesRestantes);
+            row.querySelector('.color-pares').addEventListener('input', () => {
+                updateParesRestantes();
+                updateTallasStatus(row);
+            });
             row.querySelector('.remove-color-btn').addEventListener('click', () => {
                 row.remove();
                 updateParesRestantes();
             });
+            row.querySelector('.add-talla-btn').addEventListener('click', () => addTallaRow(row));
             container.appendChild(row);
+            addTallaRow(row); // Add first talla row
             updateParesRestantes();
+        }
+
+        function addTallaRow(colorRow) {
+            const container = colorRow.querySelector('.tallas-container');
+            const tallaRow = document.createElement('div');
+            tallaRow.className = 'talla-row flex items-center gap-2';
+            tallaRow.innerHTML = `
+                <input type="text" class="talla-numero w-20 px-2 py-1.5 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Talla">
+                <input type="number" class="talla-pares flex-1 px-2 py-1.5 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Pares" min="1">
+                <button type="button" class="remove-talla-btn px-2 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition text-xs">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            tallaRow.querySelector('.talla-pares').addEventListener('input', () => updateTallasStatus(colorRow));
+            tallaRow.querySelector('.remove-talla-btn').addEventListener('click', () => {
+                tallaRow.remove();
+                updateTallasStatus(colorRow);
+            });
+            container.appendChild(tallaRow);
+        }
+
+        function updateTallasStatus(colorRow) {
+            const totalColor = parseInt(colorRow.querySelector('.color-pares').value) || 0;
+            const tallaRows = colorRow.querySelectorAll('.talla-row');
+            let sumTallas = 0;
+            tallaRows.forEach(r => { sumTallas += parseInt(r.querySelector('.talla-pares').value) || 0; });
+            const statusEl = colorRow.querySelector('.tallas-status');
+            if (totalColor <= 0) {
+                statusEl.textContent = 'Ingrese pares';
+                statusEl.className = 'tallas-status text-xs font-medium px-2 py-0.5 rounded-full bg-gray-700 text-gray-400';
+            } else if (sumTallas === totalColor) {
+                statusEl.textContent = '✓ Tallas completas';
+                statusEl.className = 'tallas-status text-xs font-medium px-2 py-0.5 rounded-full bg-green-600/20 text-green-400';
+            } else if (sumTallas < totalColor) {
+                statusEl.textContent = `Faltan ${totalColor - sumTallas} pares`;
+                statusEl.className = 'tallas-status text-xs font-medium px-2 py-0.5 rounded-full bg-amber-600/20 text-amber-400';
+            } else {
+                statusEl.textContent = `Excede en ${sumTallas - totalColor} pares`;
+                statusEl.className = 'tallas-status text-xs font-medium px-2 py-0.5 rounded-full bg-red-600/20 text-red-400';
+            }
         }
 
         function updateParesRestantes() {
@@ -857,22 +915,43 @@
             const coloresList = [];
             let totalParesColores = 0;
             
+            let tallasInvalidas = false;
             colorRows.forEach(row => {
                 const colorPrincipal = row.querySelector('.color-principal').value.trim();
                 const colorSec = row.querySelector('.color-secundario').value.trim();
                 const pares = parseInt(row.querySelector('.color-pares').value) || 0;
-                const tallas = row.querySelector('.color-tallas').value.trim();
+                
+                // Collect tallas breakdown
+                const tallaRows = row.querySelectorAll('.talla-row');
+                const tallasList = [];
+                let sumTallas = 0;
+                tallaRows.forEach(tr => {
+                    const talla = tr.querySelector('.talla-numero').value.trim();
+                    const talPares = parseInt(tr.querySelector('.talla-pares').value) || 0;
+                    if (talla && talPares > 0) {
+                        tallasList.push({ talla, pares: talPares });
+                        sumTallas += talPares;
+                    }
+                });
                 
                 if (colorPrincipal && pares > 0) {
+                    if (tallasList.length > 0 && sumTallas !== pares) {
+                        tallasInvalidas = true;
+                    }
                     coloresList.push({
                         color: colorPrincipal,
                         color_secundario: colorSec,
                         pares: pares,
-                        tallas: tallas
+                        tallas: tallasList
                     });
                     totalParesColores += pares;
                 }
             });
+            
+            if (tallasInvalidas) {
+                showToast('La suma de pares por talla no coincide con el total de pares en uno o más colores', 'warning');
+                return;
+            }
             
             if (coloresList.length === 0) {
                 showToast('Agregue al menos un color con sus pares', 'warning');
@@ -912,7 +991,7 @@
 
             // Build summaries for backward compatibility
             const colorResumen = coloresList.map(c => `${c.color} (${c.pares})`).join(', ');
-            const allTallas = [...new Set(coloresList.flatMap(c => c.tallas ? c.tallas.split(',').map(t => t.trim()) : []))].filter(Boolean).join(', ');
+            const allTallas = [...new Set(coloresList.flatMap(c => Array.isArray(c.tallas) ? c.tallas.map(t => t.talla) : []))].filter(Boolean).join(', ');
             
             try {
                 const pedidoRef = await addDoc(collection(db, 'pedidos_cliente'), {
