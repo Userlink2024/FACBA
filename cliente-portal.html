@@ -11,6 +11,13 @@
         @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
         .animate-slide-in { animation: slide-in 0.3s ease-out; }
         .pulse-ring::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid currentColor; animation: pulse-ring 1.5s infinite; }
+        .mat-autocomplete-wrap { position: relative; }
+        .mat-autocomplete-dd { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 60; max-height: 180px; overflow-y: auto; background: #1e293b; border: 1px solid #475569; border-radius: 0.5rem; margin-top: 2px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .mat-autocomplete-dd.show { display: block; }
+        .mat-autocomplete-dd .ac-option { padding: 10px 12px; color: #e2e8f0; font-size: 0.875rem; cursor: pointer; border-bottom: 1px solid #334155; }
+        .mat-autocomplete-dd .ac-option:last-child { border-bottom: none; }
+        .mat-autocomplete-dd .ac-option:hover, .mat-autocomplete-dd .ac-option:active { background: #3b82f6; color: #fff; }
+        .mat-autocomplete-dd .ac-empty { padding: 10px 12px; color: #94a3b8; font-size: 0.8rem; text-align: center; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -33,7 +40,10 @@
                         <p id="clientName" class="text-white text-sm font-medium">-</p>
                         <p class="text-gray-400 text-xs">Cliente</p>
                     </div>
-                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition">
+                    <button id="settingsBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Configuración">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button id="logoutBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Cerrar sesión">
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </div>
@@ -313,6 +323,137 @@
         </div>
     </div>
 
+    <!-- Settings Modal (Change Password) -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-gray-700 animate-slide-in">
+            <div class="p-6 border-b border-gray-700 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-cog text-blue-500"></i>
+                    Configuración
+                </h3>
+                <button id="closeSettingsModal" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="changePasswordForm" class="p-6 space-y-5">
+                <div class="bg-blue-900/30 border border-blue-700/50 rounded-xl p-4">
+                    <p class="text-blue-300 text-sm flex items-start gap-2">
+                        <i class="fas fa-lock mt-0.5"></i>
+                        <span>Cambiar contraseña de acceso al portal</span>
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Contraseña Actual</label>
+                    <div class="relative">
+                        <input type="password" id="currentPassword" required placeholder="••••••••" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
+                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="currentPassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Nueva Contraseña</label>
+                    <div class="relative">
+                        <input type="password" id="newPassword" required minlength="4" placeholder="Mínimo 4 caracteres" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
+                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="newPassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Confirmar Nueva Contraseña</label>
+                    <div class="relative">
+                        <input type="password" id="confirmPassword" required minlength="4" placeholder="Repita la nueva contraseña" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12">
+                        <button type="button" class="toggle-pass-btn absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="confirmPassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" id="cancelSettingsModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div id="editOrderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-2xl max-w-2xl w-full mx-4 shadow-2xl border border-gray-700 max-h-[90vh] overflow-y-auto animate-slide-in">
+            <div class="sticky top-0 bg-gray-800 p-6 border-b border-gray-700 flex items-center justify-between z-10">
+                <h3 class="text-xl font-bold text-white">
+                    <i class="fas fa-edit mr-2 text-amber-500"></i>
+                    Editar Pedido
+                </h3>
+                <button id="closeEditOrderModal" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="editOrderForm" class="p-6 space-y-6">
+                <input type="hidden" id="editOrderId">
+                <div class="space-y-4">
+                    <h4 class="text-white font-medium border-b border-gray-700 pb-2">📋 Información del Pedido</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Referencia / Modelo</label>
+                            <input type="text" id="editModelo" required placeholder="Ej: Bota Industrial 2024" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Cantidad de Pares</label>
+                            <input type="number" id="editCantidad" required min="1" placeholder="100" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Fecha Entrega Esperada</label>
+                        <input type="date" id="editFechaEntrega" required class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Especificaciones / Notas Adicionales</label>
+                        <textarea id="editNotas" rows="2" placeholder="Acabados, detalles especiales, instrucciones..." class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Desglose por Colores (Editar) -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-700 pb-2">
+                        <h4 class="text-white font-medium">🎨 Desglose por Colores</h4>
+                        <span id="editParesRestantes" class="text-sm font-medium px-3 py-1 rounded-full bg-gray-700 text-gray-300">-</span>
+                    </div>
+                    <div id="editColoresContainer" class="space-y-3"></div>
+                    <button type="button" id="addEditColorBtn" class="w-full py-2 border-2 border-dashed border-gray-600 hover:border-pink-500 text-gray-400 hover:text-pink-400 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Agregar Color
+                    </button>
+                </div>
+
+                <!-- Materiales (Editar) -->
+                <div class="space-y-4">
+                    <h4 class="text-white font-medium border-b border-gray-700 pb-2">📦 Materiales que Entregará</h4>
+                    <div id="editMaterialesContainer" class="space-y-3"></div>
+                    <button type="button" id="addEditMaterialBtn" class="w-full py-2 border-2 border-dashed border-gray-600 hover:border-blue-500 text-gray-400 hover:text-blue-400 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Agregar Material
+                    </button>
+                </div>
+
+                <div class="flex gap-3 pt-4 border-t border-gray-700">
+                    <button type="button" id="cancelEditOrderModal" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
@@ -322,6 +463,7 @@
         let currentClient = null;
         let pedidos = [];
         let materiales = [];
+        let clientMateriales = [];
 
         // ==================== TIMEZONE FIX ====================
         // Parsear fecha de input sin problemas de timezone (Colombia UTC-5)
@@ -462,6 +604,45 @@
         function loadClientData() {
             loadPedidos();
             loadMateriales();
+            loadClientMateriales();
+        }
+
+        async function loadClientMateriales() {
+            try {
+                const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    clientMateriales = snap.data().nombres || [];
+                } else {
+                    clientMateriales = [];
+                }
+            } catch (error) {
+                console.error('Error cargando materiales guardados:', error);
+                clientMateriales = [];
+            }
+        }
+
+        function renderAutocompleteOptions(dropdown, filter) {
+            const filtered = clientMateriales.filter(n => n.toLowerCase().includes(filter));
+            if (filtered.length === 0) {
+                dropdown.innerHTML = clientMateriales.length === 0
+                    ? '<div class="ac-empty">Aún no tienes materiales guardados.<br>Escribe uno nuevo y se guardará al enviar el pedido.</div>'
+                    : '<div class="ac-empty">No hay coincidencias</div>';
+            } else {
+                dropdown.innerHTML = filtered.map(n => `<div class="ac-option">${n}</div>`).join('');
+            }
+        }
+
+        async function saveNewMaterialNames(nombres) {
+            const nuevos = nombres.filter(n => n && !clientMateriales.includes(n));
+            if (nuevos.length === 0) return;
+            clientMateriales = [...clientMateriales, ...nuevos];
+            try {
+                const docRef = doc(db, 'clientes', currentClient.id, 'configuracion', 'materiales_guardados');
+                await setDoc(docRef, { nombres: clientMateriales }, { merge: true });
+            } catch (error) {
+                console.error('Error guardando materiales:', error);
+            }
         }
 
         function loadPedidos() {
@@ -524,6 +705,7 @@
             }
             
             const statusConfig = {
+                'borrador': { color: 'bg-gray-600/20 text-gray-400', icon: 'file-alt', label: 'Borrador' },
                 'pendiente': { color: 'bg-amber-600/20 text-amber-400', icon: 'clock', label: 'Pendiente' },
                 'materiales_recibidos': { color: 'bg-blue-600/20 text-blue-400', icon: 'box', label: 'Materiales Recibidos' },
                 'en_produccion': { color: 'bg-purple-600/20 text-purple-400', icon: 'cogs', label: 'En Producción' },
@@ -607,7 +789,7 @@
                                 <div class="flex flex-wrap gap-2">
                                     ${pedido.materiales.map(m => `
                                         <span class="px-2 py-1 bg-gray-700/50 rounded text-xs text-gray-300">
-                                            ${m.nombre}: ${m.cantidad} ${m.unidad}
+                                            ${m.nombre}: ${m.cantidad} ${m.unidad}${m.talla ? ` (T:${m.talla})` : ''}
                                             ${m.recibido ? '<i class="fas fa-check text-green-500 ml-1"></i>' : '<i class="fas fa-clock text-amber-500 ml-1"></i>'}
                                         </span>
                                     `).join('')}
@@ -615,21 +797,37 @@
                             </div>
                         ` : ''}
                         
-                        ${pedido.estado !== 'entregado' ? `
-                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end">
+                        ${pedido.estado === 'borrador' || pedido.estado === 'pendiente' ? `
+                            <div class="mt-4 pt-4 border-t border-gray-700 flex justify-end gap-2 flex-wrap">
+                                <button class="edit-pedido-btn px-4 py-2 bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
+                                    <i class="fas fa-edit"></i>
+                                    Modificar
+                                </button>
                                 <button class="delete-pedido-btn px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
                                     <i class="fas fa-trash"></i>
-                                    Eliminar Pedido
+                                    Eliminar
                                 </button>
+                                ${pedido.estado === 'borrador' ? `
+                                <button class="enviar-pedido-btn px-4 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white text-sm rounded-lg transition flex items-center gap-2" data-id="${pedido.id}">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Enviar Pedido
+                                </button>
+                                ` : ''}
                             </div>
                         ` : ''}
                     </div>
                 `;
             }).join('');
             
-            // Event listeners para eliminar
+            // Event listeners para editar, eliminar y enviar
+            document.querySelectorAll('.edit-pedido-btn').forEach(btn => {
+                btn.addEventListener('click', () => openEditOrder(btn.dataset.id));
+            });
             document.querySelectorAll('.delete-pedido-btn').forEach(btn => {
                 btn.addEventListener('click', () => deletePedido(btn.dataset.id));
+            });
+            document.querySelectorAll('.enviar-pedido-btn').forEach(btn => {
+                btn.addEventListener('click', () => enviarPedido(btn.dataset.id));
             });
         }
         
@@ -644,6 +842,48 @@
             } catch (error) {
                 console.error('Error eliminando pedido:', error);
                 showToast('Error al eliminar el pedido', 'error');
+            }
+        }
+
+        async function enviarPedido(pedidoId) {
+            const pedido = pedidos.find(p => p.id === pedidoId);
+            if (!pedido) return;
+            
+            if (!confirm(`¿Está seguro de enviar el pedido "${pedido.modelo}" a la fábrica?`)) {
+                return;
+            }
+            
+            try {
+                await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+                    estado: 'pendiente'
+                });
+                
+                // Send real-time notification to factory
+                await push(ref(rtdb, 'notificaciones_fabrica'), {
+                    tipo: 'nuevo_pedido',
+                    titulo: '📦 Nuevo Pedido de Cliente',
+                    mensaje: `${currentClient.nombre} ha solicitado ${pedido.cantidad} pares de "${pedido.modelo}"`,
+                    pedido_id: pedidoId,
+                    cliente_id: currentClient.id,
+                    fecha: Date.now(),
+                    leido: false
+                });
+                
+                // Also save to Firestore notifications
+                await addDoc(collection(db, 'notificaciones'), {
+                    tipo: 'nuevo_pedido',
+                    titulo: 'Nuevo Pedido de Cliente',
+                    mensaje: `${currentClient.nombre} solicita ${pedido.cantidad} pares de "${pedido.modelo}"`,
+                    pedido_id: pedidoId,
+                    cliente_id: currentClient.id,
+                    fecha: Timestamp.now(),
+                    leido: false
+                });
+                
+                showToast('Pedido enviado a la fábrica correctamente', 'success');
+            } catch (error) {
+                console.error('Error enviando pedido:', error);
+                showToast('Error al enviar el pedido', 'error');
             }
         }
 
@@ -687,7 +927,7 @@
                                         <i class="fas fa-${mat.recibido ? 'check-circle text-green-500' : 'clock text-amber-500'}"></i>
                                         <span class="text-gray-300 text-sm">${mat.nombre}</span>
                                     </div>
-                                    <span class="text-gray-400 text-sm">${mat.cantidad} ${mat.unidad}</span>
+                                    <span class="text-gray-400 text-sm">${mat.cantidad} ${mat.unidad}${mat.talla ? ` · T:${mat.talla}` : ''}</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -873,37 +1113,29 @@
             }
         }
 
-        function addMaterialRow() {
-            const container = document.getElementById('materialesContainer');
+        function addMaterialRow(targetContainerId, prefill) {
+            const container = document.getElementById(targetContainerId || 'materialesContainer');
+            materialCount++;
             const row = document.createElement('div');
             row.className = 'material-row space-y-2';
             row.innerHTML = `
                 <div class="grid grid-cols-12 gap-2 items-end">
                     <div class="col-span-4">
                         <label class="block text-xs text-gray-400 mb-1">Material</label>
-                        <select class="mat-tipo w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="cuero">Cuero</option>
-                            <option value="suela">Suela</option>
-                            <option value="forro">Forro</option>
-                            <option value="hilo">Hilo</option>
-                            <option value="plantilla">Plantilla</option>
-                            <option value="pegante">Pegante</option>
-                            <option value="herrajes">Herrajes</option>
-                            <option value="cordones">Cordones</option>
-                            <option value="tela">Tela</option>
-                            <option value="sintetico">Sintético</option>
-                            <option value="otro">✏️ Otro (personalizado)</option>
-                        </select>
-                    </div>
-                    <div class="col-span-3 mat-custom-container hidden">
-                        <label class="block text-xs text-gray-400 mb-1">Nombre Material</label>
-                        <input type="text" class="mat-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba el nombre">
+                        <div class="mat-autocomplete-wrap">
+                            <input type="text" class="mat-nombre w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escriba o toque para ver" autocomplete="off">
+                            <div class="mat-autocomplete-dd"></div>
+                        </div>
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs text-gray-400 mb-1">Cantidad</label>
-                        <input type="number" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" step="0.1">
+                        <input type="text" class="mat-cantidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0">
                     </div>
                     <div class="col-span-2">
+                        <label class="block text-xs text-gray-400 mb-1">Talla</label>
+                        <input type="text" class="mat-talla w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: 38">
+                    </div>
+                    <div class="col-span-3">
                         <label class="block text-xs text-gray-400 mb-1">Unidad</label>
                         <select class="mat-unidad w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="metros">Metros</option>
@@ -917,7 +1149,7 @@
                             <option value="otro_unidad">Otra...</option>
                         </select>
                     </div>
-                    <div class="col-span-2 unidad-custom-container hidden">
+                    <div class="col-span-3 unidad-custom-container hidden">
                         <label class="block text-xs text-gray-400 mb-1">Nombre Unidad</label>
                         <input type="text" class="unidad-custom w-full px-3 py-2 bg-gray-900/50 border border-blue-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: yardas, galones...">
                     </div>
@@ -929,18 +1161,40 @@
                 </div>
             `;
             
-            const select = row.querySelector('.mat-tipo');
-            const customContainer = row.querySelector('.mat-custom-container');
-            const unidadSelect = row.querySelector('.mat-unidad');
-            const unidadCustomContainer = row.querySelector('.unidad-custom-container');
-            
-            select.addEventListener('change', () => {
-                if (select.value === 'otro') {
-                    customContainer.classList.remove('hidden');
-                } else {
-                    customContainer.classList.add('hidden');
+            // Custom autocomplete for material name
+            const matInput = row.querySelector('.mat-nombre');
+            const dropdown = row.querySelector('.mat-autocomplete-dd');
+
+            matInput.addEventListener('focus', () => {
+                renderAutocompleteOptions(dropdown, matInput.value.toLowerCase());
+                dropdown.classList.add('show');
+            });
+            matInput.addEventListener('input', () => {
+                renderAutocompleteOptions(dropdown, matInput.value.toLowerCase());
+                dropdown.classList.add('show');
+            });
+            dropdown.addEventListener('mousedown', (e) => {
+                const option = e.target.closest('.ac-option');
+                if (option) {
+                    matInput.value = option.textContent;
+                    dropdown.classList.remove('show');
                 }
             });
+            dropdown.addEventListener('touchend', (e) => {
+                const option = e.target.closest('.ac-option');
+                if (option) {
+                    e.preventDefault();
+                    matInput.value = option.textContent;
+                    dropdown.classList.remove('show');
+                    matInput.blur();
+                }
+            });
+            matInput.addEventListener('blur', () => {
+                setTimeout(() => dropdown.classList.remove('show'), 200);
+            });
+
+            const unidadSelect = row.querySelector('.mat-unidad');
+            const unidadCustomContainer = row.querySelector('.unidad-custom-container');
             
             unidadSelect.addEventListener('change', () => {
                 if (unidadSelect.value === 'otro_unidad') {
@@ -951,6 +1205,22 @@
             });
             
             row.querySelector('.remove-mat-btn').addEventListener('click', () => row.remove());
+            
+            // Prefill values if editing existing material
+            if (prefill) {
+                if (prefill.nombre) row.querySelector('.mat-nombre').value = prefill.nombre;
+                if (prefill.cantidad) row.querySelector('.mat-cantidad').value = prefill.cantidad;
+                if (prefill.talla) row.querySelector('.mat-talla').value = prefill.talla;
+                const standardUnidades = ['metros','pies','decimetros','pares','unidades','kilos','litros','rollos'];
+                if (prefill.unidad && standardUnidades.includes(prefill.unidad)) {
+                    unidadSelect.value = prefill.unidad;
+                } else if (prefill.unidad) {
+                    unidadSelect.value = 'otro_unidad';
+                    unidadCustomContainer.classList.remove('hidden');
+                    row.querySelector('.unidad-custom').value = prefill.unidad;
+                }
+            }
+            
             container.appendChild(row);
         }
 
@@ -1021,28 +1291,29 @@
             }
             
             // Collect materials
-            const materialRows = document.querySelectorAll('.material-row');
+            const materialRows = document.getElementById('materialesContainer').querySelectorAll('.material-row');
             const materialesList = [];
+            const nombresUsados = [];
             
             materialRows.forEach(row => {
-                const tipoSelect = row.querySelector('.mat-tipo').value;
-                const customName = row.querySelector('.mat-custom')?.value?.trim() || '';
-                const cantidadMat = parseFloat(row.querySelector('.mat-cantidad').value) || 0;
+                const nombre = row.querySelector('.mat-nombre')?.value?.trim() || '';
+                const cantidadMat = row.querySelector('.mat-cantidad')?.value?.trim() || '';
+                const tallaMat = row.querySelector('.mat-talla')?.value?.trim() || '';
                 const unidadSelect = row.querySelector('.mat-unidad').value;
                 const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
                 
-                const tipo = tipoSelect === 'otro' ? 'personalizado' : tipoSelect;
-                const nombre = tipoSelect === 'otro' && customName ? customName : tipoSelect.charAt(0).toUpperCase() + tipoSelect.slice(1);
                 const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
                 
-                if (cantidadMat > 0) {
+                if (nombre && cantidadMat) {
                     materialesList.push({
                         nombre,
-                        tipo,
+                        tipo: nombre.toLowerCase(),
                         cantidad: cantidadMat,
+                        talla: tallaMat,
                         unidad,
                         recibido: false
                     });
+                    nombresUsados.push(nombre);
                 }
             });
 
@@ -1051,7 +1322,7 @@
             const allTallas = [...new Set(coloresList.flatMap(c => Array.isArray(c.tallas) ? c.tallas.map(t => t.talla) : []))].filter(Boolean).join(', ');
             
             try {
-                const pedidoRef = await addDoc(collection(db, 'pedidos_cliente'), {
+                await addDoc(collection(db, 'pedidos_cliente'), {
                     cliente_id: currentClient.id,
                     cliente_nombre: currentClient.nombre,
                     modelo,
@@ -1063,42 +1334,299 @@
                     fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
                     notas,
                     materiales: materialesList,
-                    estado: 'pendiente',
+                    estado: 'borrador',
                     pares_hechos: 0,
                     fecha_creacion: Timestamp.now()
                 });
                 
-                // Send real-time notification to factory
-                await push(ref(rtdb, 'notificaciones_fabrica'), {
-                    tipo: 'nuevo_pedido',
-                    titulo: '📦 Nuevo Pedido de Cliente',
-                    mensaje: `${currentClient.nombre} ha solicitado ${cantidad} pares de "${modelo}" (${coloresList.length} colores)`,
-                    pedido_id: pedidoRef.id,
-                    cliente_id: currentClient.id,
-                    fecha: Date.now(),
-                    leido: false
-                });
+                // Save new material names for future autocomplete
+                if (nombresUsados.length > 0) {
+                    await saveNewMaterialNames(nombresUsados);
+                }
                 
-                // Also save to Firestore notifications
-                await addDoc(collection(db, 'notificaciones'), {
-                    tipo: 'nuevo_pedido',
-                    titulo: 'Nuevo Pedido de Cliente',
-                    mensaje: `${currentClient.nombre} solicita ${cantidad} pares de "${modelo}" (${coloresList.length} colores)`,
-                    pedido_id: pedidoRef.id,
-                    cliente_id: currentClient.id,
-                    fecha: Timestamp.now(),
-                    leido: false
-                });
-                
-                showToast('Pedido enviado correctamente', 'success');
+                showToast('Pedido guardado como borrador. Puede editarlo o enviarlo a la fábrica.', 'success');
                 document.getElementById('orderModal').classList.add('hidden');
                 document.getElementById('orderForm').reset();
                 document.getElementById('materialesContainer').innerHTML = '';
                 document.getElementById('coloresContainer').innerHTML = '';
                 
             } catch (error) {
-                console.error('Error enviando pedido:', error);
-                showToast('Error al enviar pedido', 'error');
+                console.error('Error guardando pedido:', error);
+                showToast('Error al guardar pedido', 'error');
+            }
+        }
+
+        // ==================== EDIT ORDER ====================
+        function addEditColorRow(prefill) {
+            const container = document.getElementById('editColoresContainer');
+            const row = document.createElement('div');
+            row.className = 'color-row';
+            row.innerHTML = `
+                <div class="bg-gray-700/30 rounded-xl p-3 space-y-3">
+                    <div class="grid grid-cols-12 gap-2 items-end">
+                        <div class="col-span-4">
+                            <label class="block text-xs text-gray-400 mb-1">Color Principal</label>
+                            <input type="text" class="color-principal w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="Ej: Negro">
+                        </div>
+                        <div class="col-span-3">
+                            <label class="block text-xs text-gray-400 mb-1">Color Secundario</label>
+                            <input type="text" class="color-secundario w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Opcional">
+                        </div>
+                        <div class="col-span-3">
+                            <label class="block text-xs text-gray-400 mb-1">Total Pares</label>
+                            <input type="number" class="color-pares w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="0" min="1">
+                        </div>
+                        <div class="col-span-2 flex justify-center">
+                            <button type="button" class="remove-color-btn w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded-lg transition text-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800/40 rounded-lg p-2 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400"><i class="fas fa-ruler mr-1 text-blue-400"></i>Desglose por tallas</span>
+                            <span class="tallas-status text-xs font-medium px-2 py-0.5 rounded-full bg-gray-700 text-gray-400">Sin tallas</span>
+                        </div>
+                        <div class="tallas-container space-y-1"></div>
+                        <div class="flex gap-2">
+                            <button type="button" class="add-talla-btn flex-1 py-1.5 border border-dashed border-gray-600 hover:border-blue-500 text-gray-500 hover:text-blue-400 rounded-lg transition text-xs flex items-center justify-center gap-1">
+                                <i class="fas fa-plus"></i> Agregar Talla
+                            </button>
+                            <button type="button" class="duplicar-tallas-btn flex-1 py-1.5 border border-dashed border-gray-600 hover:border-green-500 text-gray-500 hover:text-green-400 rounded-lg transition text-xs flex items-center justify-center gap-1">
+                                <i class="fas fa-copy"></i> Duplicar tallas de...
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            row.querySelector('.color-pares').addEventListener('input', () => {
+                updateEditParesRestantes();
+                updateTallasStatus(row);
+            });
+            row.querySelector('.remove-color-btn').addEventListener('click', () => {
+                row.remove();
+                updateEditParesRestantes();
+            });
+            row.querySelector('.add-talla-btn').addEventListener('click', () => addTallaRow(row));
+            row.querySelector('.duplicar-tallas-btn').addEventListener('click', () => duplicarTallas(row));
+            container.appendChild(row);
+
+            // Prefill if editing
+            if (prefill) {
+                row.querySelector('.color-principal').value = prefill.color || '';
+                row.querySelector('.color-secundario').value = prefill.color_secundario || '';
+                row.querySelector('.color-pares').value = prefill.pares || '';
+                if (Array.isArray(prefill.tallas) && prefill.tallas.length > 0) {
+                    prefill.tallas.forEach(t => {
+                        addTallaRow(row);
+                        const lastTallaRow = row.querySelector('.tallas-container').lastElementChild;
+                        lastTallaRow.querySelector('.talla-numero').value = t.talla;
+                        lastTallaRow.querySelector('.talla-pares').value = t.pares;
+                    });
+                } else {
+                    addTallaRow(row);
+                }
+                updateTallasStatus(row);
+            } else {
+                addTallaRow(row);
+            }
+            updateEditParesRestantes();
+        }
+
+        function updateEditParesRestantes() {
+            const total = parseInt(document.getElementById('editCantidad').value) || 0;
+            const rows = document.getElementById('editColoresContainer').querySelectorAll('.color-row');
+            let asignados = 0;
+            rows.forEach(r => { asignados += parseInt(r.querySelector('.color-pares').value) || 0; });
+            const restantes = total - asignados;
+            const el = document.getElementById('editParesRestantes');
+            if (total <= 0) {
+                el.textContent = 'Ingrese cantidad total primero';
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-gray-700 text-gray-300';
+            } else if (restantes === 0) {
+                el.textContent = '✓ Pares completos';
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-600/20 text-green-400';
+            } else if (restantes > 0) {
+                el.textContent = `Faltan ${restantes} pares`;
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-amber-600/20 text-amber-400';
+            } else {
+                el.textContent = `Excede en ${Math.abs(restantes)} pares`;
+                el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-600/20 text-red-400';
+            }
+        }
+
+        function openEditOrder(pedidoId) {
+            const pedido = pedidos.find(p => p.id === pedidoId);
+            if (!pedido) return;
+            
+            document.getElementById('editOrderId').value = pedidoId;
+            document.getElementById('editModelo').value = pedido.modelo || '';
+            document.getElementById('editCantidad').value = pedido.cantidad || '';
+            document.getElementById('editNotas').value = pedido.notas || '';
+            
+            // Format date for input
+            if (pedido.fecha_entrega_esperada?.toDate) {
+                const d = pedido.fecha_entrega_esperada.toDate();
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                document.getElementById('editFechaEntrega').value = `${yyyy}-${mm}-${dd}`;
+            }
+            
+            // Populate colores
+            document.getElementById('editColoresContainer').innerHTML = '';
+            if (pedido.colores && pedido.colores.length > 0) {
+                pedido.colores.forEach(c => addEditColorRow(c));
+            } else {
+                addEditColorRow();
+            }
+            
+            // Populate materials
+            document.getElementById('editMaterialesContainer').innerHTML = '';
+            if (pedido.materiales && pedido.materiales.length > 0) {
+                pedido.materiales.forEach(m => addMaterialRow('editMaterialesContainer', m));
+            }
+            
+            document.getElementById('editOrderModal').classList.remove('hidden');
+        }
+
+        async function submitEditOrder(e) {
+            e.preventDefault();
+            
+            const pedidoId = document.getElementById('editOrderId').value;
+            const modelo = document.getElementById('editModelo').value.trim();
+            const cantidad = parseInt(document.getElementById('editCantidad').value) || 0;
+            const fechaEntrega = document.getElementById('editFechaEntrega').value;
+            const notas = document.getElementById('editNotas').value.trim();
+            
+            if (!modelo || cantidad <= 0 || !fechaEntrega) {
+                showToast('Complete los campos requeridos', 'warning');
+                return;
+            }
+            
+            // Collect colors from edit modal
+            const editColorRows = document.getElementById('editColoresContainer').querySelectorAll('.color-row');
+            const coloresList = [];
+            let totalParesColores = 0;
+            let tallasInvalidas = false;
+            
+            editColorRows.forEach(row => {
+                const colorPrincipal = row.querySelector('.color-principal').value.trim();
+                const colorSec = row.querySelector('.color-secundario').value.trim();
+                const pares = parseInt(row.querySelector('.color-pares').value) || 0;
+                
+                const tallaRows = row.querySelectorAll('.talla-row');
+                const tallasList = [];
+                let sumTallas = 0;
+                tallaRows.forEach(tr => {
+                    const talla = tr.querySelector('.talla-numero').value.trim();
+                    const talPares = parseInt(tr.querySelector('.talla-pares').value) || 0;
+                    if (talla && talPares > 0) {
+                        tallasList.push({ talla, pares: talPares });
+                        sumTallas += talPares;
+                    }
+                });
+                
+                if (colorPrincipal && pares > 0) {
+                    if (tallasList.length > 0 && sumTallas !== pares) tallasInvalidas = true;
+                    coloresList.push({ color: colorPrincipal, color_secundario: colorSec, pares, tallas: tallasList });
+                    totalParesColores += pares;
+                }
+            });
+            
+            if (tallasInvalidas) {
+                showToast('La suma de pares por talla no coincide con el total en uno o más colores', 'warning');
+                return;
+            }
+            if (coloresList.length === 0) {
+                showToast('Agregue al menos un color con sus pares', 'warning');
+                return;
+            }
+            if (totalParesColores !== cantidad) {
+                showToast(`La suma de pares por color (${totalParesColores}) no coincide con la cantidad total (${cantidad})`, 'warning');
+                return;
+            }
+            
+            // Collect materials from edit modal
+            const editMatRows = document.getElementById('editMaterialesContainer').querySelectorAll('.material-row');
+            const editMaterialesList = [];
+            const editNombresUsados = [];
+            
+            editMatRows.forEach(row => {
+                const nombre = row.querySelector('.mat-nombre')?.value?.trim() || '';
+                const cantidadMat = row.querySelector('.mat-cantidad')?.value?.trim() || '';
+                const tallaMat = row.querySelector('.mat-talla')?.value?.trim() || '';
+                const unidadSelect = row.querySelector('.mat-unidad').value;
+                const unidadCustom = row.querySelector('.unidad-custom')?.value?.trim() || '';
+                const unidad = unidadSelect === 'otro_unidad' && unidadCustom ? unidadCustom : unidadSelect;
+                
+                if (nombre && cantidadMat) {
+                    editMaterialesList.push({ nombre, tipo: nombre.toLowerCase(), cantidad: cantidadMat, talla: tallaMat, unidad, recibido: false });
+                    editNombresUsados.push(nombre);
+                }
+            });
+            
+            const colorResumen = coloresList.map(c => `${c.color} (${c.pares})`).join(', ');
+            const allTallas = [...new Set(coloresList.flatMap(c => Array.isArray(c.tallas) ? c.tallas.map(t => t.talla) : []))].filter(Boolean).join(', ');
+            
+            try {
+                await updateDoc(doc(db, 'pedidos_cliente', pedidoId), {
+                    modelo, cantidad, tallas: allTallas, colores: coloresList, color: colorResumen, color_secundario: '',
+                    fecha_entrega_esperada: Timestamp.fromDate(parseLocalDate(fechaEntrega)),
+                    notas, materiales: editMaterialesList
+                });
+                
+                if (editNombresUsados.length > 0) {
+                    await saveNewMaterialNames(editNombresUsados);
+                }
+                
+                showToast('Pedido actualizado correctamente', 'success');
+                document.getElementById('editOrderModal').classList.add('hidden');
+            } catch (error) {
+                console.error('Error actualizando pedido:', error);
+                showToast('Error al actualizar el pedido', 'error');
+            }
+        }
+
+        // ==================== CHANGE PASSWORD ====================
+        async function changePassword(e) {
+            e.preventDefault();
+            
+            const currentPass = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            
+            if (!currentPass || !newPass || !confirmPass) {
+                showToast('Complete todos los campos', 'warning');
+                return;
+            }
+            if (newPass !== confirmPass) {
+                showToast('Las contraseñas nuevas no coinciden', 'error');
+                return;
+            }
+            if (newPass.length < 4) {
+                showToast('La contraseña debe tener mínimo 4 caracteres', 'warning');
+                return;
+            }
+            
+            try {
+                const clientDoc = await getDoc(doc(db, 'clientes', currentClient.id));
+                if (!clientDoc.exists() || clientDoc.data().password !== currentPass) {
+                    showToast('Contraseña actual incorrecta', 'error');
+                    return;
+                }
+                
+                await updateDoc(doc(db, 'clientes', currentClient.id), { password: newPass });
+                currentClient.password = newPass;
+                localStorage.setItem('ca_client_session', JSON.stringify(currentClient));
+                
+                showToast('Contraseña cambiada exitosamente', 'success');
+                document.getElementById('settingsModal').classList.add('hidden');
+                document.getElementById('changePasswordForm').reset();
+            } catch (error) {
+                console.error('Error cambiando contraseña:', error);
+                showToast('Error al cambiar la contraseña', 'error');
             }
         }
 
@@ -1150,8 +1678,49 @@
         });
         document.getElementById('addColorBtn').addEventListener('click', addColorRow);
         document.getElementById('orderCantidad').addEventListener('input', updateParesRestantes);
-        document.getElementById('addMaterialBtn').addEventListener('click', addMaterialRow);
+        document.getElementById('addMaterialBtn').addEventListener('click', () => addMaterialRow());
         document.getElementById('orderForm').addEventListener('submit', submitOrder);
+        
+        // Settings modal (change password)
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        });
+        document.getElementById('closeSettingsModal').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('changePasswordForm').reset();
+        });
+        document.getElementById('cancelSettingsModal').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('changePasswordForm').reset();
+        });
+        document.getElementById('changePasswordForm').addEventListener('submit', changePassword);
+        
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-pass-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const input = document.getElementById(btn.dataset.target);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('fa-eye', 'fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('fa-eye-slash', 'fa-eye');
+                }
+            });
+        });
+        
+        // Edit order modal
+        document.getElementById('closeEditOrderModal').addEventListener('click', () => {
+            document.getElementById('editOrderModal').classList.add('hidden');
+        });
+        document.getElementById('cancelEditOrderModal').addEventListener('click', () => {
+            document.getElementById('editOrderModal').classList.add('hidden');
+        });
+        document.getElementById('editOrderForm').addEventListener('submit', submitEditOrder);
+        document.getElementById('addEditColorBtn').addEventListener('click', () => addEditColorRow());
+        document.getElementById('addEditMaterialBtn').addEventListener('click', () => addMaterialRow('editMaterialesContainer'));
+        document.getElementById('editCantidad').addEventListener('input', updateEditParesRestantes);
         
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.tab));
