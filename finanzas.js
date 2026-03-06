@@ -895,9 +895,15 @@ function renderPedidosCliente() {
                             <p class="text-gray-400 text-xs mb-2"><i class="fas fa-palette mr-1 text-pink-400"></i>Desglose por colores:</p>
                             <div class="space-y-2">
                                 ${pedido.colores.map(c => `
-                                    <div class="flex flex-wrap items-center gap-2 bg-gray-800/40 rounded-lg px-3 py-2">
-                                        <span class="text-white text-sm font-medium">🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares</span>
-                                        ${c.tallas ? `<span class="text-blue-300 text-xs"><i class="fas fa-ruler mr-1"></i>${c.tallas}</span>` : ''}
+                                    <div class="bg-gray-800/40 rounded-lg px-3 py-2">
+                                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                                            <span class="text-white text-sm font-medium">🎨 ${c.color}${c.color_secundario ? ' / ' + c.color_secundario : ''}: <strong>${c.pares}</strong> pares</span>
+                                        </div>
+                                        ${Array.isArray(c.tallas) && c.tallas.length > 0 ? `
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                ${c.tallas.map(t => `<span class="px-2 py-0.5 bg-blue-900/30 border border-blue-700/40 rounded text-xs text-blue-300">T${t.talla}: ${t.pares}p</span>`).join('')}
+                                            </div>
+                                        ` : typeof c.tallas === 'string' && c.tallas ? `<span class="text-blue-300 text-xs"><i class="fas fa-ruler mr-1"></i>${c.tallas}</span>` : ''}
                                     </div>
                                 `).join('')}
                             </div>
