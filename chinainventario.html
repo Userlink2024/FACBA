@@ -157,6 +157,50 @@
     #pdfTemplate .pdf-footer{text-align:center;font-size:.8em;color:#777;margin-top:auto;padding-top:10mm;border-top:1px solid #eee}
 
     @media(max-width:768px){.topbar{flex-direction:column;gap:10px;text-align:center}.topbar .actions{justify-content:center}.summary-cards{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}#modDashboard>div[style*="grid-template-columns"]{grid-template-columns:1fr!important}}
+
+    /* === DARK MODE === */
+    body.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--shadow:0 1px 3px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.2);--shadow-lg:0 10px 25px rgba(0,0,0,.4);--primary-light:rgba(37,99,235,.2)}
+    body.dark{background:var(--bg);color:var(--text)}
+    body.dark .topbar{background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid var(--border)}
+    body.dark .nav-tabs{background:var(--card);border-color:var(--border)}
+    body.dark .nav-tab:hover{background:rgba(255,255,255,.05);color:var(--text)}
+    body.dark .card{background:var(--card);border-color:var(--border)}
+    body.dark .form-input{background:#0f172a;color:var(--text);border-color:var(--border)}
+    body.dark .form-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.2)}
+    body.dark .form-input[readonly]{background:#1a2332;color:var(--muted)}
+    body.dark select.form-input{background:#0f172a;color:var(--text)}
+    body.dark select.form-input option{background:#1e293b;color:var(--text)}
+    body.dark .btn-secondary{background:#334155;color:var(--text);border-color:#475569}
+    body.dark .btn-secondary:hover{background:#475569}
+    body.dark .btn-ghost{color:var(--muted)}
+    body.dark .btn-ghost:hover{background:rgba(255,255,255,.05);color:var(--text)}
+    body.dark .radio-label{border-color:var(--border);color:var(--text)}
+    body.dark .radio-label:has(input:checked){border-color:var(--primary);background:rgba(37,99,235,.15);color:#93c5fd}
+    body.dark .table-wrap{border-color:var(--border)}
+    body.dark thead{background:linear-gradient(135deg,#1e293b,#0f172a)}
+    body.dark th{color:var(--muted);border-bottom-color:var(--border)}
+    body.dark td{border-bottom-color:#1e293b}
+    body.dark tbody tr:hover{background:rgba(37,99,235,.05)}
+    body.dark .stat-card{background:var(--card);border-color:var(--border)}
+    body.dark .stat-icon.blue{background:rgba(37,99,235,.15)}
+    body.dark .stat-icon.green{background:rgba(34,197,94,.15)}
+    body.dark .stat-icon.red{background:rgba(239,68,68,.15)}
+    body.dark .stat-icon.orange{background:rgba(245,158,11,.15)}
+    body.dark .chip{background:rgba(255,255,255,.05)}
+    body.dark .search-results{background:var(--card);border-color:var(--border)}
+    body.dark .search-item{border-bottom-color:var(--border);color:var(--text)}
+    body.dark .search-item:hover{background:rgba(37,99,235,.15)}
+    body.dark .product-detail{background:#0f172a;border-color:var(--border)}
+    body.dark .modal-card{background:var(--card);border:1px solid var(--border)}
+    body.dark .modal-head{border-bottom-color:var(--border)}
+    body.dark .modal-foot{border-top-color:var(--border)}
+    body.dark .order-card{border-color:var(--border);background:var(--card)}
+    body.dark .order-card:hover{border-color:var(--primary)}
+    body.dark .draft-banner{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2)}
+    body.dark .draft-banner .draft-text{color:#fbbf24}
+    body.dark .empty{color:var(--muted)}
+    body.dark #pdfTemplate{background:#fff;color:#333}
+    body.dark .pager-label{color:var(--muted)}
   </style>
 </head>
 <body>
@@ -168,6 +212,7 @@
     </div>
     <div class="actions">
       <div class="pill" id="userPill"><i class="fas fa-user"></i> <strong>...</strong></div>
+      <button class="btn btn-ghost" style="color:#94a3b8" id="btnToggleDark" title="Modo Oscuro"><i class="fas fa-moon"></i></button>
       <button class="btn btn-ghost" style="color:#94a3b8" onclick="location.href='https://userlink2024.github.io/lazapateria/paneldecuentas.html'"><i class="fas fa-arrow-left"></i> Volver</button>
       <button class="btn btn-ghost" style="color:#94a3b8" id="btnSettings" title="Configuración"><i class="fas fa-gear"></i></button>
     </div>
@@ -647,6 +692,28 @@
         if (typeof str === 'number') return str;
         return parseFloat(String(str || '0').replace(/\./g, '').replace(/,/g, '.')) || 0;
     }
+
+    // Normalizar texto: quitar tildes/acentos para búsquedas
+    function norm(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+
+    // === DARK MODE ===
+    (function(){
+        const btn = document.getElementById('btnToggleDark');
+        if(!btn) return;
+        const icon = btn.querySelector('i');
+        if(localStorage.getItem('chinaDark')==='1'){
+            document.body.classList.add('dark');
+            if(icon){ icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
+            btn.title = 'Modo Claro';
+        }
+        btn.addEventListener('click', ()=>{
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            localStorage.setItem('chinaDark', isDark ? '1' : '0');
+            if(icon){ icon.classList.toggle('fa-moon',!isDark); icon.classList.toggle('fa-sun',isDark); }
+            btn.title = isDark ? 'Modo Claro' : 'Modo Oscuro';
+        });
+    })();
 
     function setupCurrencyInput(input) {
         if (!input) return;
@@ -1171,12 +1238,12 @@
     }
 
     function filtrarInventario() {
-        const term = inputBuscarInventario.value.toLowerCase().trim();
+        const term = norm(inputBuscarInventario.value.trim());
         tablaInventario.querySelectorAll('tr').forEach(row => {
             if (row.querySelector('td[colspan="9"]')) return;
-            const ref = row.cells[1].textContent.toLowerCase();
-            const col = row.cells[2].textContent.toLowerCase();
-            const prov = row.cells[6].textContent.toLowerCase();
+            const ref = norm(row.cells[1].textContent);
+            const col = norm(row.cells[2].textContent);
+            const prov = norm(row.cells[6].textContent);
             row.dataset.hiddenByFilter = (ref.includes(term) || col.includes(term) || prov.includes(term)) ? '0' : '1';
         });
         paginateInventario();
@@ -1304,13 +1371,13 @@
     // === FACTURACION - SEARCH & ADD PRODUCTS ===
     // Uses live inventarioCache — always reflects real-time prices/quantities
     function buscarProductoInline() {
-        const term = (facProductoBusqueda ? facProductoBusqueda.value : '').toLowerCase().trim();
+        const term = norm((facProductoBusqueda ? facProductoBusqueda.value : '').trim());
         if (!resultadosBusquedaInline) return;
         if (term.length < 2) { resultadosBusquedaInline.innerHTML = ''; resultadosBusquedaInline.classList.remove('open'); return; }
         const products = inventarioCache.filter(p =>
-            (p.referencia || '').toLowerCase().includes(term) ||
-            (p.color || '').toLowerCase().includes(term) ||
-            (p.proveedor || '').toLowerCase().includes(term)
+            norm(p.referencia).includes(term) ||
+            norm(p.color).includes(term) ||
+            norm(p.proveedor).includes(term)
         );
         resultadosBusquedaInline.innerHTML = '';
         if (products.length === 0) { resultadosBusquedaInline.innerHTML = '<div class="search-item" style="color:var(--muted)">No se encontraron productos.</div>'; resultadosBusquedaInline.classList.add('open'); return; }
@@ -1663,10 +1730,10 @@
     }
 
     function filtrarFacturas() {
-        const term = inputBuscarFacturas.value.toLowerCase().trim();
+        const term = norm(inputBuscarFacturas.value.trim());
         tablaFacturas.querySelectorAll('tr').forEach(row => {
             if (row.querySelector('td[colspan="9"]')) return;
-            const txt = row.textContent.toLowerCase();
+            const txt = norm(row.textContent);
             row.dataset.hiddenByFilter = txt.includes(term) ? '0' : '1';
         });
         paginateFacturas();
@@ -2055,12 +2122,12 @@
 
     // Uses live inventarioCache — always reflects real-time data
     function buscarProductoPedido() {
-        const term = pedProductoBusqueda.value.toLowerCase().trim();
+        const term = norm(pedProductoBusqueda.value.trim());
         if (term.length < 2) { pedResultadosBusqueda.innerHTML = ''; pedResultadosBusqueda.classList.remove('open'); return; }
         const products = inventarioCache.filter(p =>
-            (p.referencia || '').toLowerCase().includes(term) ||
-            (p.color || '').toLowerCase().includes(term) ||
-            (p.proveedor || '').toLowerCase().includes(term)
+            norm(p.referencia).includes(term) ||
+            norm(p.color).includes(term) ||
+            norm(p.proveedor).includes(term)
         );
         pedResultadosBusqueda.innerHTML = '';
         if (products.length === 0) { pedResultadosBusqueda.innerHTML = '<div class="search-item" style="color:var(--muted)">Sin resultados</div>'; pedResultadosBusqueda.classList.add('open'); return; }
@@ -2302,12 +2369,12 @@
     function buscarProductoParaEditPedido() {
         const input = $('editPedidoBusquedaInput');
         const container = $('editPedidoBusqueda');
-        const term = (input.value || '').toLowerCase().trim();
+        const term = norm((input.value || '').trim());
         if (term.length < 2) { container.innerHTML = ''; container.classList.remove('open'); return; }
         const products = inventarioCache.filter(p =>
-            (p.referencia || '').toLowerCase().includes(term) ||
-            (p.color || '').toLowerCase().includes(term) ||
-            (p.proveedor || '').toLowerCase().includes(term)
+            norm(p.referencia).includes(term) ||
+            norm(p.color).includes(term) ||
+            norm(p.proveedor).includes(term)
         );
         container.innerHTML = '';
         if (products.length === 0) { container.innerHTML = '<div class="search-item" style="color:var(--muted)">Sin resultados</div>'; container.classList.add('open'); return; }
