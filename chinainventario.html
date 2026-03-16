@@ -224,6 +224,8 @@
     <button class="nav-tab" data-tab="facturacion"><i class="fas fa-file-invoice-dollar"></i> Facturación <span class="badge hidden" id="draftBadge">Borrador</span></button>
     <button class="nav-tab" data-tab="facturas"><i class="fas fa-receipt"></i> Facturas</button>
     <button class="nav-tab" data-tab="pedidos"><i class="fas fa-clipboard-list"></i> Pedidos <span class="badge hidden" id="pedidosBadge">0</span></button>
+    <button class="nav-tab" data-tab="clientes"><i class="fas fa-users"></i> Clientes</button>
+    <button class="nav-tab" data-tab="estadocuenta"><i class="fas fa-file-invoice"></i> Estado de Cuenta</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -335,7 +337,7 @@
       <form id="formFacturacion">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Fecha</label><input type="date" id="facFechaHora" class="form-input" required></div>
-          <div class="form-group"><label class="form-label">Cliente</label><input type="text" id="facCliente" class="form-input" required placeholder="Nombre del cliente"></div>
+          <div class="form-group"><label class="form-label">Cliente</label><div style="position:relative"><input type="text" id="facCliente" class="form-input" required placeholder="Buscar cliente registrado..." autocomplete="off"><div id="facClienteResults" class="search-results"></div></div></div>
           <div class="form-group"><label class="form-label">Número de Factura</label><input type="text" id="facNumeroFactura" class="form-input" placeholder="Opcional, se genera automático"></div>
           <div class="form-group"><label class="form-label">Tipo de Pago</label>
             <div class="radio-group">
@@ -442,7 +444,7 @@
       </div>
       <form id="formPedido">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Cliente</label><input type="text" id="pedCliente" class="form-input" required placeholder="Nombre del cliente"></div>
+          <div class="form-group"><label class="form-label">Cliente</label><div style="position:relative"><input type="text" id="pedCliente" class="form-input" required placeholder="Buscar cliente registrado..." autocomplete="off"><div id="pedClienteResults" class="search-results"></div></div></div>
           <div class="form-group"><label class="form-label">Observaciones</label><input type="text" id="pedObservaciones" class="form-input" placeholder="Notas adicionales"></div>
         </div>
         <div class="form-group" style="position:relative;margin-top:10px">
@@ -464,6 +466,104 @@
         <div class="card-title"><i class="fas fa-list-check"></i> Pedidos Activos</div>
       </div>
       <div id="listaPedidos"><div class="empty"><i class="fas fa-inbox"></i> Sin pedidos activos</div></div>
+    </div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div id="modClientes" class="module">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title" id="formClienteTitle"><i class="fas fa-user-plus"></i> Registrar Cliente</div>
+      </div>
+      <form id="formCliente">
+        <input type="hidden" id="cliId">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Nombre / Razón Social *</label><input type="text" id="cliNombre" class="form-input" required placeholder="Nombre completo del cliente"></div>
+          <div class="form-group"><label class="form-label">Teléfono</label><input type="text" id="cliTelefono" class="form-input" placeholder="Ej: 3001234567"></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="cliEmail" class="form-input" placeholder="correo@ejemplo.com"></div>
+          <div class="form-group"><label class="form-label">Dirección</label><input type="text" id="cliDireccion" class="form-input" placeholder="Dirección del cliente"></div>
+          <div class="form-group"><label class="form-label">NIT / Cédula</label><input type="text" id="cliDocumento" class="form-input" placeholder="Documento de identidad"></div>
+          <div class="form-group"><label class="form-label">Notas</label><input type="text" id="cliNotas" class="form-input" placeholder="Observaciones"></div>
+        </div>
+        <div class="btn-group" style="margin-top:12px">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cliente</button>
+          <button type="button" id="btnCancelarCliente" class="btn btn-danger hidden"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-address-book"></i> Clientes Registrados</div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <input type="text" id="inputBuscarClientes" class="form-input" placeholder="🔍 Buscar cliente por nombre, documento, teléfono...">
+      </div>
+      <div class="table-wrap">
+        <table id="tablaClientes"><thead><tr>
+          <th>Nombre</th><th>Teléfono</th><th>Email</th><th>Documento</th><th>Dirección</th><th>Notas</th><th>Acciones</th>
+        </tr></thead><tbody><tr><td colspan="7" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO DE CUENTA -->
+  <div id="modEstadocuenta" class="module">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-file-invoice"></i> Generar Estado de Cuenta</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Seleccionar Cliente *</label>
+          <div style="position:relative">
+            <input type="text" id="edcClienteBusqueda" class="form-input" placeholder="Buscar cliente registrado..." autocomplete="off">
+            <div id="edcClienteResults" class="search-results"></div>
+          </div>
+          <input type="hidden" id="edcClienteId">
+          <div id="edcClienteInfo" class="hidden" style="margin-top:8px;padding:10px 14px;background:var(--primary-light);border-radius:10px;font-size:13px;font-weight:600;color:var(--primary)"><i class="fas fa-user-check"></i> <span id="edcClienteNombre"></span> <button class="btn btn-ghost btn-xs" onclick="window._edcClearClient()" style="margin-left:8px"><i class="fas fa-times"></i></button></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rango de Fechas (opcional)</label>
+          <div style="display:flex;gap:8px">
+            <input type="date" id="edcDesde" class="form-input" style="flex:1">
+            <input type="date" id="edcHasta" class="form-input" style="flex:1">
+          </div>
+        </div>
+      </div>
+      <div class="btn-group" style="margin-top:14px">
+        <button class="btn btn-primary" id="btnGenerarEstadoCuenta"><i class="fas fa-search"></i> Generar Estado de Cuenta</button>
+      </div>
+    </div>
+
+    <div id="edcResultado" class="hidden">
+      <div id="edcAIAnalysis" class="card" style="border-left:4px solid var(--purple)">
+        <div class="card-title" style="margin-bottom:10px"><i class="fas fa-robot" style="color:var(--purple)"></i> Análisis Inteligente de Coincidencias</div>
+        <div id="edcAIContent" style="font-size:13px"></div>
+      </div>
+
+      <div class="summary-cards" id="edcSummaryCards">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-file-invoice-dollar"></i></div><div><div class="stat-label">Total Facturado</div><div class="stat-value" id="edcTotalFacturado">$0</div></div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-hand-holding-dollar"></i></div><div><div class="stat-label">Total Abonado</div><div class="stat-value" id="edcTotalAbonado">$0</div></div></div>
+        <div class="stat-card"><div class="stat-icon red"><i class="fas fa-clock"></i></div><div><div class="stat-label">Saldo Pendiente</div><div class="stat-value" id="edcSaldoPendiente">$0</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-receipt"></i></div><div><div class="stat-label">Facturas</div><div class="stat-value" id="edcNumFacturas">0</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-list"></i> Detalle de Facturas</div>
+          <button class="btn btn-danger btn-sm" id="btnEdcExportPDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+        </div>
+        <div class="table-wrap">
+          <table id="tablaEstadoCuenta"><thead><tr>
+            <th>Código</th><th>Fecha</th><th>Cliente (Original)</th><th>Tipo Pago</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Estado</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <div class="card" id="edcAbonosDetail">
+        <div class="card-title" style="margin-bottom:10px"><i class="fas fa-history" style="color:var(--info)"></i> Detalle de Abonos</div>
+        <div id="edcAbonosContent"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -528,7 +628,7 @@
       <input type="hidden" id="editPedidoId">
       <div class="form-group">
         <label class="form-label">Cliente</label>
-        <input type="text" id="editPedidoCliente" class="form-input" required>
+        <div style="position:relative"><input type="text" id="editPedidoCliente" class="form-input" required placeholder="Buscar cliente registrado..." autocomplete="off"><div id="editPedClienteResults" class="search-results"></div></div>
       </div>
       <div class="form-group">
         <label class="form-label">Observaciones</label>
@@ -642,12 +742,20 @@
     const facturasCol = collection(db, "facturas");
     const pedidosCol = collection(db, "pedidos_china");
     const borradorCol = collection(db, "facturas_borrador");
+    const clientesCol = collection(db, "china_clientes");
 
     // === LIVE INVENTORY CACHE (real-time sync via onSnapshot) ===
     let inventarioCache = [];
     onSnapshot(inventarioCol, (snapshot) => {
         inventarioCache = [];
         snapshot.forEach(d => inventarioCache.push({ id: d.id, ...d.data() }));
+    }, () => { /* error silently */ });
+
+    // === LIVE CLIENTS CACHE ===
+    let clientesCache = [];
+    onSnapshot(clientesCol, (snapshot) => {
+        clientesCache = [];
+        snapshot.forEach(d => clientesCache.push({ id: d.id, ...d.data() }));
     }, () => { /* error silently */ });
 
     // === SESSION DETECTION ===
@@ -884,6 +992,8 @@
         else if (tabName === 'facturacion') { resetFormFacturacion(); refreshDraftsUI(); }
         else if (tabName === 'facturas') { resetBusquedaFacturas(); cargarFacturas(); }
         else if (tabName === 'pedidos') { cargarPedidos(); }
+        else if (tabName === 'clientes') { cargarClientes(); }
+        else if (tabName === 'estadocuenta') { resetEstadoCuenta(); }
     }
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', () => showModule(tab.dataset.tab));
@@ -1650,6 +1760,28 @@
         if (!tipoPago) { toast("Seleccione tipo de pago.", 'error'); return; }
         if (tipoPago === 'contado' && !metodoPago) { toast("Seleccione método de pago.", 'error'); return; }
         if (productosEnFactura.length === 0) { toast("Agregue al menos un producto.", 'error'); return; }
+
+        // === AI: Auto-detect if client exists, offer to create if not ===
+        const clienteExistente = clientesCache.find(c => norm(c.nombre) === norm(cliente));
+        if (!clienteExistente) {
+            const similarClients = clientesCache.filter(c => fuzzyScore(c.nombre, cliente) >= 0.5).map(c => c.nombre);
+            let msg = `El cliente "${cliente}" no está registrado.`;
+            if (similarClients.length > 0) msg += `\n\nClientes similares encontrados: ${similarClients.join(', ')}.\n¿Usas uno existente o deseas registrar "${cliente}" como nuevo?`;
+            else msg += `\n\n¿Deseas registrarlo automáticamente?`;
+            const registrar = await showConfirm(msg, 'Cliente No Registrado');
+            if (registrar) {
+                try {
+                    await addDoc(clientesCol, {
+                        nombre: cliente, nombreNorm: norm(cliente),
+                        telefono: '', email: '', direccion: '', documento: '', notas: 'Creado automáticamente al facturar',
+                        creadoPor: userName(), createdAt: new Date(),
+                        ultimoUsuario: userName(), ultimaModificacion: new Date().toISOString()
+                    });
+                    toast(`Cliente "${cliente}" registrado automáticamente.`, 'info');
+                } catch (err) { /* continue even if client creation fails */ }
+            }
+        }
+
         const descuentoVal = parseCurrency(facDescuento.value) || 0;
         const valorTotal = parseFloat(facValorTotal.value);
         const now = new Date();
@@ -2423,16 +2555,465 @@
         }
     });
 
+    // === CLIENTES CRUD ===
+    const tablaClientes = $('tablaClientes').querySelector('tbody');
+    const formCliente = $('formCliente');
+    const inputBuscarClientes = $('inputBuscarClientes');
+
+    function cargarClientes() {
+        tablaClientes.innerHTML = '<tr><td colspan="7" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+        onSnapshot(clientesCol, (snapshot) => {
+            tablaClientes.innerHTML = '';
+            if (snapshot.empty) { tablaClientes.innerHTML = '<tr><td colspan="7" class="empty"><i class="fas fa-users"></i> No hay clientes registrados.</td></tr>'; return; }
+            snapshot.forEach(d => {
+                const c = d.data();
+                const row = tablaClientes.insertRow();
+                row.dataset.id = d.id;
+                row.innerHTML = `<td><strong>${c.nombre || ''}</strong></td><td>${c.telefono || ''}</td><td>${c.email || ''}</td><td>${c.documento || ''}</td><td>${c.direccion || ''}</td><td>${c.notas || ''}</td><td><div class="btn-group"><button class="btn btn-primary btn-xs" onclick="window._modificarCliente('${d.id}')"><i class="fas fa-pen"></i></button><button class="btn btn-danger btn-xs" onclick="window._eliminarCliente('${d.id}')"><i class="fas fa-trash"></i></button></div></td>`;
+            });
+            filtrarClientes();
+        }, () => { tablaClientes.innerHTML = '<tr><td colspan="7" class="empty" style="color:var(--danger)">Error al cargar clientes.</td></tr>'; });
+    }
+
+    function filtrarClientes() {
+        const term = norm((inputBuscarClientes ? inputBuscarClientes.value : '').trim());
+        tablaClientes.querySelectorAll('tr').forEach(row => {
+            if (row.querySelector('td[colspan="7"]')) return;
+            row.style.display = norm(row.textContent).includes(term) ? '' : 'none';
+        });
+    }
+    if (inputBuscarClientes) inputBuscarClientes.addEventListener('input', filtrarClientes);
+
+    async function guardarCliente(e) {
+        e.preventDefault();
+        const id = $('cliId').value;
+        const nombre = $('cliNombre').value.trim();
+        if (!nombre) { toast('El nombre es obligatorio.', 'error'); return; }
+        const data = {
+            nombre, nombreNorm: norm(nombre),
+            telefono: $('cliTelefono').value.trim(),
+            email: $('cliEmail').value.trim(),
+            direccion: $('cliDireccion').value.trim(),
+            documento: $('cliDocumento').value.trim(),
+            notas: $('cliNotas').value.trim(),
+            ultimoUsuario: userName(),
+            ultimaModificacion: new Date().toISOString()
+        };
+        if (!id) data.creadoPor = userName();
+        if (!id) data.createdAt = new Date();
+        try {
+            if (id) { await updateDoc(doc(db, "china_clientes", id), data); toast('Cliente actualizado!'); }
+            else { await addDoc(clientesCol, data); toast('Cliente registrado!'); }
+            resetFormCliente();
+        } catch (err) { toast('Error al guardar cliente.', 'error'); }
+    }
+    formCliente.addEventListener('submit', guardarCliente);
+
+    function resetFormCliente() {
+        formCliente.reset(); $('cliId').value = '';
+        $('formClienteTitle').innerHTML = '<i class="fas fa-user-plus"></i> Registrar Cliente';
+        $('btnCancelarCliente').classList.add('hidden');
+    }
+    $('btnCancelarCliente').addEventListener('click', resetFormCliente);
+
+    async function modificarCliente(id) {
+        try {
+            const snap = await getDoc(doc(db, "china_clientes", id));
+            if (!snap.exists()) { toast('Cliente no encontrado.', 'error'); return; }
+            const c = snap.data();
+            $('cliId').value = id;
+            $('cliNombre').value = c.nombre || '';
+            $('cliTelefono').value = c.telefono || '';
+            $('cliEmail').value = c.email || '';
+            $('cliDireccion').value = c.direccion || '';
+            $('cliDocumento').value = c.documento || '';
+            $('cliNotas').value = c.notas || '';
+            $('formClienteTitle').innerHTML = '<i class="fas fa-pen"></i> Modificar Cliente';
+            $('btnCancelarCliente').classList.remove('hidden');
+            formCliente.scrollIntoView({ behavior: 'smooth' });
+        } catch (err) { toast('Error cargando datos.', 'error'); }
+    }
+    window._modificarCliente = modificarCliente;
+
+    async function eliminarCliente(id) {
+        const ok = await showConfirm('¿Eliminar este cliente?', 'Eliminar Cliente');
+        if (!ok) return;
+        try { await deleteDoc(doc(db, "china_clientes", id)); toast('Cliente eliminado.'); }
+        catch (err) { toast('Error al eliminar.', 'error'); }
+    }
+    window._eliminarCliente = eliminarCliente;
+
+    // === AI FUZZY MATCHING ===
+    function tokenize(s) { return norm(s).split(/\s+/).filter(t => t.length > 1); }
+
+    function fuzzyScore(clientName, invoiceName) {
+        const cn = norm(clientName);
+        const inv = norm(invoiceName);
+        if (cn === inv) return 1.0;
+        if (inv.includes(cn) || cn.includes(inv)) return 0.9;
+        const cTokens = tokenize(clientName);
+        const iTokens = tokenize(invoiceName);
+        if (cTokens.length === 0 || iTokens.length === 0) return 0;
+        let matched = 0;
+        for (const ct of cTokens) {
+            for (const it of iTokens) {
+                if (ct === it) { matched++; break; }
+                if (ct.length >= 3 && it.length >= 3 && (ct.includes(it) || it.includes(ct))) { matched += 0.7; break; }
+                if (ct.length >= 4 && it.length >= 4) {
+                    let common = 0;
+                    const short = ct.length < it.length ? ct : it;
+                    const long = ct.length < it.length ? it : ct;
+                    for (let i = 0; i <= short.length - 2; i++) {
+                        if (long.includes(short.substring(i, i + 2))) common++;
+                    }
+                    const bigramSim = common / (short.length - 1);
+                    if (bigramSim >= 0.6) { matched += bigramSim * 0.5; break; }
+                }
+            }
+        }
+        return matched / Math.max(cTokens.length, iTokens.length);
+    }
+
+    function aiMatchInvoices(client, allFacturas, desde, hasta) {
+        const clientName = client.nombre;
+        const threshold = 0.35;
+        const matches = [];
+        const insights = [];
+        const nameVariations = new Set();
+
+        for (const f of allFacturas) {
+            if (desde && f.fechaHora < desde) continue;
+            if (hasta && f.fechaHora > hasta) continue;
+            const score = fuzzyScore(clientName, f.cliente);
+            if (score >= threshold) {
+                matches.push({ ...f, _matchScore: score });
+                if (norm(f.cliente) !== norm(clientName)) nameVariations.add(f.cliente);
+            }
+        }
+
+        matches.sort((a, b) => (a.fechaHora || '').localeCompare(b.fechaHora || ''));
+
+        if (nameVariations.size > 0) {
+            insights.push(`<div style="margin-bottom:6px"><i class="fas fa-search" style="color:var(--purple)"></i> <strong>Variaciones de nombre detectadas:</strong> Se encontraron facturas con nombres similares al cliente "<strong>${clientName}</strong>":</div>`);
+            for (const v of nameVariations) {
+                const sc = fuzzyScore(clientName, v);
+                const pct = Math.round(sc * 100);
+                const color = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+                insights.push(`<div style="padding:4px 0 4px 20px">• "<strong>${v}</strong>" — coincidencia: <span style="color:${color};font-weight:700">${pct}%</span></div>`);
+            }
+        }
+
+        const exactCount = matches.filter(m => norm(m.cliente) === norm(clientName)).length;
+        const fuzzyCount = matches.length - exactCount;
+        if (exactCount > 0) insights.push(`<div style="margin-top:6px"><i class="fas fa-check-circle" style="color:var(--success)"></i> <strong>${exactCount}</strong> factura(s) con coincidencia exacta.</div>`);
+        if (fuzzyCount > 0) insights.push(`<div><i class="fas fa-robot" style="color:var(--purple)"></i> <strong>${fuzzyCount}</strong> factura(s) detectadas por IA (nombre similar).</div>`);
+        if (matches.length === 0) insights.push(`<div><i class="fas fa-info-circle" style="color:var(--muted)"></i> No se encontraron facturas para este cliente en el período seleccionado.</div>`);
+
+        const creditMatches = matches.filter(m => m.tipoPago === 'credito' && (m.saldoPendiente > 0));
+        if (creditMatches.length > 0) {
+            const totalDebt = creditMatches.reduce((s, m) => s + (parseFloat(m.saldoPendiente) || 0), 0);
+            insights.push(`<div style="margin-top:6px"><i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> <strong>${creditMatches.length}</strong> factura(s) a crédito con saldo pendiente. Deuda total: <strong style="color:var(--danger)">$${fmtCOP(totalDebt)}</strong></div>`);
+        }
+
+        return { matches, insights };
+    }
+
+    // === ESTADO DE CUENTA ===
+    let edcFacturasCache = [];
+
+    function resetEstadoCuenta() {
+        $('edcClienteBusqueda').value = '';
+        $('edcClienteId').value = '';
+        $('edcClienteInfo').classList.add('hidden');
+        $('edcDesde').value = '';
+        $('edcHasta').value = '';
+        $('edcResultado').classList.add('hidden');
+    }
+
+    function buscarClienteEdc() {
+        const term = norm($('edcClienteBusqueda').value.trim());
+        const container = $('edcClienteResults');
+        if (term.length < 2) { container.innerHTML = ''; container.classList.remove('open'); return; }
+        const results = clientesCache.filter(c => norm(c.nombre).includes(term) || norm(c.documento || '').includes(term) || norm(c.telefono || '').includes(term));
+        container.innerHTML = '';
+        if (results.length === 0) { container.innerHTML = '<div class="search-item" style="color:var(--muted)">No se encontraron clientes.</div>'; container.classList.add('open'); return; }
+        results.forEach(c => {
+            const div = document.createElement('div'); div.classList.add('search-item');
+            div.innerHTML = `<strong>${c.nombre}</strong> <span style="color:var(--muted)">${c.documento ? '· ' + c.documento : ''} ${c.telefono ? '· ' + c.telefono : ''}</span>`;
+            div.onclick = () => { seleccionarClienteEdc(c); container.classList.remove('open'); };
+            container.appendChild(div);
+        });
+        container.classList.add('open');
+    }
+
+    function seleccionarClienteEdc(c) {
+        $('edcClienteId').value = c.id;
+        $('edcClienteBusqueda').value = '';
+        $('edcClienteNombre').textContent = `${c.nombre}${c.documento ? ' · ' + c.documento : ''}`;
+        $('edcClienteInfo').classList.remove('hidden');
+    }
+    window._edcClearClient = () => {
+        $('edcClienteId').value = '';
+        $('edcClienteInfo').classList.add('hidden');
+        $('edcClienteBusqueda').value = '';
+        $('edcResultado').classList.add('hidden');
+    };
+
+    $('edcClienteBusqueda').addEventListener('input', buscarClienteEdc);
+    document.addEventListener('click', (e) => {
+        const input = $('edcClienteBusqueda');
+        const container = $('edcClienteResults');
+        if (input && container && !input.contains(e.target) && !container.contains(e.target)) container.classList.remove('open');
+    });
+
+    async function generarEstadoCuenta() {
+        const clienteId = $('edcClienteId').value;
+        if (!clienteId) { toast('Seleccione un cliente.', 'error'); return; }
+        const client = clientesCache.find(c => c.id === clienteId);
+        if (!client) { toast('Cliente no encontrado.', 'error'); return; }
+
+        toast('Generando estado de cuenta...', 'info');
+        try {
+            const snap = await getDocs(facturasCol);
+            const allFacturas = [];
+            snap.forEach(d => allFacturas.push({ id: d.id, ...d.data() }));
+
+            const desde = $('edcDesde').value || '';
+            const hasta = $('edcHasta').value || '';
+            const { matches, insights } = aiMatchInvoices(client, allFacturas, desde, hasta);
+
+            edcFacturasCache = matches;
+
+            $('edcAIContent').innerHTML = insights.join('');
+
+            let totalFacturado = 0, totalAbonado = 0, totalSaldo = 0;
+            const tbody = $('tablaEstadoCuenta').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            if (matches.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty"><i class="fas fa-inbox"></i> Sin facturas encontradas</td></tr>';
+            } else {
+                matches.forEach(f => {
+                    const val = parseFloat(f.valorTotal) || 0;
+                    const abonos = (f.abonos || []).reduce((s, a) => s + (parseFloat(a.montoAbono) || 0), 0);
+                    let saldo = f.tipoPago === 'contado' ? 0 : (f.saldoPendiente !== undefined ? parseFloat(f.saldoPendiente) : val);
+                    totalFacturado += val;
+                    totalAbonado += abonos;
+                    totalSaldo += saldo;
+
+                    const estadoChip = saldo <= 0
+                        ? '<span class="chip ok"><i class="fas fa-check"></i> Pagado</span>'
+                        : '<span class="chip danger"><i class="fas fa-clock"></i> Pendiente</span>';
+                    const tipoPago = f.tipoPago === 'credito' ? 'Crédito' : 'Contado';
+                    const matchIndicator = f._matchScore < 0.95 ? ' <span class="chip purple" title="Detectado por IA"><i class="fas fa-robot"></i></span>' : '';
+                    const row = tbody.insertRow();
+                    row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora || ''}</td><td>${f.cliente}${matchIndicator}</td><td>${tipoPago}</td><td>$${fmtCOP(val)}</td><td>$${fmtCOP(abonos)}</td><td style="font-weight:700;color:${saldo > 0 ? 'var(--danger)' : 'var(--success)'}">$${fmtCOP(saldo)}</td><td>${estadoChip}</td>`;
+                });
+            }
+
+            $('edcTotalFacturado').textContent = '$' + fmtCOP(totalFacturado);
+            $('edcTotalAbonado').textContent = '$' + fmtCOP(totalAbonado);
+            $('edcSaldoPendiente').textContent = '$' + fmtCOP(totalSaldo);
+            $('edcNumFacturas').textContent = matches.length;
+
+            // Abonos detail
+            const abonosContainer = $('edcAbonosContent');
+            const facturasConAbonos = matches.filter(f => f.abonos && f.abonos.length > 0);
+            if (facturasConAbonos.length === 0) {
+                abonosContainer.innerHTML = '<div class="empty" style="padding:12px"><i class="fas fa-inbox"></i> Sin abonos registrados</div>';
+            } else {
+                let html = '';
+                facturasConAbonos.forEach(f => {
+                    html += `<div style="margin-bottom:12px"><div style="font-weight:700;font-size:13px;margin-bottom:6px"><i class="fas fa-file-invoice" style="color:var(--info)"></i> Factura #${f.codigoRegistro || 'N/A'} — ${f.cliente}</div>`;
+                    f.abonos.forEach(a => {
+                        html += `<div style="display:flex;justify-content:space-between;padding:6px 16px;background:var(--bg);border-radius:8px;margin-bottom:4px;font-size:12px"><span>${a.fechaAbono || ''} · ${a.registradoPor || ''}</span><span style="font-weight:700;color:var(--success)">$${fmtCOP(a.montoAbono)}</span></div>`;
+                    });
+                    html += '</div>';
+                });
+                abonosContainer.innerHTML = html;
+            }
+
+            $('edcResultado').classList.remove('hidden');
+            $('edcResultado').scrollIntoView({ behavior: 'smooth' });
+        } catch (err) {
+            console.error('Error generando estado de cuenta:', err);
+            toast('Error al generar estado de cuenta.', 'error');
+        }
+    }
+
+    $('btnGenerarEstadoCuenta').addEventListener('click', generarEstadoCuenta);
+
+    // === ESTADO DE CUENTA PDF EXPORT ===
+    async function exportarEdcPDF() {
+        const clienteId = $('edcClienteId').value;
+        const client = clientesCache.find(c => c.id === clienteId);
+        if (!client || edcFacturasCache.length === 0) { toast('No hay datos para exportar.', 'error'); return; }
+        toast('Generando PDF...', 'info');
+
+        const desde = $('edcDesde').value || 'Inicio';
+        const hasta = $('edcHasta').value || 'Hoy';
+        const totalFact = $('edcTotalFacturado').textContent;
+        const totalAbon = $('edcTotalAbonado').textContent;
+        const totalSaldo = $('edcSaldoPendiente').textContent;
+
+        const tempDiv = document.createElement('div');
+        tempDiv.style.cssText = 'font-family:Inter,Arial,sans-serif;font-size:9pt;padding:15px;position:absolute;left:-9999px;width:196mm;background:#fff;color:#333;';
+        document.body.appendChild(tempDiv);
+
+        let html = `<div style="text-align:center;margin-bottom:12px"><div style="font-size:16pt;font-weight:800;color:#1e293b">ESTADO DE CUENTA</div><div style="font-size:10pt;color:#64748b;margin-top:4px">La Zapatería - Sistema China</div></div>`;
+        html += `<div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #2563eb;border-bottom:1px solid #e2e8f0;margin-bottom:12px;font-size:9pt"><div><strong>Cliente:</strong> ${client.nombre}${client.documento ? ' · ' + client.documento : ''}</div><div><strong>Período:</strong> ${desde} — ${hasta}</div><div><strong>Generado:</strong> ${new Date().toLocaleDateString('es-CO')}</div></div>`;
+        html += `<div style="display:flex;gap:10px;margin-bottom:14px"><div style="flex:1;background:#dbeafe;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8pt;color:#64748b">Total Facturado</div><div style="font-size:14pt;font-weight:800;color:#1e293b">${totalFact}</div></div><div style="flex:1;background:#dcfce7;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8pt;color:#64748b">Total Abonado</div><div style="font-size:14pt;font-weight:800;color:#16a34a">${totalAbon}</div></div><div style="flex:1;background:#fee2e2;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8pt;color:#64748b">Saldo Pendiente</div><div style="font-size:14pt;font-weight:800;color:#dc2626">${totalSaldo}</div></div></div>`;
+        html += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:14px"><thead><tr style="background:#1e293b;color:#fff"><th style="padding:6px 8px;text-align:left">Código</th><th style="padding:6px 8px">Fecha</th><th style="padding:6px 8px">Nombre Factura</th><th style="padding:6px 8px">Tipo</th><th style="padding:6px 8px;text-align:right">Total</th><th style="padding:6px 8px;text-align:right">Abonado</th><th style="padding:6px 8px;text-align:right">Saldo</th><th style="padding:6px 8px">Estado</th></tr></thead><tbody>`;
+        edcFacturasCache.forEach((f, i) => {
+            const val = parseFloat(f.valorTotal) || 0;
+            const abonos = (f.abonos || []).reduce((s, a) => s + (parseFloat(a.montoAbono) || 0), 0);
+            const saldo = f.tipoPago === 'contado' ? 0 : (f.saldoPendiente !== undefined ? parseFloat(f.saldoPendiente) : val);
+            const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
+            const estado = saldo <= 0 ? '<span style="color:#16a34a;font-weight:600">Pagado</span>' : '<span style="color:#dc2626;font-weight:600">Pendiente</span>';
+            html += `<tr style="background:${bg}"><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${f.codigoRegistro || 'N/A'}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${f.fechaHora || ''}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${f.cliente}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${f.tipoPago === 'credito' ? 'Crédito' : 'Contado'}</td><td style="padding:5px 8px;text-align:right;border-bottom:1px solid #f1f5f9">$${fmtCOP(val)}</td><td style="padding:5px 8px;text-align:right;border-bottom:1px solid #f1f5f9">$${fmtCOP(abonos)}</td><td style="padding:5px 8px;text-align:right;font-weight:700;border-bottom:1px solid #f1f5f9;color:${saldo > 0 ? '#dc2626' : '#16a34a'}">$${fmtCOP(saldo)}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${estado}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        html += `<div style="text-align:center;font-size:7pt;color:#94a3b8;margin-top:20px;padding-top:8px;border-top:1px dashed #e2e8f0">Documento generado automáticamente — Sistema de Inventario y Facturación - La Zapatería</div>`;
+        tempDiv.innerHTML = html;
+
+        try {
+            const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true });
+            document.body.removeChild(tempDiv);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'letter');
+            const margin = 10;
+            const imgWidth = pdf.internal.pageSize.width - margin * 2;
+            const pageHeightMM = pdf.internal.pageSize.height - margin * 2;
+            const scaleFactor = canvas.width / imgWidth;
+            const pageHeightPx = Math.floor(pageHeightMM * scaleFactor);
+            let yOffset = 0, pageNum = 0;
+            while (yOffset < canvas.height) {
+                const sliceH = Math.min(pageHeightPx, canvas.height - yOffset);
+                const sliceCanvas = document.createElement('canvas');
+                sliceCanvas.width = canvas.width; sliceCanvas.height = sliceH;
+                sliceCanvas.getContext('2d').drawImage(canvas, 0, yOffset, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+                if (pageNum > 0) pdf.addPage();
+                pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, sliceH / scaleFactor);
+                yOffset += sliceH; pageNum++;
+            }
+            pdf.save(`Estado_Cuenta_${norm(client.nombre).replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
+            toast('PDF generado!');
+        } catch (err) {
+            document.body.removeChild(tempDiv);
+            toast('Error al generar PDF.', 'error');
+        }
+    }
+    $('btnEdcExportPDF').addEventListener('click', exportarEdcPDF);
+
+    // === FACTURACION - CLIENT SEARCH (replace free text with client selector) ===
+    let facClienteSeleccionado = null;
+
+    function buscarClienteFacturacion() {
+        const term = norm(facCliente.value.trim());
+        const container = $('facClienteResults');
+        if (!container) return;
+        if (term.length < 2) { container.innerHTML = ''; container.classList.remove('open'); return; }
+        const results = clientesCache.filter(c => norm(c.nombre).includes(term) || norm(c.documento || '').includes(term));
+        container.innerHTML = '';
+        if (results.length === 0) {
+            container.innerHTML = '<div class="search-item" style="color:var(--muted)">No encontrado. Se usará el texto ingresado.</div>';
+            container.classList.add('open');
+            facClienteSeleccionado = null;
+            return;
+        }
+        results.forEach(c => {
+            const div = document.createElement('div'); div.classList.add('search-item');
+            div.innerHTML = `<strong>${c.nombre}</strong> <span style="color:var(--muted)">${c.documento ? '· ' + c.documento : ''}</span>`;
+            div.onclick = () => {
+                facCliente.value = c.nombre;
+                facClienteSeleccionado = c;
+                container.classList.remove('open');
+            };
+            container.appendChild(div);
+        });
+        container.classList.add('open');
+    }
+
+    // === PEDIDOS - CLIENT SEARCH ===
+    function buscarClienteEditPedido() {
+        const input = $('editPedidoCliente');
+        const container = $('editPedClienteResults');
+        if (!input || !container) return;
+        const term = norm(input.value.trim());
+        if (term.length < 2) { container.innerHTML = ''; container.classList.remove('open'); return; }
+        const results = clientesCache.filter(c => norm(c.nombre).includes(term) || norm(c.documento || '').includes(term));
+        container.innerHTML = '';
+        if (results.length === 0) {
+            container.innerHTML = '<div class="search-item" style="color:var(--muted)">No encontrado.</div>';
+            container.classList.add('open'); return;
+        }
+        results.forEach(c => {
+            const div = document.createElement('div'); div.classList.add('search-item');
+            div.innerHTML = `<strong>${c.nombre}</strong> <span style="color:var(--muted)">${c.documento ? '· ' + c.documento : ''}</span>`;
+            div.onclick = () => { input.value = c.nombre; container.classList.remove('open'); };
+            container.appendChild(div);
+        });
+        container.classList.add('open');
+    }
+    if ($('editPedidoCliente')) {
+        $('editPedidoCliente').addEventListener('input', buscarClienteEditPedido);
+        document.addEventListener('click', (e) => {
+            const container = $('editPedClienteResults');
+            if (container && !$('editPedidoCliente').contains(e.target) && !container.contains(e.target)) container.classList.remove('open');
+        });
+    }
+
+    function buscarClientePedido() {
+        const pedClienteInput = $('pedCliente');
+        const container = $('pedClienteResults');
+        if (!pedClienteInput || !container) return;
+        const term = norm(pedClienteInput.value.trim());
+        if (term.length < 2) { container.innerHTML = ''; container.classList.remove('open'); return; }
+        const results = clientesCache.filter(c => norm(c.nombre).includes(term) || norm(c.documento || '').includes(term));
+        container.innerHTML = '';
+        if (results.length === 0) {
+            container.innerHTML = '<div class="search-item" style="color:var(--muted)">No encontrado. Se usará el texto ingresado.</div>';
+            container.classList.add('open');
+            return;
+        }
+        results.forEach(c => {
+            const div = document.createElement('div'); div.classList.add('search-item');
+            div.innerHTML = `<strong>${c.nombre}</strong> <span style="color:var(--muted)">${c.documento ? '· ' + c.documento : ''}</span>`;
+            div.onclick = () => {
+                pedClienteInput.value = c.nombre;
+                container.classList.remove('open');
+            };
+            container.appendChild(div);
+        });
+        container.classList.add('open');
+    }
+
     // === EVENT LISTENERS ===
     formInventario.addEventListener('submit', guardarProducto);
     btnCancelarEdicion.addEventListener('click', resetFormInventario);
     $('btnExportarInventario').addEventListener('click', exportarInventarioAExcel);
     $('btnExportarFacturas').addEventListener('click', exportarFacturasAExcel);
 
+    if (facCliente) {
+        facCliente.addEventListener('input', buscarClienteFacturacion);
+        document.addEventListener('click', (e) => {
+            const container = $('facClienteResults');
+            if (container && !facCliente.contains(e.target) && !container.contains(e.target)) container.classList.remove('open');
+        });
+    }
+
     if (facProductoBusqueda) {
         facProductoBusqueda.addEventListener('input', buscarProductoInline);
         document.addEventListener('click', (e) => {
             if (resultadosBusquedaInline && !facProductoBusqueda.contains(e.target) && !resultadosBusquedaInline.contains(e.target)) resultadosBusquedaInline.classList.remove('open');
+        });
+    }
+
+    if ($('pedCliente')) {
+        $('pedCliente').addEventListener('input', buscarClientePedido);
+        document.addEventListener('click', (e) => {
+            const container = $('pedClienteResults');
+            if (container && !$('pedCliente').contains(e.target) && !container.contains(e.target)) container.classList.remove('open');
         });
     }
 
