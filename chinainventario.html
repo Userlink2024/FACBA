@@ -560,7 +560,7 @@
         </div>
         <div class="table-wrap">
           <table id="tablaEstadoCuenta"><thead><tr>
-            <th>Código</th><th>Fecha</th><th>Cliente (Original)</th><th>Tipo Pago</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Estado</th>
+            <th>Código</th><th>Fecha</th><th>Cliente (Original)</th><th>Tipo Pago</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Estado</th><th style="width:50px"></th>
           </tr></thead><tbody></tbody></table>
         </div>
       </div>
@@ -2892,7 +2892,7 @@
             tbody.innerHTML = '';
 
             if (matches.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty"><i class="fas fa-inbox"></i> Sin facturas encontradas</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-inbox"></i> Sin facturas encontradas</td></tr>';
             } else {
                 matches.forEach(f => {
                     const val = parseFloat(f.valorTotal) || 0;
@@ -2908,7 +2908,8 @@
                     const tipoPago = f.tipoPago === 'credito' ? 'Crédito' : 'Contado';
                     const matchIndicator = f._matchScore < 0.95 ? ' <span class="chip purple" title="Detectado por IA"><i class="fas fa-robot"></i></span>' : '';
                     const row = tbody.insertRow();
-                    row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora || ''}</td><td>${f.cliente}${matchIndicator}</td><td>${tipoPago}</td><td>$${fmtCOP(val)}</td><td>$${fmtCOP(abonos)}</td><td style="font-weight:700;color:${saldo > 0 ? 'var(--danger)' : 'var(--success)'}">$${fmtCOP(saldo)}</td><td>${estadoChip}</td>`;
+                    row.dataset.facturaId = f.id;
+                    row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora || ''}</td><td>${f.cliente}${matchIndicator}</td><td>${tipoPago}</td><td>$${fmtCOP(val)}</td><td>$${fmtCOP(abonos)}</td><td style="font-weight:700;color:${saldo > 0 ? 'var(--danger)' : 'var(--success)'}">$${fmtCOP(saldo)}</td><td>${estadoChip}</td><td><button class="btn btn-danger btn-xs" title="Quitar de este estado de cuenta" onclick="window._edcQuitarFactura('${f.id}')"><i class="fas fa-times"></i></button></td>`;
                 });
             }
 
@@ -2941,6 +2942,37 @@
             toast('Error al generar estado de cuenta.', 'error');
         }
     }
+
+    window._edcQuitarFactura = function(facturaId) {
+        const idx = edcFacturasCache.findIndex(f => f.id === facturaId);
+        if (idx === -1) return;
+        edcFacturasCache.splice(idx, 1);
+        // Re-render table and recalculate totals
+        const tbody = $('tablaEstadoCuenta').querySelector('tbody');
+        tbody.innerHTML = '';
+        let totalFacturado = 0, totalAbonado = 0, totalSaldo = 0;
+        if (edcFacturasCache.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty"><i class="fas fa-inbox"></i> Sin facturas encontradas</td></tr>';
+        } else {
+            edcFacturasCache.forEach(f => {
+                const val = parseFloat(f.valorTotal) || 0;
+                const abonos = (f.abonos || []).reduce((s, a) => s + (parseFloat(a.montoAbono) || 0), 0);
+                let saldo = f.tipoPago === 'contado' ? 0 : (f.saldoPendiente !== undefined ? parseFloat(f.saldoPendiente) : val);
+                totalFacturado += val; totalAbonado += abonos; totalSaldo += saldo;
+                const estadoChip = saldo <= 0 ? '<span class="chip ok"><i class="fas fa-check"></i> Pagado</span>' : '<span class="chip danger"><i class="fas fa-clock"></i> Pendiente</span>';
+                const tipoPago = f.tipoPago === 'credito' ? 'Crédito' : 'Contado';
+                const matchIndicator = f._matchScore < 0.95 ? ' <span class="chip purple" title="Detectado por IA"><i class="fas fa-robot"></i></span>' : '';
+                const row = tbody.insertRow();
+                row.dataset.facturaId = f.id;
+                row.innerHTML = `<td>${f.codigoRegistro || 'N/A'}</td><td>${f.fechaHora || ''}</td><td>${f.cliente}${matchIndicator}</td><td>${tipoPago}</td><td>$${fmtCOP(val)}</td><td>$${fmtCOP(abonos)}</td><td style="font-weight:700;color:${saldo > 0 ? 'var(--danger)' : 'var(--success)'}">${fmtCOP(saldo)}</td><td>${estadoChip}</td><td><button class="btn btn-danger btn-xs" title="Quitar de este estado de cuenta" onclick="window._edcQuitarFactura('${f.id}')"><i class="fas fa-times"></i></button></td>`;
+            });
+        }
+        $('edcTotalFacturado').textContent = '$' + fmtCOP(totalFacturado);
+        $('edcTotalAbonado').textContent = '$' + fmtCOP(totalAbonado);
+        $('edcSaldoPendiente').textContent = '$' + fmtCOP(totalSaldo);
+        $('edcNumFacturas').textContent = edcFacturasCache.length;
+        toast('Movimiento eliminado del estado de cuenta.', 'info');
+    };
 
     $('btnGenerarEstadoCuenta').addEventListener('click', generarEstadoCuenta);
 
