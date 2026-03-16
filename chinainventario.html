@@ -497,6 +497,7 @@
         <div class="btn-group">
           <button class="btn btn-success btn-sm" id="btnImportarClientes"><i class="fas fa-file-excel"></i> Importar desde Excel</button>
           <input type="file" id="inputImportarClientes" accept=".xlsx,.xls,.csv" style="display:none">
+          <button class="btn btn-danger btn-sm hidden" id="btnEliminarSeleccionados"><i class="fas fa-trash"></i> Eliminar Seleccionados (<span id="conteoSeleccionados">0</span>)</button>
         </div>
       </div>
       <div class="form-group" style="margin-bottom:12px">
@@ -504,8 +505,8 @@
       </div>
       <div class="table-wrap">
         <table id="tablaClientes"><thead><tr>
-          <th>Nombre</th><th>Teléfono</th><th>Email</th><th>Documento</th><th>Dirección</th><th>Notas</th><th>Acciones</th>
-        </tr></thead><tbody><tr><td colspan="7" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr></tbody></table>
+          <th style="width:36px"><input type="checkbox" id="chkSeleccionarTodos" title="Seleccionar todos"></th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Documento</th><th>Dirección</th><th>Notas</th><th>Acciones</th>
+        </tr></thead><tbody><tr><td colspan="8" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr></tbody></table>
       </div>
     </div>
   </div>
@@ -2565,28 +2566,74 @@
     const inputBuscarClientes = $('inputBuscarClientes');
 
     function cargarClientes() {
-        tablaClientes.innerHTML = '<tr><td colspan="7" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+        tablaClientes.innerHTML = '<tr><td colspan="8" class="empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+        $('chkSeleccionarTodos').checked = false;
+        actualizarConteoSeleccionados();
         onSnapshot(clientesCol, (snapshot) => {
             tablaClientes.innerHTML = '';
-            if (snapshot.empty) { tablaClientes.innerHTML = '<tr><td colspan="7" class="empty"><i class="fas fa-users"></i> No hay clientes registrados.</td></tr>'; return; }
+            $('chkSeleccionarTodos').checked = false;
+            actualizarConteoSeleccionados();
+            if (snapshot.empty) { tablaClientes.innerHTML = '<tr><td colspan="8" class="empty"><i class="fas fa-users"></i> No hay clientes registrados.</td></tr>'; return; }
             snapshot.forEach(d => {
                 const c = d.data();
                 const row = tablaClientes.insertRow();
                 row.dataset.id = d.id;
-                row.innerHTML = `<td><strong>${c.nombre || ''}</strong></td><td>${c.telefono || ''}</td><td>${c.email || ''}</td><td>${c.documento || ''}</td><td>${c.direccion || ''}</td><td>${c.notas || ''}</td><td><div class="btn-group"><button class="btn btn-primary btn-xs" onclick="window._modificarCliente('${d.id}')"><i class="fas fa-pen"></i></button><button class="btn btn-danger btn-xs" onclick="window._eliminarCliente('${d.id}')"><i class="fas fa-trash"></i></button></div></td>`;
+                row.innerHTML = `<td><input type="checkbox" class="chkCliente" data-id="${d.id}"></td><td><strong>${c.nombre || ''}</strong></td><td>${c.telefono || ''}</td><td>${c.email || ''}</td><td>${c.documento || ''}</td><td>${c.direccion || ''}</td><td>${c.notas || ''}</td><td><div class="btn-group"><button class="btn btn-primary btn-xs" onclick="window._modificarCliente('${d.id}')"><i class="fas fa-pen"></i></button><button class="btn btn-danger btn-xs" onclick="window._eliminarCliente('${d.id}')"><i class="fas fa-trash"></i></button></div></td>`;
             });
             filtrarClientes();
-        }, () => { tablaClientes.innerHTML = '<tr><td colspan="7" class="empty" style="color:var(--danger)">Error al cargar clientes.</td></tr>'; });
+        }, () => { tablaClientes.innerHTML = '<tr><td colspan="8" class="empty" style="color:var(--danger)">Error al cargar clientes.</td></tr>'; });
     }
 
     function filtrarClientes() {
         const term = norm((inputBuscarClientes ? inputBuscarClientes.value : '').trim());
         tablaClientes.querySelectorAll('tr').forEach(row => {
-            if (row.querySelector('td[colspan="7"]')) return;
+            if (row.querySelector('td[colspan="8"]')) return;
             row.style.display = norm(row.textContent).includes(term) ? '' : 'none';
         });
     }
     if (inputBuscarClientes) inputBuscarClientes.addEventListener('input', filtrarClientes);
+
+    // === SELECT ALL / BULK DELETE ===
+    function actualizarConteoSeleccionados() {
+        const checked = tablaClientes.querySelectorAll('.chkCliente:checked');
+        const btn = $('btnEliminarSeleccionados');
+        $('conteoSeleccionados').textContent = checked.length;
+        if (checked.length > 0) btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+    }
+
+    $('chkSeleccionarTodos').addEventListener('change', function () {
+        const isChecked = this.checked;
+        tablaClientes.querySelectorAll('.chkCliente').forEach(chk => {
+            const row = chk.closest('tr');
+            if (row && row.style.display !== 'none') chk.checked = isChecked;
+        });
+        actualizarConteoSeleccionados();
+    });
+
+    tablaClientes.addEventListener('change', (e) => {
+        if (e.target.classList.contains('chkCliente')) actualizarConteoSeleccionados();
+    });
+
+    $('btnEliminarSeleccionados').addEventListener('click', async () => {
+        const checkedBoxes = tablaClientes.querySelectorAll('.chkCliente:checked');
+        const ids = Array.from(checkedBoxes).map(chk => chk.dataset.id);
+        if (ids.length === 0) { toast('No hay clientes seleccionados.', 'error'); return; }
+        const ok = await showConfirm(
+            `⚠️ ¿Estás seguro de eliminar ${ids.length} cliente(s)?\n\nEsta acción NO se puede deshacer.`,
+            'Eliminar Clientes Seleccionados'
+        );
+        if (!ok) return;
+        toast(`Eliminando ${ids.length} clientes...`, 'info');
+        let eliminados = 0, errores = 0;
+        for (const id of ids) {
+            try { await deleteDoc(doc(db, "china_clientes", id)); eliminados++; }
+            catch (err) { errores++; }
+        }
+        $('chkSeleccionarTodos').checked = false;
+        actualizarConteoSeleccionados();
+        toast(`${eliminados} cliente(s) eliminados.${errores > 0 ? ' ' + errores + ' error(es).' : ''}`, eliminados > 0 ? 'success' : 'error');
+    });
 
     async function guardarCliente(e) {
         e.preventDefault();
