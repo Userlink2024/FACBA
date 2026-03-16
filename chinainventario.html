@@ -494,6 +494,10 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title"><i class="fas fa-address-book"></i> Clientes Registrados</div>
+        <div class="btn-group">
+          <button class="btn btn-success btn-sm" id="btnImportarClientes"><i class="fas fa-file-excel"></i> Importar desde Excel</button>
+          <input type="file" id="inputImportarClientes" accept=".xlsx,.xls,.csv" style="display:none">
+        </div>
       </div>
       <div class="form-group" style="margin-bottom:12px">
         <input type="text" id="inputBuscarClientes" class="form-input" placeholder="🔍 Buscar cliente por nombre, documento, teléfono...">
@@ -2615,6 +2619,56 @@
         $('btnCancelarCliente').classList.add('hidden');
     }
     $('btnCancelarCliente').addEventListener('click', resetFormCliente);
+
+    // === IMPORT CLIENTS FROM EXCEL ===
+    $('btnImportarClientes').addEventListener('click', () => $('inputImportarClientes').click());
+    $('inputImportarClientes').addEventListener('change', importarClientesDesdeExcel);
+
+    async function importarClientesDesdeExcel(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        toast('Leyendo archivo...', 'info');
+        try {
+            const data = await file.arrayBuffer();
+            const wb = XLSX.read(data, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+            if (rows.length < 2) { toast('El archivo no tiene datos (se espera encabezado en fila 1 y datos desde fila 2).', 'error'); e.target.value = ''; return; }
+
+            const nombresExistentes = new Set(clientesCache.map(c => norm(c.nombre)));
+            const nombresYaProcesados = new Set();
+            let importados = 0, duplicados = 0, vacios = 0;
+
+            for (let i = 1; i < rows.length; i++) {
+                const nombre = (rows[i][0] || '').toString().trim();
+                if (!nombre) { vacios++; continue; }
+                const nombreNormalizado = norm(nombre);
+
+                if (nombresExistentes.has(nombreNormalizado) || nombresYaProcesados.has(nombreNormalizado)) {
+                    duplicados++;
+                    continue;
+                }
+
+                nombresYaProcesados.add(nombreNormalizado);
+                try {
+                    await addDoc(clientesCol, {
+                        nombre, nombreNorm: nombreNormalizado,
+                        telefono: '', email: '', direccion: '', documento: '', notas: 'Importado desde Excel',
+                        creadoPor: userName(), createdAt: new Date(),
+                        ultimoUsuario: userName(), ultimaModificacion: new Date().toISOString()
+                    });
+                    importados++;
+                } catch (err) { /* skip individual failures */ }
+            }
+
+            toast(`Importación completa: ${importados} nuevos, ${duplicados} duplicados omitidos${vacios > 0 ? ', ' + vacios + ' vacíos' : ''}.`, importados > 0 ? 'success' : 'info');
+        } catch (err) {
+            console.error('Error importando clientes:', err);
+            toast('Error al leer el archivo Excel.', 'error');
+        }
+        e.target.value = '';
+    }
 
     async function modificarCliente(id) {
         try {
