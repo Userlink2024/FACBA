@@ -1792,6 +1792,16 @@
         const now = new Date();
         const observaciones = $('facObservaciones') ? $('facObservaciones').value.trim() : '';
         const codigoRegistro = numeroFacturaManual || `${now.getFullYear()}${('0'+(now.getMonth()+1)).slice(-2)}${('0'+now.getDate()).slice(-2)}${('0'+now.getHours()).slice(-2)}${('0'+now.getMinutes()).slice(-2)}${('0'+now.getSeconds()).slice(-2)}${now.getMilliseconds()}`;
+
+        // === DUPLICATE INVOICE NUMBER CHECK ===
+        try {
+            const dupSnap = await getDocs(query(facturasCol, where('codigoRegistro', '==', codigoRegistro)));
+            if (!dupSnap.empty) {
+                toast(`Ya existe una factura con el número "${codigoRegistro}". Use otro número.`, 'error');
+                return;
+            }
+        } catch (err) { console.error('Error verificando duplicado:', err); }
+
         const nuevaFactura = { codigoRegistro, fechaHora, cliente, tipoPago, metodoPago, observaciones, productos: productosEnFactura, descuento: descuentoVal, valorTotal, saldoPendiente: tipoPago === 'contado' ? 0 : valorTotal, abonos: [], createdAt: new Date(), creadoPor: userName(), despachado: false, despachadoFecha: null };
         try {
             await addDoc(facturasCol, nuevaFactura);
