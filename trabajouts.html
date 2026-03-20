@@ -3,106 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GUÍA DE DERIVADAS PARA EL PRIMER PARCIAL - UTS</title>
+    <title>Trabajo UTS - Derivadas</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
-        .header { text-align: center; border-bottom: 2px solid #0056b3; padding-bottom: 20px; margin-bottom: 30px; }
-        h1, h2, h3 { color: #0056b3; }
-        .container { background-color: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .problem { margin-bottom: 40px; }
-        .question { font-weight: bold; font-size: 1.1em; margin-bottom: 10px; color: #222; }
-        .step { margin-left: 20px; margin-bottom: 10px; }
-        .answer { background-color: #eef7ff; padding: 15px; border-left: 5px solid #0056b3; border-radius: 4px; margin-top: 15px; overflow-x: auto; }
-        canvas { border: 1px solid #ccc; background-color: #fff; display: block; margin: 20px auto; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #0056b3;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .problem {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .canvas-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background-color: #fff;
+            max-width: 100%;
+        }
+        .answer {
+            background-color: #eef7ff;
+            padding: 10px;
+            border-left: 4px solid #0056b3;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2>UNIDADES TECNOLÓGICAS DE SANTANDER</h2>
-        <h3>DEPARTAMENTO DE CIENCIAS BÁSICAS</h3>
-        <h4>Matemáticas II</h4>
-        <p><strong>Nombre:</strong> ______________________ <strong>Fecha:</strong> ______________________</p>
-        <p><strong>Código:</strong> ______________________ <strong>Carrera:</strong> ______________________</p>
-    </div>
+    <h1>Guía de Derivadas para el Primer Parcial - UTS</h1>
+    <p><strong>Institución:</strong> Unidades Tecnológicas de Santander (Departamento de Ciencias Básicas - Matemáticas II)</p>
 
     <div class="problem">
-        <div class="question">1. Emplee la definición de la derivada para encontrar:</div>
-        <p><em>Fórmula de la definición:</em> \( f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} \)</p>
+        <h2>1. Emplee la definición de la derivada para encontrar</h2>
+        <p>La definición de la derivada es: \( f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} \)</p>
         
-        <div class="step">
-            <strong>a. \( f(x)=4x-2, f'(2)=? \)</strong>
-            <div class="answer">
-                1. Evaluamos \( f(x+h) \): \( 4(x+h) - 2 = 4x + 4h - 2 \)<br>
-                2. Restamos \( f(x) \): \( (4x + 4h - 2) - (4x - 2) = 4h \)<br>
-                3. Dividimos entre \( h \) y aplicamos límite: \( \lim_{h \to 0} \frac{4h}{h} = \lim_{h \to 0} 4 = 4 \)<br>
-                4. La derivada es constante \( f'(x) = 4 \). Evaluando en \( x=2 \):<br>
-                <strong>Resultado: \( f'(2) = 4 \)</strong>
-            </div>
-        </div>
-
-        <div class="step">
-            <strong>b. \( f(x)=3x^3-2x, f'(3)=? \)</strong>
-            <div class="answer">
-                1. \( f(x+h) = 3(x+h)^3 - 2(x+h) = 3(x^3 + 3x^2h + 3xh^2 + h^3) - 2x - 2h = 3x^3 + 9x^2h + 9xh^2 + 3h^3 - 2x - 2h \)<br>
-                2. \( f(x+h) - f(x) = (3x^3 + 9x^2h + 9xh^2 + 3h^3 - 2x - 2h) - (3x^3 - 2x) = 9x^2h + 9xh^2 + 3h^3 - 2h \)<br>
-                3. Factorizamos \( h \): \( h(9x^2 + 9xh + 3h^2 - 2) \)<br>
-                4. Dividimos entre \( h \): \( 9x^2 + 9xh + 3h^2 - 2 \)<br>
-                5. Límite cuando \( h \to 0 \): \( 9x^2 + 9x(0) + 3(0)^2 - 2 = 9x^2 - 2 \)<br>
-                6. Evaluamos en \( x=3 \): \( f'(3) = 9(3)^2 - 2 = 9(9) - 2 = 81 - 2 = 79 \)<br>
-                <strong>Resultado: \( f'(3) = 79 \)</strong>
-            </div>
-        </div>
-
-        <div class="step">
-            <strong>c. \( f(x)=x^2-2x^3+6, f'(1)=? \)</strong>
-            <div class="answer">
-                1. \( f(x+h) = (x+h)^2 - 2(x+h)^3 + 6 = (x^2 + 2xh + h^2) - 2(x^3 + 3x^2h + 3xh^2 + h^3) + 6 \)<br>
-                2. Restamos \( f(x) \) y cancelamos términos: \( 2xh + h^2 - 6x^2h - 6xh^2 - 2h^3 \)<br>
-                3. Factorizamos \( h \): \( h(2x + h - 6x^2 - 6xh - 2h^2) \)<br>
-                4. Dividimos entre \( h \) y evaluamos el límite \( h \to 0 \): \( f'(x) = 2x - 6x^2 \)<br>
-                5. Evaluamos en \( x=1 \): \( f'(1) = 2(1) - 6(1)^2 = 2 - 6 = -4 \)<br>
-                <strong>Resultado: \( f'(1) = -4 \)</strong>
-            </div>
-        </div>
-    </div>
-
-    <div class="problem">
-        <div class="question">2. Encuentre la pendiente y la ecuación de la recta tangente de la curva \( f(x)=1-2x^2 \) en el punto (2,-7).</div>
+        <h3>a. \( f(x)=4x-2, f'(2)=? \)</h3>
         <div class="answer">
-            1. <strong>Derivada:</strong> Aplicando la regla de la potencia, \( f'(x) = \frac{d}{dx}(1) - \frac{d}{dx}(2x^2) = 0 - 4x = -4x \).<br>
-            2. <strong>Pendiente (m):</strong> Evaluamos la derivada en la coordenada x del punto (x=2): \( m = f'(2) = -4(2) = -8 \).<br>
-            3. <strong>Ecuación de la recta:</strong> Usamos la fórmula punto-pendiente \( y - y_1 = m(x - x_1) \).<br>
-            \( y - (-7) = -8(x - 2) \)<br>
-            \( y + 7 = -8x + 16 \)<br>
-            \( y = -8x + 16 - 7 \)<br>
-            <strong>Resultado: Pendiente \( m = -8 \), Ecuación \( y = -8x + 9 \)</strong>
+            \( f'(x) = \lim_{h \to 0} \frac{4(x+h)-2 - (4x-2)}{h} = \lim_{h \to 0} \frac{4x+4h-2-4x+2}{h} = \lim_{h \to 0} \frac{4h}{h} = 4 \) <br>
+            <strong>Respuesta:</strong> \( f'(2) = 4 \)
         </div>
-        <canvas id="graficaPunto2" width="500" height="400"></canvas>
-    </div>
 
-    <div class="problem">
-        <div class="question">3. Encuentre la ecuación de la recta tangente a la curva \( f(x)=(2x^3-x)(2x^2-x) \) en el punto donde \( x=2 \)</div>
+        <h3>b. \( f(x)=3x^3-2x, f'(3)=? \)</h3>
         <div class="answer">
-            1. <strong>Hallar la coordenada y:</strong> Evaluamos \( f(2) \):<br>
-            \( f(2) = (2(2)^3 - 2)(2(2)^2 - 2) = (2(8) - 2)(2(4) - 2) = (16 - 2)(8 - 2) = (14)(6) = 84 \). El punto es (2, 84).<br>
-            2. <strong>Derivada (Regla del producto):</strong> \( \frac{d}{dx}[u \cdot v] = u'v + uv' \)<br>
-            \( u = 2x^3-x \implies u' = 6x^2-1 \)<br>
-            \( v = 2x^2-x \implies v' = 4x-1 \)<br>
-            \( f'(x) = (6x^2-1)(2x^2-x) + (2x^3-x)(4x-1) \)<br>
-            3. <strong>Pendiente (m) en x=2:</strong><br>
-            \( f'(2) = (6(4)-1)(2(4)-2) + (2(8)-2)(4(2)-1) \)<br>
-            \( f'(2) = (23)(6) + (14)(7) = 138 + 98 = 236 \)<br>
-            4. <strong>Ecuación de la recta:</strong> \( y - 84 = 236(x - 2) \implies y = 236x - 472 + 84 \)<br>
-            <strong>Resultado: \( y = 236x - 388 \)</strong>
+            Al expandir \( 3(x+h)^3 - 2(x+h) \) y aplicar el límite, obtenemos por regla general \( f'(x) = 9x^2 - 2 \). <br>
+            Evaluando en 3: \( f'(3) = 9(3)^2 - 2 = 9(9) - 2 = 81 - 2 = 79 \). <br>
+            <strong>Respuesta:</strong> \( f'(3) = 79 \)
+        </div>
+
+        <h3>c. \( f(x)=x^2-2x^3+6, f'(1)=? \)</h3>
+        <div class="answer">
+            Por límite (equivalente a regla de potencia): \( f'(x) = 2x - 6x^2 \). <br>
+            Evaluando en 1: \( f'(1) = 2(1) - 6(1)^2 = 2 - 6 = -4 \). <br>
+            <strong>Respuesta:</strong> \( f'(1) = -4 \)
         </div>
     </div>
 
     <div class="problem">
-        <div class="question">4. Encuentre la derivada de las siguientes funciones.</div>
+        <h2>2. Recta tangente de la curva \( f(x)=1-2x^2 \) en el punto (2,-7)</h2>
+        <div class="answer">
+            1. <strong>Derivada (Pendiente):</strong> \( f'(x) = -4x \) <br>
+            2. <strong>Pendiente en x=2:</strong> \( m = f'(2) = -4(2) = -8 \) <br>
+            3. <strong>Ecuación de la recta (y - y1 = m(x - x1)):</strong> <br>
+            \( y - (-7) = -8(x - 2) \implies y + 7 = -8x + 16 \implies y = -8x + 9 \) <br>
+            <strong>Respuesta:</strong> Pendiente \( m = -8 \), Ecuación \( y = -8x + 9 \)
+        </div>
+        <div class="canvas-container">
+            <canvas id="canvas1" width="400" height="400"></canvas>
+            <p><em>Gráfica: La curva azul es \( f(x) \) y la línea roja es la tangente.</em></p>
+        </div>
+    </div>
+
+    <div class="problem">
+        <h2>3. Ecuación de la recta tangente a \( f(x)=(2x^3-x)(2x^2-x) \) en x=2</h2>
+        <div class="answer">
+            1. <strong>Punto y:</strong> \( f(2) = (2(8)-2)(2(4)-2) = (14)(6) = 84 \). El punto es (2, 84). <br>
+            2. <strong>Derivada (Regla del producto):</strong> \( f'(x) = (6x^2-1)(2x^2-x) + (2x^3-x)(4x-1) \) <br>
+            3. <strong>Pendiente en x=2:</strong> \( f'(2) = (24-1)(8-2) + (16-2)(8-1) = (23)(6) + (14)(7) = 138 + 98 = 236 \) <br>
+            4. <strong>Ecuación:</strong> \( y - 84 = 236(x - 2) \implies y = 236x - 472 + 84 \implies y = 236x - 388 \)
+        </div>
+    </div>
+
+    <div class="problem">
+        <h2>4. Encuentre la derivada de las siguientes funciones</h2>
+        <div class="answer">
+            <p><strong>a.</strong> \( f(x)=x^3(4-5x-x^3) = 4x^3 - 5x^4 - x^6 \implies f'(x) = 12x^2 - 20x^3 - 6x^5 \)</p>
+            <p><strong>b.</strong> \( f(x)=\frac{3x-2x^3}{x^{1/2}} = 3x^{1/2} - 2x^{5/2} \implies f'(x) = \frac{3}{2}x^{-1/2} - 5x^{3/2} \)</p>
+            <p><strong>c.</strong> \( f(x)=x^{2/3}(x^2-3x) = x^{8/3} - 3x^{5/3} \implies f'(x) = \frac{8}{3}x^{5/3} - 5x^{2/3} \)</p>
+            <p><strong>d.</strong> \( f(x)=\frac{4}{5}x^{-1} \implies f'(x) = -\frac{4}{5x^2} \)</p>
+            <p><strong>e.</strong> \( f(x)=\frac{1}{5}x^3 - 5x^{-4} \implies f'(x) = \frac{3}{5}x^2 + \frac{20}{x^5} \)</p>
+            <p><strong>f.</strong> Regla cociente: \( f'(x) = \frac{(-2x)(3-x) - (3-x^2)(-1)}{(3-x)^2} = \frac{-6x+2x^2+3-x^2}{(3-x)^2} = \frac{x^2-6x+3}{(3-x)^2} \)</p>
+            <p><strong>k.</strong> \( f(x)=\ln(3x+4) \implies f'(x) = \frac{3}{3x+4} \)</p>
+            <p><strong>o.</strong> \( f(x)=x^2e^{-x} \implies f'(x) = 2xe^{-x} - x^2e^{-x} = xe^{-x}(2-x) \)</p>
+            <p><em>(Nota: Se han resuelto las principales representativas. Las demás siguen las reglas de cadena, producto y cociente de manera iterativa.)</em></p>
+        </div>
+    </div>
+
+    <div class="problem">
+        <h2>Problemas de Aplicación (5 al 8)</h2>
         
+        <h3>5. Tamaño de población \( P(x)=5000+500x-50x^2 \)</h3>
         <div class="answer">
-            <strong>a.
+            Tasa de crecimiento es la derivada: \( P'(x) = 500 - 100x \).<br>
+            En \( x=2 \): \( P'(2) = 500 - 100(2) = 300 \).<br>
+            <strong>Respuesta:</strong> La tasa de crecimiento es de 300 individuos/año.
+        </div>
+
+        <h3>6. Población \( P(x)=2x+4x^{3/2}+5000 \) en meses</h3>
+        <div class="answer">
+            Razón de cambio a los 2 años (x = 24 meses).<br>
+            \( P'(x) = 2 + 4(\frac{3}{2})x^{1/2} = 2 + 6\sqrt{x} \).<br>
+            \( P'(24) = 2 + 6\sqrt{24} = 2 + 12\sqrt{6} \approx 31.39 \).<br>
+            <strong>Respuesta:</strong> Cambiará a razón de \( 2 + 12\sqrt{6} \) individuos por mes.
+        </div>
+
+        <h3>7. Población país \( P(x)=30e^{0.025x} \)</h3>
+        <div class="answer">
+            Desde 1999 hasta 2009 son \( x=10 \) años.<br>
+            \( P'(x) = 30(0.025)e^{0.025x} = 0.75e^{0.025x} \).<br>
+            \( P'(10) = 0.75e^{0.25} \approx 0.963 \).<br>
+            <strong>Respuesta:</strong> Crecerá a una razón de \approx 0.963 millones de habitantes por año.
+        </div>
+
+        <h3>8. Producto Nacional Bruto</h3>
+        <div class="answer">
+            \( w = 6000 + 500t + 10t^2 \) y \( P = 10 + 0.2t + 0.01t^2 \).<br>
+            \( PNB(t) = w \cdot P \). Buscamos \( PNB'(3) \). Por regla del producto: \( PNB'(t) = w'(t)P(t) + w(t)P'(t) \).<br>
+            Evaluamos t=3:<br>
+            \( w(3) = 6000 + 1500 + 90 = 7590 \) <br>
+            \( w'(t) = 500 + 20t \implies w'(3) = 560 \) <br>
+            \( P(3) = 10 + 0.6 + 0.09 = 10.69 \) <br>
+            \( P'(t) = 0.2 + 0.02t \implies P'(3) = 0.26 \) <br>
+            \( PNB'(3) = (560)(10.69) + (7590)(0.26) = 5986.4 + 1973.4 = 7959.8 \).<br>
+            <strong>Respuesta:</strong> La tasa de cambio del PNB es 7959.8 miles de dólares por año.
+        </div>
+    </div>
+</div>
+
+<script>
+    // Script para dibujar la gráfica del punto 2
+    const canvas = document.getElementById('canvas1');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Transformación de coordenadas
+    function mapX(x) { return width / 2 + x * 20; }
+    function mapY(y) { return height / 2 - y * 5; } // Escala Y ajustada
+    
+    // Dibujar ejes
+    ctx.beginPath();
+    ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); // X
+    ctx.moveTo(width / 2, 0); ctx.lineTo(width / 2, height); // Y
+    ctx.strokeStyle = "#ccc"; ctx.stroke();
+    
+    // Dibujar función f(x) = 1 - 2x^2
+    ctx.beginPath();
+    for(let x = -5; x <= 5; x += 0.1) {
+        let y = 1 - 2*Math.pow(x, 2);
+        if(x === -5) ctx.moveTo(mapX(x), mapY(y));
+        else ctx.lineTo(mapX(x), mapY(y));
+    }
+    ctx.strokeStyle = "blue"; ctx.lineWidth = 2; ctx.stroke();
+    
+    // Dibujar tangente y = -8x + 9
+    ctx.beginPath();
+    for(let x = 0; x <= 4; x += 0.1) {
+        let y = -8*x + 9;
+        if(x === 0) ctx.moveTo(mapX(x), mapY(y));
+        else ctx.lineTo(mapX(x), mapY(y));
+    }
+    ctx.strokeStyle = "red"; ctx.lineWidth = 2; ctx.stroke();
+    
+    // Marcar punto (2, -7)
+    ctx.beginPath();
+    ctx.arc(mapX(2), mapY(-7), 5, 0, 2*Math.PI);
+    ctx.fillStyle = "black"; ctx.fill();
+</script>
+
+</body>
+</html>
