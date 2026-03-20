@@ -3,201 +3,1161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trabajo UTS - Derivadas</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <title>Trabajo UTS - Guía de Derivadas - Primer Parcial</title>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }
+        };
+    </script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
+            line-height: 1.8;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
-            background-color: #f9f9f9;
-        }
-        h1, h2, h3 {
-            color: #0056b3;
         }
         .container {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 960px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
+        .header {
+            background: linear-gradient(135deg, #0056b3, #004494);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 1.8em; margin-bottom: 8px; }
+        .header p { opacity: 0.85; font-size: 0.95em; }
+        .header .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        .content { padding: 30px; }
         .problem {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #eef2f7;
+        }
+        .problem:last-child { border-bottom: none; }
+        .problem > h2 {
+            background: linear-gradient(90deg, #0056b3, #2980b9);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 1.15em;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #0056b3;
+            margin: 18px 0 10px;
+            padding-left: 10px;
+            border-left: 4px solid #3498db;
+            font-size: 1.05em;
+        }
+        .pregunta {
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            border-left: 5px solid #ffa000;
+            padding: 12px 18px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .solucion {
+            background: #f0f7ff;
+            border: 1px solid #bbdefb;
+            border-left: 5px solid #1976d2;
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .paso {
+            margin: 8px 0;
+            padding: 8px 12px;
+            background: #fafafa;
+            border-radius: 4px;
+            border-left: 3px solid #90caf9;
+        }
+        .paso-label {
+            font-weight: 700;
+            color: #1565c0;
+            font-size: 0.9em;
+        }
+        .respuesta-final {
+            background: linear-gradient(90deg, #e8f5e9, #c8e6c9);
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin: 12px 0;
+            font-weight: 600;
+        }
+        .respuesta-final::before {
+            content: "✅ ";
         }
         .canvas-container {
             text-align: center;
             margin: 20px 0;
         }
         canvas {
-            border: 1px solid #ccc;
-            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fefefe;
             max-width: 100%;
         }
-        .answer {
-            background-color: #eef7ff;
-            padding: 10px;
-            border-left: 4px solid #0056b3;
-            margin-top: 10px;
+        .canvas-container p {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 6px;
+        }
+        .sub-derivada {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .sub-derivada h3 {
+            margin-top: 0;
+        }
+        .regla-usada {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .formula-box {
+            background: #f3e5f5;
+            border: 1px solid #ce93d8;
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin: 12px 0;
+            text-align: center;
+        }
+        .nota {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .content { padding: 15px; }
+            .header h1 { font-size: 1.3em; }
+            canvas { width: 100% !important; height: auto !important; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Guía de Derivadas para el Primer Parcial - UTS</h1>
-    <p><strong>Institución:</strong> Unidades Tecnológicas de Santander (Departamento de Ciencias Básicas - Matemáticas II)</p>
-
-    <div class="problem">
-        <h2>1. Emplee la definición de la derivada para encontrar</h2>
-        <p>La definición de la derivada es: \( f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} \)</p>
-        
-        <h3>a. \( f(x)=4x-2, f'(2)=? \)</h3>
-        <div class="answer">
-            \( f'(x) = \lim_{h \to 0} \frac{4(x+h)-2 - (4x-2)}{h} = \lim_{h \to 0} \frac{4x+4h-2-4x+2}{h} = \lim_{h \to 0} \frac{4h}{h} = 4 \) <br>
-            <strong>Respuesta:</strong> \( f'(2) = 4 \)
-        </div>
-
-        <h3>b. \( f(x)=3x^3-2x, f'(3)=? \)</h3>
-        <div class="answer">
-            Al expandir \( 3(x+h)^3 - 2(x+h) \) y aplicar el límite, obtenemos por regla general \( f'(x) = 9x^2 - 2 \). <br>
-            Evaluando en 3: \( f'(3) = 9(3)^2 - 2 = 9(9) - 2 = 81 - 2 = 79 \). <br>
-            <strong>Respuesta:</strong> \( f'(3) = 79 \)
-        </div>
-
-        <h3>c. \( f(x)=x^2-2x^3+6, f'(1)=? \)</h3>
-        <div class="answer">
-            Por límite (equivalente a regla de potencia): \( f'(x) = 2x - 6x^2 \). <br>
-            Evaluando en 1: \( f'(1) = 2(1) - 6(1)^2 = 2 - 6 = -4 \). <br>
-            <strong>Respuesta:</strong> \( f'(1) = -4 \)
-        </div>
+    <div class="header">
+        <h1>Guía de Derivadas para el Primer Parcial</h1>
+        <p><strong>Unidades Tecnológicas de Santander</strong> — Departamento de Ciencias Básicas</p>
+        <p>Matemáticas II</p>
+        <span class="badge">Solución completa paso a paso</span>
     </div>
 
-    <div class="problem">
-        <h2>2. Recta tangente de la curva \( f(x)=1-2x^2 \) en el punto (2,-7)</h2>
-        <div class="answer">
-            1. <strong>Derivada (Pendiente):</strong> \( f'(x) = -4x \) <br>
-            2. <strong>Pendiente en x=2:</strong> \( m = f'(2) = -4(2) = -8 \) <br>
-            3. <strong>Ecuación de la recta (y - y1 = m(x - x1)):</strong> <br>
-            \( y - (-7) = -8(x - 2) \implies y + 7 = -8x + 16 \implies y = -8x + 9 \) <br>
-            <strong>Respuesta:</strong> Pendiente \( m = -8 \), Ecuación \( y = -8x + 9 \)
-        </div>
-        <div class="canvas-container">
-            <canvas id="canvas1" width="400" height="400"></canvas>
-            <p><em>Gráfica: La curva azul es \( f(x) \) y la línea roja es la tangente.</em></p>
-        </div>
-    </div>
+    <div class="content">
 
-    <div class="problem">
-        <h2>3. Ecuación de la recta tangente a \( f(x)=(2x^3-x)(2x^2-x) \) en x=2</h2>
-        <div class="answer">
-            1. <strong>Punto y:</strong> \( f(2) = (2(8)-2)(2(4)-2) = (14)(6) = 84 \). El punto es (2, 84). <br>
-            2. <strong>Derivada (Regla del producto):</strong> \( f'(x) = (6x^2-1)(2x^2-x) + (2x^3-x)(4x-1) \) <br>
-            3. <strong>Pendiente en x=2:</strong> \( f'(2) = (24-1)(8-2) + (16-2)(8-1) = (23)(6) + (14)(7) = 138 + 98 = 236 \) <br>
-            4. <strong>Ecuación:</strong> \( y - 84 = 236(x - 2) \implies y = 236x - 472 + 84 \implies y = 236x - 388 \)
-        </div>
-    </div>
+        <!-- ========== PROBLEMA 1 ========== -->
+        <div class="problem">
+            <h2>Problema 1 — Emplee la definición de la derivada para encontrar</h2>
+            
+            <div class="formula-box">
+                <strong>Definición de la derivada:</strong><br>
+                \[ f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} \]
+            </div>
 
-    <div class="problem">
-        <h2>4. Encuentre la derivada de las siguientes funciones</h2>
-        <div class="answer">
-            <p><strong>a.</strong> \( f(x)=x^3(4-5x-x^3) = 4x^3 - 5x^4 - x^6 \implies f'(x) = 12x^2 - 20x^3 - 6x^5 \)</p>
-            <p><strong>b.</strong> \( f(x)=\frac{3x-2x^3}{x^{1/2}} = 3x^{1/2} - 2x^{5/2} \implies f'(x) = \frac{3}{2}x^{-1/2} - 5x^{3/2} \)</p>
-            <p><strong>c.</strong> \( f(x)=x^{2/3}(x^2-3x) = x^{8/3} - 3x^{5/3} \implies f'(x) = \frac{8}{3}x^{5/3} - 5x^{2/3} \)</p>
-            <p><strong>d.</strong> \( f(x)=\frac{4}{5}x^{-1} \implies f'(x) = -\frac{4}{5x^2} \)</p>
-            <p><strong>e.</strong> \( f(x)=\frac{1}{5}x^3 - 5x^{-4} \implies f'(x) = \frac{3}{5}x^2 + \frac{20}{x^5} \)</p>
-            <p><strong>f.</strong> Regla cociente: \( f'(x) = \frac{(-2x)(3-x) - (3-x^2)(-1)}{(3-x)^2} = \frac{-6x+2x^2+3-x^2}{(3-x)^2} = \frac{x^2-6x+3}{(3-x)^2} \)</p>
-            <p><strong>k.</strong> \( f(x)=\ln(3x+4) \implies f'(x) = \frac{3}{3x+4} \)</p>
-            <p><strong>o.</strong> \( f(x)=x^2e^{-x} \implies f'(x) = 2xe^{-x} - x^2e^{-x} = xe^{-x}(2-x) \)</p>
-            <p><em>(Nota: Se han resuelto las principales representativas. Las demás siguen las reglas de cadena, producto y cociente de manera iterativa.)</em></p>
-        </div>
-    </div>
+            <!-- 1a -->
+            <div class="sub-derivada">
+                <h3>a) \( f(x) = 4x - 2 \), hallar \( f'(2) \) <span class="regla-usada">Definición (límite)</span></h3>
+                
+                <div class="pregunta">Encuentre \( f'(2) \) usando la definición formal de la derivada.</div>
 
-    <div class="problem">
-        <h2>Problemas de Aplicación (5 al 8)</h2>
-        
-        <h3>5. Tamaño de población \( P(x)=5000+500x-50x^2 \)</h3>
-        <div class="answer">
-            Tasa de crecimiento es la derivada: \( P'(x) = 500 - 100x \).<br>
-            En \( x=2 \): \( P'(2) = 500 - 100(2) = 300 \).<br>
-            <strong>Respuesta:</strong> La tasa de crecimiento es de 300 individuos/año.
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Sustituimos en la definición:
+                        \[ f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} = \lim_{h \to 0} \frac{[4(x+h) - 2] - [4x - 2]}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Expandimos el numerador:
+                        \[ = \lim_{h \to 0} \frac{4x + 4h - 2 - 4x + 2}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Simplificamos los términos que se cancelan (\(4x - 4x = 0\) y \(-2 + 2 = 0\)):
+                        \[ = \lim_{h \to 0} \frac{4h}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 4:</span> Cancelamos \(h\):
+                        \[ = \lim_{h \to 0} 4 = 4 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 5:</span> Evaluamos en \(x = 2\):
+                        \[ f'(x) = 4 \quad \Rightarrow \quad f'(2) = 4 \]
+                    </div>
+                </div>
+                <div class="respuesta-final">
+                    \( f'(2) = 4 \)
+                </div>
+                <div class="nota"><strong>Nota:</strong> La derivada de una función lineal \(f(x) = mx + b\) siempre es la pendiente \(m\). En este caso \(m = 4\).</div>
+            </div>
+
+            <!-- 1b -->
+            <div class="sub-derivada">
+                <h3>b) \( f(x) = 3x^3 - 2x \), hallar \( f'(3) \) <span class="regla-usada">Definición (límite)</span></h3>
+                
+                <div class="pregunta">Encuentre \( f'(3) \) usando la definición formal de la derivada.</div>
+
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Sustituimos en la definición:
+                        \[ f'(x) = \lim_{h \to 0} \frac{[3(x+h)^3 - 2(x+h)] - [3x^3 - 2x]}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Expandimos \((x+h)^3\) usando el binomio de Newton:
+                        \[ (x+h)^3 = x^3 + 3x^2h + 3xh^2 + h^3 \]
+                        Por lo tanto:
+                        \[ 3(x+h)^3 = 3x^3 + 9x^2h + 9xh^2 + 3h^3 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Sustituimos todo en el numerador:
+                        \[ = \lim_{h \to 0} \frac{3x^3 + 9x^2h + 9xh^2 + 3h^3 - 2x - 2h - 3x^3 + 2x}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 4:</span> Cancelamos: \(3x^3 - 3x^3 = 0\), \(-2x + 2x = 0\):
+                        \[ = \lim_{h \to 0} \frac{9x^2h + 9xh^2 + 3h^3 - 2h}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 5:</span> Factorizamos \(h\) del numerador:
+                        \[ = \lim_{h \to 0} \frac{h(9x^2 + 9xh + 3h^2 - 2)}{h} = \lim_{h \to 0} (9x^2 + 9xh + 3h^2 - 2) \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 6:</span> Evaluamos el límite cuando \(h \to 0\):
+                        \[ f'(x) = 9x^2 + 0 + 0 - 2 = 9x^2 - 2 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 7:</span> Evaluamos en \(x = 3\):
+                        \[ f'(3) = 9(3)^2 - 2 = 9(9) - 2 = 81 - 2 = 79 \]
+                    </div>
+                </div>
+                <div class="respuesta-final">
+                    \( f'(3) = 79 \)
+                </div>
+            </div>
+
+            <!-- 1c -->
+            <div class="sub-derivada">
+                <h3>c) \( f(x) = x^2 - 2x^3 + 6 \), hallar \( f'(1) \) <span class="regla-usada">Definición (límite)</span></h3>
+                
+                <div class="pregunta">Encuentre \( f'(1) \) usando la definición formal de la derivada.</div>
+
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Sustituimos en la definición:
+                        \[ f'(x) = \lim_{h \to 0} \frac{[(x+h)^2 - 2(x+h)^3 + 6] - [x^2 - 2x^3 + 6]}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Expandimos cada término:
+                        \[ (x+h)^2 = x^2 + 2xh + h^2 \]
+                        \[ (x+h)^3 = x^3 + 3x^2h + 3xh^2 + h^3 \]
+                        \[ -2(x+h)^3 = -2x^3 - 6x^2h - 6xh^2 - 2h^3 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Sustituimos en el numerador:
+                        \[ = \lim_{h \to 0} \frac{x^2 + 2xh + h^2 - 2x^3 - 6x^2h - 6xh^2 - 2h^3 + 6 - x^2 + 2x^3 - 6}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 4:</span> Cancelamos: \(x^2 - x^2 = 0\), \(-2x^3 + 2x^3 = 0\), \(6 - 6 = 0\):
+                        \[ = \lim_{h \to 0} \frac{2xh + h^2 - 6x^2h - 6xh^2 - 2h^3}{h} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 5:</span> Factorizamos \(h\):
+                        \[ = \lim_{h \to 0} \frac{h(2x + h - 6x^2 - 6xh - 2h^2)}{h} = \lim_{h \to 0} (2x + h - 6x^2 - 6xh - 2h^2) \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 6:</span> Evaluamos el límite cuando \(h \to 0\):
+                        \[ f'(x) = 2x - 6x^2 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 7:</span> Evaluamos en \(x = 1\):
+                        \[ f'(1) = 2(1) - 6(1)^2 = 2 - 6 = -4 \]
+                    </div>
+                </div>
+                <div class="respuesta-final">
+                    \( f'(1) = -4 \)
+                </div>
+            </div>
         </div>
 
-        <h3>6. Población \( P(x)=2x+4x^{3/2}+5000 \) en meses</h3>
-        <div class="answer">
-            Razón de cambio a los 2 años (x = 24 meses).<br>
-            \( P'(x) = 2 + 4(\frac{3}{2})x^{1/2} = 2 + 6\sqrt{x} \).<br>
-            \( P'(24) = 2 + 6\sqrt{24} = 2 + 12\sqrt{6} \approx 31.39 \).<br>
-            <strong>Respuesta:</strong> Cambiará a razón de \( 2 + 12\sqrt{6} \) individuos por mes.
+        <!-- ========== PROBLEMA 2 ========== -->
+        <div class="problem">
+            <h2>Problema 2 — Pendiente y ecuación de la recta tangente</h2>
+
+            <div class="pregunta">
+                Encuentre la pendiente y la ecuación de la recta tangente de la curva \( f(x) = 1 - 2x^2 \) en el punto \((2, -7)\).
+            </div>
+
+            <div class="solucion">
+                <div class="paso">
+                    <span class="paso-label">Paso 1: Verificar el punto.</span>
+                    Comprobamos que \((2, -7)\) pertenece a la curva:
+                    \[ f(2) = 1 - 2(2)^2 = 1 - 2(4) = 1 - 8 = -7 \quad \checkmark \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 2: Calcular la derivada (pendiente de la tangente).</span>
+                    \[ f'(x) = \frac{d}{dx}[1 - 2x^2] = 0 - 2 \cdot 2x = -4x \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 3: Evaluar la pendiente en \(x = 2\).</span>
+                    \[ m = f'(2) = -4(2) = -8 \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 4: Ecuación de la recta tangente.</span>
+                    Usando la forma punto-pendiente \( y - y_1 = m(x - x_1) \):
+                    \[ y - (-7) = -8(x - 2) \]
+                    \[ y + 7 = -8x + 16 \]
+                    \[ y = -8x + 9 \]
+                </div>
+            </div>
+
+            <div class="respuesta-final">
+                Pendiente: \( m = -8 \). Ecuación de la recta tangente: \( y = -8x + 9 \)
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="canvas2" width="500" height="400"></canvas>
+                <p><em>Azul: \( f(x) = 1 - 2x^2 \) | Roja: tangente \( y = -8x + 9 \) | Punto negro: (2, -7)</em></p>
+            </div>
         </div>
 
-        <h3>7. Población país \( P(x)=30e^{0.025x} \)</h3>
-        <div class="answer">
-            Desde 1999 hasta 2009 son \( x=10 \) años.<br>
-            \( P'(x) = 30(0.025)e^{0.025x} = 0.75e^{0.025x} \).<br>
-            \( P'(10) = 0.75e^{0.25} \approx 0.963 \).<br>
-            <strong>Respuesta:</strong> Crecerá a una razón de \approx 0.963 millones de habitantes por año.
+        <!-- ========== PROBLEMA 3 ========== -->
+        <div class="problem">
+            <h2>Problema 3 — Ecuación de la recta tangente (regla del producto)</h2>
+
+            <div class="pregunta">
+                Encuentre la ecuación de la recta tangente a la curva \( f(x) = (2x^3 - x)(2x^2 - x) \) en el punto donde \( x = 2 \).
+            </div>
+
+            <div class="solucion">
+                <div class="paso">
+                    <span class="paso-label">Paso 1: Encontrar el punto \(y\).</span>
+                    \[ f(2) = (2(2)^3 - 2)(2(2)^2 - 2) = (2 \cdot 8 - 2)(2 \cdot 4 - 2) = (16 - 2)(8 - 2) = (14)(6) = 84 \]
+                    El punto es \( (2, 84) \).
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 2: Derivar usando la regla del producto.</span>
+                    Sean \( u = 2x^3 - x \) y \( v = 2x^2 - x \).
+                    <div class="formula-box">
+                        <strong>Regla del producto:</strong> \( f'(x) = u' \cdot v + u \cdot v' \)
+                    </div>
+                    Calculamos cada derivada:
+                    \[ u' = 6x^2 - 1 \]
+                    \[ v' = 4x - 1 \]
+                    Entonces:
+                    \[ f'(x) = (6x^2 - 1)(2x^2 - x) + (2x^3 - x)(4x - 1) \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 3: Evaluar la pendiente en \(x = 2\).</span>
+                    \[ u'(2) = 6(4) - 1 = 23 \qquad v(2) = 8 - 2 = 6 \]
+                    \[ u(2) = 16 - 2 = 14 \qquad v'(2) = 8 - 1 = 7 \]
+                    \[ f'(2) = (23)(6) + (14)(7) = 138 + 98 = 236 \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 4: Ecuación de la recta tangente.</span>
+                    \[ y - 84 = 236(x - 2) \]
+                    \[ y = 236x - 472 + 84 \]
+                    \[ y = 236x - 388 \]
+                </div>
+            </div>
+
+            <div class="respuesta-final">
+                Pendiente: \( m = 236 \). Ecuación de la recta tangente: \( y = 236x - 388 \)
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="canvas3" width="500" height="400"></canvas>
+                <p><em>Azul: \( f(x) = (2x^3 - x)(2x^2 - x) \) | Roja: tangente \( y = 236x - 388 \) | Punto: (2, 84)</em></p>
+            </div>
         </div>
 
-        <h3>8. Producto Nacional Bruto</h3>
-        <div class="answer">
-            \( w = 6000 + 500t + 10t^2 \) y \( P = 10 + 0.2t + 0.01t^2 \).<br>
-            \( PNB(t) = w \cdot P \). Buscamos \( PNB'(3) \). Por regla del producto: \( PNB'(t) = w'(t)P(t) + w(t)P'(t) \).<br>
-            Evaluamos t=3:<br>
-            \( w(3) = 6000 + 1500 + 90 = 7590 \) <br>
-            \( w'(t) = 500 + 20t \implies w'(3) = 560 \) <br>
-            \( P(3) = 10 + 0.6 + 0.09 = 10.69 \) <br>
-            \( P'(t) = 0.2 + 0.02t \implies P'(3) = 0.26 \) <br>
-            \( PNB'(3) = (560)(10.69) + (7590)(0.26) = 5986.4 + 1973.4 = 7959.8 \).<br>
-            <strong>Respuesta:</strong> La tasa de cambio del PNB es 7959.8 miles de dólares por año.
-        </div>
-    </div>
-</div>
+        <!-- ========== PROBLEMA 4 ========== -->
+        <div class="problem">
+            <h2>Problema 4 — Encuentre la derivada de las siguientes funciones</h2>
 
+            <div class="formula-box">
+                <strong>Reglas fundamentales:</strong><br>
+                Potencia: \( \frac{d}{dx}[x^n] = nx^{n-1} \) &nbsp;|&nbsp;
+                Producto: \( (uv)' = u'v + uv' \) &nbsp;|&nbsp;
+                Cociente: \( \left(\frac{u}{v}\right)' = \frac{u'v - uv'}{v^2} \) &nbsp;|&nbsp;
+                Cadena: \( \frac{d}{dx}[f(g(x))] = f'(g(x)) \cdot g'(x) \)
+            </div>
+
+            <!-- 4a -->
+            <div class="sub-derivada">
+                <h3>a) \( f(x) = x^3(4 - 5x - x^3) \) <span class="regla-usada">Expansión + Potencia</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Expandimos el producto:
+                        \[ f(x) = x^3 \cdot 4 - x^3 \cdot 5x - x^3 \cdot x^3 = 4x^3 - 5x^4 - x^6 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivamos término a término con la regla de potencia:
+                        \[ f'(x) = 4 \cdot 3x^2 - 5 \cdot 4x^3 - 6x^5 = 12x^2 - 20x^3 - 6x^5 \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = 12x^2 - 20x^3 - 6x^5 \)</div>
+            </div>
+
+            <!-- 4b -->
+            <div class="sub-derivada">
+                <h3>b) \( f(x) = \dfrac{3x - 2x^3}{\sqrt{x}} \) <span class="regla-usada">Simplificación + Potencia</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Reescribimos \(\sqrt{x} = x^{1/2}\) y dividimos cada término:
+                        \[ f(x) = \frac{3x}{x^{1/2}} - \frac{2x^3}{x^{1/2}} = 3x^{1/2} - 2x^{5/2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivamos:
+                        \[ f'(x) = 3 \cdot \tfrac{1}{2}x^{-1/2} - 2 \cdot \tfrac{5}{2}x^{3/2} = \frac{3}{2\sqrt{x}} - 5x^{3/2} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{3}{2\sqrt{x}} - 5x\sqrt{x} \)</div>
+            </div>
+
+            <!-- 4c -->
+            <div class="sub-derivada">
+                <h3>c) \( f(x) = x^{2/3}(x^2 - 3x) \) <span class="regla-usada">Expansión + Potencia</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Expandimos:
+                        \[ f(x) = x^{2/3} \cdot x^2 - x^{2/3} \cdot 3x = x^{2/3 + 2} - 3x^{2/3 + 1} = x^{8/3} - 3x^{5/3} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivamos:
+                        \[ f'(x) = \frac{8}{3}x^{5/3} - 3 \cdot \frac{5}{3}x^{2/3} = \frac{8}{3}x^{5/3} - 5x^{2/3} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{8}{3}x^{5/3} - 5x^{2/3} \)</div>
+            </div>
+
+            <!-- 4d -->
+            <div class="sub-derivada">
+                <h3>d) \( f(x) = \dfrac{4}{5x} \) <span class="regla-usada">Potencia negativa</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Reescribimos:
+                        \[ f(x) = \frac{4}{5} \cdot x^{-1} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivamos:
+                        \[ f'(x) = \frac{4}{5} \cdot (-1) \cdot x^{-2} = -\frac{4}{5x^2} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = -\dfrac{4}{5x^2} \)</div>
+            </div>
+
+            <!-- 4e -->
+            <div class="sub-derivada">
+                <h3>e) \( f(x) = \dfrac{x^3}{5} - \dfrac{5}{x^4} \) <span class="regla-usada">Potencia</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Reescribimos:
+                        \[ f(x) = \frac{1}{5}x^3 - 5x^{-4} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivamos cada término:
+                        \[ f'(x) = \frac{1}{5} \cdot 3x^2 - 5 \cdot (-4)x^{-5} = \frac{3x^2}{5} + \frac{20}{x^5} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{3x^2}{5} + \dfrac{20}{x^5} \)</div>
+            </div>
+
+            <!-- 4f -->
+            <div class="sub-derivada">
+                <h3>f) \( f(x) = \dfrac{3 - x^2}{3 - x} \) <span class="regla-usada">Regla del cociente</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Identificamos: \( u = 3 - x^2 \), \( v = 3 - x \), \( u' = -2x \), \( v' = -1 \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Aplicamos la regla del cociente:
+                        \[ f'(x) = \frac{u'v - uv'}{v^2} = \frac{(-2x)(3 - x) - (3 - x^2)(-1)}{(3 - x)^2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Expandimos el numerador:
+                        \[ = \frac{-6x + 2x^2 + 3 - x^2}{(3 - x)^2} = \frac{x^2 - 6x + 3}{(3 - x)^2} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{x^2 - 6x + 3}{(3 - x)^2} \)</div>
+            </div>
+
+            <!-- 4g -->
+            <div class="sub-derivada">
+                <h3>g) \( f(x) = \dfrac{2x^2 - 3x + 1}{\sqrt{x}} \) <span class="regla-usada">Simplificación + Potencia</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Dividimos cada término entre \( x^{1/2} \):
+                        \[ f(x) = 2x^{3/2} - 3x^{1/2} + x^{-1/2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivamos término a término:
+                        \[ f'(x) = 2 \cdot \frac{3}{2}x^{1/2} - 3 \cdot \frac{1}{2}x^{-1/2} + \left(-\frac{1}{2}\right)x^{-3/2} \]
+                        \[ = 3\sqrt{x} - \frac{3}{2\sqrt{x}} - \frac{1}{2x\sqrt{x}} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Simplificamos (factor común \(\frac{1}{2x\sqrt{x}}\)):
+                        \[ f'(x) = \frac{6x^2 - 3x - 1}{2x\sqrt{x}} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{6x^2 - 3x - 1}{2x\sqrt{x}} \)</div>
+            </div>
+
+            <!-- 4h -->
+            <div class="sub-derivada">
+                <h3>h) \( f(x) = \dfrac{x - 1}{4 - x} \) <span class="regla-usada">Regla del cociente</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> \( u = x - 1 \), \( v = 4 - x \), \( u' = 1 \), \( v' = -1 \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Regla del cociente:
+                        \[ f'(x) = \frac{(1)(4 - x) - (x - 1)(-1)}{(4 - x)^2} = \frac{4 - x + x - 1}{(4 - x)^2} = \frac{3}{(4 - x)^2} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{3}{(4 - x)^2} \)</div>
+            </div>
+
+            <!-- 4i -->
+            <div class="sub-derivada">
+                <h3>i) \( f(x) = 5\sqrt{5x^2 + 3x} \) <span class="regla-usada">Regla de la cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Reescribimos:
+                        \[ f(x) = 5(5x^2 + 3x)^{1/2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Sea \( g(x) = 5x^2 + 3x \) (función interior), entonces \( g'(x) = 10x + 3 \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Aplicamos regla de la cadena:
+                        \[ f'(x) = 5 \cdot \frac{1}{2}(5x^2 + 3x)^{-1/2} \cdot (10x + 3) = \frac{5(10x + 3)}{2\sqrt{5x^2 + 3x}} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{5(10x + 3)}{2\sqrt{5x^2 + 3x}} \)</div>
+            </div>
+
+            <!-- 4j -->
+            <div class="sub-derivada">
+                <h3>j) \( f(x) = x(x - 1)^3 \) <span class="regla-usada">Regla del producto + cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> \( u = x \), \( v = (x-1)^3 \), \( u' = 1 \), \( v' = 3(x-1)^2 \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Regla del producto:
+                        \[ f'(x) = 1 \cdot (x-1)^3 + x \cdot 3(x-1)^2 = (x-1)^3 + 3x(x-1)^2 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Factorizamos \( (x-1)^2 \):
+                        \[ f'(x) = (x-1)^2[(x-1) + 3x] = (x-1)^2(4x - 1) \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = (x - 1)^2(4x - 1) \)</div>
+            </div>
+
+            <!-- 4k -->
+            <div class="sub-derivada">
+                <h3>k) \( f(x) = \ln(3x + 4) \) <span class="regla-usada">Regla de la cadena + logaritmo</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Recordamos: \( \frac{d}{dx}[\ln(g(x))] = \frac{g'(x)}{g(x)} \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Aquí \( g(x) = 3x + 4 \), por lo que \( g'(x) = 3 \):
+                        \[ f'(x) = \frac{3}{3x + 4} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{3}{3x + 4} \)</div>
+            </div>
+
+            <!-- 4l -->
+            <div class="sub-derivada">
+                <h3>l) \( f(x) = (2\sqrt{x} + 1)(x^2 + 3) \) <span class="regla-usada">Regla del producto</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Identificamos:
+                        \[ u = 2\sqrt{x} + 1 = 2x^{1/2} + 1, \quad u' = 2 \cdot \frac{1}{2}x^{-1/2} = \frac{1}{\sqrt{x}} \]
+                        \[ v = x^2 + 3, \quad v' = 2x \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Regla del producto:
+                        \[ f'(x) = \frac{1}{\sqrt{x}}(x^2 + 3) + (2\sqrt{x} + 1)(2x) \]
+                        \[ = \frac{x^2 + 3}{\sqrt{x}} + 4x\sqrt{x} + 2x \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{x^2 + 3}{\sqrt{x}} + 4x\sqrt{x} + 2x \)</div>
+            </div>
+
+            <!-- 4m -->
+            <div class="sub-derivada">
+                <h3>m) \( f(x) = (\ln(3x))^5 \) <span class="regla-usada">Regla de la cadena (doble)</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Sea \( g(x) = \ln(3x) \). Entonces \( f(x) = [g(x)]^5 \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivada exterior: \( 5[g(x)]^4 \). Derivada interior: \( g'(x) = \frac{3}{3x} = \frac{1}{x} \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Cadena completa:
+                        \[ f'(x) = 5[\ln(3x)]^4 \cdot \frac{1}{x} = \frac{5[\ln(3x)]^4}{x} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{5[\ln(3x)]^4}{x} \)</div>
+            </div>
+
+            <!-- 4n -->
+            <div class="sub-derivada">
+                <h3>n) \( f(x) = \ln\!\left(\dfrac{x^2 + 1}{x + 1}\right) \) <span class="regla-usada">Propiedades de ln + cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Usamos la propiedad \( \ln\left(\frac{a}{b}\right) = \ln(a) - \ln(b) \):
+                        \[ f(x) = \ln(x^2 + 1) - \ln(x + 1) \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivamos cada término:
+                        \[ f'(x) = \frac{2x}{x^2 + 1} - \frac{1}{x + 1} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Buscamos denominador común \( (x^2+1)(x+1) \):
+                        \[ f'(x) = \frac{2x(x+1) - (x^2+1)}{(x^2+1)(x+1)} = \frac{2x^2 + 2x - x^2 - 1}{(x^2+1)(x+1)} = \frac{x^2 + 2x - 1}{(x^2+1)(x+1)} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{x^2 + 2x - 1}{(x^2 + 1)(x + 1)} \)</div>
+            </div>
+
+            <!-- 4o -->
+            <div class="sub-derivada">
+                <h3>o) \( f(x) = x^2 e^{-x} \) <span class="regla-usada">Regla del producto + cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> \( u = x^2 \), \( v = e^{-x} \), \( u' = 2x \), \( v' = -e^{-x} \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Regla del producto:
+                        \[ f'(x) = 2x \cdot e^{-x} + x^2 \cdot (-e^{-x}) = 2xe^{-x} - x^2e^{-x} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Factorizamos \( xe^{-x} \):
+                        \[ f'(x) = xe^{-x}(2 - x) \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = xe^{-x}(2 - x) \)</div>
+            </div>
+
+            <!-- 4p -->
+            <div class="sub-derivada">
+                <h3>p) \( f(x) = \dfrac{1}{\sqrt{x^2 + x}} \) <span class="regla-usada">Potencia negativa + cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Reescribimos:
+                        \[ f(x) = (x^2 + x)^{-1/2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Derivada interior: \( g(x) = x^2 + x \Rightarrow g'(x) = 2x + 1 \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Regla de la cadena:
+                        \[ f'(x) = -\frac{1}{2}(x^2 + x)^{-3/2} \cdot (2x + 1) = -\frac{2x + 1}{2(x^2 + x)^{3/2}} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = -\dfrac{2x + 1}{2\,(x^2 + x)^{3/2}} \)</div>
+            </div>
+
+            <!-- 4q -->
+            <div class="sub-derivada">
+                <h3>q) \( f(x) = x \cdot \ln(x^2) \) <span class="regla-usada">Producto + propiedades de ln</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Simplificamos usando \( \ln(x^2) = 2\ln(x) \):
+                        \[ f(x) = x \cdot 2\ln(x) = 2x\ln(x) \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Regla del producto con \( u = 2x \), \( v = \ln x \):
+                        \[ f'(x) = 2 \cdot \ln(x) + 2x \cdot \frac{1}{x} = 2\ln(x) + 2 \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = 2\ln(x) + 2 = 2[\ln(x) + 1] \)</div>
+            </div>
+
+            <!-- 4r -->
+            <div class="sub-derivada">
+                <h3>r) \( f(x) = \dfrac{e^{2x} - x}{x} \) <span class="regla-usada">Regla del cociente + cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Podemos simplificar o usar cociente directo. Separemos:
+                        \[ f(x) = \frac{e^{2x}}{x} - 1 \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Para \( \frac{e^{2x}}{x} \), usamos regla del cociente con \( u = e^{2x} \), \( v = x \):
+                        \[ u' = 2e^{2x}, \quad v' = 1 \]
+                        \[ \frac{d}{dx}\left[\frac{e^{2x}}{x}\right] = \frac{2e^{2x} \cdot x - e^{2x} \cdot 1}{x^2} = \frac{e^{2x}(2x - 1)}{x^2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> La derivada de \(-1\) es \(0\):
+                        \[ f'(x) = \frac{e^{2x}(2x - 1)}{x^2} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{e^{2x}(2x - 1)}{x^2} \)</div>
+            </div>
+
+            <!-- 4s -->
+            <div class="sub-derivada">
+                <h3>s) \( f(x) = \ln(2^x) \) <span class="regla-usada">Propiedades de logaritmos</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Simplificamos usando \( \ln(a^b) = b\ln(a) \):
+                        \[ f(x) = x \cdot \ln(2) \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Como \( \ln(2) \) es una constante (\(\approx 0.6931\)):
+                        \[ f'(x) = \ln(2) \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \ln(2) \approx 0.6931 \)</div>
+            </div>
+
+            <!-- 4t -->
+            <div class="sub-derivada">
+                <h3>t) \( f(x) = \dfrac{\ln(x - 1)}{\log_2(x)} \) <span class="regla-usada">Cociente + cambio de base</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Convertimos \( \log_2(x) \) a logaritmo natural:
+                        \[ \log_2(x) = \frac{\ln(x)}{\ln(2)} \]
+                        Entonces:
+                        \[ f(x) = \frac{\ln(x-1)}{\frac{\ln(x)}{\ln(2)}} = \frac{\ln(2) \cdot \ln(x-1)}{\ln(x)} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Regla del cociente con \( u = \ln(2) \cdot \ln(x-1) \) y \( v = \ln(x) \):
+                        \[ u' = \frac{\ln(2)}{x - 1}, \quad v' = \frac{1}{x} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span>
+                        \[ f'(x) = \frac{\frac{\ln(2)}{x-1} \cdot \ln(x) - \ln(2) \cdot \ln(x-1) \cdot \frac{1}{x}}{[\ln(x)]^2} \]
+                        \[ = \frac{\ln(2)\left[\frac{\ln(x)}{x-1} - \frac{\ln(x-1)}{x}\right]}{[\ln(x)]^2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 4:</span> Simplificamos:
+                        \[ f'(x) = \frac{\ln(2)\,[x\ln(x) - (x-1)\ln(x-1)]}{x(x-1)[\ln(x)]^2} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{\ln(2)\,[x\ln(x) - (x-1)\ln(x-1)]}{x(x-1)[\ln(x)]^2} \)</div>
+            </div>
+
+            <!-- 4u -->
+            <div class="sub-derivada">
+                <h3>u) \( f(x) = \left[\ln(x^2 + 1)\right]^2 \) <span class="regla-usada">Cadena doble</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Exterior: \( [\cdot]^2 \) → derivada \( 2[\cdot] \).
+                        Intermedia: \( \ln(\cdot) \) → derivada \( \frac{1}{\cdot} \).
+                        Interior: \( x^2 + 1 \) → derivada \( 2x \).
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Multiplicamos capa por capa:
+                        \[ f'(x) = 2\ln(x^2+1) \cdot \frac{1}{x^2+1} \cdot 2x = \frac{4x\ln(x^2+1)}{x^2+1} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{4x\,\ln(x^2 + 1)}{x^2 + 1} \)</div>
+            </div>
+
+            <!-- 4v -->
+            <div class="sub-derivada">
+                <h3>v) \( f(x) = \dfrac{2}{x^2 + 2x} \) <span class="regla-usada">Potencia negativa + cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Reescribimos:
+                        \[ f(x) = 2(x^2 + 2x)^{-1} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Cadena: derivada exterior \( -1 \cdot (\cdot)^{-2} \), interior \( 2x + 2 \):
+                        \[ f'(x) = 2 \cdot (-1)(x^2 + 2x)^{-2} \cdot (2x + 2) = \frac{-2(2x + 2)}{(x^2 + 2x)^2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Simplificamos \( 2(2x+2) = 4(x+1) \) y \( x^2 + 2x = x(x+2) \):
+                        \[ f'(x) = \frac{-4(x + 1)}{[x(x + 2)]^2} = \frac{-4(x + 1)}{x^2(x + 2)^2} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{-4(x + 1)}{x^2(x + 2)^2} \)</div>
+            </div>
+
+            <!-- 4w -->
+            <div class="sub-derivada">
+                <h3>w) \( f(x) = 3x^2 \log_{10}(e^x) \) <span class="regla-usada">Propiedades + producto</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Simplificamos \( \log_{10}(e^x) \):
+                        \[ \log_{10}(e^x) = x \cdot \log_{10}(e) = \frac{x}{\ln(10)} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Sustituimos:
+                        \[ f(x) = 3x^2 \cdot \frac{x}{\ln(10)} = \frac{3x^3}{\ln(10)} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 3:</span> Derivamos (regla de potencia, \(\frac{3}{\ln(10)}\) es constante):
+                        \[ f'(x) = \frac{3 \cdot 3x^2}{\ln(10)} = \frac{9x^2}{\ln(10)} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = \dfrac{9x^2}{\ln(10)} = 9x^2 \log_{10}(e) \approx 3.909x^2 \)</div>
+            </div>
+
+            <!-- 4x -->
+            <div class="sub-derivada">
+                <h3>x) \( f(x) = \dfrac{1}{\sqrt{\ln x}} \) <span class="regla-usada">Potencia negativa + cadena</span></h3>
+                <div class="solucion">
+                    <div class="paso">
+                        <span class="paso-label">Paso 1:</span> Reescribimos:
+                        \[ f(x) = (\ln x)^{-1/2} \]
+                    </div>
+                    <div class="paso">
+                        <span class="paso-label">Paso 2:</span> Cadena: exterior \( -\frac{1}{2}(\cdot)^{-3/2} \), interior \( \frac{1}{x} \):
+                        \[ f'(x) = -\frac{1}{2}(\ln x)^{-3/2} \cdot \frac{1}{x} = -\frac{1}{2x(\ln x)^{3/2}} \]
+                    </div>
+                </div>
+                <div class="respuesta-final">\( f'(x) = -\dfrac{1}{2x\,(\ln x)^{3/2}} \)</div>
+            </div>
+
+        </div>
+
+        <!-- ========== PROBLEMA 5 ========== -->
+        <div class="problem">
+            <h2>Problema 5 — Tasa de crecimiento de una población</h2>
+            
+            <div class="pregunta">
+                El tamaño de una población está modelada por \( P(x) = 5000 + 500x - 50x^2 \), donde \( x \) es el número de años después del 2001. Calcule la tasa de crecimiento en \( x = 2 \).
+            </div>
+
+            <div class="solucion">
+                <div class="paso">
+                    <span class="paso-label">Paso 1:</span> La <strong>tasa de crecimiento</strong> es la derivada de la función de población:
+                    \[ P'(x) = \frac{d}{dx}[5000 + 500x - 50x^2] = 500 - 100x \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 2:</span> Evaluamos en \( x = 2 \) (año 2003):
+                    \[ P'(2) = 500 - 100(2) = 500 - 200 = 300 \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 3: Interpretación.</span>
+                    En el año 2003, la población crece a una tasa de 300 individuos por año.
+                </div>
+            </div>
+
+            <div class="respuesta-final">
+                \( P'(2) = 300 \) individuos por año. La población crece a razón de 300 personas/año en \( x = 2 \).
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="canvas5" width="500" height="350"></canvas>
+                <p><em>Curva azul: \(P(x)\). La línea roja muestra la tangente en \(x=2\) con pendiente 300.</em></p>
+            </div>
+        </div>
+
+        <!-- ========== PROBLEMA 6 ========== -->
+        <div class="problem">
+            <h2>Problema 6 — Cambio de población en meses</h2>
+            
+            <div class="pregunta">
+                Se proyecta que dentro de \(x\) meses, la población de cierto pueblo será de \( P(x) = 2x + 4x^{3/2} + 5000 \). ¿A qué razón cambiará la población respecto al tiempo dentro de 2 años?
+            </div>
+
+            <div class="solucion">
+                <div class="paso">
+                    <span class="paso-label">Paso 1:</span> Convertimos 2 años a meses: \( x = 2 \times 12 = 24 \) meses.
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 2:</span> Derivamos \( P(x) \):
+                    \[ P'(x) = 2 + 4 \cdot \frac{3}{2}x^{1/2} = 2 + 6\sqrt{x} \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 3:</span> Evaluamos en \( x = 24 \):
+                    \[ P'(24) = 2 + 6\sqrt{24} = 2 + 6 \cdot 2\sqrt{6} = 2 + 12\sqrt{6} \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 4:</span> Calculamos numéricamente:
+                    \[ \sqrt{6} \approx 2.449 \quad \Rightarrow \quad P'(24) \approx 2 + 12(2.449) = 2 + 29.39 \approx 31.39 \]
+                </div>
+            </div>
+
+            <div class="respuesta-final">
+                \( P'(24) = 2 + 12\sqrt{6} \approx 31.39 \) personas por mes.
+            </div>
+        </div>
+
+        <!-- ========== PROBLEMA 7 ========== -->
+        <div class="problem">
+            <h2>Problema 7 — Modelo de crecimiento exponencial</h2>
+            
+            <div class="pregunta">
+                Un modelo de crecimiento de cierto país está dado por \( P(x) = 30e^{0.025x} \) por millones de habitantes a partir de 1999. ¿A qué razón cambiará la población respecto al tiempo 2009?
+            </div>
+
+            <div class="solucion">
+                <div class="paso">
+                    <span class="paso-label">Paso 1:</span> Desde 1999 hasta 2009 hay \( x = 10 \) años.
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 2:</span> Derivamos usando la regla de la cadena (\( \frac{d}{dx}[e^{kx}] = ke^{kx} \)):
+                    \[ P'(x) = 30 \cdot 0.025 \cdot e^{0.025x} = 0.75\,e^{0.025x} \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 3:</span> Evaluamos en \( x = 10 \):
+                    \[ P'(10) = 0.75\,e^{0.025 \times 10} = 0.75\,e^{0.25} \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 4:</span> Calculamos numéricamente:
+                    \[ e^{0.25} \approx 1.2840 \quad \Rightarrow \quad P'(10) \approx 0.75 \times 1.2840 \approx 0.963 \]
+                </div>
+            </div>
+
+            <div class="respuesta-final">
+                \( P'(10) = 0.75\,e^{0.25} \approx 0.963 \) millones de habitantes por año (963,000 personas/año).
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="canvas7" width="500" height="350"></canvas>
+                <p><em>Curva azul: \(P(x) = 30e^{0.025x}\). Línea roja: tangente en \(x = 10\) (año 2009).</em></p>
+            </div>
+        </div>
+
+        <!-- ========== PROBLEMA 8 ========== -->
+        <div class="problem">
+            <h2>Problema 8 — Producto Nacional Bruto (PNB)</h2>
+            
+            <div class="pregunta">
+                El ingreso per cápita promedio en cierto país al tiempo \( t \) es \( w = 6000 + 500t + 10t^2 \) (en dólares, \( t \) en años). El tamaño de la población en el instante \( t \) (en millones) es \( P = 10 + 0.2t + 0.01t^2 \). Calcule la tasa de cambio del Producto Nacional Bruto (PNB) para \( t = 3 \) años; donde \( PNB(t) = w \times P \) (miles de dólares).
+            </div>
+
+            <div class="solucion">
+                <div class="paso">
+                    <span class="paso-label">Paso 1:</span> Identificamos las funciones y sus derivadas:
+                    \[ w(t) = 6000 + 500t + 10t^2 \quad \Rightarrow \quad w'(t) = 500 + 20t \]
+                    \[ P(t) = 10 + 0.2t + 0.01t^2 \quad \Rightarrow \quad P'(t) = 0.2 + 0.02t \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 2:</span> La tasa de cambio del PNB se obtiene por <strong>regla del producto</strong>:
+                    \[ PNB'(t) = w'(t) \cdot P(t) + w(t) \cdot P'(t) \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 3:</span> Evaluamos cada función en \( t = 3 \):
+                    \[ w(3) = 6000 + 500(3) + 10(9) = 6000 + 1500 + 90 = 7590 \]
+                    \[ w'(3) = 500 + 20(3) = 500 + 60 = 560 \]
+                    \[ P(3) = 10 + 0.2(3) + 0.01(9) = 10 + 0.6 + 0.09 = 10.69 \]
+                    \[ P'(3) = 0.2 + 0.02(3) = 0.2 + 0.06 = 0.26 \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 4:</span> Sustituimos en la fórmula del PNB':
+                    \[ PNB'(3) = (560)(10.69) + (7590)(0.26) \]
+                    \[ = 5{,}986.4 + 1{,}973.4 \]
+                    \[ = 7{,}959.8 \]
+                </div>
+                <div class="paso">
+                    <span class="paso-label">Paso 5: Interpretación.</span>
+                    A los 3 años, el PNB está creciendo a una tasa de 7,959.8 miles de dólares por año. Esto significa que el crecimiento proviene tanto del aumento del ingreso per cápita (primera parte) como del crecimiento poblacional (segunda parte).
+                </div>
+            </div>
+
+            <div class="respuesta-final">
+                \( PNB'(3) = 7{,}959.8 \) miles de dólares por año.
+            </div>
+        </div>
+
+    </div> <!-- content -->
+</div> <!-- container -->
+
+<!-- ========== SCRIPTS DE GRÁFICAS ========== -->
 <script>
-    // Script para dibujar la gráfica del punto 2
-    const canvas = document.getElementById('canvas1');
+// ===== UTILIDADES DE GRAFICACIÓN =====
+function drawGraph(canvasId, config) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    // Transformación de coordenadas
-    function mapX(x) { return width / 2 + x * 20; }
-    function mapY(y) { return height / 2 - y * 5; } // Escala Y ajustada
-    
-    // Dibujar ejes
-    ctx.beginPath();
-    ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); // X
-    ctx.moveTo(width / 2, 0); ctx.lineTo(width / 2, height); // Y
-    ctx.strokeStyle = "#ccc"; ctx.stroke();
-    
-    // Dibujar función f(x) = 1 - 2x^2
-    ctx.beginPath();
-    for(let x = -5; x <= 5; x += 0.1) {
-        let y = 1 - 2*Math.pow(x, 2);
-        if(x === -5) ctx.moveTo(mapX(x), mapY(y));
-        else ctx.lineTo(mapX(x), mapY(y));
+    const W = canvas.width, H = canvas.height;
+    const { xMin, xMax, yMin, yMax, funcs, points, labels } = config;
+
+    const scaleX = W / (xMax - xMin);
+    const scaleY = H / (yMax - yMin);
+    const toX = x => (x - xMin) * scaleX;
+    const toY = y => H - (y - yMin) * scaleY;
+
+    // Fondo
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 0.5;
+    for (let x = Math.ceil(xMin); x <= xMax; x++) {
+        ctx.beginPath(); ctx.moveTo(toX(x), 0); ctx.lineTo(toX(x), H); ctx.stroke();
     }
-    ctx.strokeStyle = "blue"; ctx.lineWidth = 2; ctx.stroke();
-    
-    // Dibujar tangente y = -8x + 9
-    ctx.beginPath();
-    for(let x = 0; x <= 4; x += 0.1) {
-        let y = -8*x + 9;
-        if(x === 0) ctx.moveTo(mapX(x), mapY(y));
-        else ctx.lineTo(mapX(x), mapY(y));
+    const yStep = (yMax - yMin) > 200 ? 50 : (yMax - yMin) > 50 ? 10 : (yMax - yMin) > 20 ? 5 : 1;
+    for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
+        ctx.beginPath(); ctx.moveTo(0, toY(y)); ctx.lineTo(W, toY(y)); ctx.stroke();
     }
-    ctx.strokeStyle = "red"; ctx.lineWidth = 2; ctx.stroke();
-    
-    // Marcar punto (2, -7)
-    ctx.beginPath();
-    ctx.arc(mapX(2), mapY(-7), 5, 0, 2*Math.PI);
-    ctx.fillStyle = "black"; ctx.fill();
+
+    // Ejes
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5;
+    if (yMin <= 0 && yMax >= 0) {
+        ctx.beginPath(); ctx.moveTo(0, toY(0)); ctx.lineTo(W, toY(0)); ctx.stroke();
+    }
+    if (xMin <= 0 && xMax >= 0) {
+        ctx.beginPath(); ctx.moveTo(toX(0), 0); ctx.lineTo(toX(0), H); ctx.stroke();
+    }
+
+    // Etiquetas de ejes
+    ctx.fillStyle = '#666';
+    ctx.font = '10px sans-serif';
+    for (let x = Math.ceil(xMin); x <= xMax; x++) {
+        if (x === 0) continue;
+        ctx.fillText(x, toX(x) - 4, toY(0) + 12);
+    }
+    for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
+        if (y === 0) continue;
+        ctx.fillText(y, toX(0) + 4, toY(y) + 4);
+    }
+
+    // Funciones
+    funcs.forEach(f => {
+        ctx.beginPath();
+        ctx.strokeStyle = f.color || 'blue';
+        ctx.lineWidth = f.width || 2;
+        if (f.dash) ctx.setLineDash(f.dash);
+        else ctx.setLineDash([]);
+        let started = false;
+        const step = (xMax - xMin) / 500;
+        for (let x = xMin; x <= xMax; x += step) {
+            const y = f.fn(x);
+            if (isNaN(y) || !isFinite(y) || y < yMin - 50 || y > yMax + 50) { started = false; continue; }
+            if (!started) { ctx.moveTo(toX(x), toY(y)); started = true; }
+            else ctx.lineTo(toX(x), toY(y));
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+    });
+
+    // Puntos
+    if (points) {
+        points.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(toX(p.x), toY(p.y), 5, 0, Math.PI * 2);
+            ctx.fillStyle = p.color || '#000';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            if (p.label) {
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillText(p.label, toX(p.x) + 8, toY(p.y) - 8);
+            }
+        });
+    }
+
+    // Leyenda
+    if (labels) {
+        ctx.font = '11px sans-serif';
+        labels.forEach((l, i) => {
+            const lx = 12, ly = 16 + i * 18;
+            ctx.fillStyle = l.color;
+            ctx.fillRect(lx, ly - 8, 14, 3);
+            ctx.fillStyle = '#333';
+            ctx.fillText(l.text, lx + 20, ly);
+        });
+    }
+}
+
+// ===== GRÁFICA PROBLEMA 2 =====
+drawGraph('canvas2', {
+    xMin: -3, xMax: 5, yMin: -40, yMax: 15,
+    funcs: [
+        { fn: x => 1 - 2*x*x, color: '#1565c0', width: 2.5 },
+        { fn: x => -8*x + 9, color: '#e53935', width: 2, dash: [6, 4] }
+    ],
+    points: [
+        { x: 2, y: -7, label: '(2, -7)', color: '#000' }
+    ],
+    labels: [
+        { color: '#1565c0', text: 'f(x) = 1 - 2x²' },
+        { color: '#e53935', text: 'Tangente: y = -8x + 9' }
+    ]
+});
+
+// ===== GRÁFICA PROBLEMA 3 =====
+drawGraph('canvas3', {
+    xMin: -0.5, xMax: 3, yMin: -100, yMax: 250,
+    funcs: [
+        { fn: x => (2*x*x*x - x) * (2*x*x - x), color: '#1565c0', width: 2.5 },
+        { fn: x => 236*x - 388, color: '#e53935', width: 2, dash: [6, 4] }
+    ],
+    points: [
+        { x: 2, y: 84, label: '(2, 84)', color: '#000' }
+    ],
+    labels: [
+        { color: '#1565c0', text: 'f(x) = (2x³-x)(2x²-x)' },
+        { color: '#e53935', text: 'Tangente: y = 236x - 388' }
+    ]
+});
+
+// ===== GRÁFICA PROBLEMA 5 =====
+drawGraph('canvas5', {
+    xMin: -0.5, xMax: 8, yMin: 4000, yMax: 7000,
+    funcs: [
+        { fn: x => 5000 + 500*x - 50*x*x, color: '#1565c0', width: 2.5 },
+        { fn: x => 300*(x - 2) + 5800, color: '#e53935', width: 2, dash: [6, 4] }
+    ],
+    points: [
+        { x: 2, y: 5800, label: '(2, 5800)', color: '#000' }
+    ],
+    labels: [
+        { color: '#1565c0', text: 'P(x) = 5000 + 500x - 50x²' },
+        { color: '#e53935', text: 'Tangente: pendiente = 300' }
+    ]
+});
+
+// ===== GRÁFICA PROBLEMA 7 =====
+drawGraph('canvas7', {
+    xMin: -1, xMax: 25, yMin: 25, yMax: 60,
+    funcs: [
+        { fn: x => 30 * Math.exp(0.025 * x), color: '#1565c0', width: 2.5 },
+        { fn: x => 0.963 * (x - 10) + 30 * Math.exp(0.25), color: '#e53935', width: 2, dash: [6, 4] }
+    ],
+    points: [
+        { x: 10, y: 30 * Math.exp(0.25), label: '(10, 38.5)', color: '#000' }
+    ],
+    labels: [
+        { color: '#1565c0', text: 'P(x) = 30e^(0.025x)' },
+        { color: '#e53935', text: "Tangente en x=10 (año 2009)" }
+    ]
+});
 </script>
 
 </body>
