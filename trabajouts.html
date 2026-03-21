@@ -1,1164 +1,1046 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trabajo UTS - Guía de Derivadas - Primer Parcial</title>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>
-        window.MathJax = {
-            tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }
-        };
-    </script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.8;
-            color: #2c3e50;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 960px;
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #0056b3, #004494);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-        }
-        .header h1 { font-size: 1.8em; margin-bottom: 8px; }
-        .header p { opacity: 0.85; font-size: 0.95em; }
-        .header .badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.2);
-            padding: 4px 16px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            margin-top: 10px;
-        }
-        .content { padding: 30px; }
-        .problem {
-            margin-bottom: 40px;
-            padding-bottom: 30px;
-            border-bottom: 2px solid #eef2f7;
-        }
-        .problem:last-child { border-bottom: none; }
-        .problem > h2 {
-            background: linear-gradient(90deg, #0056b3, #2980b9);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 1.15em;
-            margin-bottom: 20px;
-        }
-        h3 {
-            color: #0056b3;
-            margin: 18px 0 10px;
-            padding-left: 10px;
-            border-left: 4px solid #3498db;
-            font-size: 1.05em;
-        }
-        .pregunta {
-            background: #fff8e1;
-            border: 1px solid #ffe082;
-            border-left: 5px solid #ffa000;
-            padding: 12px 18px;
-            border-radius: 6px;
-            margin: 10px 0;
-            font-weight: 500;
-        }
-        .solucion {
-            background: #f0f7ff;
-            border: 1px solid #bbdefb;
-            border-left: 5px solid #1976d2;
-            padding: 15px 20px;
-            border-radius: 6px;
-            margin: 10px 0;
-        }
-        .paso {
-            margin: 8px 0;
-            padding: 8px 12px;
-            background: #fafafa;
-            border-radius: 4px;
-            border-left: 3px solid #90caf9;
-        }
-        .paso-label {
-            font-weight: 700;
-            color: #1565c0;
-            font-size: 0.9em;
-        }
-        .respuesta-final {
-            background: linear-gradient(90deg, #e8f5e9, #c8e6c9);
-            border: 2px solid #4caf50;
-            border-radius: 8px;
-            padding: 12px 20px;
-            margin: 12px 0;
-            font-weight: 600;
-        }
-        .respuesta-final::before {
-            content: "✅ ";
-        }
-        .canvas-container {
-            text-align: center;
-            margin: 20px 0;
-        }
-        canvas {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #fefefe;
-            max-width: 100%;
-        }
-        .canvas-container p {
-            font-size: 0.85em;
-            color: #666;
-            margin-top: 6px;
-        }
-        .sub-derivada {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin: 15px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .sub-derivada h3 {
-            margin-top: 0;
-        }
-        .regla-usada {
-            display: inline-block;
-            background: #e3f2fd;
-            color: #1565c0;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-        .formula-box {
-            background: #f3e5f5;
-            border: 1px solid #ce93d8;
-            border-radius: 8px;
-            padding: 12px 18px;
-            margin: 12px 0;
-            text-align: center;
-        }
-        .nota {
-            background: #fff3e0;
-            border-left: 4px solid #ff9800;
-            padding: 10px 15px;
-            border-radius: 4px;
-            margin: 10px 0;
-            font-size: 0.9em;
-        }
-        @media (max-width: 768px) {
-            body { padding: 10px; }
-            .content { padding: 15px; }
-            .header h1 { font-size: 1.3em; }
-            canvas { width: 100% !important; height: auto !important; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACA - Agua Potable en Veredas de Lebrija</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Open Sans',sans-serif;line-height:1.85;color:#2c3e50;background:#f0f2f5;font-size:15px}
+.page{max-width:900px;margin:30px auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);border-radius:10px;overflow:hidden}
+.portada{background:linear-gradient(135deg,#0077b6,#00b4d8,#90e0ef);color:#fff;padding:70px 40px;text-align:center}
+.portada h1{font-family:'Merriweather',serif;font-size:1.9em;margin-bottom:10px;text-shadow:0 2px 6px rgba(0,0,0,.2)}
+.portada .sub{font-size:1em;opacity:.9;margin-bottom:24px}
+.portada .info{font-size:.9em;line-height:2.1}
+.portada .badge{display:inline-block;background:rgba(255,255,255,.2);padding:5px 20px;border-radius:20px;margin-top:14px;font-weight:700;font-size:.85em}
+.ct{padding:38px 42px}
+@media(max-width:768px){.ct{padding:18px 14px}.portada{padding:40px 16px}.portada h1{font-size:1.3em}}
+.sec{margin-bottom:40px}
+.st{font-family:'Merriweather',serif;font-size:1.3em;color:#0077b6;border-bottom:3px solid #00b4d8;padding-bottom:7px;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.st .n{background:#0077b6;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8em;font-weight:700;flex-shrink:0}
+h3{color:#023e8a;margin:15px 0 8px;font-size:1.02em}
+h4{color:#0096c7;margin:10px 0 5px;font-size:.95em}
+p{margin-bottom:10px;text-align:justify}
+ul,ol{margin:7px 0 12px 22px}
+li{margin-bottom:5px}
+strong{color:#023e8a}
+.bx{border-radius:7px;padding:14px 16px;margin:11px 0}
+.bb{background:#e8f4fd;border-left:5px solid #0077b6}
+.bg{background:#e8f8f0;border-left:5px solid #2ecc71}
+.by{background:#fff9e6;border-left:5px solid #f39c12}
+.br{background:#fdf0f0;border-left:5px solid #e74c3c}
+.bp{background:#f3ecf9;border-left:5px solid #8e44ad}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9em}
+th{background:#0077b6;color:#fff;padding:9px 11px;text-align:left}
+td{padding:8px 11px;border-bottom:1px solid #e0e0e0}
+tr:nth-child(even){background:#f7fbfe}
+.cw{text-align:center;margin:18px 0}
+canvas{border:1px solid #ddd;border-radius:7px;background:#fefefe;max-width:100%}
+.cc{font-size:.8em;color:#666;margin-top:5px;font-style:italic}
+.cita{background:#f8f9fa;border-left:4px solid #6c757d;padding:9px 14px;margin:10px 0;font-style:italic;font-size:.9em}
+.ref{font-size:.85em;color:#555;margin-bottom:7px;padding-left:26px;text-indent:-26px}
+.sm{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:16px;font-size:.82em;font-weight:600;margin:3px}
+.sw{background:#f0f0f0;color:#333;border:1px solid #ccc}
+.sr{background:#ffe0e0;color:#c0392b}
+.sk{background:#333;color:#fff}
+.sy{background:#fff3cd;color:#856404}
+.sg{background:#d4edda;color:#155724}
+.sb{background:#cce5ff;color:#004085}
+.og{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:11px 0}
+.oc{padding:14px;border-radius:7px;font-size:.9em}
+.or{background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff}
+.ob{background:linear-gradient(135deg,#0077b6,#00b4d8);color:#fff}
+@media(max-width:600px){.og{grid-template-columns:1fr}}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:12px 0}
+.fc{background:#fff;border:2px solid #00b4d8;border-radius:9px;padding:12px;text-align:center}
+.fc .em{font-size:1.5em;display:block;margin-bottom:4px}
+.fc h4{margin:0 0 3px;color:#0077b6;font-size:.85em}
+.fc p{font-size:.78em;text-align:center;margin:0}
+.pb{position:fixed;bottom:18px;right:18px;background:#0077b6;color:#fff;border:none;padding:10px 18px;border-radius:7px;cursor:pointer;font-size:.88em;box-shadow:0 3px 10px rgba(0,0,0,.2);z-index:99}
+/* === MODAL === */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:1000;justify-content:center;align-items:center}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;border-radius:12px;padding:36px 40px;max-width:560px;width:92%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+.modal h2{font-family:'Merriweather',serif;color:#0077b6;margin-bottom:6px;font-size:1.3em}
+.modal .apa-note{font-size:.82em;color:#666;margin-bottom:18px;line-height:1.5}
+.modal label{display:block;font-size:.88em;font-weight:600;color:#2c3e50;margin:10px 0 4px}
+.modal input,.modal select{width:100%;padding:9px 12px;border:2px solid #dde;border-radius:6px;font-size:.92em;font-family:inherit;transition:border .2s}
+.modal input:focus,.modal select:focus{border-color:#0077b6;outline:none}
+.modal .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal .btn-row{display:flex;gap:10px;margin-top:22px}
+.modal .btn{flex:1;padding:11px;border:none;border-radius:7px;font-size:.95em;font-weight:600;cursor:pointer}
+.modal .btn-print{background:#0077b6;color:#fff}
+.modal .btn-print:hover{background:#005f8a}
+.modal .btn-cancel{background:#f0f0f0;color:#333}
+.modal .btn-cancel:hover{background:#e0e0e0}
+/* === APA COVER & TOC (hidden on screen) === */
+.apa-cover,.apa-toc{display:none}
+/* === APA PRINT === */
+@media print{
+  .pb,.modal-overlay{display:none!important}
+  body{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;line-height:2!important;color:#000!important;background:#fff!important;margin:0!important;padding:0!important}
+  .page{max-width:none!important;box-shadow:none!important;border-radius:0!important;margin:0!important;overflow:visible!important}
+  .portada{display:none!important}
+  .apa-cover{display:block!important;page-break-after:always;height:100vh;position:relative;font-family:'Times New Roman',Times,serif!important;text-align:center;padding:0 2.54cm}
+  .apa-cover .apa-pg{position:absolute;top:1.27cm;right:0;font-size:12pt}
+  .apa-cover .apa-title-block{position:absolute;top:33%;left:2.54cm;right:2.54cm;text-align:center}
+  .apa-cover .apa-title-block h1{font-size:12pt!important;font-weight:700;margin-bottom:24pt;line-height:2;text-transform:none}
+  .apa-cover .apa-title-block p{font-size:12pt;line-height:2;margin:0}
+  .apa-toc{display:block!important;page-break-after:always;font-family:'Times New Roman',Times,serif!important;padding:0}
+  .apa-toc h2{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;text-align:center;font-weight:700;margin-bottom:24pt}
+  .toc-item{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;line-height:2!important;margin:0!important;text-indent:0!important;border-bottom:none}
+  .toc-dots{border-bottom:1px dotted #000;flex:1;margin:0 6pt;display:inline-block;min-width:40pt;vertical-align:baseline}
+  .ct{padding:0!important}
+  .sec{margin-bottom:0!important;page-break-inside:avoid}
+  .st{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;border:none!important;padding:0!important;margin:24pt 0 12pt!important;justify-content:center!important;font-weight:700!important}
+  .st .n{display:none!important}
+  h3{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;font-weight:700!important;margin:12pt 0 6pt!important;text-align:left}
+  h4{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;font-weight:700!important;font-style:italic!important;margin:12pt 0 6pt!important}
+  p{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;text-indent:1.27cm;margin-bottom:0!important;line-height:2!important}
+  .bx p,.ref,.cc,.apa-cover p,.fc p{text-indent:0!important}
+  ul,ol{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;margin-left:2.54cm!important;line-height:2!important}
+  li{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;margin-bottom:0!important}
+  strong{color:#000!important}
+  .bx{background:#fff!important;border:none!important;border-left:2px solid #000!important;border-radius:0!important;padding:6pt 12pt!important;margin:6pt 0!important}
+  table{font-family:'Times New Roman',Times,serif!important;font-size:10pt!important;border-collapse:collapse!important;margin:12pt 0!important}
+  th{background:#fff!important;color:#000!important;font-weight:700!important;border-top:2px solid #000!important;border-bottom:1px solid #000!important;padding:4pt 8pt!important}
+  td{color:#000!important;border-bottom:none!important;padding:4pt 8pt!important}
+  tr:last-child td{border-bottom:1px solid #000!important}
+  tr:nth-child(even){background:#fff!important}
+  .cw{text-align:center!important;margin:12pt 0!important}
+  canvas{border:1px solid #999!important;border-radius:0!important;max-width:100%!important}
+  .cc{font-size:10pt!important;color:#000!important;font-style:italic!important;margin-top:4pt!important}
+  .cita{background:#fff!important;border-left:none!important;padding:0 0 0 40pt!important;font-size:12pt!important;color:#000!important;line-height:2!important;margin:12pt 0!important}
+  .ref{font-family:'Times New Roman',Times,serif!important;font-size:12pt!important;color:#000!important;padding-left:1.27cm!important;text-indent:-1.27cm!important;line-height:2!important;margin-bottom:0!important}
+  .sm{background:#fff!important;border:1px solid #999!important;color:#000!important;font-size:10pt!important}
+  .og{display:block!important}
+  .oc{background:#fff!important;color:#000!important;border:1px solid #000!important;border-radius:0!important;margin-bottom:6pt!important}
+  .oc h4{color:#000!important}
+  .oc li{color:#000!important}
+  .fg{display:block!important}
+  .fc{border-color:#000!important;border-radius:0!important;display:inline-block;width:18%;vertical-align:top;margin:2pt}
+  .fc h4{color:#000!important}
+  @page{size:letter;margin:2.54cm}
+}
+</style>
 </head>
 <body>
+<button class="pb" onclick="document.getElementById('apaModal').classList.add('active')">&#128424; Exportar (PDF / Word)</button>
 
-<div class="container">
-    <div class="header">
-        <h1>Guía de Derivadas para el Primer Parcial</h1>
-        <p><strong>Unidades Tecnológicas de Santander</strong> — Departamento de Ciencias Básicas</p>
-        <p>Matemáticas II</p>
-        <span class="badge">Solución completa paso a paso</span>
-    </div>
+<!-- ========== MODAL FORMULARIO ========== -->
+<div id="apaModal" class="modal-overlay">
+<div class="modal">
+<h2>&#128218; Datos del Trabajo &mdash; Normas APA 7&ordf; ed.</h2>
+<p class="apa-note">Complete los siguientes campos. Se generar&aacute; una <strong>portada APA</strong> y el documento se formatear&aacute; seg&uacute;n las normas APA 7&ordf; edici&oacute;n (tama&ntilde;o carta, Times New Roman 12pt, doble espacio, m&aacute;rgenes de 2.54 cm).</p>
 
-    <div class="content">
+<label>T&iacute;tulo del trabajo</label>
+<input type="text" id="apaTitulo" value="Innovaci&oacute;n para el Acceso a Agua Potable en las Veredas de Lebrija, Santander" placeholder="T&iacute;tulo del trabajo">
 
-        <!-- ========== PROBLEMA 1 ========== -->
-        <div class="problem">
-            <h2>Problema 1 — Emplee la definición de la derivada para encontrar</h2>
-            
-            <div class="formula-box">
-                <strong>Definición de la derivada:</strong><br>
-                \[ f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} \]
-            </div>
+<label>Nombre(s) del/los estudiante(s)</label>
+<input type="text" id="apaEstudiante" placeholder="Ej: Juan P&eacute;rez G&oacute;mez, Mar&iacute;a L&oacute;pez R&iacute;os">
 
-            <!-- 1a -->
-            <div class="sub-derivada">
-                <h3>a) \( f(x) = 4x - 2 \), hallar \( f'(2) \) <span class="regla-usada">Definición (límite)</span></h3>
-                
-                <div class="pregunta">Encuentre \( f'(2) \) usando la definición formal de la derivada.</div>
+<div class="row2">
+<div>
+<label>Programa acad&eacute;mico</label>
+<input type="text" id="apaPrograma" placeholder="Ej: Ingenier&iacute;a de Sistemas">
+</div>
+<div>
+<label>Facultad</label>
+<input type="text" id="apaFacultad" placeholder="Ej: Ciencias Naturales e Ingenier&iacute;as">
+</div>
+</div>
 
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Sustituimos en la definición:
-                        \[ f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} = \lim_{h \to 0} \frac{[4(x+h) - 2] - [4x - 2]}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Expandimos el numerador:
-                        \[ = \lim_{h \to 0} \frac{4x + 4h - 2 - 4x + 2}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Simplificamos los términos que se cancelan (\(4x - 4x = 0\) y \(-2 + 2 = 0\)):
-                        \[ = \lim_{h \to 0} \frac{4h}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 4:</span> Cancelamos \(h\):
-                        \[ = \lim_{h \to 0} 4 = 4 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 5:</span> Evaluamos en \(x = 2\):
-                        \[ f'(x) = 4 \quad \Rightarrow \quad f'(2) = 4 \]
-                    </div>
-                </div>
-                <div class="respuesta-final">
-                    \( f'(2) = 4 \)
-                </div>
-                <div class="nota"><strong>Nota:</strong> La derivada de una función lineal \(f(x) = mx + b\) siempre es la pendiente \(m\). En este caso \(m = 4\).</div>
-            </div>
+<label>Instituci&oacute;n / Universidad</label>
+<input type="text" id="apaInstitucion" value="Unidades Tecnol&oacute;gicas de Santander (UTS)">
 
-            <!-- 1b -->
-            <div class="sub-derivada">
-                <h3>b) \( f(x) = 3x^3 - 2x \), hallar \( f'(3) \) <span class="regla-usada">Definición (límite)</span></h3>
-                
-                <div class="pregunta">Encuentre \( f'(3) \) usando la definición formal de la derivada.</div>
+<label>Nombre de la asignatura</label>
+<input type="text" id="apaAsignatura" value="Creatividad y Pensamiento Innovador">
 
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Sustituimos en la definición:
-                        \[ f'(x) = \lim_{h \to 0} \frac{[3(x+h)^3 - 2(x+h)] - [3x^3 - 2x]}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Expandimos \((x+h)^3\) usando el binomio de Newton:
-                        \[ (x+h)^3 = x^3 + 3x^2h + 3xh^2 + h^3 \]
-                        Por lo tanto:
-                        \[ 3(x+h)^3 = 3x^3 + 9x^2h + 9xh^2 + 3h^3 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Sustituimos todo en el numerador:
-                        \[ = \lim_{h \to 0} \frac{3x^3 + 9x^2h + 9xh^2 + 3h^3 - 2x - 2h - 3x^3 + 2x}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 4:</span> Cancelamos: \(3x^3 - 3x^3 = 0\), \(-2x + 2x = 0\):
-                        \[ = \lim_{h \to 0} \frac{9x^2h + 9xh^2 + 3h^3 - 2h}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 5:</span> Factorizamos \(h\) del numerador:
-                        \[ = \lim_{h \to 0} \frac{h(9x^2 + 9xh + 3h^2 - 2)}{h} = \lim_{h \to 0} (9x^2 + 9xh + 3h^2 - 2) \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 6:</span> Evaluamos el límite cuando \(h \to 0\):
-                        \[ f'(x) = 9x^2 + 0 + 0 - 2 = 9x^2 - 2 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 7:</span> Evaluamos en \(x = 3\):
-                        \[ f'(3) = 9(3)^2 - 2 = 9(9) - 2 = 81 - 2 = 79 \]
-                    </div>
-                </div>
-                <div class="respuesta-final">
-                    \( f'(3) = 79 \)
-                </div>
-            </div>
+<label>Nombre del docente</label>
+<input type="text" id="apaDocente" placeholder="Ej: Prof. Carlos Andr&eacute;s Ram&iacute;rez">
 
-            <!-- 1c -->
-            <div class="sub-derivada">
-                <h3>c) \( f(x) = x^2 - 2x^3 + 6 \), hallar \( f'(1) \) <span class="regla-usada">Definición (límite)</span></h3>
-                
-                <div class="pregunta">Encuentre \( f'(1) \) usando la definición formal de la derivada.</div>
+<label>Tipo de actividad</label>
+<input type="text" id="apaTipo" value="Actividad de Construcci&oacute;n Aplicada (ACA)">
 
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Sustituimos en la definición:
-                        \[ f'(x) = \lim_{h \to 0} \frac{[(x+h)^2 - 2(x+h)^3 + 6] - [x^2 - 2x^3 + 6]}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Expandimos cada término:
-                        \[ (x+h)^2 = x^2 + 2xh + h^2 \]
-                        \[ (x+h)^3 = x^3 + 3x^2h + 3xh^2 + h^3 \]
-                        \[ -2(x+h)^3 = -2x^3 - 6x^2h - 6xh^2 - 2h^3 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Sustituimos en el numerador:
-                        \[ = \lim_{h \to 0} \frac{x^2 + 2xh + h^2 - 2x^3 - 6x^2h - 6xh^2 - 2h^3 + 6 - x^2 + 2x^3 - 6}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 4:</span> Cancelamos: \(x^2 - x^2 = 0\), \(-2x^3 + 2x^3 = 0\), \(6 - 6 = 0\):
-                        \[ = \lim_{h \to 0} \frac{2xh + h^2 - 6x^2h - 6xh^2 - 2h^3}{h} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 5:</span> Factorizamos \(h\):
-                        \[ = \lim_{h \to 0} \frac{h(2x + h - 6x^2 - 6xh - 2h^2)}{h} = \lim_{h \to 0} (2x + h - 6x^2 - 6xh - 2h^2) \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 6:</span> Evaluamos el límite cuando \(h \to 0\):
-                        \[ f'(x) = 2x - 6x^2 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 7:</span> Evaluamos en \(x = 1\):
-                        \[ f'(1) = 2(1) - 6(1)^2 = 2 - 6 = -4 \]
-                    </div>
-                </div>
-                <div class="respuesta-final">
-                    \( f'(1) = -4 \)
-                </div>
-            </div>
-        </div>
+<div class="row2">
+<div>
+<label>Ciudad</label>
+<input type="text" id="apaCiudad" value="Bucaramanga">
+</div>
+<div>
+<label>Fecha de entrega</label>
+<input type="date" id="apaFecha">
+</div>
+</div>
 
-        <!-- ========== PROBLEMA 2 ========== -->
-        <div class="problem">
-            <h2>Problema 2 — Pendiente y ecuación de la recta tangente</h2>
+<label>Formato de exportaci&oacute;n</label>
+<div class="row2" style="margin-bottom:4px">
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-weight:400"><input type="radio" name="apaFormato" value="pdf" checked> &#128196; PDF (Imprimir como PDF)</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-weight:400"><input type="radio" name="apaFormato" value="word"> &#128196; Word (.doc)</label>
+</div>
 
-            <div class="pregunta">
-                Encuentre la pendiente y la ecuación de la recta tangente de la curva \( f(x) = 1 - 2x^2 \) en el punto \((2, -7)\).
-            </div>
+<div class="btn-row">
+<button class="btn btn-cancel" onclick="document.getElementById('apaModal').classList.remove('active')">Cancelar</button>
+<button class="btn btn-print" onclick="generarAPA()">&#128424; Generar documento APA</button>
+</div>
+</div>
+</div>
 
-            <div class="solucion">
-                <div class="paso">
-                    <span class="paso-label">Paso 1: Verificar el punto.</span>
-                    Comprobamos que \((2, -7)\) pertenece a la curva:
-                    \[ f(2) = 1 - 2(2)^2 = 1 - 2(4) = 1 - 8 = -7 \quad \checkmark \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 2: Calcular la derivada (pendiente de la tangente).</span>
-                    \[ f'(x) = \frac{d}{dx}[1 - 2x^2] = 0 - 2 \cdot 2x = -4x \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 3: Evaluar la pendiente en \(x = 2\).</span>
-                    \[ m = f'(2) = -4(2) = -8 \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 4: Ecuación de la recta tangente.</span>
-                    Usando la forma punto-pendiente \( y - y_1 = m(x - x_1) \):
-                    \[ y - (-7) = -8(x - 2) \]
-                    \[ y + 7 = -8x + 16 \]
-                    \[ y = -8x + 9 \]
-                </div>
-            </div>
+<!-- ========== PORTADA APA (solo visible al imprimir) ========== -->
+<div id="apaCover" class="apa-cover">
+<div class="apa-pg">1</div>
+<div class="apa-title-block">
+<h1 id="apaCoverTitulo"></h1>
+<p id="apaCoverEstudiante"></p>
+<p id="apaCoverPrograma"></p>
+<p id="apaCoverInstitucion"></p>
+<p id="apaCoverAsignatura"></p>
+<p id="apaCoverDocente"></p>
+<p id="apaCoverTipo"></p>
+<p id="apaCoverCiudadFecha"></p>
+</div>
+</div>
 
-            <div class="respuesta-final">
-                Pendiente: \( m = -8 \). Ecuación de la recta tangente: \( y = -8x + 9 \)
-            </div>
+<!-- ========== TABLA DE CONTENIDO (solo visible al imprimir) ========== -->
+<div id="apaTOC" class="apa-toc">
+<h2 style="text-align:center;font-weight:700;margin-bottom:24pt;">Tabla de Contenido</h2>
+<div class="toc-list">
+<p class="toc-item">Introducci&oacute;n<span class="toc-dots"></span></p>
+<p class="toc-item">Identificaci&oacute;n del Problema o Necesidad<span class="toc-dots"></span></p>
+<p class="toc-item" style="padding-left:1.27cm;">Descripci&oacute;n de la situaci&oacute;n problem&aacute;tica</p>
+<p class="toc-item" style="padding-left:1.27cm;">Por qu&eacute; se requiere una soluci&oacute;n innovadora</p>
+<p class="toc-item" style="padding-left:1.27cm;">&Aacute;rbol de Problemas</p>
+<p class="toc-item">Proceso Creativo Aplicado<span class="toc-dots"></span></p>
+<p class="toc-item" style="padding-left:1.27cm;">Design Thinking</p>
+<p class="toc-item" style="padding-left:1.27cm;">Pensamiento Divergente y Convergente</p>
+<p class="toc-item" style="padding-left:1.27cm;">SCAMPER</p>
+<p class="toc-item" style="padding-left:1.27cm;">Seis Sombreros para Pensar</p>
+<p class="toc-item" style="padding-left:1.27cm;">Estrategia del Oc&eacute;ano Azul</p>
+<p class="toc-item">Descripci&oacute;n de la Idea de Innovaci&oacute;n<span class="toc-dots"></span></p>
+<p class="toc-item" style="padding-left:1.27cm;">&iquest;Por qu&eacute; es diferente a las soluciones tradicionales?</p>
+<p class="toc-item">Propuesta de Valor<span class="toc-dots"></span></p>
+<p class="toc-item">Fundamentaci&oacute;n Conceptual<span class="toc-dots"></span></p>
+<p class="toc-item">Viabilidad Preliminar<span class="toc-dots"></span></p>
+<p class="toc-item" style="padding-left:1.27cm;">Viabilidad t&eacute;cnica</p>
+<p class="toc-item" style="padding-left:1.27cm;">Viabilidad organizacional</p>
+<p class="toc-item" style="padding-left:1.27cm;">Impacto esperado</p>
+<p class="toc-item" style="padding-left:1.27cm;">Presupuesto fase piloto</p>
+<p class="toc-item">Uso Responsable de IA Generativa<span class="toc-dots"></span></p>
+<p class="toc-item">Conclusiones<span class="toc-dots"></span></p>
+<p class="toc-item">Referencias<span class="toc-dots"></span></p>
+</div>
+</div>
 
-            <div class="canvas-container">
-                <canvas id="canvas2" width="500" height="400"></canvas>
-                <p><em>Azul: \( f(x) = 1 - 2x^2 \) | Roja: tangente \( y = -8x + 9 \) | Punto negro: (2, -7)</em></p>
-            </div>
-        </div>
+<div class="page">
+<div class="portada">
+<div style="font-size:2.8em;margin-bottom:10px">&#128167;</div>
+<h1>Innovaci&oacute;n para el Acceso a Agua Potable en las Veredas de Lebrija, Santander</h1>
+<p class="sub">Propuesta de sistema comunitario de potabilizaci&oacute;n solar de bajo costo</p>
+<div class="info">
+<strong>Estudiante(s):</strong> <span id="webEstudiante">[Complete al imprimir]</span><br>
+<strong>Asignatura:</strong> Creatividad y Pensamiento Innovador<br>
+<strong>Docente:</strong> <span id="webDocente">[Complete al imprimir]</span><br>
+<strong>Instituci&oacute;n:</strong> Unidades Tecnol&oacute;gicas de Santander (UTS)<br>
+<strong>Fecha:</strong> <span id="webFecha">[Complete al imprimir]</span>
+</div>
+<span class="badge">Actividad de Construcci&oacute;n Aplicada &mdash; ACA</span>
+</div>
+<div class="ct">
 
-        <!-- ========== PROBLEMA 3 ========== -->
-        <div class="problem">
-            <h2>Problema 3 — Ecuación de la recta tangente (regla del producto)</h2>
+<!-- 1 INTRO -->
+<div class="sec">
+<div class="st"><span class="n">1</span> Introduccion</div>
+<h3>Presentacion general del tema</h3>
+<p>El acceso al agua potable es un derecho humano fundamental reconocido por la ONU desde 2010. Sin embargo, en las zonas rurales de Santander, Colombia, miles de familias carecen de este servicio basico. El municipio de <strong>Lebrija</strong>, ubicado en la provincia de Soto, cuenta con mas de 40 veredas donde la cobertura de acueducto es limitada o inexistente, lo que obliga a sus habitantes a depender de fuentes hidricas sin tratamiento: quebradas, nacimientos naturales y aguas lluvias recolectadas artesanalmente.</p>
+<p>Segun el Plan de Desarrollo Municipal de Lebrija (2020-2023), aproximadamente el <strong>38% de la poblacion rural</strong> no tiene acceso a agua potable de calidad, generando problemas de salud publica como enfermedades diarreicas agudas (EDA), parasitismo intestinal y dermatitis, que afectan principalmente a niños menores de 5 años y adultos mayores.</p>
+<h3>Contexto de la propuesta</h3>
+<p>Esta propuesta nace del analisis de una problematica real: la <strong>falta de sistemas de potabilizacion accesibles y sostenibles</strong> para las comunidades rurales de Lebrija. Se aplican los conceptos de creatividad e innovacion para diseñar una solucion tecnicamente viable, economicamente accesible y ambientalmente responsable.</p>
+<h3>Alcance del trabajo</h3>
+<div class="bx bb">
+<p><strong>Geografico:</strong> Veredas del municipio de Lebrija (La Renta, Vanegas, El Salado, Portugal, San Pablo, entre otras).</p>
+<p><strong>Tematico:</strong> Diseño conceptual de un sistema de potabilizacion solar comunitario, con analisis de viabilidad preliminar.</p>
+<p><strong>Temporal:</strong> Corto plazo (6-12 meses para piloto) con proyeccion a mediano plazo (3 años para escalamiento).</p>
+</div>
+</div>
 
-            <div class="pregunta">
-                Encuentre la ecuación de la recta tangente a la curva \( f(x) = (2x^3 - x)(2x^2 - x) \) en el punto donde \( x = 2 \).
-            </div>
+<!-- 2 PROBLEMA -->
+<div class="sec">
+<div class="st"><span class="n">2</span> Identificacion del Problema o Necesidad</div>
+<h3>Descripcion de la situacion problematica</h3>
+<p>Las veredas de Lebrija presentan un deficit critico en el acceso a agua potable. Las familias rurales obtienen agua de:</p>
+<ul>
+<li><strong>Quebradas y nacimientos naturales</strong> sin ningun tratamiento</li>
+<li><strong>Acueductos veredales artesanales</strong> sin planta de tratamiento (solo conduccion por gravedad)</li>
+<li><strong>Agua lluvia recolectada</strong> en tanques sin filtracion</li>
+<li><strong>Carrotanques</strong> esporadicos enviados por la alcaldia en epocas de sequia</li>
+</ul>
+<p>La presencia de <em>E. coli</em>, coliformes fecales y solidos suspendidos ha sido documentada por la Secretaria de Salud Departamental en muestreos de estas fuentes.</p>
+<div class="cw"><canvas id="c1" width="560" height="300"></canvas><p class="cc">Figura 1. Fuentes de agua usadas por familias rurales en Lebrija (%).</p></div>
 
-            <div class="solucion">
-                <div class="paso">
-                    <span class="paso-label">Paso 1: Encontrar el punto \(y\).</span>
-                    \[ f(2) = (2(2)^3 - 2)(2(2)^2 - 2) = (2 \cdot 8 - 2)(2 \cdot 4 - 2) = (16 - 2)(8 - 2) = (14)(6) = 84 \]
-                    El punto es \( (2, 84) \).
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 2: Derivar usando la regla del producto.</span>
-                    Sean \( u = 2x^3 - x \) y \( v = 2x^2 - x \).
-                    <div class="formula-box">
-                        <strong>Regla del producto:</strong> \( f'(x) = u' \cdot v + u \cdot v' \)
-                    </div>
-                    Calculamos cada derivada:
-                    \[ u' = 6x^2 - 1 \]
-                    \[ v' = 4x - 1 \]
-                    Entonces:
-                    \[ f'(x) = (6x^2 - 1)(2x^2 - x) + (2x^3 - x)(4x - 1) \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 3: Evaluar la pendiente en \(x = 2\).</span>
-                    \[ u'(2) = 6(4) - 1 = 23 \qquad v(2) = 8 - 2 = 6 \]
-                    \[ u(2) = 16 - 2 = 14 \qquad v'(2) = 8 - 1 = 7 \]
-                    \[ f'(2) = (23)(6) + (14)(7) = 138 + 98 = 236 \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 4: Ecuación de la recta tangente.</span>
-                    \[ y - 84 = 236(x - 2) \]
-                    \[ y = 236x - 472 + 84 \]
-                    \[ y = 236x - 388 \]
-                </div>
-            </div>
+<h3>Contexto social, organizacional y empresarial</h3>
+<div class="bx by">
+<p><strong>Social:</strong> Aprox. 4,200 personas dependen de agua no tratada. Las enfermedades hidricas representan el 23% de consultas medicas rurales (Secretaria de Salud de Santander, 2022).</p>
+<p><strong>Organizacional:</strong> Las Juntas de Accion Comunal (JAC) han expresado la necesidad de soluciones de bajo costo administrables localmente.</p>
+<p><strong>Empresarial:</strong> No hay oferta comercial de potabilizacion adaptada a la realidad economica de estas comunidades (ingresos de 1-1.5 SMMLV/familia).</p>
+</div>
 
-            <div class="respuesta-final">
-                Pendiente: \( m = 236 \). Ecuación de la recta tangente: \( y = 236x - 388 \)
-            </div>
+<h3>Por que se requiere una solucion innovadora</h3>
+<table>
+<tr><th>Solucion tradicional</th><th>Por que ha fracasado</th></tr>
+<tr><td>Planta de tratamiento convencional</td><td>Costo &gt;$800 millones. Requiere operadores certificados y quimicos constantes.</td></tr>
+<tr><td>Extension de acueducto urbano</td><td>Veredas a 15-40 km del casco urbano, en terreno montañoso. Costo prohibitivo.</td></tr>
+<tr><td>Filtros domesticos comerciales</td><td>$200,000-$1,500,000 COP c/u. Sin mantenimiento local. Repuestos no disponibles.</td></tr>
+<tr><td>Carrotanques</td><td>Temporales, costosos ($150,000/viaje), sin garantia de calidad.</td></tr>
+</table>
+<div class="bx br"><strong>Se necesita:</strong> bajo costo (&lt;$500k/familia), operable por la comunidad, sin quimicos ni electricidad, y escalable.</div>
 
-            <div class="canvas-container">
-                <canvas id="canvas3" width="500" height="400"></canvas>
-                <p><em>Azul: \( f(x) = (2x^3 - x)(2x^2 - x) \) | Roja: tangente \( y = 236x - 388 \) | Punto: (2, 84)</em></p>
-            </div>
-        </div>
+<h3>Arbol de Problemas</h3>
+<div class="cw"><canvas id="c2" width="700" height="460"></canvas><p class="cc">Figura 2. Arbol de problemas: causas y efectos de la falta de agua potable.</p></div>
+</div>
 
-        <!-- ========== PROBLEMA 4 ========== -->
-        <div class="problem">
-            <h2>Problema 4 — Encuentre la derivada de las siguientes funciones</h2>
+<!-- 3 PROCESO CREATIVO -->
+<div class="sec">
+<div class="st"><span class="n">3</span> Proceso Creativo Aplicado</div>
+<p>Se emplearon cinco herramientas de creatividad e innovacion de manera sistematica:</p>
 
-            <div class="formula-box">
-                <strong>Reglas fundamentales:</strong><br>
-                Potencia: \( \frac{d}{dx}[x^n] = nx^{n-1} \) &nbsp;|&nbsp;
-                Producto: \( (uv)' = u'v + uv' \) &nbsp;|&nbsp;
-                Cociente: \( \left(\frac{u}{v}\right)' = \frac{u'v - uv'}{v^2} \) &nbsp;|&nbsp;
-                Cadena: \( \frac{d}{dx}[f(g(x))] = f'(g(x)) \cdot g'(x) \)
-            </div>
+<h3>3.1 Design Thinking</h3>
+<div class="bx bb"><strong>Que es:</strong> Metodologia centrada en el ser humano con cinco etapas: Empatizar, Definir, Idear, Prototipar y Testear.</div>
+<div class="fg">
+<div class="fc"><span class="em">&#128483;</span><h4>Empatizar</h4><p>Escuchar a familias de La Renta y Vanegas sobre su dia a dia con el agua.</p></div>
+<div class="fc"><span class="em">&#127919;</span><h4>Definir</h4><p>El problema no es solo "falta de agua" sino falta de un sistema apropiable.</p></div>
+<div class="fc"><span class="em">&#128161;</span><h4>Idear</h4><p>Lluvia de ideas: filtros, SODIS, captacion de niebla, biofiltros...</p></div>
+<div class="fc"><span class="em">&#128295;</span><h4>Prototipar</h4><p>Diseño de sistema modular filtracion + UV solar.</p></div>
+<div class="fc"><span class="em">&#9989;</span><h4>Testear</h4><p>Validacion con lideres comunitarios de vereda Portugal.</p></div>
+</div>
+<div class="cw"><canvas id="c3" width="650" height="160"></canvas><p class="cc">Figura 3. Flujo Design Thinking aplicado al proyecto.</p></div>
 
-            <!-- 4a -->
-            <div class="sub-derivada">
-                <h3>a) \( f(x) = x^3(4 - 5x - x^3) \) <span class="regla-usada">Expansión + Potencia</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Expandimos el producto:
-                        \[ f(x) = x^3 \cdot 4 - x^3 \cdot 5x - x^3 \cdot x^3 = 4x^3 - 5x^4 - x^6 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivamos término a término con la regla de potencia:
-                        \[ f'(x) = 4 \cdot 3x^2 - 5 \cdot 4x^3 - 6x^5 = 12x^2 - 20x^3 - 6x^5 \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = 12x^2 - 20x^3 - 6x^5 \)</div>
-            </div>
+<h3>3.2 Pensamiento Divergente y Convergente</h3>
+<div class="bx bp"><strong>Divergente:</strong> genera multiples ideas sin juzgar. <strong>Convergente:</strong> evalua y selecciona las viables.</div>
+<p><strong>Fase divergente</strong> &mdash; 12 ideas generadas:</p>
+<ol>
+<li>Desalinizador solar portatil</li><li>Filtro ceramico con plata coloidal</li><li>SODIS (desinfeccion solar en botellas PET)</li><li>Biofiltro de arena lenta</li><li>Captacion de niebla con mallas</li><li>Planta movil de osmosis inversa</li><li>Pozo profundo con bomba manual</li><li>Clorador artesanal por goteo</li><li>Tanque con filtro grava-arena-carbon</li><li>App movil de monitoreo</li><li><strong>Sistema comunitario filtracion + UV solar</strong></li><li>Cosecha de agua lluvia con first-flush</li>
+</ol>
+<p><strong>Fase convergente</strong> &mdash; la idea #11 fue seleccionada por cumplir todos los criterios: bajo costo, facilidad de operacion, efectividad &gt;99.9%, sostenibilidad y escalabilidad.</p>
 
-            <!-- 4b -->
-            <div class="sub-derivada">
-                <h3>b) \( f(x) = \dfrac{3x - 2x^3}{\sqrt{x}} \) <span class="regla-usada">Simplificación + Potencia</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Reescribimos \(\sqrt{x} = x^{1/2}\) y dividimos cada término:
-                        \[ f(x) = \frac{3x}{x^{1/2}} - \frac{2x^3}{x^{1/2}} = 3x^{1/2} - 2x^{5/2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivamos:
-                        \[ f'(x) = 3 \cdot \tfrac{1}{2}x^{-1/2} - 2 \cdot \tfrac{5}{2}x^{3/2} = \frac{3}{2\sqrt{x}} - 5x^{3/2} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{3}{2\sqrt{x}} - 5x\sqrt{x} \)</div>
-            </div>
+<h3>3.3 Metodo SCAMPER</h3>
+<div class="bx bg"><strong>Que es:</strong> 7 verbos generadores que transforman una solucion: Sustituir, Combinar, Adaptar, Modificar, Poner otros usos, Eliminar, Reordenar.</div>
+<table>
+<tr><th>Letra</th><th>Accion</th><th>Aplicacion al proyecto</th></tr>
+<tr><td><strong>S</strong></td><td>Sustituir</td><td>Filtros comerciales por biofiltros de arena y carbon de cascara de coco local.</td></tr>
+<tr><td><strong>C</strong></td><td>Combinar</td><td>Filtracion mecanica + desinfeccion UV solar en un sistema integrado de dos etapas.</td></tr>
+<tr><td><strong>A</strong></td><td>Adaptar</td><td>Tecnologia SODIS (OMS) de individual a comunitario con panel solar colectivo.</td></tr>
+<tr><td><strong>M</strong></td><td>Modificar</td><td>Escala de 1 familia a 10-20 familias por estacion, reduciendo costo per capita.</td></tr>
+<tr><td><strong>P</strong></td><td>Poner otros usos</td><td>Sistema como herramienta educativa en escuelas rurales (ciencias y salud).</td></tr>
+<tr><td><strong>E</strong></td><td>Eliminar</td><td>Dependencia de quimicos (cloro), electricidad de red y tecnicos especializados.</td></tr>
+<tr><td><strong>R</strong></td><td>Reordenar</td><td>Etapas modulares independientes: si una falla, las otras siguen funcionando.</td></tr>
+</table>
+<div class="cw"><canvas id="c4" width="620" height="280"></canvas><p class="cc">Figura 4. Diagrama SCAMPER aplicado al proyecto.</p></div>
 
-            <!-- 4c -->
-            <div class="sub-derivada">
-                <h3>c) \( f(x) = x^{2/3}(x^2 - 3x) \) <span class="regla-usada">Expansión + Potencia</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Expandimos:
-                        \[ f(x) = x^{2/3} \cdot x^2 - x^{2/3} \cdot 3x = x^{2/3 + 2} - 3x^{2/3 + 1} = x^{8/3} - 3x^{5/3} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivamos:
-                        \[ f'(x) = \frac{8}{3}x^{5/3} - 3 \cdot \frac{5}{3}x^{2/3} = \frac{8}{3}x^{5/3} - 5x^{2/3} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{8}{3}x^{5/3} - 5x^{2/3} \)</div>
-            </div>
+<h3>3.4 Seis Sombreros para Pensar (De Bono)</h3>
+<div style="margin:12px 0">
+<p><span class="sm sw">Blanco - Datos:</span> 38% sin agua potable. EDA = 23% consultas. SODIS elimina 99.9% de E. coli (OMS). Costo: $350k-$450k/familia.</p>
+<p><span class="sm sr">Rojo - Emociones:</span> Madres angustiadas por la salud de sus hijos. Desconfianza por soluciones que "nunca llegan". Orgullo comunitario.</p>
+<p><span class="sm sk">Negro - Critica:</span> Riesgo de abandono del mantenimiento. Eficacia UV baja en epoca lluviosa. Carbon debe cambiarse cada 6-12 meses.</p>
+<p><span class="sm sy">Amarillo - Optimismo:</span> Empodera la comunidad. Reduce costos de salud. Escalable. Lebrija tiene 5.2h sol/dia promedio.</p>
+<p><span class="sm sg">Verde - Creatividad:</span> Sensor IoT de bajo costo para alertar cambio de filtro. "Guardian del Agua" voluntario. Creditos de carbono.</p>
+<p><span class="sm sb">Azul - Control:</span> Propuesta viable con plan de sostenibilidad. Priorizar veredas con peor calidad. Capacitacion obligatoria.</p>
+</div>
 
-            <!-- 4d -->
-            <div class="sub-derivada">
-                <h3>d) \( f(x) = \dfrac{4}{5x} \) <span class="regla-usada">Potencia negativa</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Reescribimos:
-                        \[ f(x) = \frac{4}{5} \cdot x^{-1} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivamos:
-                        \[ f'(x) = \frac{4}{5} \cdot (-1) \cdot x^{-2} = -\frac{4}{5x^2} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = -\dfrac{4}{5x^2} \)</div>
-            </div>
+<h3>3.5 Estrategia del Oceano Azul</h3>
+<div class="og">
+<div class="oc or"><h4 style="color:#fff;margin:0 0 6px">Oceano Rojo (actual)</h4><ul style="margin-left:16px;font-size:.88em"><li>Plantas costosas</li><li>Filtros importados</li><li>Carrotanques esporadicos</li><li>Dependencia del Estado</li><li>Requiere tecnicos</li></ul></div>
+<div class="oc ob"><h4 style="color:#fff;margin:0 0 6px">Oceano Azul (propuesta)</h4><ul style="margin-left:16px;font-size:.88em"><li>Sistema comunitario bajo costo</li><li>Materiales locales y reciclados</li><li>Energia solar gratuita</li><li>Autonomia comunitaria</li><li>Componente educativo</li></ul></div>
+</div>
+<p><strong>Matriz ERIC:</strong></p>
+<table>
+<tr><th style="background:#e74c3c">Eliminar</th><th style="background:#f39c12">Reducir</th><th style="background:#27ae60">Incrementar</th><th style="background:#0077b6">Crear</th></tr>
+<tr><td>Quimicos, tecnicos, electricidad</td><td>Costo (de $1.5M a $400k), complejidad</td><td>Participacion comunitaria, educacion, autonomia</td><td>Red de Guardianes del Agua, modulo educativo, modelo open-source</td></tr>
+</table>
+<div class="cw"><canvas id="c5" width="620" height="320"></canvas><p class="cc">Figura 5. Curva de valor: solucion tradicional vs. propuesta SCPS.</p></div>
+</div>
 
-            <!-- 4e -->
-            <div class="sub-derivada">
-                <h3>e) \( f(x) = \dfrac{x^3}{5} - \dfrac{5}{x^4} \) <span class="regla-usada">Potencia</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Reescribimos:
-                        \[ f(x) = \frac{1}{5}x^3 - 5x^{-4} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivamos cada término:
-                        \[ f'(x) = \frac{1}{5} \cdot 3x^2 - 5 \cdot (-4)x^{-5} = \frac{3x^2}{5} + \frac{20}{x^5} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{3x^2}{5} + \dfrac{20}{x^5} \)</div>
-            </div>
+<!-- 4 INNOVACION -->
+<div class="sec">
+<div class="st"><span class="n">4</span> Descripcion de la Idea de Innovacion</div>
+<h3>En que consiste</h3>
+<p>Un <strong>Sistema Comunitario de Potabilizacion Solar (SCPS)</strong> que integra tres etapas tecnologicas probadas en un modulo operado por la comunidad:</p>
+<div class="bx bg">
+<h4>Etapa 1: Sedimentacion y prefiltrado</h4>
+<p>Tanque de 500L donde el agua reposa 4-6 horas. Solidos pesados se depositan. Prefiltro de malla retiene particulas &gt;1mm.</p>
+<h4>Etapa 2: Biofiltro de arena y carbon activado</h4>
+<p>Filtro de arena fina, grava y carbon activado de cascara de coco. Elimina 90-95% de turbidez y parte de patogenos.</p>
+<h4>Etapa 3: Desinfeccion solar UV (SODIS mejorado)</h4>
+<p>Agua filtrada en botellas PET sobre panel reflectante inclinado. Radiacion UV-A inactiva 99.9% de patogenos en 6 horas.</p>
+</div>
+<div class="cw"><canvas id="c6" width="660" height="300"></canvas><p class="cc">Figura 6. Diagrama del Sistema Comunitario de Potabilizacion Solar (SCPS).</p></div>
 
-            <!-- 4f -->
-            <div class="sub-derivada">
-                <h3>f) \( f(x) = \dfrac{3 - x^2}{3 - x} \) <span class="regla-usada">Regla del cociente</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Identificamos: \( u = 3 - x^2 \), \( v = 3 - x \), \( u' = -2x \), \( v' = -1 \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Aplicamos la regla del cociente:
-                        \[ f'(x) = \frac{u'v - uv'}{v^2} = \frac{(-2x)(3 - x) - (3 - x^2)(-1)}{(3 - x)^2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Expandimos el numerador:
-                        \[ = \frac{-6x + 2x^2 + 3 - x^2}{(3 - x)^2} = \frac{x^2 - 6x + 3}{(3 - x)^2} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{x^2 - 6x + 3}{(3 - x)^2} \)</div>
-            </div>
+<h3>Tipo de innovacion</h3>
+<ul>
+<li><strong>Innovacion social:</strong> Aborda necesidad basica de poblacion vulnerable con participacion comunitaria.</li>
+<li><strong>Innovacion de proceso:</strong> Combina tecnologias existentes de manera novedosa para escala comunitaria rural.</li>
+</ul>
+<h3>Elementos innovadores</h3>
+<table>
+<tr><th>Elemento</th><th>Descripcion</th></tr>
+<tr><td>Integracion tecnologica</td><td>3 tecnologias probadas en sistema modular unico para escala comunitaria.</td></tr>
+<tr><td>Apropiabilidad</td><td>Construido, operado y mantenido 100% por la comunidad.</td></tr>
+<tr><td>Cero dependencia energetica</td><td>Funciona con energia solar y gravedad.</td></tr>
+<tr><td>Materiales locales</td><td>Arena de rio, cascara de coco, PET reciclado, laminas de zinc.</td></tr>
+<tr><td>Modelo open-source</td><td>Planos y manuales gratuitos para replicacion.</td></tr>
+<tr><td>Guardianes del Agua</td><td>Voluntarios capacitados que garantizan sostenibilidad.</td></tr>
+</table>
 
-            <!-- 4g -->
-            <div class="sub-derivada">
-                <h3>g) \( f(x) = \dfrac{2x^2 - 3x + 1}{\sqrt{x}} \) <span class="regla-usada">Simplificación + Potencia</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Dividimos cada término entre \( x^{1/2} \):
-                        \[ f(x) = 2x^{3/2} - 3x^{1/2} + x^{-1/2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivamos término a término:
-                        \[ f'(x) = 2 \cdot \frac{3}{2}x^{1/2} - 3 \cdot \frac{1}{2}x^{-1/2} + \left(-\frac{1}{2}\right)x^{-3/2} \]
-                        \[ = 3\sqrt{x} - \frac{3}{2\sqrt{x}} - \frac{1}{2x\sqrt{x}} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Simplificamos (factor común \(\frac{1}{2x\sqrt{x}}\)):
-                        \[ f'(x) = \frac{6x^2 - 3x - 1}{2x\sqrt{x}} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{6x^2 - 3x - 1}{2x\sqrt{x}} \)</div>
-            </div>
+<h3>&iquest;Por qu&eacute; es diferente a las soluciones tradicionales?</h3>
+<div class="bx bb">
+<p>El SCPS se distingue radicalmente de las alternativas convencionales por las siguientes razones:</p>
+</div>
+<table>
+<tr><th>Criterio</th><th>Soluci&oacute;n tradicional</th><th>SCPS (propuesta)</th></tr>
+<tr><td><strong>Costo por familia</strong></td><td>$600,000 &ndash; $1,500,000 COP</td><td><strong>~$38,000 COP</strong> (97% menor)</td></tr>
+<tr><td><strong>Energ&iacute;a requerida</strong></td><td>Electricidad de red o combustible</td><td><strong>Cero:</strong> funciona con energ&iacute;a solar y gravedad</td></tr>
+<tr><td><strong>Qu&iacute;micos</strong></td><td>Cloro, sulfato de aluminio, floculantes</td><td><strong>Ninguno:</strong> filtraci&oacute;n mec&aacute;nica + UV natural</td></tr>
+<tr><td><strong>Operador</strong></td><td>T&eacute;cnico certificado</td><td><strong>Guardi&aacute;n del Agua</strong> (voluntario capacitado)</td></tr>
+<tr><td><strong>Mantenimiento</strong></td><td>Repuestos importados, costosos</td><td>Materiales locales: arena, carb&oacute;n de coco, PET</td></tr>
+<tr><td><strong>Escalabilidad</strong></td><td>Requiere gran inversi&oacute;n para cada nueva zona</td><td>Modular: se replica con m&iacute;nima inversi&oacute;n</td></tr>
+<tr><td><strong>Apropiaci&oacute;n comunitaria</strong></td><td>Baja &mdash; la comunidad es usuaria pasiva</td><td><strong>Alta:</strong> la comunidad construye, opera y mantiene</td></tr>
+<tr><td><strong>Impacto educativo</strong></td><td>Ninguno</td><td>M&oacute;dulo pedag&oacute;gico en escuelas rurales</td></tr>
+</table>
+<div class="bx bg">
+<p><strong>En resumen:</strong> mientras las soluciones tradicionales dependen de infraestructura costosa, t&eacute;cnicos externos y qu&iacute;micos importados, el SCPS empodera a la comunidad con tecnolog&iacute;a apropiada, materiales locales y energ&iacute;a solar gratuita. No es solo una alternativa m&aacute;s barata: es un <strong>cambio de paradigma</strong> en la forma de abordar el acceso a agua potable rural.</p>
+</div>
+</div>
 
-            <!-- 4h -->
-            <div class="sub-derivada">
-                <h3>h) \( f(x) = \dfrac{x - 1}{4 - x} \) <span class="regla-usada">Regla del cociente</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> \( u = x - 1 \), \( v = 4 - x \), \( u' = 1 \), \( v' = -1 \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Regla del cociente:
-                        \[ f'(x) = \frac{(1)(4 - x) - (x - 1)(-1)}{(4 - x)^2} = \frac{4 - x + x - 1}{(4 - x)^2} = \frac{3}{(4 - x)^2} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{3}{(4 - x)^2} \)</div>
-            </div>
+<!-- 5 PROPUESTA DE VALOR -->
+<div class="sec">
+<div class="st"><span class="n">5</span> Propuesta de Valor</div>
+<h3>Que valor genera?</h3>
+<ul>
+<li><strong>Salud:</strong> Reduccion del 70-85% de EDA segun evidencia OMS de programas SODIS.</li>
+<li><strong>Economico:</strong> Ahorro de $180,000-$250,000 COP/año por familia en gastos medicos y compra de agua.</li>
+<li><strong>Social:</strong> Empoderamiento comunitario, liberacion de 2-3 horas diarias (mujeres y niños).</li>
+<li><strong>Ambiental:</strong> Reciclaje de PET, eliminacion de leña para hervir agua, cero emisiones.</li>
+</ul>
+<h3>A quien beneficia?</h3>
+<table>
+<tr><th>Grupo</th><th>Beneficio</th><th>Personas</th></tr>
+<tr><td>Familias rurales</td><td>Agua potable segura</td><td>4,200 (840 familias)</td></tr>
+<tr><td>Niños &lt;5 años</td><td>Reduccion de EDA</td><td>~630</td></tr>
+<tr><td>Mujeres</td><td>Tiempo productivo</td><td>~400</td></tr>
+<tr><td>Escuelas rurales</td><td>Agua + educacion</td><td>12 escuelas, 350 alumnos</td></tr>
+</table>
+<div class="cw"><canvas id="c7" width="580" height="300"></canvas><p class="cc">Figura 7. Comparativa de costos por familia: soluciones tradicionales vs. SCPS.</p></div>
+</div>
 
-            <!-- 4i -->
-            <div class="sub-derivada">
-                <h3>i) \( f(x) = 5\sqrt{5x^2 + 3x} \) <span class="regla-usada">Regla de la cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Reescribimos:
-                        \[ f(x) = 5(5x^2 + 3x)^{1/2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Sea \( g(x) = 5x^2 + 3x \) (función interior), entonces \( g'(x) = 10x + 3 \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Aplicamos regla de la cadena:
-                        \[ f'(x) = 5 \cdot \frac{1}{2}(5x^2 + 3x)^{-1/2} \cdot (10x + 3) = \frac{5(10x + 3)}{2\sqrt{5x^2 + 3x}} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{5(10x + 3)}{2\sqrt{5x^2 + 3x}} \)</div>
-            </div>
+<!-- 6 FUNDAMENTACION -->
+<div class="sec">
+<div class="st"><span class="n">6</span> Fundamentacion Conceptual</div>
+<p><strong>1. Creatividad como proceso sistematico</strong> (Csikszentmihalyi, 1996): La innovacion emerge de la interaccion entre conocimiento tecnico y comprension del contexto social.</p>
+<p><strong>2. Innovacion social</strong> (Mulgan et al., 2007): "Nuevas ideas que funcionan para satisfacer necesidades sociales insatisfechas." El SCPS satisface la necesidad basica de agua potable.</p>
+<p><strong>3. Manual de Oslo</strong> (OCDE, 2018): Una innovacion es "un producto o proceso nuevo o mejorado que difiere significativamente de los previos." El SCPS integra tecnologias existentes de manera original.</p>
+<div class="cita">"La desinfeccion solar (SODIS) ha demostrado reducir un 70% la diarrea infantil en Bolivia." &mdash; McGuigan et al. (2012), Journal of Hazardous Materials.</div>
+<div class="cita">"Los biofiltros de arena lenta eliminan hasta el 99% de patogenos cuando operan correctamente." &mdash; IRC (2009).</div>
+<div class="cita">"La innovacion social requiere participacion activa de las comunidades. Sin apropiacion, las mejores tecnologias fracasan." &mdash; Phills, Deiglmeier y Miller (2008), Stanford Social Innovation Review.</div>
+<div class="cita">"El carbon activado de cascara de coco presenta capacidad de adsorcion superior al comercial." &mdash; Ioannidou y Zabaniotou (2007), Renewable and Sustainable Energy Reviews.</div>
+</div>
 
-            <!-- 4j -->
-            <div class="sub-derivada">
-                <h3>j) \( f(x) = x(x - 1)^3 \) <span class="regla-usada">Regla del producto + cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> \( u = x \), \( v = (x-1)^3 \), \( u' = 1 \), \( v' = 3(x-1)^2 \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Regla del producto:
-                        \[ f'(x) = 1 \cdot (x-1)^3 + x \cdot 3(x-1)^2 = (x-1)^3 + 3x(x-1)^2 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Factorizamos \( (x-1)^2 \):
-                        \[ f'(x) = (x-1)^2[(x-1) + 3x] = (x-1)^2(4x - 1) \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = (x - 1)^2(4x - 1) \)</div>
-            </div>
+<!-- 7 VIABILIDAD -->
+<div class="sec">
+<div class="st"><span class="n">7</span> Viabilidad Preliminar</div>
+<h3>Viabilidad tecnica</h3>
+<div class="bx bg">
+<p><strong>Tecnologia probada:</strong> Filtracion lenta y SODIS validados por la OMS en 50+ paises.</p>
+<p><strong>Materiales locales:</strong> Arena de rio, cascara de coco, PET reciclado, laminas de zinc.</p>
+<p><strong>Clima favorable:</strong> 5.2h sol/dia promedio en Lebrija (suficiente para SODIS).</p>
+<p><strong>Capacidad:</strong> 200-300 litros/dia por estacion (10-20 familias).</p>
+</div>
+<h3>Viabilidad organizacional</h3>
+<div class="bx bb">
+<p><strong>Estructura:</strong> 18 JAC como base organizativa.</p>
+<p><strong>Modelo:</strong> "Guardian del Agua" (voluntario) por estacion. Cuota $5,000/mes por familia.</p>
+<p><strong>Alianzas:</strong> Alcaldia de Lebrija, CDMB, UNICEF Colombia.</p>
+</div>
+<h3>Impacto esperado</h3>
+<table>
+<tr><th>Dimension</th><th>Indicador</th><th>Meta 1 año</th><th>Meta 3 años</th></tr>
+<tr><td>Social</td><td>Familias con agua potable</td><td>120 familias</td><td>840 familias</td></tr>
+<tr><td>Salud</td><td>Reduccion de EDA</td><td>50%</td><td>70-85%</td></tr>
+<tr><td>Economico</td><td>Ahorro/familia/año</td><td>$180,000</td><td>$250,000</td></tr>
+<tr><td>Ambiental</td><td>PET recicladas</td><td>3,000</td><td>15,000</td></tr>
+</table>
+<h3>Presupuesto fase piloto (5 veredas)</h3>
+<div class="cw"><canvas id="c8" width="520" height="300"></canvas><p class="cc">Figura 8. Distribucion del presupuesto piloto ($4,550,000 COP).</p></div>
+<table>
+<tr><th>Rubro</th><th>Unitario</th><th>Cant.</th><th>Total</th></tr>
+<tr><td>Tanque sedimentacion 500L</td><td>$180,000</td><td>5</td><td>$900,000</td></tr>
+<tr><td>Materiales biofiltro</td><td>$120,000</td><td>5</td><td>$600,000</td></tr>
+<tr><td>Panel solar SODIS</td><td>$95,000</td><td>5</td><td>$475,000</td></tr>
+<tr><td>Tuberia PVC</td><td>$65,000</td><td>5</td><td>$325,000</td></tr>
+<tr><td>Botellas PET (transporte)</td><td>$15,000</td><td>5</td><td>$75,000</td></tr>
+<tr><td>Capacitacion</td><td>$200,000</td><td>5</td><td>$1,000,000</td></tr>
+<tr><td>Mano de obra local</td><td>$150,000</td><td>5</td><td>$750,000</td></tr>
+<tr><td>Kit analisis de agua</td><td>$85,000</td><td>5</td><td>$425,000</td></tr>
+<tr><th colspan="3">TOTAL</th><th>$4,550,000</th></tr>
+<tr><td colspan="3"><em>Costo por familia (120 familias)</em></td><td><strong>~$37,917</strong></td></tr>
+</table>
+</div>
 
-            <!-- 4k -->
-            <div class="sub-derivada">
-                <h3>k) \( f(x) = \ln(3x + 4) \) <span class="regla-usada">Regla de la cadena + logaritmo</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Recordamos: \( \frac{d}{dx}[\ln(g(x))] = \frac{g'(x)}{g(x)} \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Aquí \( g(x) = 3x + 4 \), por lo que \( g'(x) = 3 \):
-                        \[ f'(x) = \frac{3}{3x + 4} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{3}{3x + 4} \)</div>
-            </div>
+<!-- 8 IA -->
+<div class="sec">
+<div class="st"><span class="n">8</span> Uso Responsable de IA Generativa</div>
+<table>
+<tr><th>Herramienta</th><th>Uso</th><th>Parte del proceso</th></tr>
+<tr><td>ChatGPT / Claude</td><td>Estructuracion, formato HTML, verificacion de datos</td><td>Redaccion y formato</td></tr>
+<tr><td>Gemini (Google)</td><td>Consulta tecnica sobre SODIS y biofiltros</td><td>Investigacion y fundamentacion</td></tr>
+</table>
+<div class="bx by">
+<h4>Reflexion critica</h4>
+<ul>
+<li>La IA no conoce el contexto local de Lebrija. Datos especificos fueron verificados con fuentes municipales.</li>
+<li>La IA puede generar "alucinaciones". Cada dato tecnico fue contrastado con fuentes academicas.</li>
+<li>Las entrevistas con lideres comunitarios no pueden ser reemplazadas por herramientas digitales.</li>
+</ul>
+<p><strong>La IA fue herramienta de apoyo, no reemplazo del pensamiento critico y creativo del estudiante.</strong></p>
+</div>
+</div>
 
-            <!-- 4l -->
-            <div class="sub-derivada">
-                <h3>l) \( f(x) = (2\sqrt{x} + 1)(x^2 + 3) \) <span class="regla-usada">Regla del producto</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Identificamos:
-                        \[ u = 2\sqrt{x} + 1 = 2x^{1/2} + 1, \quad u' = 2 \cdot \frac{1}{2}x^{-1/2} = \frac{1}{\sqrt{x}} \]
-                        \[ v = x^2 + 3, \quad v' = 2x \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Regla del producto:
-                        \[ f'(x) = \frac{1}{\sqrt{x}}(x^2 + 3) + (2\sqrt{x} + 1)(2x) \]
-                        \[ = \frac{x^2 + 3}{\sqrt{x}} + 4x\sqrt{x} + 2x \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{x^2 + 3}{\sqrt{x}} + 4x\sqrt{x} + 2x \)</div>
-            </div>
+<!-- 9 CONCLUSIONES -->
+<div class="sec">
+<div class="st"><span class="n">9</span> Conclusiones</div>
+<h3>Principales aprendizajes</h3>
+<ol>
+<li><strong>La creatividad es un proceso, no un momento de inspiracion.</strong> Design Thinking, SCAMPER y los Seis Sombreros permitieron analizar sistematicamente el problema desde multiples angulos.</li>
+<li><strong>La innovacion no requiere tecnologia de punta.</strong> Nuestro SCPS combina tecnologias del siglo XIX con conocimiento moderno. La innovacion esta en la combinacion y la apropiabilidad.</li>
+<li><strong>El contexto define la innovacion.</strong> Una solucion brillante en laboratorio puede ser inutil si no considera la realidad economica y cultural de la comunidad.</li>
+<li><strong>El pensamiento divergente es incomodo pero necesario.</strong> Generar 12 ideas sin juzgarlas expandio el espacio de soluciones posibles.</li>
+</ol>
+<h3>Valor de la innovacion</h3>
+<p>El SCPS puede transformar la vida de 4,200+ personas en Lebrija: agua potable a costo 75% menor, cero dependencia de electricidad o quimicos, y un modelo que fortalece la autonomia comunitaria.</p>
+<div class="bx bp">
+<h4>Reflexion personal</h4>
+<p>Este proyecto nos enseñó que la innovacion puede nacer en una vereda, de la mano de una comunidad que decide construir sus propias soluciones. Como futuros profesionales, nuestro rol es <strong>co-crear con las comunidades</strong>, no "llevar soluciones". Los Seis Sombreros, SCAMPER y Oceano Azul no son solo herramientas academicas: son formas de pensar aplicables a cualquier desafio.</p>
+</div>
+</div>
 
-            <!-- 4m -->
-            <div class="sub-derivada">
-                <h3>m) \( f(x) = (\ln(3x))^5 \) <span class="regla-usada">Regla de la cadena (doble)</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Sea \( g(x) = \ln(3x) \). Entonces \( f(x) = [g(x)]^5 \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivada exterior: \( 5[g(x)]^4 \). Derivada interior: \( g'(x) = \frac{3}{3x} = \frac{1}{x} \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Cadena completa:
-                        \[ f'(x) = 5[\ln(3x)]^4 \cdot \frac{1}{x} = \frac{5[\ln(3x)]^4}{x} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{5[\ln(3x)]^4}{x} \)</div>
-            </div>
+<!-- 10 REFERENCIAS -->
+<div class="sec">
+<div class="st"><span class="n">10</span> Referencias</div>
+<p class="ref">Csikszentmihalyi, M. (1996). <em>Creativity: Flow and the Psychology of Discovery and Invention</em>. Harper Perennial.</p>
+<p class="ref">De Bono, E. (1985). <em>Six Thinking Hats</em>. Little, Brown and Company.</p>
+<p class="ref">Ioannidou, O. y Zabaniotou, A. (2007). Agricultural residues as precursors for activated carbon production. <em>Renewable and Sustainable Energy Reviews</em>, 11(9), 1966-2005.</p>
+<p class="ref">IRC. (2009). <em>Slow Sand Filtration for Community Water Supply</em>. Technical Paper No. 24.</p>
+<p class="ref">Kim, W. C. y Mauborgne, R. (2015). <em>Blue Ocean Strategy</em> (Expanded ed.). Harvard Business Review Press.</p>
+<p class="ref">McGuigan, K. G. et al. (2012). Solar water disinfection (SODIS): A review. <em>Journal of Hazardous Materials</em>, 235-236, 29-46.</p>
+<p class="ref">Mulgan, G. et al. (2007). <em>Social Innovation: What It Is, Why It Matters</em>. Oxford Said Business School.</p>
+<p class="ref">OCDE/Eurostat. (2018). <em>Oslo Manual 2018</em> (4th ed.). OECD Publishing.</p>
+<p class="ref">OMS. (2011). <em>Guidelines for Drinking-Water Quality</em> (4th ed.). WHO Press.</p>
+<p class="ref">Phills, J. A. et al. (2008). Rediscovering Social Innovation. <em>Stanford Social Innovation Review</em>, 6(4), 34-43.</p>
+<p class="ref">Plan de Desarrollo Municipal de Lebrija 2020-2023. Alcaldia de Lebrija, Santander.</p>
+<p class="ref">Secretaria de Salud de Santander. (2022). <em>ASIS Departamental</em>. Gobernacion de Santander.</p>
+</div>
 
-            <!-- 4n -->
-            <div class="sub-derivada">
-                <h3>n) \( f(x) = \ln\!\left(\dfrac{x^2 + 1}{x + 1}\right) \) <span class="regla-usada">Propiedades de ln + cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Usamos la propiedad \( \ln\left(\frac{a}{b}\right) = \ln(a) - \ln(b) \):
-                        \[ f(x) = \ln(x^2 + 1) - \ln(x + 1) \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivamos cada término:
-                        \[ f'(x) = \frac{2x}{x^2 + 1} - \frac{1}{x + 1} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Buscamos denominador común \( (x^2+1)(x+1) \):
-                        \[ f'(x) = \frac{2x(x+1) - (x^2+1)}{(x^2+1)(x+1)} = \frac{2x^2 + 2x - x^2 - 1}{(x^2+1)(x+1)} = \frac{x^2 + 2x - 1}{(x^2+1)(x+1)} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{x^2 + 2x - 1}{(x^2 + 1)(x + 1)} \)</div>
-            </div>
+</div></div>
 
-            <!-- 4o -->
-            <div class="sub-derivada">
-                <h3>o) \( f(x) = x^2 e^{-x} \) <span class="regla-usada">Regla del producto + cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> \( u = x^2 \), \( v = e^{-x} \), \( u' = 2x \), \( v' = -e^{-x} \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Regla del producto:
-                        \[ f'(x) = 2x \cdot e^{-x} + x^2 \cdot (-e^{-x}) = 2xe^{-x} - x^2e^{-x} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Factorizamos \( xe^{-x} \):
-                        \[ f'(x) = xe^{-x}(2 - x) \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = xe^{-x}(2 - x) \)</div>
-            </div>
-
-            <!-- 4p -->
-            <div class="sub-derivada">
-                <h3>p) \( f(x) = \dfrac{1}{\sqrt{x^2 + x}} \) <span class="regla-usada">Potencia negativa + cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Reescribimos:
-                        \[ f(x) = (x^2 + x)^{-1/2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Derivada interior: \( g(x) = x^2 + x \Rightarrow g'(x) = 2x + 1 \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Regla de la cadena:
-                        \[ f'(x) = -\frac{1}{2}(x^2 + x)^{-3/2} \cdot (2x + 1) = -\frac{2x + 1}{2(x^2 + x)^{3/2}} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = -\dfrac{2x + 1}{2\,(x^2 + x)^{3/2}} \)</div>
-            </div>
-
-            <!-- 4q -->
-            <div class="sub-derivada">
-                <h3>q) \( f(x) = x \cdot \ln(x^2) \) <span class="regla-usada">Producto + propiedades de ln</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Simplificamos usando \( \ln(x^2) = 2\ln(x) \):
-                        \[ f(x) = x \cdot 2\ln(x) = 2x\ln(x) \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Regla del producto con \( u = 2x \), \( v = \ln x \):
-                        \[ f'(x) = 2 \cdot \ln(x) + 2x \cdot \frac{1}{x} = 2\ln(x) + 2 \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = 2\ln(x) + 2 = 2[\ln(x) + 1] \)</div>
-            </div>
-
-            <!-- 4r -->
-            <div class="sub-derivada">
-                <h3>r) \( f(x) = \dfrac{e^{2x} - x}{x} \) <span class="regla-usada">Regla del cociente + cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Podemos simplificar o usar cociente directo. Separemos:
-                        \[ f(x) = \frac{e^{2x}}{x} - 1 \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Para \( \frac{e^{2x}}{x} \), usamos regla del cociente con \( u = e^{2x} \), \( v = x \):
-                        \[ u' = 2e^{2x}, \quad v' = 1 \]
-                        \[ \frac{d}{dx}\left[\frac{e^{2x}}{x}\right] = \frac{2e^{2x} \cdot x - e^{2x} \cdot 1}{x^2} = \frac{e^{2x}(2x - 1)}{x^2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> La derivada de \(-1\) es \(0\):
-                        \[ f'(x) = \frac{e^{2x}(2x - 1)}{x^2} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{e^{2x}(2x - 1)}{x^2} \)</div>
-            </div>
-
-            <!-- 4s -->
-            <div class="sub-derivada">
-                <h3>s) \( f(x) = \ln(2^x) \) <span class="regla-usada">Propiedades de logaritmos</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Simplificamos usando \( \ln(a^b) = b\ln(a) \):
-                        \[ f(x) = x \cdot \ln(2) \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Como \( \ln(2) \) es una constante (\(\approx 0.6931\)):
-                        \[ f'(x) = \ln(2) \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \ln(2) \approx 0.6931 \)</div>
-            </div>
-
-            <!-- 4t -->
-            <div class="sub-derivada">
-                <h3>t) \( f(x) = \dfrac{\ln(x - 1)}{\log_2(x)} \) <span class="regla-usada">Cociente + cambio de base</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Convertimos \( \log_2(x) \) a logaritmo natural:
-                        \[ \log_2(x) = \frac{\ln(x)}{\ln(2)} \]
-                        Entonces:
-                        \[ f(x) = \frac{\ln(x-1)}{\frac{\ln(x)}{\ln(2)}} = \frac{\ln(2) \cdot \ln(x-1)}{\ln(x)} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Regla del cociente con \( u = \ln(2) \cdot \ln(x-1) \) y \( v = \ln(x) \):
-                        \[ u' = \frac{\ln(2)}{x - 1}, \quad v' = \frac{1}{x} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span>
-                        \[ f'(x) = \frac{\frac{\ln(2)}{x-1} \cdot \ln(x) - \ln(2) \cdot \ln(x-1) \cdot \frac{1}{x}}{[\ln(x)]^2} \]
-                        \[ = \frac{\ln(2)\left[\frac{\ln(x)}{x-1} - \frac{\ln(x-1)}{x}\right]}{[\ln(x)]^2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 4:</span> Simplificamos:
-                        \[ f'(x) = \frac{\ln(2)\,[x\ln(x) - (x-1)\ln(x-1)]}{x(x-1)[\ln(x)]^2} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{\ln(2)\,[x\ln(x) - (x-1)\ln(x-1)]}{x(x-1)[\ln(x)]^2} \)</div>
-            </div>
-
-            <!-- 4u -->
-            <div class="sub-derivada">
-                <h3>u) \( f(x) = \left[\ln(x^2 + 1)\right]^2 \) <span class="regla-usada">Cadena doble</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Exterior: \( [\cdot]^2 \) → derivada \( 2[\cdot] \).
-                        Intermedia: \( \ln(\cdot) \) → derivada \( \frac{1}{\cdot} \).
-                        Interior: \( x^2 + 1 \) → derivada \( 2x \).
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Multiplicamos capa por capa:
-                        \[ f'(x) = 2\ln(x^2+1) \cdot \frac{1}{x^2+1} \cdot 2x = \frac{4x\ln(x^2+1)}{x^2+1} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{4x\,\ln(x^2 + 1)}{x^2 + 1} \)</div>
-            </div>
-
-            <!-- 4v -->
-            <div class="sub-derivada">
-                <h3>v) \( f(x) = \dfrac{2}{x^2 + 2x} \) <span class="regla-usada">Potencia negativa + cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Reescribimos:
-                        \[ f(x) = 2(x^2 + 2x)^{-1} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Cadena: derivada exterior \( -1 \cdot (\cdot)^{-2} \), interior \( 2x + 2 \):
-                        \[ f'(x) = 2 \cdot (-1)(x^2 + 2x)^{-2} \cdot (2x + 2) = \frac{-2(2x + 2)}{(x^2 + 2x)^2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Simplificamos \( 2(2x+2) = 4(x+1) \) y \( x^2 + 2x = x(x+2) \):
-                        \[ f'(x) = \frac{-4(x + 1)}{[x(x + 2)]^2} = \frac{-4(x + 1)}{x^2(x + 2)^2} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{-4(x + 1)}{x^2(x + 2)^2} \)</div>
-            </div>
-
-            <!-- 4w -->
-            <div class="sub-derivada">
-                <h3>w) \( f(x) = 3x^2 \log_{10}(e^x) \) <span class="regla-usada">Propiedades + producto</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Simplificamos \( \log_{10}(e^x) \):
-                        \[ \log_{10}(e^x) = x \cdot \log_{10}(e) = \frac{x}{\ln(10)} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Sustituimos:
-                        \[ f(x) = 3x^2 \cdot \frac{x}{\ln(10)} = \frac{3x^3}{\ln(10)} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 3:</span> Derivamos (regla de potencia, \(\frac{3}{\ln(10)}\) es constante):
-                        \[ f'(x) = \frac{3 \cdot 3x^2}{\ln(10)} = \frac{9x^2}{\ln(10)} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = \dfrac{9x^2}{\ln(10)} = 9x^2 \log_{10}(e) \approx 3.909x^2 \)</div>
-            </div>
-
-            <!-- 4x -->
-            <div class="sub-derivada">
-                <h3>x) \( f(x) = \dfrac{1}{\sqrt{\ln x}} \) <span class="regla-usada">Potencia negativa + cadena</span></h3>
-                <div class="solucion">
-                    <div class="paso">
-                        <span class="paso-label">Paso 1:</span> Reescribimos:
-                        \[ f(x) = (\ln x)^{-1/2} \]
-                    </div>
-                    <div class="paso">
-                        <span class="paso-label">Paso 2:</span> Cadena: exterior \( -\frac{1}{2}(\cdot)^{-3/2} \), interior \( \frac{1}{x} \):
-                        \[ f'(x) = -\frac{1}{2}(\ln x)^{-3/2} \cdot \frac{1}{x} = -\frac{1}{2x(\ln x)^{3/2}} \]
-                    </div>
-                </div>
-                <div class="respuesta-final">\( f'(x) = -\dfrac{1}{2x\,(\ln x)^{3/2}} \)</div>
-            </div>
-
-        </div>
-
-        <!-- ========== PROBLEMA 5 ========== -->
-        <div class="problem">
-            <h2>Problema 5 — Tasa de crecimiento de una población</h2>
-            
-            <div class="pregunta">
-                El tamaño de una población está modelada por \( P(x) = 5000 + 500x - 50x^2 \), donde \( x \) es el número de años después del 2001. Calcule la tasa de crecimiento en \( x = 2 \).
-            </div>
-
-            <div class="solucion">
-                <div class="paso">
-                    <span class="paso-label">Paso 1:</span> La <strong>tasa de crecimiento</strong> es la derivada de la función de población:
-                    \[ P'(x) = \frac{d}{dx}[5000 + 500x - 50x^2] = 500 - 100x \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 2:</span> Evaluamos en \( x = 2 \) (año 2003):
-                    \[ P'(2) = 500 - 100(2) = 500 - 200 = 300 \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 3: Interpretación.</span>
-                    En el año 2003, la población crece a una tasa de 300 individuos por año.
-                </div>
-            </div>
-
-            <div class="respuesta-final">
-                \( P'(2) = 300 \) individuos por año. La población crece a razón de 300 personas/año en \( x = 2 \).
-            </div>
-
-            <div class="canvas-container">
-                <canvas id="canvas5" width="500" height="350"></canvas>
-                <p><em>Curva azul: \(P(x)\). La línea roja muestra la tangente en \(x=2\) con pendiente 300.</em></p>
-            </div>
-        </div>
-
-        <!-- ========== PROBLEMA 6 ========== -->
-        <div class="problem">
-            <h2>Problema 6 — Cambio de población en meses</h2>
-            
-            <div class="pregunta">
-                Se proyecta que dentro de \(x\) meses, la población de cierto pueblo será de \( P(x) = 2x + 4x^{3/2} + 5000 \). ¿A qué razón cambiará la población respecto al tiempo dentro de 2 años?
-            </div>
-
-            <div class="solucion">
-                <div class="paso">
-                    <span class="paso-label">Paso 1:</span> Convertimos 2 años a meses: \( x = 2 \times 12 = 24 \) meses.
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 2:</span> Derivamos \( P(x) \):
-                    \[ P'(x) = 2 + 4 \cdot \frac{3}{2}x^{1/2} = 2 + 6\sqrt{x} \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 3:</span> Evaluamos en \( x = 24 \):
-                    \[ P'(24) = 2 + 6\sqrt{24} = 2 + 6 \cdot 2\sqrt{6} = 2 + 12\sqrt{6} \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 4:</span> Calculamos numéricamente:
-                    \[ \sqrt{6} \approx 2.449 \quad \Rightarrow \quad P'(24) \approx 2 + 12(2.449) = 2 + 29.39 \approx 31.39 \]
-                </div>
-            </div>
-
-            <div class="respuesta-final">
-                \( P'(24) = 2 + 12\sqrt{6} \approx 31.39 \) personas por mes.
-            </div>
-        </div>
-
-        <!-- ========== PROBLEMA 7 ========== -->
-        <div class="problem">
-            <h2>Problema 7 — Modelo de crecimiento exponencial</h2>
-            
-            <div class="pregunta">
-                Un modelo de crecimiento de cierto país está dado por \( P(x) = 30e^{0.025x} \) por millones de habitantes a partir de 1999. ¿A qué razón cambiará la población respecto al tiempo 2009?
-            </div>
-
-            <div class="solucion">
-                <div class="paso">
-                    <span class="paso-label">Paso 1:</span> Desde 1999 hasta 2009 hay \( x = 10 \) años.
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 2:</span> Derivamos usando la regla de la cadena (\( \frac{d}{dx}[e^{kx}] = ke^{kx} \)):
-                    \[ P'(x) = 30 \cdot 0.025 \cdot e^{0.025x} = 0.75\,e^{0.025x} \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 3:</span> Evaluamos en \( x = 10 \):
-                    \[ P'(10) = 0.75\,e^{0.025 \times 10} = 0.75\,e^{0.25} \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 4:</span> Calculamos numéricamente:
-                    \[ e^{0.25} \approx 1.2840 \quad \Rightarrow \quad P'(10) \approx 0.75 \times 1.2840 \approx 0.963 \]
-                </div>
-            </div>
-
-            <div class="respuesta-final">
-                \( P'(10) = 0.75\,e^{0.25} \approx 0.963 \) millones de habitantes por año (963,000 personas/año).
-            </div>
-
-            <div class="canvas-container">
-                <canvas id="canvas7" width="500" height="350"></canvas>
-                <p><em>Curva azul: \(P(x) = 30e^{0.025x}\). Línea roja: tangente en \(x = 10\) (año 2009).</em></p>
-            </div>
-        </div>
-
-        <!-- ========== PROBLEMA 8 ========== -->
-        <div class="problem">
-            <h2>Problema 8 — Producto Nacional Bruto (PNB)</h2>
-            
-            <div class="pregunta">
-                El ingreso per cápita promedio en cierto país al tiempo \( t \) es \( w = 6000 + 500t + 10t^2 \) (en dólares, \( t \) en años). El tamaño de la población en el instante \( t \) (en millones) es \( P = 10 + 0.2t + 0.01t^2 \). Calcule la tasa de cambio del Producto Nacional Bruto (PNB) para \( t = 3 \) años; donde \( PNB(t) = w \times P \) (miles de dólares).
-            </div>
-
-            <div class="solucion">
-                <div class="paso">
-                    <span class="paso-label">Paso 1:</span> Identificamos las funciones y sus derivadas:
-                    \[ w(t) = 6000 + 500t + 10t^2 \quad \Rightarrow \quad w'(t) = 500 + 20t \]
-                    \[ P(t) = 10 + 0.2t + 0.01t^2 \quad \Rightarrow \quad P'(t) = 0.2 + 0.02t \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 2:</span> La tasa de cambio del PNB se obtiene por <strong>regla del producto</strong>:
-                    \[ PNB'(t) = w'(t) \cdot P(t) + w(t) \cdot P'(t) \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 3:</span> Evaluamos cada función en \( t = 3 \):
-                    \[ w(3) = 6000 + 500(3) + 10(9) = 6000 + 1500 + 90 = 7590 \]
-                    \[ w'(3) = 500 + 20(3) = 500 + 60 = 560 \]
-                    \[ P(3) = 10 + 0.2(3) + 0.01(9) = 10 + 0.6 + 0.09 = 10.69 \]
-                    \[ P'(3) = 0.2 + 0.02(3) = 0.2 + 0.06 = 0.26 \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 4:</span> Sustituimos en la fórmula del PNB':
-                    \[ PNB'(3) = (560)(10.69) + (7590)(0.26) \]
-                    \[ = 5{,}986.4 + 1{,}973.4 \]
-                    \[ = 7{,}959.8 \]
-                </div>
-                <div class="paso">
-                    <span class="paso-label">Paso 5: Interpretación.</span>
-                    A los 3 años, el PNB está creciendo a una tasa de 7,959.8 miles de dólares por año. Esto significa que el crecimiento proviene tanto del aumento del ingreso per cápita (primera parte) como del crecimiento poblacional (segunda parte).
-                </div>
-            </div>
-
-            <div class="respuesta-final">
-                \( PNB'(3) = 7{,}959.8 \) miles de dólares por año.
-            </div>
-        </div>
-
-    </div> <!-- content -->
-</div> <!-- container -->
-
-<!-- ========== SCRIPTS DE GRÁFICAS ========== -->
 <script>
-// ===== UTILIDADES DE GRAFICACIÓN =====
-function drawGraph(canvasId, config) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    const { xMin, xMax, yMin, yMax, funcs, points, labels } = config;
-
-    const scaleX = W / (xMax - xMin);
-    const scaleY = H / (yMax - yMin);
-    const toX = x => (x - xMin) * scaleX;
-    const toY = y => H - (y - yMin) * scaleY;
-
-    // Fondo
-    ctx.fillStyle = '#fafafa';
-    ctx.fillRect(0, 0, W, H);
-
-    // Grid
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.lineWidth = 0.5;
-    for (let x = Math.ceil(xMin); x <= xMax; x++) {
-        ctx.beginPath(); ctx.moveTo(toX(x), 0); ctx.lineTo(toX(x), H); ctx.stroke();
+// === FIGURA 1: Fuentes de agua (barras) ===
+(function(){
+    var c=document.getElementById('c1');if(!c)return;
+    var ctx=c.getContext('2d'),W=c.width,H=c.height;
+    var data=[
+        {label:'Quebradas',val:42,color:'#e74c3c'},
+        {label:'Acueducto\nveredal',val:28,color:'#f39c12'},
+        {label:'Agua\nlluvia',val:18,color:'#3498db'},
+        {label:'Carro-\ntanques',val:8,color:'#9b59b6'},
+        {label:'Agua\nembotellada',val:4,color:'#2ecc71'}
+    ];
+    var mx=50,bW=70,gap=25,sX=60,bY=H-55;
+    ctx.fillStyle='#fafafa';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#2c3e50';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Fuentes de agua en veredas de Lebrija (%)',W/2,22);
+    ctx.strokeStyle='#e0e0e0';ctx.lineWidth=.5;
+    for(var i=0;i<=50;i+=10){
+        var y=bY-(i/50)*(bY-40);
+        ctx.beginPath();ctx.moveTo(sX-5,y);ctx.lineTo(W-15,y);ctx.stroke();
+        ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='right';
+        ctx.fillText(i+'%',sX-9,y+3);
     }
-    const yStep = (yMax - yMin) > 200 ? 50 : (yMax - yMin) > 50 ? 10 : (yMax - yMin) > 20 ? 5 : 1;
-    for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
-        ctx.beginPath(); ctx.moveTo(0, toY(y)); ctx.lineTo(W, toY(y)); ctx.stroke();
-    }
-
-    // Ejes
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1.5;
-    if (yMin <= 0 && yMax >= 0) {
-        ctx.beginPath(); ctx.moveTo(0, toY(0)); ctx.lineTo(W, toY(0)); ctx.stroke();
-    }
-    if (xMin <= 0 && xMax >= 0) {
-        ctx.beginPath(); ctx.moveTo(toX(0), 0); ctx.lineTo(toX(0), H); ctx.stroke();
-    }
-
-    // Etiquetas de ejes
-    ctx.fillStyle = '#666';
-    ctx.font = '10px sans-serif';
-    for (let x = Math.ceil(xMin); x <= xMax; x++) {
-        if (x === 0) continue;
-        ctx.fillText(x, toX(x) - 4, toY(0) + 12);
-    }
-    for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
-        if (y === 0) continue;
-        ctx.fillText(y, toX(0) + 4, toY(y) + 4);
-    }
-
-    // Funciones
-    funcs.forEach(f => {
-        ctx.beginPath();
-        ctx.strokeStyle = f.color || 'blue';
-        ctx.lineWidth = f.width || 2;
-        if (f.dash) ctx.setLineDash(f.dash);
-        else ctx.setLineDash([]);
-        let started = false;
-        const step = (xMax - xMin) / 500;
-        for (let x = xMin; x <= xMax; x += step) {
-            const y = f.fn(x);
-            if (isNaN(y) || !isFinite(y) || y < yMin - 50 || y > yMax + 50) { started = false; continue; }
-            if (!started) { ctx.moveTo(toX(x), toY(y)); started = true; }
-            else ctx.lineTo(toX(x), toY(y));
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
+    data.forEach(function(d,idx){
+        var x=sX+idx*(bW+gap);
+        var barH=(d.val/50)*(bY-40);
+        var y=bY-barH;
+        ctx.fillStyle=d.color;
+        ctx.beginPath();ctx.moveTo(x,bY);ctx.lineTo(x,y+5);
+        ctx.quadraticCurveTo(x,y,x+5,y);ctx.lineTo(x+bW-5,y);
+        ctx.quadraticCurveTo(x+bW,y,x+bW,y+5);ctx.lineTo(x+bW,bY);ctx.fill();
+        ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+        ctx.fillText(d.val+'%',x+bW/2,y+20);
+        ctx.fillStyle='#333';ctx.font='9.5px sans-serif';
+        d.label.split('\n').forEach(function(l,li){ctx.fillText(l,x+bW/2,bY+13+li*12);});
     });
+})();
 
-    // Puntos
-    if (points) {
-        points.forEach(p => {
-            ctx.beginPath();
-            ctx.arc(toX(p.x), toY(p.y), 5, 0, Math.PI * 2);
-            ctx.fillStyle = p.color || '#000';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-            if (p.label) {
-                ctx.fillStyle = '#333';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.fillText(p.label, toX(p.x) + 8, toY(p.y) - 8);
-            }
-        });
+// === FIGURA 2: Arbol de problemas ===
+(function(){
+    var c=document.getElementById('c2');if(!c)return;
+    var ctx=c.getContext('2d'),W=c.width,H=c.height;
+    ctx.fillStyle='#fefefe';ctx.fillRect(0,0,W,H);
+    function box(x,y,w,h,txt,bg,tc){
+        ctx.fillStyle=bg;
+        ctx.beginPath();ctx.moveTo(x+6,y);ctx.lineTo(x+w-6,y);
+        ctx.quadraticCurveTo(x+w,y,x+w,y+6);ctx.lineTo(x+w,y+h-6);
+        ctx.quadraticCurveTo(x+w,y+h,x+w-6,y+h);ctx.lineTo(x+6,y+h);
+        ctx.quadraticCurveTo(x,y+h,x,y+h-6);ctx.lineTo(x,y+6);
+        ctx.quadraticCurveTo(x,y,x+6,y);ctx.fill();
+        ctx.fillStyle=tc||'#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+        var ls=txt.split('\n');
+        ls.forEach(function(l,i){ctx.fillText(l,x+w/2,y+h/2-(ls.length-1)*6+i*13);});
     }
+    function arr(x1,y1,x2,y2){
+        ctx.strokeStyle='#888';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+        var a=Math.atan2(y2-y1,x2-x1);
+        ctx.beginPath();ctx.moveTo(x2,y2);
+        ctx.lineTo(x2-7*Math.cos(a-.35),y2-7*Math.sin(a-.35));
+        ctx.lineTo(x2-7*Math.cos(a+.35),y2-7*Math.sin(a+.35));
+        ctx.fillStyle='#888';ctx.fill();
+    }
+    ctx.fillStyle='#e74c3c';ctx.font='bold 12px sans-serif';ctx.textAlign='left';
+    ctx.fillText('EFECTOS',8,22);
+    ctx.fillStyle='#0077b6';ctx.fillText('PROBLEMA CENTRAL',8,210);
+    ctx.fillStyle='#e67e22';ctx.fillText('CAUSAS',8,280);
+    box(40,30,170,45,'Enfermedades diarreicas\n(EDA) en niños','#e74c3c');
+    box(260,30,170,45,'Gastos medicos agravan\nla pobreza','#e74c3c');
+    box(480,30,180,45,'Desercion escolar\npor enfermedad','#e74c3c');
+    box(100,100,130,35,'Desnutricion infantil','#ff7675');
+    box(430,100,140,35,'Baja productividad','#ff7675');
+    box(150,175,400,50,'FALTA DE ACCESO A AGUA POTABLE\nEN VEREDAS DE LEBRIJA','#0077b6');
+    box(30,300,180,45,'Ausencia de\ninfraestructura','#f39c12','#333');
+    box(260,300,170,45,'Recursos municipales\ninsuficientes','#f39c12','#333');
+    box(480,300,185,45,'Terreno montañoso\ndificulta obras','#f39c12','#333');
+    box(80,375,180,40,'Comunidades dispersas\ngeograficamente','#ffeaa7','#333');
+    box(400,375,190,40,'No hay tecnologias de\nbajo costo apropiadas','#ffeaa7','#333');
+    arr(120,300,250,225);arr(345,300,350,225);arr(570,300,450,225);
+    arr(170,375,170,345);arr(495,375,495,345);
+    arr(250,175,125,75);arr(350,175,345,75);arr(450,175,570,75);
+    arr(165,100,165,75);arr(500,100,500,75);
+})();
 
-    // Leyenda
-    if (labels) {
-        ctx.font = '11px sans-serif';
-        labels.forEach((l, i) => {
-            const lx = 12, ly = 16 + i * 18;
-            ctx.fillStyle = l.color;
-            ctx.fillRect(lx, ly - 8, 14, 3);
-            ctx.fillStyle = '#333';
-            ctx.fillText(l.text, lx + 20, ly);
-        });
+// === FIGURA 3: Design Thinking ===
+(function(){
+    var c=document.getElementById('c3');if(!c)return;
+    var ctx=c.getContext('2d');
+    ctx.fillStyle='#fafafa';ctx.fillRect(0,0,c.width,c.height);
+    var ph=[
+        {l:'Empatizar',c:'#e74c3c'},
+        {l:'Definir',c:'#f39c12'},
+        {l:'Idear',c:'#2ecc71'},
+        {l:'Prototipar',c:'#3498db'},
+        {l:'Testear',c:'#9b59b6'}
+    ];
+    var r=35,gap=130,sx=60,cy=75;
+    ph.forEach(function(p,i){
+        var cx=sx+i*gap;
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=p.c;ctx.fill();
+        ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+        ctx.fillText(p.l,cx,cy+4);
+        if(i<4){
+            ctx.strokeStyle='#aaa';ctx.lineWidth=2;
+            ctx.beginPath();ctx.moveTo(cx+r+4,cy);ctx.lineTo(cx+gap-r-10,cy);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(cx+gap-r-6,cy);
+            ctx.lineTo(cx+gap-r-14,cy-5);ctx.lineTo(cx+gap-r-14,cy+5);
+            ctx.fillStyle='#aaa';ctx.fill();
+        }
+    });
+    ctx.strokeStyle='#ccc';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(sx+4*gap,cy+r+5);
+    ctx.quadraticCurveTo(sx+2*gap,cy+r+40,sx,cy+r+5);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#ccc';ctx.font='9px sans-serif';
+    ctx.fillText('Iterativo',sx+2*gap,cy+r+35);
+})();
+
+// === FIGURA 4: SCAMPER ===
+(function(){
+    var c=document.getElementById('c4');if(!c)return;
+    var ctx=c.getContext('2d');
+    ctx.fillStyle='#fefefe';ctx.fillRect(0,0,c.width,c.height);
+    var items=[
+        {lt:'S',w:'Sustituir',cl:'#e74c3c',d:'Biofiltros\nlocales'},
+        {lt:'C',w:'Combinar',cl:'#e67e22',d:'Filtro +\nUV solar'},
+        {lt:'A',w:'Adaptar',cl:'#f1c40f',d:'SODIS a\ncomunidad'},
+        {lt:'M',w:'Modificar',cl:'#2ecc71',d:'1 a 20\nfamilias'},
+        {lt:'P',w:'Otros usos',cl:'#3498db',d:'Educacion\nescuelas'},
+        {lt:'E',w:'Eliminar',cl:'#9b59b6',d:'Quimicos\nelectricidad'},
+        {lt:'R',w:'Reordenar',cl:'#1abc9c',d:'Etapas\nmodulares'}
+    ];
+    ctx.fillStyle='#2c3e50';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Metodo SCAMPER',c.width/2,20);
+    var bw=74,g=8,tw=items.length*(bw+g)-g,sx=(c.width-tw)/2;
+    items.forEach(function(it,i){
+        var x=sx+i*(bw+g),y=40;
+        ctx.beginPath();ctx.arc(x+bw/2,y+24,20,0,Math.PI*2);
+        ctx.fillStyle=it.cl;ctx.fill();
+        ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+        ctx.fillText(it.lt,x+bw/2,y+30);
+        ctx.fillStyle='#333';ctx.font='bold 8.5px sans-serif';
+        ctx.fillText(it.w,x+bw/2,y+54);
+        ctx.fillStyle='#555';ctx.font='8px sans-serif';
+        it.d.split('\n').forEach(function(l,li){ctx.fillText(l,x+bw/2,y+68+li*11);});
+    });
+    var rx=c.width/2-170,ry=160;
+    ctx.fillStyle='#0077b6';
+    ctx.beginPath();ctx.moveTo(rx+6,ry);ctx.lineTo(rx+340-6,ry);
+    ctx.quadraticCurveTo(rx+340,ry,rx+340,ry+6);ctx.lineTo(rx+340,ry+40-6);
+    ctx.quadraticCurveTo(rx+340,ry+40,rx+340-6,ry+40);ctx.lineTo(rx+6,ry+40);
+    ctx.quadraticCurveTo(rx,ry+40,rx,ry+40-6);ctx.lineTo(rx,ry+6);
+    ctx.quadraticCurveTo(rx,ry,rx+6,ry);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';
+    ctx.fillText('RESULTADO: Sistema Comunitario de Potabilizacion Solar',c.width/2,ry+24);
+    ctx.strokeStyle='#0077b6';ctx.lineWidth=1;
+    [0,3,6].forEach(function(i){
+        var x=sx+i*(bw+g)+bw/2;
+        ctx.beginPath();ctx.moveTo(x,130);ctx.lineTo(c.width/2,ry);ctx.stroke();
+    });
+})();
+
+// === FIGURA 5: Oceano Azul curva de valor ===
+(function(){
+    var c=document.getElementById('c5');if(!c)return;
+    var ctx=c.getContext('2d'),W=c.width,H=c.height;
+    ctx.fillStyle='#fefefe';ctx.fillRect(0,0,W,H);
+    var factors=['Costo','Complejidad','Dep. quimica','Participacion','Sostenibilidad','Escalabilidad','Autonomia','Educacion'];
+    var trad=[9,8,9,2,3,4,1,1];
+    var innov=[3,3,1,9,9,8,9,8];
+    var pL=45,pR=25,pT=42,pB=50,pW=W-pL-pR,pH=H-pT-pB;
+    var step=pW/(factors.length-1);
+    ctx.fillStyle='#2c3e50';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Curva de Valor - Oceano Azul',W/2,18);
+    ctx.strokeStyle='#eaeaea';ctx.lineWidth=.5;
+    for(var i=0;i<=10;i+=2){
+        var y=pT+pH-(i/10)*pH;
+        ctx.beginPath();ctx.moveTo(pL,y);ctx.lineTo(W-pR,y);ctx.stroke();
+        ctx.fillStyle='#999';ctx.font='9px sans-serif';ctx.textAlign='right';
+        ctx.fillText(i,pL-6,y+3);
+    }
+    ctx.beginPath();ctx.strokeStyle='#e74c3c';ctx.lineWidth=2.5;
+    trad.forEach(function(v,i){var x=pL+i*step,y=pT+pH-(v/10)*pH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke();
+    trad.forEach(function(v,i){var x=pL+i*step,y=pT+pH-(v/10)*pH;ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle='#e74c3c';ctx.fill();});
+    ctx.beginPath();ctx.strokeStyle='#0077b6';ctx.lineWidth=2.5;
+    innov.forEach(function(v,i){var x=pL+i*step,y=pT+pH-(v/10)*pH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke();
+    innov.forEach(function(v,i){var x=pL+i*step,y=pT+pH-(v/10)*pH;ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle='#0077b6';ctx.fill();});
+    ctx.fillStyle='#333';ctx.font='8.5px sans-serif';ctx.textAlign='center';
+    factors.forEach(function(f,i){ctx.fillText(f,pL+i*step,pT+pH+14);});
+    ctx.fillStyle='#e74c3c';ctx.fillRect(W-210,30,12,3);
+    ctx.fillStyle='#333';ctx.font='10px sans-serif';ctx.textAlign='left';
+    ctx.fillText('Solucion tradicional',W-194,35);
+    ctx.fillStyle='#0077b6';ctx.fillRect(W-210,44,12,3);
+    ctx.fillStyle='#333';ctx.fillText('Propuesta SCPS',W-194,49);
+})();
+
+// === FIGURA 6: Diagrama del sistema ===
+(function(){
+    var c=document.getElementById('c6');if(!c)return;
+    var ctx=c.getContext('2d'),W=c.width,H=c.height;
+    ctx.fillStyle='#f0f7ff';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#2c3e50';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Sistema Comunitario de Potabilizacion Solar (SCPS)',W/2,22);
+    function rr(x,y,w,h,bg){
+        ctx.fillStyle=bg;ctx.beginPath();
+        ctx.moveTo(x+6,y);ctx.lineTo(x+w-6,y);ctx.quadraticCurveTo(x+w,y,x+w,y+6);
+        ctx.lineTo(x+w,y+h-6);ctx.quadraticCurveTo(x+w,y+h,x+w-6,y+h);
+        ctx.lineTo(x+6,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-6);
+        ctx.lineTo(x,y+6);ctx.quadraticCurveTo(x,y,x+6,y);ctx.fill();
+    }
+    function arw(x1,y1,x2,y2){
+        ctx.strokeStyle='#0077b6';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-8,y2-5);ctx.lineTo(x2-8,y2+5);
+        ctx.fillStyle='#0077b6';ctx.fill();
+    }
+    var cy=130;
+    rr(15,cy-40,100,80,'#74b9ff');
+    ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('FUENTE',65,cy-8);ctx.font='9px sans-serif';
+    ctx.fillText('Quebrada /',65,cy+6);ctx.fillText('Agua lluvia',65,cy+18);
+    arw(115,cy,145,cy);
+    rr(150,cy-40,120,80,'#fdcb6e');
+    ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';
+    ctx.fillText('ETAPA 1',210,cy-14);ctx.font='9px sans-serif';
+    ctx.fillText('Sedimentacion',210,cy);ctx.fillText('+ Prefiltrado',210,cy+12);
+    ctx.font='8px sans-serif';ctx.fillStyle='#666';ctx.fillText('500L, 4-6 horas',210,cy+28);
+    arw(270,cy,300,cy);
+    rr(305,cy-40,120,80,'#a29bfe');
+    ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';
+    ctx.fillText('ETAPA 2',365,cy-14);ctx.font='9px sans-serif';
+    ctx.fillText('Biofiltro',365,cy);ctx.fillText('Arena+Carbon',365,cy+12);
+    ctx.font='8px sans-serif';ctx.fillStyle='#ddd';ctx.fillText('90-95% turbidez',365,cy+28);
+    arw(425,cy,455,cy);
+    rr(460,cy-40,130,80,'#55efc4');
+    ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';
+    ctx.fillText('ETAPA 3',525,cy-14);ctx.font='9px sans-serif';
+    ctx.fillText('UV Solar (SODIS)',525,cy);ctx.fillText('Botellas PET',525,cy+12);
+    ctx.font='8px sans-serif';ctx.fillStyle='#555';ctx.fillText('99.9% patogenos',525,cy+28);
+    arw(590,cy,620,cy);
+    rr(625,cy-25,30,50,'#00b894');
+    ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';
+    ctx.fillText('=',640,cy+6);
+    ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(525,cy-60,16,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#f39c12';ctx.lineWidth=2;
+    for(var i=0;i<8;i++){
+        var a=i*Math.PI/4;
+        ctx.beginPath();ctx.moveTo(525+20*Math.cos(a),cy-60+20*Math.sin(a));
+        ctx.lineTo(525+28*Math.cos(a),cy-60+28*Math.sin(a));ctx.stroke();
+    }
+    ctx.fillStyle='#f39c12';ctx.font='9px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Energia solar',525,cy-85);
+    ctx.fillStyle='#0077b6';ctx.font='bold 12px sans-serif';
+    ctx.fillText('AGUA POTABLE SEGURA',W/2,H-25);
+    ctx.fillStyle='#27ae60';ctx.font='10px sans-serif';
+    ctx.fillText('Sin quimicos | Sin electricidad | Operado por la comunidad',W/2,H-10);
+})();
+
+// === FIGURA 7: Comparativa de costos ===
+(function(){
+    var c=document.getElementById('c7');if(!c)return;
+    var ctx=c.getContext('2d'),W=c.width,H=c.height;
+    ctx.fillStyle='#fafafa';ctx.fillRect(0,0,W,H);
+    var data=[
+        {label:'Planta\nconvencional',val:1500000,color:'#e74c3c'},
+        {label:'Filtro\ncomercial',val:800000,color:'#f39c12'},
+        {label:'Carrotanque\n(anual)',val:600000,color:'#9b59b6'},
+        {label:'SCPS\n(propuesta)',val:38000,color:'#27ae60'}
+    ];
+    var mx=1500000,bW=90,gap=35,sX=70,bY=H-55;
+    ctx.fillStyle='#2c3e50';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Costo por familia (COP)',W/2,20);
+    data.forEach(function(d,idx){
+        var x=sX+idx*(bW+gap);
+        var barH=Math.max((d.val/mx)*(bY-40),8);
+        var y=bY-barH;
+        ctx.fillStyle=d.color;
+        ctx.beginPath();ctx.moveTo(x,bY);ctx.lineTo(x,y+4);
+        ctx.quadraticCurveTo(x,y,x+4,y);ctx.lineTo(x+bW-4,y);
+        ctx.quadraticCurveTo(x+bW,y,x+bW,y+4);ctx.lineTo(x+bW,bY);ctx.fill();
+        ctx.fillStyle=d.val<100000?'#333':'#fff';
+        ctx.font='bold 11px sans-serif';
+        var txt=d.val>=1000000?'$'+((d.val/1000000).toFixed(1))+'M':'$'+(d.val/1000)+'k';
+        ctx.fillText(txt,x+bW/2,d.val<100000?y-8:y+18);
+        ctx.fillStyle='#333';ctx.font='9px sans-serif';
+        d.label.split('\n').forEach(function(l,li){ctx.fillText(l,x+bW/2,bY+13+li*12);});
+    });
+    ctx.strokeStyle='#27ae60';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(sX+bW/2,bY-(1500000/mx)*(bY-40)+20);
+    ctx.lineTo(sX+3*(bW+gap)+bW/2,bY-8);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#27ae60';ctx.font='bold 10px sans-serif';
+    ctx.fillText('97% ahorro',W/2+30,bY-60);
+})();
+
+// === FIGURA 8: Presupuesto (dona) ===
+(function(){
+    var c=document.getElementById('c8');if(!c)return;
+    var ctx=c.getContext('2d'),W=c.width,H=c.height;
+    ctx.fillStyle='#fafafa';ctx.fillRect(0,0,W,H);
+    var data=[
+        {label:'Capacitacion',val:1000000,color:'#e74c3c'},
+        {label:'Tanques',val:900000,color:'#3498db'},
+        {label:'Mano de obra',val:750000,color:'#2ecc71'},
+        {label:'Biofiltro',val:600000,color:'#f39c12'},
+        {label:'Panel SODIS',val:475000,color:'#9b59b6'},
+        {label:'Kit analisis',val:425000,color:'#1abc9c'},
+        {label:'Tuberia PVC',val:325000,color:'#34495e'},
+        {label:'Botellas PET',val:75000,color:'#e67e22'}
+    ];
+    var total=4550000;
+    ctx.fillStyle='#2c3e50';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Presupuesto Fase Piloto: $4,550,000 COP',W/2,20);
+    var cx=180,cy=165,R=110,r=55;
+    var startA=-Math.PI/2;
+    data.forEach(function(d){
+        var sweep=(d.val/total)*Math.PI*2;
+        var endA=startA+sweep;
+        ctx.beginPath();ctx.moveTo(cx+r*Math.cos(startA),cy+r*Math.sin(startA));
+        ctx.arc(cx,cy,R,startA,endA);
+        ctx.arc(cx,cy,r,endA,startA,true);
+        ctx.fillStyle=d.color;ctx.fill();
+        var midA=startA+sweep/2;
+        if(sweep>0.15){
+            ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.textAlign='center';
+            var tx=cx+(R-20)*Math.cos(midA),ty=cy+(R-20)*Math.sin(midA);
+            ctx.fillText(Math.round(d.val/total*100)+'%',tx,ty+3);
+        }
+        startA=endA;
+    });
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,r-2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#0077b6';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('$4.55M',cx,cy-2);ctx.font='9px sans-serif';ctx.fillText('COP',cx,cy+12);
+    var lx=330,ly=50;
+    data.forEach(function(d,i){
+        ctx.fillStyle=d.color;ctx.fillRect(lx,ly+i*24,12,12);
+        ctx.fillStyle='#333';ctx.font='10px sans-serif';ctx.textAlign='left';
+        var pct=Math.round(d.val/total*100);
+        ctx.fillText(d.label+' ('+pct+'%)',lx+18,ly+i*24+10);
+    });
+})();
+
+// === FUNCION: Generar APA ===
+function obtenerDatosAPA(){
+    var d={};
+    d.titulo=document.getElementById('apaTitulo').value.trim();
+    d.estudiante=document.getElementById('apaEstudiante').value.trim();
+    d.programa=document.getElementById('apaPrograma').value.trim();
+    d.facultad=document.getElementById('apaFacultad').value.trim();
+    d.institucion=document.getElementById('apaInstitucion').value.trim();
+    d.asignatura=document.getElementById('apaAsignatura').value.trim();
+    d.docente=document.getElementById('apaDocente').value.trim();
+    d.tipo=document.getElementById('apaTipo').value.trim();
+    d.ciudad=document.getElementById('apaCiudad').value.trim();
+    var fechaRaw=document.getElementById('apaFecha').value;
+    var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    if(fechaRaw){var dt=new Date(fechaRaw+'T12:00:00');d.fecha=dt.getDate()+' de '+meses[dt.getMonth()]+' de '+dt.getFullYear();}
+    else{var h=new Date();d.fecha=h.getDate()+' de '+meses[h.getMonth()]+' de '+h.getFullYear();}
+    d.formato=document.querySelector('input[name="apaFormato"]:checked').value;
+    return d;
+}
+
+function poblarPortada(d){
+    document.getElementById('apaCoverTitulo').textContent=d.titulo||'Sin t\u00edtulo';
+    document.getElementById('apaCoverEstudiante').textContent=d.estudiante;
+    document.getElementById('apaCoverPrograma').textContent=(d.programa?(d.programa+(d.facultad?', '+d.facultad:'')):'');
+    document.getElementById('apaCoverInstitucion').textContent=d.institucion;
+    document.getElementById('apaCoverAsignatura').textContent=d.asignatura;
+    document.getElementById('apaCoverDocente').textContent=d.docente;
+    document.getElementById('apaCoverTipo').textContent=d.tipo;
+    document.getElementById('apaCoverCiudadFecha').textContent=(d.ciudad?d.ciudad+', ':'')+d.fecha;
+    document.getElementById('webEstudiante').textContent=d.estudiante;
+    document.getElementById('webDocente').textContent=d.docente;
+    document.getElementById('webFecha').textContent=d.fecha;
+}
+
+function generarAPA(){
+    var d=obtenerDatosAPA();
+    if(!d.estudiante){alert('Por favor ingrese el nombre del estudiante.');return;}
+    if(!d.docente){alert('Por favor ingrese el nombre del docente.');return;}
+    poblarPortada(d);
+    document.getElementById('apaModal').classList.remove('active');
+
+    if(d.formato==='pdf'){
+        setTimeout(function(){window.print();},300);
+    }else{
+        setTimeout(function(){generarWord(d);},300);
     }
 }
 
-// ===== GRÁFICA PROBLEMA 2 =====
-drawGraph('canvas2', {
-    xMin: -3, xMax: 5, yMin: -40, yMax: 15,
-    funcs: [
-        { fn: x => 1 - 2*x*x, color: '#1565c0', width: 2.5 },
-        { fn: x => -8*x + 9, color: '#e53935', width: 2, dash: [6, 4] }
-    ],
-    points: [
-        { x: 2, y: -7, label: '(2, -7)', color: '#000' }
-    ],
-    labels: [
-        { color: '#1565c0', text: 'f(x) = 1 - 2x²' },
-        { color: '#e53935', text: 'Tangente: y = -8x + 9' }
-    ]
-});
+function generarWord(d){
+    // Convertir canvas a imagenes base64
+    var canvasImgs={};
+    var canvases=document.querySelectorAll('canvas');
+    canvases.forEach(function(cv){
+        try{canvasImgs[cv.id]=cv.toDataURL('image/png');}catch(e){}
+    });
 
-// ===== GRÁFICA PROBLEMA 3 =====
-drawGraph('canvas3', {
-    xMin: -0.5, xMax: 3, yMin: -100, yMax: 250,
-    funcs: [
-        { fn: x => (2*x*x*x - x) * (2*x*x - x), color: '#1565c0', width: 2.5 },
-        { fn: x => 236*x - 388, color: '#e53935', width: 2, dash: [6, 4] }
-    ],
-    points: [
-        { x: 2, y: 84, label: '(2, 84)', color: '#000' }
-    ],
-    labels: [
-        { color: '#1565c0', text: 'f(x) = (2x³-x)(2x²-x)' },
-        { color: '#e53935', text: 'Tangente: y = 236x - 388' }
-    ]
-});
+    // Obtener contenido del body (secciones)
+    var contenido=document.querySelector('.ct').innerHTML;
 
-// ===== GRÁFICA PROBLEMA 5 =====
-drawGraph('canvas5', {
-    xMin: -0.5, xMax: 8, yMin: 4000, yMax: 7000,
-    funcs: [
-        { fn: x => 5000 + 500*x - 50*x*x, color: '#1565c0', width: 2.5 },
-        { fn: x => 300*(x - 2) + 5800, color: '#e53935', width: 2, dash: [6, 4] }
-    ],
-    points: [
-        { x: 2, y: 5800, label: '(2, 5800)', color: '#000' }
-    ],
-    labels: [
-        { color: '#1565c0', text: 'P(x) = 5000 + 500x - 50x²' },
-        { color: '#e53935', text: 'Tangente: pendiente = 300' }
-    ]
-});
+    // Reemplazar canvas por imagenes
+    canvases.forEach(function(cv){
+        if(canvasImgs[cv.id]){
+            var regex=new RegExp('<canvas[^>]*id=["\']'+cv.id+'["\'][^>]*>[^<]*</canvas>','gi');
+            contenido=contenido.replace(regex,'<img src="'+canvasImgs[cv.id]+'" style="max-width:100%;display:block;margin:12pt auto;">');
+        }
+    });
 
-// ===== GRÁFICA PROBLEMA 7 =====
-drawGraph('canvas7', {
-    xMin: -1, xMax: 25, yMin: 25, yMax: 60,
-    funcs: [
-        { fn: x => 30 * Math.exp(0.025 * x), color: '#1565c0', width: 2.5 },
-        { fn: x => 0.963 * (x - 10) + 30 * Math.exp(0.25), color: '#e53935', width: 2, dash: [6, 4] }
-    ],
-    points: [
-        { x: 10, y: 30 * Math.exp(0.25), label: '(10, 38.5)', color: '#000' }
-    ],
-    labels: [
-        { color: '#1565c0', text: 'P(x) = 30e^(0.025x)' },
-        { color: '#e53935', text: "Tangente en x=10 (año 2009)" }
-    ]
-});
+    // Construir tabla de contenido para Word
+    var tocItems=[
+        {t:'Introducci\u00f3n',l:1},{t:'Identificaci\u00f3n del Problema o Necesidad',l:1},
+        {t:'Descripci\u00f3n de la situaci\u00f3n problem\u00e1tica',l:2},{t:'Por qu\u00e9 se requiere una soluci\u00f3n innovadora',l:2},{t:'\u00c1rbol de Problemas',l:2},
+        {t:'Proceso Creativo Aplicado',l:1},
+        {t:'Design Thinking',l:2},{t:'Pensamiento Divergente y Convergente',l:2},{t:'SCAMPER',l:2},{t:'Seis Sombreros para Pensar',l:2},{t:'Estrategia del Oc\u00e9ano Azul',l:2},
+        {t:'Descripci\u00f3n de la Idea de Innovaci\u00f3n',l:1},{t:'\u00bfPor qu\u00e9 es diferente a las soluciones tradicionales?',l:2},
+        {t:'Propuesta de Valor',l:1},{t:'Fundamentaci\u00f3n Conceptual',l:1},{t:'Viabilidad Preliminar',l:1},
+        {t:'Viabilidad t\u00e9cnica',l:2},{t:'Viabilidad organizacional',l:2},{t:'Impacto esperado',l:2},{t:'Presupuesto fase piloto',l:2},
+        {t:'Uso Responsable de IA Generativa',l:1},{t:'Conclusiones',l:1},{t:'Referencias',l:1}
+    ];
+    var tocHtml='<h2 style="text-align:center;font-family:Times New Roman,serif;font-size:12pt;font-weight:bold;">Tabla de Contenido</h2>';
+    tocItems.forEach(function(it){
+        var pl=it.l===2?'padding-left:1.27cm;':'';
+        var fw=it.l===1?'font-weight:bold;':'';
+        tocHtml+='<p style="font-family:Times New Roman,serif;font-size:12pt;line-height:2;margin:0;'+pl+fw+'">'+it.t+'</p>';
+    });
+
+    // Portada APA para Word
+    var portada='<div style="text-align:center;page-break-after:always;font-family:Times New Roman,serif;font-size:12pt;line-height:2;">';
+    portada+='<br><br><br><br><br><br><br><br>';
+    portada+='<p style="font-weight:bold;font-size:12pt;margin-bottom:24pt;line-height:2;">'+esc(d.titulo)+'</p>';
+    portada+='<p style="font-size:12pt;line-height:2;margin:0;">'+esc(d.estudiante)+'</p>';
+    if(d.programa) portada+='<p style="font-size:12pt;line-height:2;margin:0;">'+esc(d.programa+(d.facultad?', '+d.facultad:''))+'</p>';
+    portada+='<p style="font-size:12pt;line-height:2;margin:0;">'+esc(d.institucion)+'</p>';
+    portada+='<p style="font-size:12pt;line-height:2;margin:0;">'+esc(d.asignatura)+'</p>';
+    portada+='<p style="font-size:12pt;line-height:2;margin:0;">'+esc(d.docente)+'</p>';
+    portada+='<p style="font-size:12pt;line-height:2;margin:0;">'+esc(d.tipo)+'</p>';
+    portada+='<p style="font-size:12pt;line-height:2;margin:0;">'+esc(d.ciudad?d.ciudad+', ':'')+esc(d.fecha)+'</p>';
+    portada+='</div>';
+
+    var tocPage='<div style="page-break-after:always;font-family:Times New Roman,serif;">'+tocHtml+'</div>';
+
+    // Documento Word completo como HTML
+    var wordDoc='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">';
+    wordDoc+='<head><meta charset="utf-8">';
+    wordDoc+='<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->';
+    wordDoc+='<style>';
+    wordDoc+='@page{size:letter;margin:2.54cm;}';
+    wordDoc+='body{font-family:"Times New Roman",serif;font-size:12pt;line-height:2;color:#000;}';
+    wordDoc+='h2,h3{font-family:"Times New Roman",serif;font-size:12pt;font-weight:bold;color:#000;margin:12pt 0 6pt;}';
+    wordDoc+='h2{text-align:center;}';
+    wordDoc+='h4{font-family:"Times New Roman",serif;font-size:12pt;font-weight:bold;font-style:italic;color:#000;}';
+    wordDoc+='p{font-family:"Times New Roman",serif;font-size:12pt;line-height:2;text-indent:1.27cm;margin:0;text-align:justify;}';
+    wordDoc+='table{border-collapse:collapse;width:100%;font-family:"Times New Roman",serif;font-size:10pt;margin:12pt 0;}';
+    wordDoc+='th{border-top:2pt solid #000;border-bottom:1pt solid #000;padding:4pt 8pt;font-weight:bold;text-align:left;}';
+    wordDoc+='td{padding:4pt 8pt;border-bottom:none;}';
+    wordDoc+='tr:last-child td{border-bottom:1pt solid #000;}';
+    wordDoc+='ul,ol{font-family:"Times New Roman",serif;font-size:12pt;line-height:2;margin-left:2.54cm;}';
+    wordDoc+='li{font-family:"Times New Roman",serif;font-size:12pt;}';
+    wordDoc+='.ref{font-family:"Times New Roman",serif;font-size:12pt;padding-left:1.27cm;text-indent:-1.27cm;line-height:2;margin:0;}';
+    wordDoc+='.st{font-family:"Times New Roman",serif;font-size:12pt;font-weight:bold;text-align:center;margin:24pt 0 12pt;}';
+    wordDoc+='.st .n{display:none;}';
+    wordDoc+='.bx{border-left:2px solid #000;padding:6pt 12pt;margin:6pt 0;}';
+    wordDoc+='.bx p,.ref,.cc,.fc p{text-indent:0!important;}';
+    wordDoc+='.og,.fg{display:block;}';
+    wordDoc+='.oc{border:1px solid #000;padding:10px;margin-bottom:6pt;}';
+    wordDoc+='.cc{font-size:10pt;font-style:italic;text-indent:0;text-align:center;}';
+    wordDoc+='.sm{font-size:10pt;border:1px solid #999;padding:2pt 8pt;display:inline-block;margin:2pt;}';
+    wordDoc+='.cw{text-align:center;margin:12pt 0;}';
+    wordDoc+='.fc{border:1px solid #000;padding:8pt;display:inline-block;width:18%;vertical-align:top;margin:2pt;text-align:center;}';
+    wordDoc+='img{max-width:100%;}';
+    wordDoc+='</style></head><body>';
+    wordDoc+=portada;
+    wordDoc+=tocPage;
+    wordDoc+=contenido;
+    wordDoc+='</body></html>';
+
+    // Descargar como .doc
+    var blob=new Blob(['\ufeff'+wordDoc],{type:'application/msword'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='ACA_Agua_Potable_Lebrija_APA.doc';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';}
+
+
+// Auto-set fecha de hoy en el campo date
+(function(){
+    var hoy=new Date();
+    var m=hoy.getMonth()+1;
+    var d=hoy.getDate();
+    document.getElementById('apaFecha').value=hoy.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(d<10?'0':'')+d;
+})();
 </script>
-
 </body>
 </html>
