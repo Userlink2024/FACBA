@@ -781,6 +781,48 @@
     loadCurrentUser();
     const userName = () => (currentUser ? (currentUser.nombreCompleto || currentUser.usuario || 'Desconocido') : 'Desconocido');
 
+    // === ROLE HELPERS (China Inventory) ===
+    function getChinaRol() { return (currentUser && currentUser.permisos) ? currentUser.permisos.toLowerCase() : ''; }
+    function esChinaAdmin() { return getChinaRol() === 'administrador de china' || getChinaRol() === 'administrador'; }
+    function esChinaOperador() { return getChinaRol() === 'operador de china'; }
+    function esChinaSupernumerario() { return getChinaRol() === 'supernumerario'; }
+    // Can modify data in China inventory
+    function puedeChinaEditar() { return esChinaAdmin(); }
+    // View-only roles: Operador de China + Supernumerario
+    function esChinaSoloLectura() { return esChinaOperador() || esChinaSupernumerario(); }
+
+    // === APPLY VIEW-ONLY MODE FOR READ-ONLY ROLES ===
+    if (esChinaSoloLectura()) {
+        // Wait for DOM to be ready then disable all editing controls
+        setTimeout(() => {
+            // Disable all forms, inputs, buttons that create/modify/delete
+            document.querySelectorAll('form').forEach(f => {
+                f.addEventListener('submit', e => { e.preventDefault(); e.stopImmediatePropagation(); toast('No tiene permisos para realizar esta acción.', 'error'); return false; }, true);
+            });
+            // Disable action buttons (add, save, delete, etc.)
+            document.querySelectorAll('button.btn-primary, button.btn-danger, button[type="submit"], .btn-action').forEach(btn => {
+                if (!btn.classList.contains('nav-tab') && !btn.id?.includes('dark') && !btn.id?.includes('Settings')) {
+                    btn.disabled = true;
+                    btn.title = 'Solo lectura';
+                    btn.style.opacity = '0.5';
+                    btn.style.pointerEvents = 'none';
+                }
+            });
+            // Disable all form inputs in modules (but not search/filter inputs)
+            document.querySelectorAll('.module input:not([type="search"]):not(.filter-input), .module select, .module textarea').forEach(el => {
+                if (!el.closest('.nav-tabs') && !el.id?.includes('buscar') && !el.id?.includes('filtro') && !el.id?.includes('search') && !el.id?.includes('Search')) {
+                    el.disabled = true;
+                }
+            });
+            // Show read-only banner
+            const banner = document.createElement('div');
+            banner.style.cssText = 'background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;text-align:center;padding:8px 16px;font-weight:700;font-size:13px;border-radius:8px;margin-bottom:12px';
+            banner.innerHTML = '<i class="fas fa-eye"></i> Modo solo lectura — No puede realizar modificaciones';
+            const navTabs = document.querySelector('.nav-tabs');
+            if (navTabs) navTabs.parentNode.insertBefore(banner, navTabs.nextSibling);
+        }, 500);
+    }
+
     // === UTILITY FUNCTIONS ===
     const $ = id => document.getElementById(id);
 
