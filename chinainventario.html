@@ -593,6 +593,7 @@
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Fecha del Abono</label><input type="date" id="abonoFecha" class="form-input" required></div>
           <div class="form-group"><label class="form-label">Monto del Abono</label><input type="text" id="abonoMonto" class="form-input currency-input" required></div>
+          <div class="form-group"><label class="form-label">Método de Pago</label><select id="abonoMetodoPago" class="form-input" required><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select></div>
         </div>
         <div style="margin-top:12px;text-align:right"><button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Guardar Abono</button></div>
       </form>
@@ -1967,7 +1968,8 @@
         if (!facturaId || !fechaAbono || isNaN(montoAbono) || montoAbono <= 0) { toast("Complete todos los campos.", 'error'); return; }
         if (montoAbono > saldoPendienteActual) { toast("Monto excede saldo pendiente.", 'error'); return; }
         const nuevoSaldo = saldoPendienteActual - montoAbono;
-        const abonoData = { fechaAbono, montoAbono, createdAt: new Date(), registradoPor: userName() };
+        const metodoPagoAbono = ($('abonoMetodoPago') ? $('abonoMetodoPago').value : 'efectivo');
+        const abonoData = { fechaAbono, montoAbono, metodoPagoAbono, createdAt: new Date(), registradoPor: userName() };
         try {
             const facturaRef = doc(db, "facturas", facturaId);
             await updateDoc(facturaRef, { abonos: arrayUnion(abonoData), saldoPendiente: nuevoSaldo });
@@ -1983,7 +1985,7 @@
         else {
             abonosData.sort((a, b) => new Date(a.fechaAbono) - new Date(b.fechaAbono));
             let html = '<div style="display:flex;flex-direction:column;gap:8px">';
-            abonosData.forEach(a => { html += `<div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg);border-radius:10px"><div><strong>${a.fechaAbono}</strong><br><span style="font-size:11px;color:var(--muted)">${a.registradoPor || ''}</span></div><div style="font-weight:700;color:var(--success)">$${fmtCOP(a.montoAbono)}</div></div>`; });
+            abonosData.forEach(a => { const metodo = a.metodoPagoAbono === 'transferencia' ? '<i class="fas fa-building-columns" style="color:var(--info)"></i> Transferencia' : '<i class="fas fa-money-bill-wave" style="color:var(--success)"></i> Efectivo'; html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:10px"><div><strong>${a.fechaAbono}</strong><br><span style="font-size:11px;color:var(--muted)">${a.registradoPor || ''}</span></div><div style="text-align:right"><div style="font-weight:700;color:var(--success)">$${fmtCOP(a.montoAbono)}</div><div style="font-size:11px;margin-top:2px">${metodo}</div></div></div>`; });
             html += '</div>';
             historialAbonosContent.innerHTML = html;
         }
@@ -2980,7 +2982,8 @@
                 facturasConAbonos.forEach(f => {
                     html += `<div style="margin-bottom:12px"><div style="font-weight:700;font-size:13px;margin-bottom:6px"><i class="fas fa-file-invoice" style="color:var(--info)"></i> Factura #${f.codigoRegistro || 'N/A'} — ${f.cliente}</div>`;
                     f.abonos.forEach(a => {
-                        html += `<div style="display:flex;justify-content:space-between;padding:6px 16px;background:var(--bg);border-radius:8px;margin-bottom:4px;font-size:12px"><span>${a.fechaAbono || ''} · ${a.registradoPor || ''}</span><span style="font-weight:700;color:var(--success)">$${fmtCOP(a.montoAbono)}</span></div>`;
+                        const metodo = a.metodoPagoAbono === 'transferencia' ? '<i class="fas fa-building-columns" style="color:var(--info)"></i> Transf.' : '<i class="fas fa-money-bill-wave" style="color:var(--success)"></i> Efect.';
+                        html += `<div style="display:flex;justify-content:space-between;padding:6px 16px;background:var(--bg);border-radius:8px;margin-bottom:4px;font-size:12px"><span>${a.fechaAbono || ''} · ${a.registradoPor || ''} · ${metodo}</span><span style="font-weight:700;color:var(--success)">$${fmtCOP(a.montoAbono)}</span></div>`;
                     });
                     html += '</div>';
                 });
