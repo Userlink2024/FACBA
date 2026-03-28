@@ -1380,10 +1380,16 @@
                 const row = tablaInventario.insertRow();
                 row.dataset.id = docSnap.id;
                 const cantDisplay = p.unidadMedida === 'metros' ? fmtCantidad(p.metros, p.centimetros, 'metros') : fmtCantidad(p.unidades, 0, 'unidades');
-                const totalSold = soldQuantitiesMap.get(docSnap.id) || 0;
                 let soldDisplay = '';
-                if (p.unidadMedida === 'metros') { const sm = Math.floor(totalSold); const sc = Math.round((totalSold - sm) * 100); soldDisplay = fmtCantidad(sm, sc, 'metros'); }
-                else { soldDisplay = fmtCantidad(totalSold, 0, 'unidades'); }
+                if (p.unidadMedida === 'metros' && (p.vendidoMetros !== undefined || p.vendidoCentimetros !== undefined)) {
+                    soldDisplay = fmtCantidad(p.vendidoMetros || 0, p.vendidoCentimetros || 0, 'metros');
+                } else if (p.unidadMedida !== 'metros' && p.vendidoUnidades !== undefined) {
+                    soldDisplay = fmtCantidad(p.vendidoUnidades || 0, 0, 'unidades');
+                } else {
+                    const calcSold = soldQuantitiesMap.get(docSnap.id) || 0;
+                    if (p.unidadMedida === 'metros') { const sm = Math.floor(calcSold); const sc = Math.round((calcSold - sm) * 100); soldDisplay = fmtCantidad(sm, sc, 'metros'); }
+                    else { soldDisplay = fmtCantidad(calcSold, 0, 'unidades'); }
+                }
                 const usuarioDisplay = p.ultimoUsuario || p.creadoPor || '';
                 row.innerHTML = `
                     <td>${p.fechaHora}</td><td>${p.referencia}</td><td>${p.color}</td>
