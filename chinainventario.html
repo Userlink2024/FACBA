@@ -535,13 +535,17 @@
           </div>
         </div>
       </div>
-      <div class="btn-group" style="margin-top:14px">
+      <div style="margin-top:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <button class="btn btn-primary" id="btnGenerarEstadoCuenta"><i class="fas fa-search"></i> Generar Estado de Cuenta</button>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none">
+          <input type="checkbox" id="chkIAEstadoCuenta" style="width:16px;height:16px;accent-color:var(--purple);cursor:pointer">
+          <i class="fas fa-robot" style="color:var(--purple)"></i> Activar análisis inteligente (IA)
+        </label>
       </div>
     </div>
 
     <div id="edcResultado" class="hidden">
-      <div id="edcAIAnalysis" class="card" style="border-left:4px solid var(--purple)">
+      <div id="edcAIAnalysis" class="card hidden" style="border-left:4px solid var(--purple)">
         <div class="card-title" style="margin-bottom:10px"><i class="fas fa-robot" style="color:var(--purple)"></i> Análisis Inteligente de Coincidencias</div>
         <div id="edcAIContent" style="font-size:13px"></div>
       </div>
@@ -2941,11 +2945,24 @@
 
             const desde = $('edcDesde').value || '';
             const hasta = $('edcHasta').value || '';
-            const { matches, insights } = aiMatchInvoices(client, allFacturas, desde, hasta);
+            const useIA = $('chkIAEstadoCuenta') && $('chkIAEstadoCuenta').checked;
+            let matches, insights;
+            if (useIA) {
+                ({ matches, insights } = aiMatchInvoices(client, allFacturas, desde, hasta));
+                $('edcAIAnalysis').classList.remove('hidden');
+                $('edcAIContent').innerHTML = insights.join('');
+            } else {
+                const cn = norm(client.nombre);
+                matches = allFacturas.filter(f => {
+                    if (desde && f.fechaHora < desde) return false;
+                    if (hasta && f.fechaHora > hasta) return false;
+                    return norm(f.cliente) === cn;
+                }).map(f => ({ ...f, _matchScore: 1 }));
+                matches.sort((a, b) => (a.fechaHora || '').localeCompare(b.fechaHora || ''));
+                $('edcAIAnalysis').classList.add('hidden');
+            }
 
             edcFacturasCache = matches;
-
-            $('edcAIContent').innerHTML = insights.join('');
 
             let totalFacturado = 0, totalAbonado = 0, totalSaldo = 0;
             const tbody = $('tablaEstadoCuenta').querySelector('tbody');
