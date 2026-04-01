@@ -3,2285 +3,936 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAP Dashboard de Pedidos</title>
+    <meta name="theme-color" content="#1e40af">
+    <link rel="manifest" href="manifest.json">
+    <title>Dashboard - C&A Cloud Factory</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Fondo suave */
-            color: #334155; /* Color de texto principal */
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            box-sizing: border-box;
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-        .sap-container {
-            width: 100%;
-            max-width: 1200px;
-            background-color: #ffffff;
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            padding: 2.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
+        @keyframes slide-out {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
         }
-        .tabs-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid #e2e8f0;
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
-        .tab-button {
-            padding: 1rem 2rem;
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #64748B;
-            cursor: pointer;
-            border: none;
-            background-color: transparent;
-            transition: all 0.3s ease;
-            position: relative;
-            top: 2px; /* Alinea con el borde inferior */
-        }
-        .tab-button.active {
-            color: #3B82F6;
-            border-bottom: 2px solid #3B82F6;
-        }
-        .tab-button:hover:not(.active) {
-            color: #1E40AF;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        h1, h2 {
-            color: #10B981; /* Emerald Green */
-            text-align: center;
-            font-weight: 700;
-        }
-        h1 {
-            font-size: 2.25rem; /* text-4xl */
-            margin-bottom: 1rem;
-        }
-        h2 {
-            font-size: 1.875rem; /* text-3xl */
-            margin-bottom: 1rem;
-        }
-        .card {
-            background-color: #f8fafc; /* Light Gray */
-            border-radius: 0.75rem; /* rounded-lg */
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-        .metric-value {
-            font-size: 2.5rem; /* text-5xl */
-            font-weight: 700; /* font-bold */
-            color: #10B981; /* Emerald Green */
-        }
-        .metric-label {
-            font-size: 1.125rem; /* text-lg */
-            color: #475569; /* Dark Gray */
-            margin-top: 0.5rem;
-        }
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
-            cursor: pointer;
-            border: none;
-            text-decoration: none;
-        }
-        .btn-primary {
-            background-color: #3B82F6; /* Primary Blue */
-            color: #ffffff;
-            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-        }
-        .btn-primary:hover {
-            background-color: #2563EB; /* Darker Blue */
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
-        }
-        .btn-secondary {
-            background-color: #6B7280; /* Secondary Gray */
-            color: #ffffff;
-            box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);
-        }
-        .btn-secondary:hover {
-            background-color: #4B5563; /* Darker Gray */
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
-        }
-        .btn-danger {
-            background-color: #EF4444; /* Red */
-            color: #ffffff;
-            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
-        }
-        .btn-danger:hover {
-            background-color: #DC2626; /* Darker Red */
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
-        }
-        input[type="date"], input[type="file"], input[type="number"], select, input[type="text"] {
-            padding: 0.75rem;
-            border: 1px solid #cbd5e1; /* border-slate-300 */
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            color: #475569;
-            background-color: #ffffff;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        input[type="date"]:focus, input[type="file"]:focus, input[type="number"]:focus, select:focus, input[type="text"]:focus {
-            outline: none;
-            border-color: #3B82F6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        }
-        .chart-container {
-            position: relative;
-            height: 400px; /* Fixed height for charts */
-            width: 100%;
-            background-color: #f8fafc;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        }
-        /* Responsive adjustments */
-        @media (min-width: 768px) { /* md breakpoint */
-            .grid-cols-2-md {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-            .grid-cols-3-md {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-        }
-        @media (min-width: 1024px) { /* lg breakpoint */
-            .grid-cols-3-lg {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-        }
-
-        /* Styles for Modals */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1000; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-            justify-content: center; /* Center horizontally */
-            align-items: center; /* Center vertically */
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 2.5rem; /* Increased padding */
-            border-radius: 1rem; /* Rounded corners */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            width: 90%;
-            max-width: 500px; /* Max width for modal */
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .modal-content .close {
-            color: #aaa;
-            position: absolute;
-            top: 1rem;
-            right: 1.5rem;
-            font-size: 2rem; /* Larger close button */
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .modal-content .close:hover,
-        .modal-content .close:focus {
-            color: black;
-            text-decoration: none;
-        }
-
-        .form-field {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 1rem;
-        }
-
-        .form-field label {
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .form-field input[type="number"] {
-            width: 100%;
-            box-sizing: border-box;
-        }
-        /* Style for checkbox */
-        .form-field-checkbox {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-            gap: 0.5rem; /* Space between checkbox and label */
-        }
-        .form-field-checkbox input[type="checkbox"] {
-            width: auto; /* Override full width for checkbox */
-            margin-top: 0;
-        }
-
-
-        /* Gear icon */
-        .gear-icon {
-            font-size: 2.5em; /* Larger icon */
-            cursor: pointer;
-            color: #64748B; /* Slate gray */
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 100;
-            transition: transform 0.3s ease;
-        }
-
-        .gear-icon:hover {
-            transform: rotate(30deg);
-            color: #334155;
-        }
-        /* Gear icon next to "Cargar Excel" */
-        .excel-gear-icon {
-            font-size: 1.5em; /* Smaller than main gear icon */
-            cursor: pointer;
-            color: #64748B;
-            margin-left: 0.5rem; /* Space from label */
-            transition: transform 0.3s ease;
-        }
-        .excel-gear-icon:hover {
-            transform: rotate(30deg);
-            color: #334155;
-        }
-
-
-        /* Commission Table Styles */
-        .commission-table-container, .history-table-container {
-            background-color: #f8fafc;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            overflow-x: auto; /* For responsive tables */
-        }
-
-        .commission-table, .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        .commission-table th,
-        .commission-table td,
-        .history-table th,
-        .history-table td {
-            border: 1px solid #e2e8f0; /* border-slate-200 */
-            padding: 0.75rem;
-            text-align: left;
-        }
-
-        .commission-table th,
-        .history-table th {
-            background-color: #e2e8f0; /* Light gray for headers */
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .commission-table tr:nth-child(even),
-        .history-table tr:nth-child(even) {
-            background-color: #f8fafc; /* Alternate row color */
-        }
-        /* Updated info-text styles */
-        .info-text {
-            font-size: 0.95rem; /* Slightly larger font */
-            color: #475569; /* Darker gray for better contrast */
-            background-color: #e0f2fe; /* Light blue background */
-            border: 1px solid #90cdf4; /* Blue border */
-            border-radius: 0.5rem; /* Rounded corners */
-            padding: 1rem; /* More padding */
-            margin-top: 1.5rem; /* More space from elements above */
-            text-align: center;
-            line-height: 1.4; /* Improve readability */
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* Subtle shadow */
-        }
-        /* Loading overlay */
-        .loading-overlay {
-            display: none; /* Hidden by default */
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
-            z-index: 1001;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        .loading-spinner {
-            border: 8px solid #f3f3f3; /* Light grey */
-            border-top: 8px solid #3B82F6; /* Blue */
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Confirmation Modal Specific Styles */
-        .confirmation-modal-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-        .confirmation-modal-content h2 {
-            color: #EF4444; /* Red for warning */
-            margin-bottom: 1rem;
-        }
-        .confirmation-modal-content p {
-            font-size: 1.1rem;
-            color: #475569;
-            margin-bottom: 1.5rem;
-        }
-        .confirmation-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
+        .animate-slide-out { animation: slide-out 0.3s ease-out; }
+        .pulse-dot { animation: pulse-dot 2s infinite; }
     </style>
 </head>
-<body>
-    <div class="sap-container">
-        <h1 class="text-4xl">SAP Dashboard de Pedidos</h1>
-
-        <div class="tabs-container">
-            <button class="tab-button active" onclick="openTab(event, 'dashboard')">DASHBOARD</button>
-            <button class="tab-button" onclick="openTab(event, 'comision_general')">COMISIÓN GENERAL</button>
-            <button class="tab-button" onclick="openTab(event, 'comision_semanal')">COMISIÓN SEMANAL</button>
-            <button class="tab-button" onclick="openTab(event, 'historial_ventas')">VER HISTORIAL</button>
-            <button class="tab-button" onclick="openTab(event, 'liquidacion_mensual')">LIQUIDACIÓN MENSUAL</button>
-        </div>
-
-        <div id="dashboard" class="tab-content active">
-            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col gap-4">
-                <div class="flex items-center gap-2 w-full">
-                    <label for="excel_file_input_dashboard" class="text-lg font-semibold text-gray-700">Cargar Excel:</label>
-                    <input type="file" id="excel_file_input_dashboard" accept=".xlsx, .xls" class="flex-grow">
-                    <button id="upload_excel_btn_dashboard" class="btn btn-primary">Subir Excel</button>
-                    <button id="delete_excel_data_btn_dashboard" class="btn btn-danger">Eliminar Datos Excel</button>
-                    <div class="form-field-checkbox ml-auto">
-                        <input type="checkbox" id="include_excel_data_checkbox">
-                        <label for="include_excel_data_checkbox">Incluir datos de Excel</label>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900">
+    
+    <!-- Navbar -->
+    <nav class="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-shoe-prints text-white"></i>
                     </div>
+                    <span class="text-white font-bold text-lg hidden sm:block">C&A Cloud Factory</span>
                 </div>
 
-                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
-                    <label class="text-lg font-semibold text-gray-700">Filtro Personalizado:</label>
-                    <label for="start_date_dashboard" class="text-gray-600">Desde:</label>
-                    <input type="date" id="start_date_dashboard" class="flex-grow">
-                    <label for="end_date_dashboard" class="text-gray-600">Hasta:</label>
-                    <input type="date" id="end_date_dashboard" class="flex-grow">
-                    <button id="filter_data_btn_dashboard" class="btn btn-primary w-full md:w-auto">
-                        Aplicar Filtros
-                    </button>
+                <!-- Navigation -->
+                <div id="navMenu" class="hidden md:flex items-center gap-2">
+                    <!-- Dynamic menu items -->
                 </div>
 
-                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
-                    <label class="text-lg font-semibold text-gray-700">Filtros Rápidos:</label>
-                    <select id="month_selector_dashboard" class="flex-grow">
-                        </select>
-                    <button id="filter_current_week_btn_dashboard" class="btn btn-secondary w-full md:w-auto">
-                        Semana Actual
+                <!-- User Menu -->
+                <div class="flex items-center gap-4">
+                    <button id="mobileMenuBtn" class="md:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition" title="Menú">
+                        <i class="fas fa-bars text-xl"></i>
                     </button>
-                    <button id="filter_current_month_btn_dashboard" class="btn btn-secondary w-full md:w-auto">
-                        Mes Actual
-
+                    <div class="text-right hidden sm:block">
+                        <p id="userName" class="text-white text-sm font-medium">-</p>
+                        <p id="userRole" class="text-gray-400 text-xs">-</p>
+                    </div>
+                    <div class="relative">
+                        <button 
+                            id="settingsBtn"
+                            class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition"
+                            title="Configuración"
+                        >
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <div id="settingsMenu" class="hidden absolute right-0 top-full mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50">
+                            <button id="resetSystemBtn" class="w-full px-4 py-3 text-left text-red-400 hover:bg-red-600/20 rounded-xl transition flex items-center gap-3">
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Restablecer Sistema</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button 
+                        id="logoutBtn"
+                        class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition"
+                        title="Cerrar Sesión"
+                    >
+                        <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </div>
+            </div>
+        </div>
+    </nav>
 
-                <button id="reset_dashboard_btn_dashboard" class="btn btn-danger w-full">
-                    Reiniciar Dashboard
+    <!-- Mobile Menu Drawer -->
+    <div id="mobileMenu" class="fixed inset-0 z-50 hidden">
+        <div id="mobileMenuOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="absolute left-0 top-0 bottom-0 w-72 bg-gray-800 border-r border-gray-700 shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-shoe-prints text-white"></i>
+                    </div>
+                    <span class="text-white font-bold">C&A Factory</span>
+                </div>
+                <button id="closeMobileMenu" class="p-2 text-gray-400 hover:text-white rounded-lg transition">
+                    <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            <p class="info-text w-full">
-                Para ver el rendimiento de un día específico, selecciona la misma fecha en 'Desde' y 'Hasta'.<br>
-                Para un mes, selecciona el primer y último día del mes, o usa el selector de mes.<br>
-                **Aplica un filtro para ver los datos del dashboard.**
+            <div id="mobileNavMenu" class="flex-1 p-4 space-y-1 overflow-y-auto"></div>
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-gray-400"></i>
+                    </div>
+                    <div>
+                        <p id="mobileUserName" class="text-white text-sm font-medium">-</p>
+                        <p id="mobileUserRole" class="text-gray-400 text-xs">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-white">
+                <i class="fas fa-chart-line mr-3 text-blue-500"></i>
+                Dashboard
+            </h1>
+            <p class="text-gray-400 mt-2">Resumen de producción y actividad en tiempo real</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Producción Hoy -->
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-shoe-prints text-blue-500 text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-500">Hoy</span>
+                </div>
+                <p id="paresHoy" class="text-3xl font-bold text-white">0</p>
+                <p class="text-gray-400 text-sm">Pares Producidos</p>
+            </div>
+
+            <!-- Producción Semana -->
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-emerald-600/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-calendar-week text-emerald-500 text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-500">Semana</span>
+                </div>
+                <p id="paresSemana" class="text-3xl font-bold text-white">0</p>
+                <p class="text-gray-400 text-sm">Pares Esta Semana</p>
+            </div>
+
+            <!-- Órdenes Activas -->
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-amber-600/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-clipboard-list text-amber-500 text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-500">Activas</span>
+                </div>
+                <p id="ordenesActivas" class="text-3xl font-bold text-white">0</p>
+                <p class="text-gray-400 text-sm">Órdenes en Curso</p>
+            </div>
+
+            <!-- Operarios Conectados -->
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-users text-purple-500 text-xl"></i>
+                    </div>
+                    <span class="text-xs text-green-500 flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></span>
+                        En línea
+                    </span>
+                </div>
+                <p id="operariosOnline" class="text-3xl font-bold text-white">0</p>
+                <p class="text-gray-400 text-sm">Operarios Conectados</p>
+            </div>
+        </div>
+
+        <!-- Charts & Lists Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Production Chart -->
+            <div class="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-chart-bar mr-2 text-blue-500"></i>
+                    Producción Diaria (Últimos 7 días)
+                </h3>
+                <div class="h-64">
+                    <canvas id="productionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Online Workers -->
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-user-clock mr-2 text-green-500"></i>
+                    Operarios en Línea
+                </h3>
+                <div id="onlineWorkersList" class="space-y-3 max-h-56 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">Sin operarios conectados</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Orders & Recent Production -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Active Orders -->
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-tasks mr-2 text-amber-500"></i>
+                    Órdenes Activas
+                </h3>
+                <div id="activeOrdersList" class="space-y-3 max-h-80 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">No hay órdenes activas</p>
+                </div>
+            </div>
+
+            <!-- Recent Production -->
+            <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-history mr-2 text-blue-500"></i>
+                    Producción Reciente
+                </h3>
+                <div id="recentProductionList" class="space-y-3 max-h-80 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">Sin registros recientes</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Panel (Admin only) -->
+        <div id="notificationsPanel" class="hidden">
+            <div class="bg-gradient-to-r from-blue-900/50 to-purple-900/50 backdrop-blur-sm rounded-xl border border-blue-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-white">
+                        <i class="fas fa-bell mr-2 text-yellow-500"></i>
+                        Notificaciones de Clientes
+                        <span id="notifBadge" class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full hidden">0</span>
+                    </h3>
+                    <button id="clearNotifsBtn" class="text-gray-400 hover:text-white text-sm">
+                        <i class="fas fa-check-double mr-1"></i>Marcar leídas
+                    </button>
+                </div>
+                <div id="notificationsList" class="space-y-3 max-h-64 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">Sin notificaciones</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Reset System Modal -->
+    <div id="resetModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-red-700/50">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">⚠️ Restablecer Sistema</h3>
+                <p class="text-gray-400 mt-2 text-sm">Esta acción eliminará TODOS los datos del sistema: órdenes, empleados, clientes, pedidos, producción, etc.</p>
+                <p class="text-red-400 font-bold mt-2">¡Esta acción NO se puede deshacer!</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Ingrese la contraseña de administrador</label>
+                    <input type="password" id="resetPassword" class="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Contraseña">
+                </div>
+                <div class="flex gap-3">
+                    <button id="cancelResetBtn" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition">Cancelar</button>
+                    <button id="confirmResetBtn" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition">
+                        <i class="fas fa-trash-alt mr-2"></i>Restablecer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-600 text-sm">
+                C&A Manufacturas © <span id="currentYear"></span> - Bucaramanga, Colombia
             </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3-lg gap-4">
-                <div class="card">
-                    <div id="total_pares_metric_dashboard" class="metric-value">0</div>
-                    <div class="metric-label">Total de Pares Vendidos</div>
-                </div>
-                <div class="card">
-                    <div id="total_valor_metric_dashboard" class="metric-value">$0</div>
-                    <div class="metric-label">Valor Total de Ventas</div>
-                </div>
-                <div class="card">
-                    <div id="total_pedidos_metric_dashboard" class="metric-value">0</div>
-                    <div class="metric-label">Total de Pedidos</div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2-md gap-4">
-                <div class="chart-container">
-                    <canvas id="salesByDateChart_dashboard"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="salesByAsesorChart_dashboard"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-container">
-                <canvas id="pairsByProductChart_dashboard"></canvas>
-            </div>
         </div>
-
-        <div id="comision_general" class="tab-content">
-            <h2 class="text-3xl">Comisión General (Mensual)</h2>
-            <span class="gear-icon" title="Configuración de Comisión General" onclick="mostrarModal('commission_general_settings_modal')">&#9881;</span>
-            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col gap-4 mt-4">
-                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
-                    <label class="text-lg font-semibold text-gray-700">Filtro por Mes:</label>
-                    <select id="month_selector_general" class="flex-grow">
-                        </select>
-                    <button id="filter_data_btn_general" class="btn btn-primary w-full md:w-auto">
-                        Aplicar Filtro General
-                    </button>
-                    <button id="reset_filter_btn_general" class="btn btn-danger w-full md:w-auto">
-                        Reiniciar Filtro General
-                    </button>
-                </div>
-            </div>
-            <div class="commission-table-container mt-4">
-                <div id="general_commission_summary">
-                    <p class="text-center text-gray-500">Selecciona un mes para calcular la comisión general.</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="comision_semanal" class="tab-content">
-            <h2 class="text-3xl">Comisión Semanal</h2>
-            <span class="gear-icon" title="Configuración de Comisión Semanal" onclick="mostrarModal('commission_weekly_settings_modal')">&#9881;</span>
-
-            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col gap-4">
-                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
-                    <label class="text-lg font-semibold text-gray-700">Filtro de Fechas:</label>
-                    <label for="start_date_weekly" class="text-gray-600">Desde:</label>
-                    <input type="date" id="start_date_weekly" class="flex-grow">
-                    <label for="end_date_weekly" class="text-gray-600">Hasta:</label>
-                    <input type="date" id="end_date_weekly" class="flex-grow">
-                    <button id="filter_data_btn_weekly" class="btn btn-primary w-full md:w-auto">
-                        Aplicar Filtro Semanal
-                    </button>
-                </div>
-                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
-                    <label class="text-lg font-semibold text-gray-700">Filtros Rápidos:</label>
-                    <button id="filter_current_week_btn_weekly" class="btn btn-secondary w-full md:w-auto">
-                        Esta Semana
-                    </button>
-                    <button id="filter_last_week_btn_weekly" class="btn btn-secondary w-full md:w-auto">
-                        Semana Pasada
-                    </button>
-                </div>
-                <div class="flex gap-4 w-full">
-                    <button id="reset_filter_btn_weekly" class="btn btn-danger" style="flex:1">
-                        Reiniciar Filtro Semanal
-                    </button>
-                    <button id="btn_capturar_semana" class="btn btn-primary" style="flex:1;background-color:#7C3AED;box-shadow:0 2px 4px rgba(124,58,237,0.2)" disabled>
-                        <span style="margin-right:6px">📸</span> Capturar esta Semana
-                    </button>
-                </div>
-            </div>
-            <div class="commission-table-container mt-4">
-                <div id="weekly_commission_summary">
-                    <p class="text-center text-gray-500">Selecciona un rango de fechas para calcular la comisión semanal.</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="historial_ventas" class="tab-content">
-            <h2 class="text-3xl">Historial de Ventas</h2>
-            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col gap-4">
-                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
-                    <label class="text-lg font-semibold text-gray-700">Filtrar Historial:</label>
-                    <label for="filter_asesor_history" class="text-gray-600">Asesor:</label>
-                    <select id="filter_asesor_history" class="flex-grow">
-                        <option value="">Todos</option>
-                    </select>
-                    <label for="filter_month_history" class="text-gray-600">Mes:</label>
-                    <select id="filter_month_history" class="flex-grow">
-                        <option value="">Todos</option>
-                    </select>
-                    <button id="apply_filter_history_btn" class="btn btn-primary w-full md:w-auto">Aplicar Filtros</button>
-                    <button id="reset_filter_history_btn" class="btn btn-danger w-full md:w-auto">Reiniciar Filtros</button>
-                </div>
-            </div>
-            <div class="history-table-container mt-4">
-                <div id="sales_history_list">
-                    <p class="text-center text-gray-500">Aplica filtros para ver el historial de ventas.</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="liquidacion_mensual" class="tab-content">
-            <h2 class="text-3xl">Liquidación Mensual</h2>
-            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col gap-4">
-                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
-                    <label class="text-lg font-semibold text-gray-700">Seleccionar Mes:</label>
-                    <select id="month_selector_liquidacion" class="flex-grow"></select>
-                    <button id="btn_cargar_liquidacion" class="btn btn-primary w-full md:w-auto">
-                        Cargar Liquidación
-                    </button>
-                </div>
-            </div>
-            <div id="liquidacion_resultado" class="mt-4">
-                <p class="text-center text-gray-500">Selecciona un mes para ver la liquidación acumulada.</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="excel_actions_modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="cerrarModal('excel_actions_modal')">&times;</span>
-            <h2>Acciones de Archivo Excel</h2>
-            <div class="form-field">
-                <label for="excel_file_input_modal" class="text-lg font-semibold text-gray-700">Seleccionar archivo:</label>
-                <input type="file" id="excel_file_input_modal" accept=".xlsx, .xls">
-            </div>
-            <button id="upload_excel_btn_modal" class="btn btn-primary">Subir Excel</button>
-            <button id="delete_excel_data_btn_modal" class="btn btn-danger">Eliminar Datos Excel Cargados</button>
-        </div>
-    </div>
-
-    <div id="delete_confirmation_modal" class="modal">
-        <div class="confirmation-modal-content">
-            <h2>Confirmar Eliminación</h2>
-            <p>¿Estás seguro de que quieres eliminar TODOS los datos cargados desde archivos Excel? Esta acción es irreversible.</p>
-            <div class="confirmation-buttons">
-                <button class="btn btn-danger" onclick="confirmDeleteExcelData()">Eliminar Definitivamente</button>
-                <button class="btn btn-secondary" onclick="cerrarModal('delete_confirmation_modal')">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="commission_general_settings_modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="cerrarModal('commission_general_settings_modal')">&times;</span>
-            <h2>Configuración de Comisión General</h2>
-            <h3>Comisión Mensual (para el período filtrado)</h3>
-            <div class="form-field">
-                <label for="monthly_company_pairs_threshold_input">Tope de Pares (Empresa, ej: 17500):</label>
-                <input type="number" id="monthly_company_pairs_threshold_input" value="17500" min="0" step="1">
-            </div>
-            <div class="form-field">
-                <label for="monthly_company_commission_amount_input">Monto Comisión (Empresa, COP, ej: 200000):</label>
-                <input type="number" id="monthly_company_commission_amount_input" value="200000" min="0" step="1000">
-            </div>
-            <div class="form-field">
-                <label for="monthly_individual_pairs_threshold_input">Tope Pares (Asesor Individual, ej: 1200):</label>
-                <input type="number" id="monthly_individual_pairs_threshold_input" value="1200" min="0" step="1">
-            </div>
-            <button class="btn btn-primary" onclick="saveCommissionGeneralSettings()">Guardar Configuración</button>
-        </div>
-    </div>
-
-    <div id="commission_weekly_settings_modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="cerrarModal('commission_weekly_settings_modal')">&times;</span>
-            <h2>Configuración de Comisión Semanal</h2>
-            <div class="form-field">
-                <label for="weekly_value_base_threshold_input">Tope Valor Base (Semanal, COP, ej: 17500000):</label>
-                <input type="number" id="weekly_value_base_threshold_input" value="17500000" min="0" step="1000">
-            </div>
-            <div class="form-field">
-                <label for="weekly_base_commission_amount_input">Monto Comisión Base (Semanal, COP, ej: 80000):</label>
-                <input type="number" id="weekly_base_commission_amount_input" value="80000" min="0" step="1000">
-            </div>
-            <div class="form-field">
-                <label for="weekly_incremental_value_threshold_input">Valor para Bono Incremental (Semanal, COP, ej: 2000000):</label>
-                <input type="number" id="weekly_incremental_value_threshold_input" value="2000000" min="0" step="1000">
-            </div>
-            <div class="form-field">
-                <label for="weekly_incremental_bonus_amount_input">Monto Bono Incremental (Semanal, COP, ej: 10000):</label>
-                <input type="number" id="weekly_incremental_bonus_amount_input" value="10000" min="0" step="1000">
-            </div>
-            <button class="btn btn-primary" onclick="saveCommissionWeeklySettings()">Guardar Configuración</button>
-        </div>
-    </div>
-
-    <div id="message_modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="cerrarModal('message_modal')">&times;</span>
-            <h2 id="message_modal_title" class="text-2xl font-bold mb-4"></h2>
-            <p id="message_modal_content" class="text-gray-700 mb-6"></p>
-            <button class="btn btn-primary" onclick="cerrarModal('message_modal')">Aceptar</button>
-        </div>
-    </div>
-
-    <div id="loading_overlay" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <p class="text-xl font-semibold text-gray-700">Cargando datos...</p>
-    </div>
+    </footer>
 
     <script>
-        // Firebase configuration (from generar_pedidos.html)
-        const firebaseConfig = {
-            apiKey: "AIzaSyChvezwN6DrYXdnBvGLxnjhi4I9xUaxKfU", // Asegúrate que esta API Key esté bien protegida y restringida
-            authDomain: "lazapateria-c4157.firebaseapp.com",
-            projectId: "lazapateria-c4157",
-            storageBucket: "lazapateria-c4157.firebasestorage.app",
-            measurementId: "G-HVG7615JEE"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        console.log("Firebase configurado correctamente para el Dashboard SAP.");
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
 
-        // --- Global Variables ---
-        let allOrdersData = []; // Combined data from 'registros' and 'excel_daily_summaries'
-        let salesByDateChart_dashboard, salesByAsesorChart_dashboard, pairsByProductChart_dashboard;
+    <script type="module">
+        import { checkAuthAndRedirect, logout, ROLES } from './js/auth.js';
+        import { initChat, openChat } from './js/chat.js';
+        import { getNavigationMenu, getRoleName, getRoleBadgeColor } from './js/roles.js';
+        import { formatCurrency, formatDateTime, formatDate, getWeekStart, getDayStart, getDayEnd } from './js/utils.js';
+        import { db, rtdb, collection, query, where, orderBy, limit, getDocs, deleteDoc, doc, onSnapshot, Timestamp, ref, onValue, set } from './js/firebase-init.js';
+        import { initNotifications } from './js/notifications.js';
 
-        // Commission settings (default values, will be loaded from Firestore)
-        let monthlyCompanyPairsThreshold = 17500;
-        let monthlyCompanyCommissionAmount = 200000;
-        let monthlyIndividualPairsThreshold = 1200;
-        let weeklyValueBaseThreshold = 17500000;
-        let weeklyBaseCommissionAmount = 80000;
-        let weeklyIncrementalValueThreshold = 2000000;
-        let weeklyIncrementalBonusAmount = 10000;
-
-        // Flags
-        let includeExcelData = true; // Default to true, loaded from localStorage
-        let currentDashboardFilterMode = 'custom_date_range'; // For Dashboard tab
-        let currentGeneralMonthFilter = ''; // For General Commission tab
-        let currentWeeklyFilterMode = 'custom_date_range'; // For Weekly Commission tab
-        let currentHistoryAsesorFilter = ''; // For History tab
-        let currentHistoryMonthFilter = ''; // For History tab
-
-        // --- DOM Elements (for Dashboard tab) ---
-        const excelFileInputDashboard = document.getElementById('excel_file_input_dashboard');
-        const uploadExcelBtnDashboard = document.getElementById('upload_excel_btn_dashboard');
-        const deleteExcelDataBtnDashboard = document.getElementById('delete_excel_data_btn_dashboard');
-        const includeExcelDataCheckbox = document.getElementById('include_excel_data_checkbox');
-        const startDateInputDashboard = document.getElementById('start_date_dashboard');
-        const endDateInputDashboard = document.getElementById('end_date_dashboard');
-        const filterDataBtnDashboard = document.getElementById('filter_data_btn_dashboard');
-        const monthSelectorDashboard = document.getElementById('month_selector_dashboard');
-        const filterCurrentWeekBtnDashboard = document.getElementById('filter_current_week_btn_dashboard');
-        const filterCurrentMonthBtnDashboard = document.getElementById('filter_current_month_btn_dashboard');
-        const resetDashboardBtnDashboard = document.getElementById('reset_dashboard_btn_dashboard');
-        const totalParesMetricDashboard = document.getElementById('total_pares_metric_dashboard');
-        const totalValorMetricDashboard = document.getElementById('total_valor_metric_dashboard');
-        const totalPedidosMetricDashboard = document.getElementById('total_pedidos_metric_dashboard');
-
-        // --- DOM Elements (for General Commission tab) ---
-        const monthSelectorGeneral = document.getElementById('month_selector_general');
-        const filterDataBtnGeneral = document.getElementById('filter_data_btn_general');
-        const resetFilterBtnGeneral = document.getElementById('reset_filter_btn_general');
-        const generalCommissionSummaryDiv = document.getElementById('general_commission_summary');
-
-
-        // --- DOM Elements (for Weekly Commission tab) ---
-        const startDateInputWeekly = document.getElementById('start_date_weekly');
-        const endDateInputWeekly = document.getElementById('end_date_weekly');
-        const filterDataBtnWeekly = document.getElementById('filter_data_btn_weekly');
-        const resetFilterBtnWeekly = document.getElementById('reset_filter_btn_weekly');
-        const weeklyCommissionSummaryDiv = document.getElementById('weekly_commission_summary');
-        const filterCurrentWeekBtnWeekly = document.getElementById('filter_current_week_btn_weekly');
-        const filterLastWeekBtnWeekly = document.getElementById('filter_last_week_btn_weekly');
-
-        // --- DOM Elements (for History tab) ---
-        const filterAsesorHistory = document.getElementById('filter_asesor_history');
-        const filterMonthHistory = document.getElementById('filter_month_history');
-        const applyFilterHistoryBtn = document.getElementById('apply_filter_history_btn');
-        const resetFilterHistoryBtn = document.getElementById('reset_filter_history_btn');
-        const salesHistoryList = document.getElementById('sales_history_list');
-
-        // --- Commission Settings Modals Elements ---
-        const monthlyCompanyPairsThresholdInput = document.getElementById('monthly_company_pairs_threshold_input');
-        const monthlyCompanyCommissionAmountInput = document.getElementById('monthly_company_commission_amount_input');
-        const monthlyIndividualPairsThresholdInput = document.getElementById('monthly_individual_pairs_threshold_input');
-        const weeklyValueBaseThresholdInput = document.getElementById('weekly_value_base_threshold_input');
-        const weeklyBaseCommissionAmountInput = document.getElementById('weekly_base_commission_amount_input');
-        const weeklyIncrementalValueThresholdInput = document.getElementById('weekly_incremental_value_threshold_input');
-        const weeklyIncrementalBonusAmountInput = document.getElementById('weekly_incremental_bonus_amount_input');
-
-        const loadingOverlay = document.getElementById('loading_overlay');
-
-        // --- Utility Functions ---
-
-        /**
-         * Shows the loading overlay.
-         */
-        function showLoading() {
-            loadingOverlay.style.display = 'flex';
-        }
-
-        /**
-         * Hides the loading overlay.
-         */
-        function hideLoading() {
-            loadingOverlay.style.display = 'none';
-        }
-
-        /**
-         * Shows a general message modal.
-         * @param {string} title - The title of the message.
-         * @param {string} message - The content of the message.
-         */
-        function showMessageModal(title, message) {
-            document.getElementById('message_modal_title').textContent = title;
-            document.getElementById('message_modal_content').textContent = message;
-            mostrarModal('message_modal');
-        }
-
-        /**
-         * Shows a modal by setting its display style to 'flex'.
-         * @param {string} id - The ID of the modal element to show.
-         */
-        function mostrarModal(id) {
-            document.getElementById(id).style.display = 'flex';
-            // Load values into commission settings modals when opened
-            if (id === 'commission_general_settings_modal') {
-                monthlyCompanyPairsThresholdInput.value = monthlyCompanyPairsThreshold;
-                monthlyCompanyCommissionAmountInput.value = monthlyCompanyCommissionAmount;
-                monthlyIndividualPairsThresholdInput.value = monthlyIndividualPairsThreshold;
-            } else if (id === 'commission_weekly_settings_modal') {
-                weeklyValueBaseThresholdInput.value = weeklyValueBaseThreshold;
-                weeklyBaseCommissionAmountInput.value = weeklyBaseCommissionAmount;
-                weeklyIncrementalValueThresholdInput.value = weeklyIncrementalValueThreshold;
-                weeklyIncrementalBonusAmountInput.value = weeklyIncrementalBonusAmount;
+        let productionChart = null;
+        let lastNotifCount = -1; // -1 para ignorar la carga inicial
+        let audioContext = null;
+        let audioEnabled = false;
+        
+        // Inicializar audio con interacción del usuario
+        function initAudio() {
+            if (audioContext) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioEnabled = true;
+            } catch (e) {
+                console.log('Audio not supported');
             }
         }
-
-        /**
-         * Hides a modal by setting its display style to 'none'.
-         * @param {string} id - The ID of the modal element to hide.
-         */
-        function cerrarModal(id) {
-            document.getElementById(id).style.display = 'none';
-        }
-
-        /**
-         * Switches between tabs.
-         * @param {Event} evt - The click event.
-         * @param {string} tabName - The ID of the tab content to display.
-         */
-        function openTab(evt, tabName) {
-            let i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
-                tabcontent[i].classList.remove("active");
+        
+        // Activar audio con cualquier clic
+        document.addEventListener('click', () => {
+            initAudio();
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
             }
-            tablinks = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }, { once: true });
+        
+        // Función para reproducir sonido de notificación
+        function playNotificationSound() {
+            if (!audioEnabled || !audioContext) {
+                initAudio();
+                if (!audioContext) return;
             }
-            document.getElementById(tabName).style.display = "block";
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.className += " active";
-
-            // Specific actions when opening a tab
-            if (tabName === 'dashboard') {
-                initializeChartsDashboard();
-                // Initially clear metrics and charts, data loads only on filter
-                totalParesMetricDashboard.textContent = '0';
-                totalValorMetricDashboard.textContent = '$0';
-                totalPedidosMetricDashboard.textContent = '0';
-                salesByDateChart_dashboard.data.labels = [];
-                salesByDateChart_dashboard.data.datasets[0].data = [];
-                salesByDateChart_dashboard.update();
-                salesByAsesorChart_dashboard.data.labels = [];
-                salesByAsesorChart_dashboard.data.datasets[0].data = [];
-                salesByAsesorChart_dashboard.update();
-                pairsByProductChart_dashboard.data.labels = [];
-                pairsByProductChart_dashboard.data.datasets[0].data = [];
-                pairsByProductChart_dashboard.update();
-            } else if (tabName === 'comision_general') {
-                populateMonthSelector(monthSelectorGeneral); // Populate for general commission tab
-                generalCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">Selecciona un mes para calcular la comisión general.</p>';
-            } else if (tabName === 'comision_semanal') {
-                // Initial load for weekly commission will happen when filter is applied
-                weeklyCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">Selecciona un rango de fechas para calcular la comisión semanal.</p>';
-            } else if (tabName === 'historial_ventas') {
-                populateHistoryFilters();
-                salesHistoryList.innerHTML = '<p class="text-center text-gray-500">Aplica filtros para ver el historial de ventas.</p>';
-            } else if (tabName === 'liquidacion_mensual') {
-                populateMonthSelector(document.getElementById('month_selector_liquidacion'));
-                document.getElementById('liquidacion_resultado').innerHTML = '<p class="text-center text-gray-500">Selecciona un mes para ver la liquidación acumulada.</p>';
-            }
-        }
-
-        /**
-         * Populates the month selector dropdown with the last 12 months.
-         * @param {HTMLElement} selectorElement - The select element to populate.
-         */
-        function populateMonthSelector(selectorElement) {
-            const today = new Date();
-            selectorElement.innerHTML = '<option value="">Todos los Meses</option>'; // Default option
-            for (let i = 0; i < 12; i++) {
-                const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-                const monthName = date.toLocaleString('es-CO', { month: 'long', year: 'numeric' });
-                const monthValue = date.toISOString().slice(0, 7); //YYYY-MM format
-                const option = document.createElement('option');
-                option.value = monthValue;
-                option.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1); // Capitalize first letter
-                selectorElement.appendChild(option);
-            }
-        }
-
-        /**
-         * Returns a consistent week identifier for a given date, defining a week from Monday to Saturday.
-         * The ID is based on the Monday's date of that week (e.g., "YYYY-MM-DD").
-         * @param {Date} d - The date object.
-         * @returns {string} A string in 'YYYY-MM-DD' format representing the Monday of the week.
-         */
-        function getWeekIdentifier(d) {
-            const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-
-            // Calculate the Monday of the current week
-            // If it's Sunday (0), go back 6 days to get to the previous Monday.
-            // Otherwise, go back (dayOfWeek - 1) days to get to the current Monday.
-            const daysToMonday = (dayOfWeek === 0) ? 6 : (dayOfWeek - 1);
-            const mondayOfWeek = new Date(date);
-            mondayOfWeek.setDate(date.getDate() - daysToMonday);
             
-            // Format the Monday's date as the week identifier (e.g., "2024-03-04")
-            return mondayOfWeek.toISOString().split('T')[0];
-        }
-
-        // --- Firebase Data Fetching ---
-
-        /**
-         * Loads orders from Firestore.
-         * @returns {Promise<Array>} A promise that resolves with an array of order objects.
-         */
-        async function fetchAllOrdersFromFirestore() {
-            showLoading();
             try {
-                const orders = [];
-                const ordersSnapshot = await db.collection('registros').orderBy('fecha_hora', 'asc').get();
-                ordersSnapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.fecha_hora && data.fecha_hora.toDate) {
-                        data.fecha_hora = data.fecha_hora.toDate();
-                    }
-                    orders.push({ id: doc.id, source: 'registros', ...data });
-                });
-                console.log("Orders loaded from 'registros':", orders.length);
-
-                let combinedData = [...orders];
-
-                // Only include excel data if the checkbox is checked for the dashboard
-                // Use the global 'includeExcelData' flag which is updated by the checkbox
-                if (includeExcelData) { 
-                    const excelSummaries = [];
-                    const excelSummariesSnapshot = await db.collection('excel_daily_summaries').get();
-                    excelSummariesSnapshot.forEach(doc => {
-                        const data = doc.data();
-                        let fechaHoraDate = null;
-                        if (data.fecha_hora && data.fecha_hora.toDate) {
-                            fechaHoraDate = data.fecha_hora.toDate();
-                        } else if (typeof data.fecha_hora === 'string') {
-                            fechaHoraDate = new Date(data.fecha_hora);
-                        }
-
-                        const excelDataEntry = {
-                            id: doc.id,
-                            source: 'excel_summary',
-                            asesor: data.asesor || 'Desconocido',
-                            num_pares: data.num_pares || 0,
-                            valor_total: data.valor_total || 0,
-                            fecha_hora: fechaHoraDate
-                        };
-                        excelSummaries.push(excelDataEntry);
-                    });
-                    console.log("Summaries loaded from 'excel_daily_summaries':", excelSummaries.length);
-                    combinedData = combinedData.concat(excelSummaries);
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
                 }
-
-                // Sort combined data by date
-                combinedData.sort((a, b) => a.fecha_hora - b.fecha_hora);
-                allOrdersData = combinedData; // Update global data array
-                return combinedData;
-
-            }
-            catch (error) {
-                console.error("Error fetching data from Firestore:", error);
-                return [];
-            }
-            finally {
-                hideLoading();
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Tono de notificación más audible
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.15);
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('Error playing sound:', e);
             }
         }
 
-        /**
-         * Sets up real-time listener for all orders and updates relevant sections.
-         */
-        function setupRealtimeListeners() {
-            // Initial fetch to populate allOrdersData
-            fetchAllOrdersFromFirestore();
-
-            // Listener for 'registros' collection
-            db.collection('registros').onSnapshot(snapshot => {
-                console.log("Real-time update from 'registros' collection.");
-                fetchAllOrdersFromFirestore().then(() => {
-                    // Re-filter and update only if tab is active and not pending manual filter
-                    if (document.getElementById('dashboard').classList.contains('active') && currentDashboardFilterMode !== 'initial') {
-                        loadAndFilterDashboardData();
-                    }
-                    if (document.getElementById('comision_general').classList.contains('active') && currentGeneralMonthFilter !== 'initial') {
-                        calculateAndDisplayGeneralCommissions();
-                    }
-                    if (document.getElementById('comision_semanal').classList.contains('active') && (startDateInputWeekly.value && endDateInputWeekly.value)) { // Only if dates are already selected
-                        calculateAndDisplayWeeklyCommissions();
-                    }
-                    if (document.getElementById('historial_ventas').classList.contains('active') && (currentHistoryAsesorFilter || currentHistoryMonthFilter)) { // Only if filters are applied
-                        populateHistoryFilters(); // Re-populate asesores and months
-                        loadAndFilterHistoryData();
-                    }
-                });
-            }, error => {
-                console.error("Error listening to 'registros' collection:", error);
-                showMessageModal("Error de Conexión", "No se pudieron obtener actualizaciones en tiempo real de los pedidos.");
-            });
-
-            // Listener for 'excel_daily_summaries' collection
-            db.collection('excel_daily_summaries').onSnapshot(snapshot => {
-                console.log("Real-time update from 'excel_daily_summaries' collection.");
-                fetchAllOrdersFromFirestore().then(() => {
-                    // Re-filter and update only if tab is active and not pending manual filter
-                    if (document.getElementById('dashboard').classList.contains('active') && currentDashboardFilterMode !== 'initial') {
-                        loadAndFilterDashboardData();
-                    }
-                    if (document.getElementById('comision_general').classList.contains('active') && currentGeneralMonthFilter !== 'initial') {
-                        calculateAndDisplayGeneralCommissions();
-                    }
-                    if (document.getElementById('comision_semanal').classList.contains('active') && (startDateInputWeekly.value && endDateInputWeekly.value)) {
-                        calculateAndDisplayWeeklyCommissions();
-                    }
-                    if (document.getElementById('historial_ventas').classList.contains('active') && (currentHistoryAsesorFilter || currentHistoryMonthFilter)) {
-                        populateHistoryFilters(); // Re-populate asesores and months
-                        loadAndFilterHistoryData();
-                    }
-                });
-            }, error => {
-                console.error("Error listening to 'excel_daily_summaries' collection:", error);
-                showMessageModal("Error de Conexión", "No se pudieron obtener actualizaciones en tiempo real de los datos de Excel.");
-            });
-
-            // Listener for commission settings
-            db.collection('settings').doc('commission_settings').onSnapshot(doc => {
-                if (doc.exists) {
-                    const settings = doc.data();
-                    monthlyCompanyPairsThreshold = settings.monthlyCompanyPairsThreshold || monthlyCompanyPairsThreshold;
-                    monthlyCompanyCommissionAmount = settings.monthlyCompanyCommissionAmount || monthlyCompanyCommissionAmount;
-                    monthlyIndividualPairsThreshold = settings.monthlyIndividualPairsThreshold || monthlyIndividualPairsThreshold;
-                    weeklyValueBaseThreshold = settings.weeklyValueBaseThreshold || weeklyValueBaseThreshold;
-                    weeklyBaseCommissionAmount = settings.weeklyBaseCommissionAmount || weeklyBaseCommissionAmount;
-                    weeklyIncrementalValueThreshold = settings.weeklyIncrementalValueThreshold || weeklyIncrementalValueThreshold;
-                    weeklyIncrementalBonusAmount = settings.weeklyIncrementalBonusAmount || weeklyIncrementalBonusAmount;
-                    console.log("Commission settings loaded from Firestore:", settings);
-
-                    // Re-calculate commissions if relevant tabs are active AND have filters applied
-                    if (document.getElementById('comision_general').classList.contains('active') && currentGeneralMonthFilter) {
-                        calculateAndDisplayGeneralCommissions();
-                    }
-                    if (document.getElementById('comision_semanal').classList.contains('active') && (startDateInputWeekly.value && endDateInputWeekly.value)) {
-                        calculateAndDisplayWeeklyCommissions();
-                    }
-                } else {
-                    // If settings document doesn't exist, create it with default values
-                    db.collection('settings').doc('commission_settings').set({
-                        monthlyCompanyPairsThreshold: monthlyCompanyPairsThreshold,
-                        monthlyCompanyCommissionAmount: monthlyCompanyCommissionAmount,
-                        monthlyIndividualPairsThreshold: monthlyIndividualPairsThreshold,
-                        weeklyValueBaseThreshold: weeklyValueBaseThreshold,
-                        weeklyBaseCommissionAmount: weeklyBaseCommissionAmount,
-                        weeklyIncrementalValueThreshold: weeklyIncrementalValueThreshold,
-                        weeklyIncrementalBonusAmount: weeklyIncrementalBonusAmount
-                    }).then(() => {
-                        console.log("Default commission settings created in Firestore.");
-                    }).catch(error => {
-                        console.error("Error creating default commission settings:", error);
-                    });
-                }
-            }, error => {
-                console.error("Error listening to commission settings:", error);
-            });
-        }
-
-
-        // --- DASHBOARD Tab Functions ---
-
-        /**
-         * Initializes the charts with empty or default data.
-         */
-        function initializeChartsDashboard() {
-            const chartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    if (context.dataset.label.includes('Valor')) { // Format as currency for sales charts
-                                        label += new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(context.parsed.y);
-                                    } else { // Format as number for pair counts
-                                        label += context.parsed.y.toLocaleString('es-CO');
-                                    }
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            };
-
-            // Destroy existing charts if they exist
-            if (salesByDateChart_dashboard) salesByDateChart_dashboard.destroy();
-            if (salesByAsesorChart_dashboard) salesByAsesorChart_dashboard.destroy();
-            if (pairsByProductChart_dashboard) pairsByProductChart_dashboard.destroy();
-
-            // Sales by Date Chart (Line)
-            salesByDateChart_dashboard = new Chart(document.getElementById('salesByDateChart_dashboard'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Valor de Ventas',
-                        data: [],
-                        borderColor: '#3B82F6', // Blue
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: chartOptions
-            });
-
-            // Sales by Asesor Chart (Bar)
-            salesByAsesorChart_dashboard = new Chart(document.getElementById('salesByAsesorChart_dashboard'), {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Valor Vendido',
-                        data: [],
-                        backgroundColor: '#10B981', // Emerald Green
-                        borderColor: '#059669',
-                        borderWidth: 1
-                    }]
-                },
-                options: chartOptions
-            });
-
-            // Pairs by Product Chart (Bar)
-            pairsByProductChart_dashboard = new Chart(document.getElementById('pairsByProductChart_dashboard'), {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Número de Pares',
-                        data: [],
-                        backgroundColor: '#F59E0B', // Orange
-                        borderColor: '#D97706',
-                        borderWidth: 1
-                    }]
-                },
-                options: chartOptions
-            });
-        }
-
-        /**
-         * Updates the dashboard with filtered data, including metrics and charts.
-         * @param {Array} data - The order data to visualize.
-         */
-        function updateDashboardMetricsAndCharts(data) {
-            let totalPares = 0;
-            let totalValor = 0;
-            let totalPedidos = data.length;
-
-            const salesByDate = {}; // { 'YYYY-MM-DD': totalSales }
-            const asesorPerformance = {}; // { 'AsesorName': { totalSales: 0, totalPairs: 0 } }
-            const pairsByProduct = {}; // { 'ProductName': totalPairs }
-
-            data.forEach(order => {
-                totalPares += order.num_pares || 0;
-                totalValor += order.valor_total || 0;
-
-                if (order.fecha_hora instanceof Date) {
-                    const date = order.fecha_hora.toISOString().split('T')[0];
-                    salesByDate[date] = (salesByDate[date] || 0) + (order.valor_total || 0);
-                }
-
-                if (order.asesor) {
-                    if (!asesorPerformance[order.asesor]) {
-                        asesorPerformance[order.asesor] = { totalSales: 0, totalPairs: 0 };
-                    }
-                    asesorPerformance[order.asesor].totalSales += (order.valor_total || 0);
-                    asesorPerformance[order.asesor].totalPairs += (order.num_pares || 0);
-                }
-
-                if (Array.isArray(order.productos)) {
-                    order.productos.forEach(product => {
-                        if (product.referencia) {
-                            pairsByProduct[product.referencia] = (pairsByProduct[product.referencia] || 0) + 1;
-                        }
-                    });
-                }
-            });
-
-            totalParesMetricDashboard.textContent = totalPares.toLocaleString('es-CO');
-            totalValorMetricDashboard.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(totalValor);
-            totalPedidosMetricDashboard.textContent = totalPedidos.toLocaleString('es-CO');
-
-            const sortedDates = Object.keys(salesByDate).sort();
-            salesByDateChart_dashboard.data.labels = sortedDates;
-            salesByDateChart_dashboard.data.datasets[0].data = sortedDates.map(date => salesByDate[date]);
-            salesByDateChart_dashboard.update();
-
-            salesByAsesorChart_dashboard.data.labels = Object.keys(asesorPerformance);
-            salesByAsesorChart_dashboard.data.datasets[0].data = Object.values(asesorPerformance).map(a => a.totalSales);
-            salesByAsesorChart_dashboard.update();
-
-            pairsByProductChart_dashboard.data.labels = Object.keys(pairsByProduct);
-            pairsByProductChart_dashboard.data.datasets[0].data = Object.values(pairsByProduct);
-            pairsByProductChart_dashboard.update();
-        }
-
-        /**
-         * Applies date filters to allOrdersData and updates the dashboard.
-         */
-        async function loadAndFilterDashboardData() {
-            // allOrdersData is already updated by the real-time listener
-            let filteredData = [...allOrdersData]; // Work with a copy
-
-            // Parse dates to ensure they are interpreted in local time at the start of the day
-            const startDateValue = startDateInputDashboard.value;
-            const endDateValue = endDateInputDashboard.value;
-
-            let startDate = null;
-            if (startDateValue) {
-                const parts = startDateValue.split('-').map(Number);
-                startDate = new Date(parts[0], parts[1] - 1, parts[2]); // Month is 0-indexed
-            }
-
-            let endDate = null;
-            if (endDateValue) {
-                const parts = endDateValue.split('-').map(Number);
-                endDate = new Date(parts[0], parts[1] - 1, parts[2]); // Month is 0-indexed
-            }
-
-            filteredData = filteredData.filter(order => {
-                const orderDate = order.fecha_hora;
-                if (!orderDate) return false;
-
-                let matchesFilter = true;
-                if (startDate) {
-                    matchesFilter = matchesFilter && orderDate >= startDate;
-                }
-                if (endDate) {
-                    const nextDayAfterEndDate = new Date(endDate);
-                    nextDayAfterEndDate.setDate(nextDayAfterEndDate.getDate() + 1);
-                    matchesFilter = matchesFilter && orderDate < nextDayAfterEndDate;
-                }
-                return matchesFilter;
-            });
-
-            updateDashboardMetricsAndCharts(filteredData);
-        }
-
-        /**
-         * Handles the upload of an Excel file and saves it to Firestore.
-         */
-        async function handleExcelUploadDashboard() {
-            const file = excelFileInputDashboard.files[0];
-            if (!file) {
-                showMessageModal("Error de Archivo", "Por favor, selecciona un archivo Excel para subir.");
-                return;
-            }
-
-            showLoading();
-
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet);
-
-                    const dailySummariesToUpload = {};
-
-                    json.forEach(row => {
-                        let fechaHora;
-                        if (row['Fecha']) {
-                            if (typeof row['Fecha'] === 'number') {
-                                fechaHora = new Date(1899, 11, 30 + row['Fecha']);
-                            } else if (typeof row['Fecha'] === 'string') {
-                                fechaHora = new Date(row['Fecha']);
-                            }
-                        } else if (row['Fecha y Hora']) {
-                             if (typeof row['Fecha y Hora'] === 'number') {
-                                fechaHora = new Date(1899, 11, 30 + row['Fecha y Hora']);
-                            } else if (typeof row['Fecha y Hora'] === 'string') {
-                                fechaHora = new Date(row['Fecha y Hora']);
-                            }
-                        }
-
-                        if (!fechaHora || isNaN(fechaHora.getTime())) {
-                            console.warn("Fila ignorada debido a fecha inválida:", row);
-                            return;
-                        }
-
-                        const dateKey = fechaHora.toISOString().split('T')[0];
-                        const asesorName = row['Asesor'] || 'Desconocido';
-                        const docId = `${dateKey}_${asesorName}`;
-
-                        if (!dailySummariesToUpload[docId]) {
-                            dailySummariesToUpload[docId] = {
-                                fecha_hora: fechaHora,
-                                asesor: asesorName,
-                                num_pares: 0,
-                                valor_total: 0
-                            };
-                        }
-                        dailySummariesToUpload[docId].num_pares += parseInt(row['Num Pares']) || 0;
-                        dailySummariesToUpload[docId].valor_total += parseFloat(row['Valor Total']) || 0;
-                    });
-
-                    const batch = db.batch();
-                    let uploadCount = 0;
-                    for (const docId in dailySummariesToUpload) {
-                        const dataToSave = dailySummariesToUpload[docId];
-                        const docRef = db.collection('excel_daily_summaries').doc(docId);
-                        batch.set(docRef, {
-                            fecha_hora: firebase.firestore.Timestamp.fromDate(dataToSave.fecha_hora),
-                            asesor: dataToSave.asesor,
-                            num_pares: dataToSave.num_pares,
-                            valor_total: dataToSave.valor_total,
-                            source: 'excel_upload'
-                        });
-                        uploadCount++;
-                    }
-
-                    if (uploadCount > 0) {
-                        await batch.commit();
-                        showMessageModal("Carga Exitosa", `Archivo Excel procesado y ${uploadCount} resúmenes diarios subidos/actualizados en Firestore.`);
-                    } else {
-                        showMessageModal("Carga Completada", "Archivo Excel procesado, pero no se encontraron datos válidos para subir.");
-                    }
-                    
-                    excelFileInputDashboard.value = '';
-                    // The real-time listener will trigger loadAndFilterDashboardData
-                } catch (error) {
-                    console.error("Error al procesar o subir el archivo Excel:", error);
-                    showMessageModal("Error", "Error al procesar o subir el archivo Excel. Revisa la consola para más detalles.");
-                } finally {
-                    hideLoading();
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        /**
-         * Shows a confirmation modal before deleting all Excel data.
-         */
-        function showDeleteConfirmationExcel() {
-            mostrarModal('delete_confirmation_modal');
-        }
-
-        /**
-         * Deletes all documents from the 'excel_daily_summaries' collection in Firestore.
-         */
-        async function confirmDeleteExcelData() {
-            cerrarModal('delete_confirmation_modal');
-            showLoading();
+        // Inicializar
+        async function init() {
             try {
-                const collectionRef = db.collection('excel_daily_summaries');
-                const snapshot = await collectionRef.get();
+                const { userData } = await checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO]);
+                
+                // Actualizar UI con datos del usuario
+                document.getElementById('userName').textContent = userData.nombre;
+                document.getElementById('userRole').textContent = getRoleName(userData.rol);
+                document.getElementById('mobileUserName').textContent = userData.nombre;
+                document.getElementById('mobileUserRole').textContent = getRoleName(userData.rol);
+                
+                // Generar menú de navegación
+                generateNavMenu(userData.rol);
+                setupMobileMenu();
+                
+                // Cargar datos
+                loadDashboardData(userData);
+                
+                // Inicializar chat
+                initChat(userData.uid);
+                
+                // Escuchar presencia en tiempo real
+                listenToPresence(userData.uid);
+                
+                // Mostrar notificaciones para admins
+                if (userData.rol === ROLES.ADMIN_FINANZAS || userData.rol === ROLES.ADMIN_RRHH) {
+                    document.getElementById('notificationsPanel').classList.remove('hidden');
+                    listenToNotifications();
+                }
+                
+            } catch (error) {
+                console.error('Error de autenticación:', error);
+            }
+        }
+
+        // Generar menú de navegación
+        function generateNavMenu(rol) {
+            const menu = getNavigationMenu(rol);
+            const navMenu = document.getElementById('navMenu');
+            const mobileNavMenu = document.getElementById('mobileNavMenu');
+            
+            navMenu.innerHTML = menu.map(item => `
+                <a href="${item.href}" class="px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition flex items-center gap-2 ${window.location.pathname.includes(item.href) ? 'bg-gray-700/50 text-white' : ''}">
+                    <i class="fas ${item.icon}"></i>
+                    <span>${item.name}</span>
+                </a>
+            `).join('');
+
+            mobileNavMenu.innerHTML = menu.map(item => `
+                <a href="${item.href}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition ${window.location.pathname.includes(item.href) ? 'bg-blue-600/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}">
+                    <i class="fas ${item.icon} w-5 text-center"></i>
+                    <span>${item.name}</span>
+                </a>
+            `).join('');
+        }
+
+        function setupMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            document.getElementById('mobileMenuBtn').addEventListener('click', () => menu.classList.remove('hidden'));
+            document.getElementById('closeMobileMenu').addEventListener('click', () => menu.classList.add('hidden'));
+            overlay.addEventListener('click', () => menu.classList.add('hidden'));
+        }
+
+        // Cargar datos del dashboard
+        async function loadDashboardData(userData) {
+            const isOperario = userData.rol === ROLES.OPERARIO;
+            
+            // Cargar estadísticas
+            await Promise.all([
+                loadProductionStats(isOperario ? userData.uid : null),
+                loadActiveOrders(),
+                loadRecentProduction(isOperario ? userData.uid : null)
+            ]);
+            
+            // Inicializar gráfica
+            await initProductionChart(isOperario ? userData.uid : null);
+        }
+
+        // Cargar estadísticas de producción
+        async function loadProductionStats(operarioUid = null) {
+            try {
+                const today = getDayStart();
+                const weekStart = getWeekStart();
+                
+                // Query base
+                let baseQuery = collection(db, 'produccion_logs');
+                
+                // Producción de hoy
+                let todayQuery = query(
+                    baseQuery,
+                    where('fecha', '>=', Timestamp.fromDate(today))
+                );
+                
+                if (operarioUid) {
+                    todayQuery = query(
+                        baseQuery,
+                        where('uid_operario', '==', operarioUid),
+                        where('fecha', '>=', Timestamp.fromDate(today))
+                    );
+                }
+                
+                const todaySnapshot = await getDocs(todayQuery);
+                let paresHoy = 0;
+                todaySnapshot.forEach(doc => {
+                    paresHoy += doc.data().cantidad || 0;
+                });
+                document.getElementById('paresHoy').textContent = paresHoy;
+                
+                // Producción de la semana
+                let weekQuery = query(
+                    baseQuery,
+                    where('fecha', '>=', Timestamp.fromDate(weekStart))
+                );
+                
+                if (operarioUid) {
+                    weekQuery = query(
+                        baseQuery,
+                        where('uid_operario', '==', operarioUid),
+                        where('fecha', '>=', Timestamp.fromDate(weekStart))
+                    );
+                }
+                
+                const weekSnapshot = await getDocs(weekQuery);
+                let paresSemana = 0;
+                weekSnapshot.forEach(doc => {
+                    paresSemana += doc.data().cantidad || 0;
+                });
+                document.getElementById('paresSemana').textContent = paresSemana;
+                
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+            }
+        }
+
+        // Cargar órdenes activas
+        async function loadActiveOrders() {
+            try {
+                const ordersQuery = query(
+                    collection(db, 'ordenes'),
+                    where('estado', '==', 'activa'),
+                    orderBy('fecha_creacion', 'desc'),
+                    limit(5)
+                );
+                
+                const snapshot = await getDocs(ordersQuery);
+                const ordersList = document.getElementById('activeOrdersList');
+                const countEl = document.getElementById('ordenesActivas');
+                
+                countEl.textContent = snapshot.size;
                 
                 if (snapshot.empty) {
-                    showMessageModal("Información", "No hay datos de Excel cargados para eliminar.");
+                    ordersList.innerHTML = '<p class="text-gray-500 text-center py-4">No hay órdenes activas</p>';
                     return;
                 }
-
-                const batch = db.batch();
-                snapshot.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-
-                await batch.commit();
-                showMessageModal("Eliminación Exitosa", `Se eliminaron ${snapshot.size} documentos de la colección 'excel_daily_summaries'.`);
-                // The real-time listener will trigger loadAndFilterDashboardData
-            } catch (error) {
-                console.error("Error al eliminar datos de Excel de Firestore:", error);
-                showMessageModal("Error", "Error al eliminar datos de Excel. Revisa la consola para más detalles.");
-            } finally {
-                hideLoading();
-            }
-        }
-
-        /**
-         * Sets the date range for the current week (Monday to Saturday) and applies filter for dashboard.
-         */
-        function filterCurrentWeekDashboard() {
-            currentDashboardFilterMode = 'quick_week';
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-            
-            const daysToMonday = (dayOfWeek === 0) ? 6 : (dayOfWeek - 1);
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - daysToMonday);
-            
-            const saturday = new Date(monday);
-            saturday.setDate(monday.getDate() + 5); 
-
-            startDateInputDashboard.value = monday.toISOString().split('T')[0];
-            endDateInputDashboard.value = saturday.toISOString().split('T')[0];
-            loadAndFilterDashboardData();
-        }
-
-        /**
-         * Sets the date range for the current month and applies filter for dashboard.
-         */
-        function filterCurrentMonthDashboard() {
-            currentDashboardFilterMode = 'quick_month';
-            const today = new Date();
-            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-            startDateInputDashboard.value = firstDay.toISOString().split('T')[0];
-            endDateInputDashboard.value = lastDay.toISOString().split('T')[0];
-            loadAndFilterDashboardData();
-        }
-
-        /**
-         * Handles month selection from the dropdown for dashboard.
-         */
-        function handleMonthSelectionDashboard() {
-            currentDashboardFilterMode = 'quick_month';
-            const selectedMonth = monthSelectorDashboard.value;
-            if (selectedMonth) {
-                const year = parseInt(selectedMonth.split('-')[0]);
-                const month = parseInt(selectedMonth.split('-')[1]) - 1;
-
-                const firstDay = new Date(year, month, 1);
-                const lastDay = new Date(year, month + 1, 0);
-
-                startDateInputDashboard.value = firstDay.toISOString().split('T')[0];
-                endDateInputDashboard.value = lastDay.toISOString().split('T')[0];
-                loadAndFilterDashboardData();
-            } else {
-                startDateInputDashboard.value = '';
-                endDateInputDashboard.value = '';
-                loadAndFilterDashboardData(); // Load all data if no month selected
-            }
-        }
-
-        /**
-         * Resets the dashboard filters.
-         */
-        function resetDashboardFilters() {
-            startDateInputDashboard.value = '';
-            endDateInputDashboard.value = '';
-            monthSelectorDashboard.value = '';
-            includeExcelDataCheckbox.checked = true; // Reset to default true
-            localStorage.setItem('includeExcelData', true);
-            currentDashboardFilterMode = 'custom_date_range'; // Reset mode
-
-            // Re-fetch all data to ensure Excel data is included again, then load empty state
-            fetchAllOrdersFromFirestore().then(() => {
-                // Clear metrics and charts
-                totalParesMetricDashboard.textContent = '0';
-                totalValorMetricDashboard.textContent = '$0';
-                totalPedidosMetricDashboard.textContent = '0';
-                salesByDateChart_dashboard.data.labels = [];
-                salesByDateChart_dashboard.data.datasets[0].data = [];
-                salesByDateChart_dashboard.update();
-                salesByAsesorChart_dashboard.data.labels = [];
-                salesByAsesorChart_dashboard.data.datasets[0].data = [];
-                salesByAsesorChart_dashboard.update();
-                pairsByProductChart_dashboard.data.labels = [];
-                pairsByProductChart_dashboard.data.datasets[0].data = [];
-                pairsByProductChart_dashboard.update();
-                showMessageModal("Dashboard Reiniciado", "Los filtros del Dashboard han sido reiniciados. Aplica un nuevo filtro para ver los datos.");
-            });
-        }
-
-
-        // --- COMISION GENERAL Tab Functions ---
-
-        /**
-         * Calculates and displays general (monthly) commissions based on the selected month.
-         */
-        function calculateAndDisplayGeneralCommissions() {
-            currentGeneralMonthFilter = monthSelectorGeneral.value;
-
-            let filteredData = [...allOrdersData]; // Start with all data
-
-            // Apply month filter if a month is selected
-            if (currentGeneralMonthFilter) {
-                const [year, month] = currentGeneralMonthFilter.split('-').map(Number);
-                const firstDayOfMonth = new Date(year, month - 1, 1); // Month is 0-indexed
-                const lastDayOfMonth = new Date(year, month, 0); // Last day of the selected month
-
-                filteredData = filteredData.filter(order => {
-                    const orderDate = order.fecha_hora;
-                    return orderDate >= firstDayOfMonth && orderDate <= lastDayOfMonth;
-                });
-            } else {
-                // If no month is selected, clear the display or show a message
-                generalCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">Selecciona un mes para calcular la comisión general.</p>';
-                return;
-            }
-
-
-            let totalCompanyPairsFilteredPeriod = 0;
-            const asesorMonthlyPerformance = {}; // { 'AsesorName': { totalSales: 0, totalPairs: 0 } }
-
-            filteredData.forEach(order => {
-                totalCompanyPairsFilteredPeriod += order.num_pares || 0;
-                if (order.asesor) {
-                    if (!asesorMonthlyPerformance[order.asesor]) {
-                        asesorMonthlyPerformance[order.asesor] = { totalSales: 0, totalPairs: 0 };
-                    }
-                    asesorMonthlyPerformance[order.asesor].totalSales += (order.valor_total || 0);
-                    asesorMonthlyPerformance[order.asesor].totalPairs += (order.num_pares || 0);
-                }
-            });
-
-            let commissionHtml = `
-                <h3 class="text-xl font-semibold mb-4">Resumen de Comisión General ${currentGeneralMonthFilter ? `(Mes: ${new Date(currentGeneralMonthFilter + '-01').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })})` : '(Todos los períodos)'}</h3>
-                <p class="mb-2"><strong>Tope de Pares (Empresa):</strong> ${monthlyCompanyPairsThreshold.toLocaleString('es-CO')} pares</p>
-                <p class="mb-2"><strong>Total Pares Vendidos (Empresa en período filtrado):</strong> ${totalCompanyPairsFilteredPeriod.toLocaleString('es-CO')} pares</p>
-                <p class="mb-4"><strong>Empresa cumple el tope:</strong> ${totalCompanyPairsFilteredPeriod >= monthlyCompanyPairsThreshold ? '<span class="text-green-600 font-bold">SÍ</span>' : '<span class="text-red-600 font-bold">NO</span>'}</p>
-                <table class="commission-table">
-                    <thead>
-                        <tr>
-                            <th>Asesor</th>
-                            <th>Pares Vendidos</th>
-                            <th>Valor Vendido</th>
-                            <th>Comisión Mensual</th>
-                            <th>Estado Individual</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            const companyMeetsMonthlyPairsTarget = (monthlyCompanyPairsThreshold > 0 && totalCompanyPairsFilteredPeriod >= monthlyCompanyPairsThreshold);
-
-            for (const asesor in asesorMonthlyPerformance) {
-                const { totalSales, totalPairs } = asesorMonthlyPerformance[asesor];
-                let monthlyCommission = 0;
-                let individualStatus = '';
-                let statusColorClass = 'text-red-600';
-
-                if (companyMeetsMonthlyPairsTarget) {
-                    if (monthlyIndividualPairsThreshold > 0) {
-                        if (totalPairs >= monthlyIndividualPairsThreshold) {
-                            monthlyCommission = monthlyCompanyCommissionAmount;
-                            individualStatus = `Cumple (${totalPairs.toLocaleString('es-CO')}/${monthlyIndividualPairsThreshold.toLocaleString('es-CO')} pares)`;
-                            statusColorClass = 'text-green-600';
-                        } else if (totalPairs >= (monthlyIndividualPairsThreshold / 2)) {
-                            monthlyCommission = monthlyCompanyCommissionAmount / 2;
-                            individualStatus = `Cumple (50% de tope: ${totalPairs.toLocaleString('es-CO')}/${monthlyIndividualPairsThreshold.toLocaleString('es-CO')} pares)`;
-                            statusColorClass = 'text-orange-500'; // A different color for partial fulfillment
-                        } else {
-                            individualStatus = `No cumple (${totalPairs.toLocaleString('es-CO')}/${monthlyIndividualPairsThreshold.toLocaleString('es-CO')} pares)`;
-                        }
-                    } else { // No individual threshold set
-                        monthlyCommission = monthlyCompanyCommissionAmount;
-                        individualStatus = `Cumple (no requiere tope individual)`;
-                        statusColorClass = 'text-green-600';
-                    }
-                } else {
-                    individualStatus = `Empresa no cumple el tope general`;
-                }
-
-                commissionHtml += `
-                    <tr>
-                        <td>${asesor}</td>
-                        <td>${totalPairs.toLocaleString('es-CO')}</td>
-                        <td>${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(totalSales)}</td>
-                        <td class="${statusColorClass}">${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(monthlyCommission)}</td>
-                        <td>${individualStatus}</td>
-                    </tr>
-                `;
-            }
-            commissionHtml += '</tbody></table>';
-            generalCommissionSummaryDiv.innerHTML = commissionHtml;
-
-            if (Object.keys(asesorMonthlyPerformance).length === 0) {
-                generalCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">No hay datos de asesores para calcular comisiones generales en el período seleccionado.</p>';
-            }
-        }
-
-        /**
-         * Saves general commission settings to Firestore.
-         */
-        async function saveCommissionGeneralSettings() {
-            const newMonthlyCompanyPairsThreshold = parseFloat(monthlyCompanyPairsThresholdInput.value);
-            const newMonthlyCompanyCommissionAmount = parseFloat(monthlyCompanyCommissionAmountInput.value);
-            const newMonthlyIndividualPairsThreshold = parseFloat(monthlyIndividualPairsThresholdInput.value);
-
-            if (isNaN(newMonthlyCompanyPairsThreshold) || newMonthlyCompanyPairsThreshold < 0 ||
-                isNaN(newMonthlyCompanyCommissionAmount) || newMonthlyCompanyCommissionAmount < 0 ||
-                isNaN(newMonthlyIndividualPairsThreshold) || newMonthlyIndividualPairsThreshold < 0) {
-                showMessageModal("Error de Configuración", "Por favor, ingrese valores válidos y no negativos para todas las configuraciones.");
-                return;
-            }
-
-            try {
-                await db.collection('settings').doc('commission_settings').set({
-                    monthlyCompanyPairsThreshold: newMonthlyCompanyPairsThreshold,
-                    monthlyCompanyCommissionAmount: newMonthlyCompanyCommissionAmount,
-                    monthlyIndividualPairsThreshold: newMonthlyIndividualPairsThreshold
-                }, { merge: true }); // Use merge to only update these fields
-                showMessageModal("Configuración Guardada", "Configuración de comisión general guardada correctamente.");
-                cerrarModal('commission_general_settings_modal');
-                // The real-time listener will trigger calculateAndDisplayGeneralCommissions()
-                // if a month is already selected
-                if (currentGeneralMonthFilter) {
-                    calculateAndDisplayGeneralCommissions();
-                }
-            } catch (error) {
-                console.error("Error saving general commission settings:", error);
-                showMessageModal("Error", "Error al guardar la configuración de comisión general.");
-            }
-        }
-
-        /**
-         * Resets the general commission filter.
-         */
-        function resetGeneralFilter() {
-            monthSelectorGeneral.value = ''; // Reset month selector
-            currentGeneralMonthFilter = ''; // Reset filter variable
-            generalCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">Selecciona un mes para calcular la comisión general.</p>';
-            showMessageModal("Filtro Reiniciado", "El filtro de Comisión General ha sido reiniciado. Selecciona un mes para ver los datos.");
-        }
-
-
-        // --- COMISION SEMANAL Tab Functions ---
-
-        /**
-         * Calculates and displays weekly commissions based on the selected date range.
-         */
-        function calculateAndDisplayWeeklyCommissions() {
-            const startDateValue = startDateInputWeekly.value;
-            const endDateValue = endDateInputWeekly.value;
-
-            if (!startDateValue || !endDateValue) {
-                weeklyCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">Por favor, selecciona un rango de fechas para calcular la comisión semanal.</p>';
-                return;
-            }
-
-            // Parse dates to ensure they are interpreted in local time at the start of the day
-            const startDateParts = startDateValue.split('-').map(Number); // [year, month, day]
-            const startDate = new Date(startDateParts[0], startDateParts[1] - 1, startDateParts[2]); // Month is 0-indexed
-
-            const endDateParts = endDateValue.split('-').map(Number);
-            let endDate = new Date(endDateParts[0], endDateParts[1] - 1, endDateParts[2]); // Month is 0-indexed
-
-
-            // Adjust endDate to include the entire day for filtering
-            const adjustedEndDate = new Date(endDate);
-            adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
-
-            const filteredData = allOrdersData.filter(order => {
-                const orderDate = order.fecha_hora;
-                return orderDate >= startDate && orderDate < adjustedEndDate;
-            });
-
-            // Aggregate sales for each asesor within the selected custom period
-            const asesorCustomPeriodPerformance = {}; // { 'AsesorName': { totalSales: 0, totalPairs: 0 } }
-
-            filteredData.forEach(order => {
-                if (order.asesor) {
-                    if (!asesorCustomPeriodPerformance[order.asesor]) {
-                        asesorCustomPeriodPerformance[order.asesor] = { totalSales: 0, totalPairs: 0 };
-                    }
-                    asesorCustomPeriodPerformance[order.asesor].totalSales += (order.valor_total || 0);
-                    asesorCustomPeriodPerformance[order.asesor].totalPairs += (order.num_pares || 0);
-                }
-            });
-
-            // For display purposes, use the values from the input fields directly
-            const displayStartDate = new Date(startDateInputWeekly.value + 'T00:00:00'); 
-            const displayEndDate = new Date(endDateInputWeekly.value + 'T00:00:00'); 
-
-            let commissionHtml = `
-                <h3 class="text-xl font-semibold mb-4">Resumen de Comisión Semanal (${displayStartDate.toLocaleDateString('es-CO')} - ${displayEndDate.toLocaleDateString('es-CO')})</h3>
-                <table class="commission-table">
-                    <thead>
-                        <tr>
-                            <th>Asesor</th>
-                            <th>Valor Vendido (Período)</th>
-                            <th>Comisión Semanal</th>
-                            <th>Detalles</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            const sortedAsesores = Object.keys(asesorCustomPeriodPerformance).sort();
-
-            sortedAsesores.forEach(asesor => {
-                const { totalSales: customPeriodTotalSales } = asesorCustomPeriodPerformance[asesor];
-                let currentCommission = 0;
-                let details = [];
-                let meetsCriteria = false;
-
-                if (weeklyValueBaseThreshold > 0 && customPeriodTotalSales >= weeklyValueBaseThreshold) {
-                    currentCommission += weeklyBaseCommissionAmount;
-                    details.push(`Base: Cumple ($${customPeriodTotalSales.toLocaleString('es-CO')}/$${weeklyValueBaseThreshold.toLocaleString('es-CO')})`);
-                    meetsCriteria = true;
-                } else if (weeklyValueBaseThreshold > 0) {
-                    details.push(`Base: No cumple ($${customPeriodTotalSales.toLocaleString('es-CO')}/$${weeklyValueBaseThreshold.toLocaleString('es-CO')})`);
-                }
-
-                if (weeklyIncrementalValueThreshold > 0 && customPeriodTotalSales > weeklyValueBaseThreshold) {
-                    const excessValue = customPeriodTotalSales - weeklyValueBaseThreshold;
-                    const increments = Math.floor(excessValue / weeklyIncrementalValueThreshold);
-                    if (increments > 0) {
-                        const incrementalBonus = increments * weeklyIncrementalBonusAmount;
-                        currentCommission += incrementalBonus;
-                        details.push(`Inc: $${incrementalBonus.toLocaleString('es-CO')} (${increments}x$${weeklyIncrementalValueThreshold.toLocaleString('es-CO')})`);
-                        meetsCriteria = true;
-                    }
-                }
-
-                const commissionColorClass = meetsCriteria ? 'text-green-600' : 'text-red-600';
-                const formattedCurrentCommission = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(currentCommission);
-
-                commissionHtml += `
-                    <tr>
-                        <td>${asesor}</td>
-                        <td>${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(customPeriodTotalSales)}</td>
-                        <td class="${commissionColorClass}">${formattedCurrentCommission}</td>
-                        <td>${details.join(', ') || (weeklyValueBaseThreshold === 0 && weeklyIncrementalValueThreshold === 0 ? 'Topes no configurados' : 'No cumple criterios')}</td>
-                    </tr>
-                `;
-            });
-
-            commissionHtml += '</tbody></table>';
-            weeklyCommissionSummaryDiv.innerHTML = commissionHtml;
-
-            if (Object.keys(asesorCustomPeriodPerformance).length === 0) {
-                weeklyCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">No hay datos de ventas para el período seleccionado.</p>';
-                lastWeeklyCommissionData = null;
-                document.getElementById('btn_capturar_semana').disabled = true;
-            } else {
-                // Store data for capture
-                const asesoresCapture = {};
-                sortedAsesores.forEach(asesor => {
-                    const { totalSales: customPeriodTotalSales } = asesorCustomPeriodPerformance[asesor];
-                    let comision = 0;
-                    let detalles = [];
-
-                    if (weeklyValueBaseThreshold > 0 && customPeriodTotalSales >= weeklyValueBaseThreshold) {
-                        comision += weeklyBaseCommissionAmount;
-                        detalles.push('Base');
-                    }
-                    if (weeklyIncrementalValueThreshold > 0 && customPeriodTotalSales > weeklyValueBaseThreshold) {
-                        const excess = customPeriodTotalSales - weeklyValueBaseThreshold;
-                        const increments = Math.floor(excess / weeklyIncrementalValueThreshold);
-                        if (increments > 0) {
-                            comision += increments * weeklyIncrementalBonusAmount;
-                            detalles.push(`Inc x${increments}`);
-                        }
-                    }
-
-                    asesoresCapture[asesor] = {
-                        valorVendido: customPeriodTotalSales,
-                        comision: comision,
-                        detalles: detalles.join(', ') || 'No cumple'
-                    };
-                });
-
-                lastWeeklyCommissionData = {
-                    desde: startDateValue,
-                    hasta: endDateValue,
-                    asesores: asesoresCapture
-                };
-                document.getElementById('btn_capturar_semana').disabled = false;
-            }
-        }
-
-        /**
-         * Saves weekly commission settings to Firestore.
-         */
-        async function saveCommissionWeeklySettings() {
-            const newWeeklyValueBaseThreshold = parseFloat(weeklyValueBaseThresholdInput.value);
-            const newWeeklyBaseCommissionAmount = parseFloat(weeklyBaseCommissionAmountInput.value);
-            const newWeeklyIncrementalValueThreshold = parseFloat(weeklyIncrementalValueThresholdInput.value);
-            const newWeeklyIncrementalBonusAmount = parseFloat(weeklyIncrementalBonusAmountInput.value);
-
-            if (isNaN(newWeeklyValueBaseThreshold) || newWeeklyValueBaseThreshold < 0 ||
-                isNaN(newWeeklyBaseCommissionAmount) || newWeeklyBaseCommissionAmount < 0 ||
-                isNaN(newWeeklyIncrementalValueThreshold) || newWeeklyIncrementalValueThreshold < 0 ||
-                isNaN(newWeeklyIncrementalBonusAmount) || newWeeklyIncrementalBonusAmount < 0) {
-                showMessageModal("Error de Configuración", "Por favor, ingrese valores válidos y no negativos para todas las configuraciones.");
-                return;
-            }
-
-            try {
-                await db.collection('settings').doc('commission_settings').set({
-                    weeklyValueBaseThreshold: newWeeklyValueBaseThreshold,
-                    weeklyBaseCommissionAmount: newWeeklyBaseCommissionAmount,
-                    weeklyIncrementalValueThreshold: newWeeklyIncrementalValueThreshold,
-                    weeklyIncrementalBonusAmount: newWeeklyIncrementalBonusAmount
-                }, { merge: true }); // Use merge to only update these fields
-                showMessageModal("Configuración Guardada", "Configuración de comisión semanal guardada correctamente.");
-                cerrarModal('commission_weekly_settings_modal');
-                // The real-time listener will trigger calculateAndDisplayWeeklyCommissions()
-                // if dates are already selected
-                if (startDateInputWeekly.value && endDateInputWeekly.value) {
-                    calculateAndDisplayWeeklyCommissions();
-                }
-            } catch (error) {
-                console.error("Error saving weekly commission settings:", error);
-                showMessageModal("Error", "Error al guardar la configuración de comisión semanal.");
-            }
-        }
-
-        /**
-         * Sets the date range for the current week (Monday to Saturday) and applies filter for weekly commission.
-         */
-        function filterCurrentWeekWeekly() {
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-            
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Adjust to Monday
-            monday.setHours(0, 0, 0, 0); // Set to start of day
-
-            const saturday = new Date(monday);
-            saturday.setDate(monday.getDate() + 5); 
-            // Keep the time as 00:00:00 for the input value, the filtering logic handles the end of day
-            saturday.setHours(0, 0, 0, 0); 
-
-            startDateInputWeekly.value = monday.toISOString().split('T')[0];
-            endDateInputWeekly.value = saturday.toISOString().split('T')[0];
-            calculateAndDisplayWeeklyCommissions();
-        }
-
-        /**
-         * Sets the date range for the last week (Monday to Saturday) and applies filter for weekly commission.
-         */
-        function filterLastWeekWeekly() {
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-            
-            const currentMonday = new Date(today);
-            currentMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Adjust to current Monday
-            currentMonday.setHours(0, 0, 0, 0); // Set to start of day
-
-            const lastMonday = new Date(currentMonday);
-            lastMonday.setDate(currentMonday.getDate() - 7); // Subtract 7 days to get last Monday
-            lastMonday.setHours(0, 0, 0, 0); // Set to start of day
-
-            const lastSaturday = new Date(lastMonday);
-            lastSaturday.setDate(lastMonday.getDate() + 5); 
-            // Keep the time as 00:00:00 for the input value, the filtering logic handles the end of day
-            lastSaturday.setHours(0, 0, 0, 0); 
-
-            startDateInputWeekly.value = lastMonday.toISOString().split('T')[0];
-            endDateInputWeekly.value = lastSaturday.toISOString().split('T')[0];
-            calculateAndDisplayWeeklyCommissions();
-        }
-
-        /**
-         * Resets the weekly commission filter.
-         */
-        function resetWeeklyFilter() {
-            startDateInputWeekly.value = '';
-            endDateInputWeekly.value = '';
-            weeklyCommissionSummaryDiv.innerHTML = '<p class="text-center text-gray-500">Selecciona un rango de fechas para calcular la comisión semanal.</p>';
-            currentWeeklyFilterMode = 'custom_date_range'; // Reset mode
-            lastWeeklyCommissionData = null;
-            document.getElementById('btn_capturar_semana').disabled = true;
-        }
-
-
-        // --- VER HISTORIAL Tab Functions ---
-
-        /**
-         * Populates the asesor and month filters for the history tab.
-         */
-        function populateHistoryFilters() {
-            const asesores = new Set();
-            const months = new Set();
-
-            allOrdersData.forEach(order => {
-                if (order.asesor) {
-                    asesores.add(order.asesor);
-                }
-                if (order.fecha_hora instanceof Date) {
-                    months.add(order.fecha_hora.toISOString().slice(0, 7)); //YYYY-MM
-                }
-            });
-
-            // Populate Asesor filter
-            filterAsesorHistory.innerHTML = '<option value="">Todos</option>';
-            Array.from(asesores).sort().forEach(asesor => {
-                const option = document.createElement('option');
-                option.value = asesor;
-                option.textContent = asesor;
-                filterAsesorHistory.appendChild(option);
-            });
-            filterAsesorHistory.value = currentHistoryAsesorFilter; // Restore selection
-
-            // Populate Month filter
-            filterMonthHistory.innerHTML = '<option value="">Todos los Meses</option>';
-            Array.from(months).sort().reverse().forEach(monthValue => { // Sort descending for most recent first
-                const [year, month] = monthValue.split('-').map(Number);
-                const date = new Date(year, month - 1, 1); // month - 1 because Date months are 0-indexed
-                const monthName = date.toLocaleString('es-CO', { month: 'long', year: 'numeric' });
-                const option = document.createElement('option');
-                option.value = monthValue;
-                option.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-                filterMonthHistory.appendChild(option);
-            });
-            filterMonthHistory.value = currentHistoryMonthFilter; // Restore selection
-        }
-
-        /**
-         * Loads and filters sales history data.
-         */
-        function loadAndFilterHistoryData() {
-            currentHistoryAsesorFilter = filterAsesorHistory.value;
-            currentHistoryMonthFilter = filterMonthHistory.value;
-
-            let filteredHistoryData = [...allOrdersData];
-
-            if (currentHistoryAsesorFilter) {
-                filteredHistoryData = filteredHistoryData.filter(order => order.asesor === currentHistoryAsesorFilter);
-            }
-            if (currentHistoryMonthFilter) {
-                filteredHistoryData = filteredHistoryData.filter(order => {
-                    if (order.fecha_hora instanceof Date) {
-                        // Ensure comparison is done correctly with ISO string
-                        return order.fecha_hora.toISOString().startsWith(currentHistoryMonthFilter);
-                    }
-                    return false;
-                });
-            }
-
-            displaySalesHistory(filteredHistoryData);
-        }
-
-        /**
-         * Displays the filtered sales history in a table.
-         * @param {Array} data - The filtered sales data.
-         */
-        function displaySalesHistory(data) {
-            if (data.length === 0) {
-                salesHistoryList.innerHTML = '<p class="text-center text-gray-500">No hay historial de ventas para los filtros seleccionados.</p>';
-                return;
-            }
-
-            let totalParesHistory = 0;
-            let totalValorHistory = 0;
-
-            data.forEach(order => {
-                totalParesHistory += order.num_pares || 0;
-                totalValorHistory += order.valor_total || 0;
-            });
-
-            let historyHtml = `
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Asesor</th>
-                            <th>Pares</th>
-                            <th>Valor Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            data.forEach(order => {
-                const dateFormatted = order.fecha_hora instanceof Date ? order.fecha_hora.toLocaleDateString('es-CO') : 'N/A';
-                historyHtml += `
-                    <tr>
-                        <td>${dateFormatted}</td>
-                        <td>${order.asesor || 'N/A'}</td>
-                        <td>${order.num_pares || 0}</td>
-                        <td>${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(order.valor_total || 0)}</td>
-                    </tr>
-                `;
-            });
-
-            historyHtml += `
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="2" class="text-right font-bold">Total General:</td>
-                            <td class="font-bold">${totalParesHistory.toLocaleString('es-CO')}</td>
-                            <td class="font-bold">${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(totalValorHistory)}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            `;
-            salesHistoryList.innerHTML = historyHtml;
-        }
-
-        /**
-         * Resets the history filters.
-         */
-        function resetHistoryFilters() {
-            filterAsesorHistory.value = '';
-            filterMonthHistory.value = '';
-            currentHistoryAsesorFilter = '';
-            currentHistoryMonthFilter = '';
-            salesHistoryList.innerHTML = '<p class="text-center text-gray-500">Aplica filtros para ver el historial de ventas.</p>';
-            showMessageModal("Filtros Reiniciados", "Los filtros del historial de ventas han sido reiniciados. Aplica un nuevo filtro para ver los datos.");
-        }
-
-
-        // --- LIQUIDACIÓN MENSUAL Functions ---
-        let lastWeeklyCommissionData = null; // Store last calculated weekly data for capture
-
-        /**
-         * Captures the current weekly commission snapshot and saves to Firestore.
-         */
-        async function capturarSemana() {
-            if (!lastWeeklyCommissionData) {
-                showMessageModal("Error", "Primero genera una comisión semanal para poder capturarla.");
-                return;
-            }
-
-            const { desde, hasta, asesores } = lastWeeklyCommissionData;
-            // Use Monday of the week as unique ID
-            const semanaId = desde; // e.g., "2026-03-01"
-
-            showLoading();
-            try {
-                // Check if this week was already captured
-                const existing = await db.collection('liquidaciones_semanales').doc(semanaId).get();
-                if (existing.exists) {
-                    hideLoading();
-                    const overwrite = confirm(`La semana ${desde} a ${hasta} ya fue capturada.\n¿Desea sobrescribirla con los datos actuales?`);
-                    if (!overwrite) return;
-                    showLoading();
-                }
-
-                await db.collection('liquidaciones_semanales').doc(semanaId).set({
-                    desde: desde,
-                    hasta: hasta,
-                    fechaCaptura: firebase.firestore.FieldValue.serverTimestamp(),
-                    asesores: asesores // { "Nombre": { valorVendido: X, comision: Y, detalles: "..." } }
-                });
-
-                showMessageModal("Semana Capturada", `La comisión de la semana ${desde} a ${hasta} ha sido guardada exitosamente.\n\nPuede ver el acumulado en la pestaña "LIQUIDACIÓN MENSUAL".`);
-            } catch (error) {
-                console.error("Error al capturar semana:", error);
-                showMessageModal("Error", "Error al guardar la captura semanal. Revisa la consola.");
-            } finally {
-                hideLoading();
-            }
-        }
-
-        /**
-         * Loads and displays the monthly liquidation with all captured weeks for the selected month.
-         */
-        async function cargarLiquidacionMensual() {
-            const monthSelector = document.getElementById('month_selector_liquidacion');
-            const selectedMonth = monthSelector.value;
-            const resultDiv = document.getElementById('liquidacion_resultado');
-
-            if (!selectedMonth) {
-                resultDiv.innerHTML = '<p class="text-center text-gray-500">Selecciona un mes para ver la liquidación acumulada.</p>';
-                return;
-            }
-
-            showLoading();
-            try {
-                const [year, month] = selectedMonth.split('-').map(Number);
-                const firstDay = new Date(year, month - 1, 1);
-                const lastDay = new Date(year, month, 0);
-                const firstDayStr = firstDay.toISOString().split('T')[0];
-                const lastDayStr = lastDay.toISOString().split('T')[0];
-
-                // Query captured weeks where 'desde' falls within the selected month
-                const snapshot = await db.collection('liquidaciones_semanales')
-                    .where('desde', '>=', firstDayStr)
-                    .where('desde', '<=', lastDayStr)
-                    .orderBy('desde', 'asc')
-                    .get();
-
-                if (snapshot.empty) {
-                    resultDiv.innerHTML = `
-                        <div class="commission-table-container">
-                            <p class="text-center text-gray-500" style="padding:2rem">
-                                No hay semanas capturadas para <strong>${firstDay.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}</strong>.<br><br>
-                                Ve a la pestaña <strong>"COMISIÓN SEMANAL"</strong>, filtra cada semana y presiona <strong>"📸 Capturar esta Semana"</strong>.
-                            </p>
-                        </div>`;
-                    hideLoading();
-                    return;
-                }
-
-                const capturedWeeks = [];
-                snapshot.forEach(doc => capturedWeeks.push({ id: doc.id, ...doc.data() }));
-
-                // Accumulate totals per asesor across all captured weeks
-                const acumulado = {}; // { "Nombre": { totalVendido: 0, totalComision: 0, semanas: 0 } }
-                const semanasColumns = []; // For column headers
-
-                capturedWeeks.forEach((week, idx) => {
-                    const weekLabel = `S${idx + 1} (${week.desde.slice(5)} al ${week.hasta.slice(5)})`;
-                    semanasColumns.push({ label: weekLabel, id: week.id, desde: week.desde, hasta: week.hasta });
-
-                    if (week.asesores) {
-                        for (const [nombre, data] of Object.entries(week.asesores)) {
-                            if (!acumulado[nombre]) {
-                                acumulado[nombre] = { totalVendido: 0, totalComision: 0, semanas: {} };
-                            }
-                            acumulado[nombre].totalVendido += (data.valorVendido || 0);
-                            acumulado[nombre].totalComision += (data.comision || 0);
-                            acumulado[nombre].semanas[week.id] = data;
-                        }
-                    }
-                });
-
-                const monthName = firstDay.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-                const fmtCOP = (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-                const sortedAsesores = Object.keys(acumulado).sort();
-
-                // Build the table
-                let html = `
-                    <div class="commission-table-container">
-                        <h3 class="text-xl font-semibold mb-2" style="text-transform:capitalize">Liquidación: ${monthName}</h3>
-                        <p class="mb-4 text-gray-600"><strong>${capturedWeeks.length}</strong> semana(s) capturada(s)</p>
-                        <div style="overflow-x:auto">
-                        <table class="commission-table">
-                            <thead>
-                                <tr>
-                                    <th>Asesor</th>`;
-
-                semanasColumns.forEach(s => {
-                    html += `<th style="text-align:center;min-width:120px">${s.label}</th>`;
-                });
-
-                html += `       <th style="text-align:center;background:#d1fae5;color:#065f46;min-width:140px">TOTAL A PAGAR</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-
-                let grandTotalComision = 0;
-
-                sortedAsesores.forEach(nombre => {
-                    const data = acumulado[nombre];
-                    grandTotalComision += data.totalComision;
-
-                    html += `<tr><td style="font-weight:600">${nombre}</td>`;
-                    semanasColumns.forEach(s => {
-                        const weekData = data.semanas[s.id];
-                        if (weekData) {
-                            const color = weekData.comision > 0 ? 'color:#059669;font-weight:700' : 'color:#dc2626';
-                            html += `<td style="text-align:center"><div style="font-size:0.8em;color:#6b7280">${fmtCOP(weekData.valorVendido)}</div><div style="${color}">${fmtCOP(weekData.comision)}</div></td>`;
-                        } else {
-                            html += `<td style="text-align:center;color:#9ca3af">—</td>`;
-                        }
-                    });
-                    const totalColor = data.totalComision > 0 ? 'color:#059669' : 'color:#dc2626';
-                    html += `<td style="text-align:center;font-weight:800;font-size:1.1em;${totalColor};background:#ecfdf5">${fmtCOP(data.totalComision)}</td></tr>`;
-                });
-
-                html += `</tbody>
-                        <tfoot>
-                            <tr>
-                                <td style="font-weight:800;text-align:right" colspan="${semanasColumns.length + 1}">GRAN TOTAL:</td>
-                                <td style="font-weight:800;text-align:center;font-size:1.2em;color:#059669;background:#d1fae5">${fmtCOP(grandTotalComision)}</td>
-                            </tr>
-                        </tfoot>
-                        </table>
+                
+                ordersList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const order = doc.data();
+                    const progress = Math.round((order.pares_hechos / order.cantidad_total) * 100) || 0;
+                    
+                    ordersList.innerHTML += `
+                        <div class="bg-gray-700/50 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <p class="text-white font-medium">${order.cliente}</p>
+                                    <p class="text-gray-400 text-sm">${order.modelo}</p>
+                                </div>
+                                <span class="px-2 py-1 bg-amber-600/20 text-amber-400 text-xs rounded-full">
+                                    ${order.pares_hechos}/${order.cantidad_total}
+                                </span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full transition-all" style="width: ${progress}%"></div>
+                            </div>
+                            <p class="text-gray-500 text-xs mt-1">${progress}% completado</p>
                         </div>
-
-                        <h3 class="text-lg font-semibold mt-6 mb-2">Semanas Capturadas</h3>
-                        <div style="display:flex;flex-wrap:wrap;gap:10px">`;
-
-                capturedWeeks.forEach((week, idx) => {
-                    const capturedDate = week.fechaCaptura && week.fechaCaptura.toDate ? week.fechaCaptura.toDate().toLocaleDateString('es-CO') : '—';
-                    html += `
-                        <div style="flex:1;min-width:200px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:1rem;display:flex;flex-direction:column;gap:6px">
-                            <strong>Semana ${idx + 1}</strong>
-                            <span style="font-size:0.9em;color:#475569">${week.desde} → ${week.hasta}</span>
-                            <span style="font-size:0.8em;color:#9ca3af">Capturada: ${capturedDate}</span>
-                            <button class="btn btn-danger" style="font-size:0.8em;padding:6px 12px;margin-top:4px" onclick="eliminarSemanaCaptured('${week.id}')">
-                                Eliminar
-                            </button>
-                        </div>`;
+                    `;
                 });
-
-                html += `</div></div>`;
-                resultDiv.innerHTML = html;
-
+                
             } catch (error) {
-                console.error("Error al cargar liquidación mensual:", error);
-                resultDiv.innerHTML = '<p class="text-center text-red-500">Error al cargar la liquidación. Revisa la consola.</p>';
-            } finally {
-                hideLoading();
+                console.error('Error cargando órdenes:', error);
             }
         }
 
-        /**
-         * Deletes a captured weekly commission from Firestore.
-         * @param {string} semanaId - The document ID to delete.
-         */
-        async function eliminarSemanaCaptured(semanaId) {
-            if (!confirm(`¿Seguro que desea eliminar la semana capturada "${semanaId}"? Esta acción no se puede deshacer.`)) return;
-
-            showLoading();
+        // Cargar producción reciente
+        async function loadRecentProduction(operarioUid = null) {
             try {
-                await db.collection('liquidaciones_semanales').doc(semanaId).delete();
-                showMessageModal("Eliminada", `La semana "${semanaId}" ha sido eliminada.`);
-                cargarLiquidacionMensual(); // Refresh
+                let recentQuery = query(
+                    collection(db, 'produccion_logs'),
+                    orderBy('fecha', 'desc'),
+                    limit(10)
+                );
+                
+                if (operarioUid) {
+                    recentQuery = query(
+                        collection(db, 'produccion_logs'),
+                        where('uid_operario', '==', operarioUid),
+                        orderBy('fecha', 'desc'),
+                        limit(10)
+                    );
+                }
+                
+                const snapshot = await getDocs(recentQuery);
+                const list = document.getElementById('recentProductionList');
+                
+                if (snapshot.empty) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin registros recientes</p>';
+                    return;
+                }
+                
+                list.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const log = doc.data();
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between bg-gray-700/50 rounded-lg p-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-shoe-prints text-blue-500"></i>
+                                </div>
+                                <div>
+                                    <p class="text-white text-sm font-medium">${log.nombre_operario || 'Operario'}</p>
+                                    <p class="text-gray-500 text-xs">${formatDateTime(log.fecha)}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-white font-bold">${log.cantidad} pares</p>
+                                <p class="text-emerald-400 text-sm">${formatCurrency(log.monto_ganado)}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                
             } catch (error) {
-                console.error("Error al eliminar semana:", error);
-                showMessageModal("Error", "No se pudo eliminar la semana capturada.");
-            } finally {
-                hideLoading();
+                console.error('Error cargando producción reciente:', error);
             }
         }
 
-        // --- Event Listeners and Initial Load ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize charts for the dashboard tab
-            initializeChartsDashboard();
-            populateMonthSelector(monthSelectorDashboard); // For dashboard month filter
-
-            // Load initial state for "Include Excel Data" checkbox
-            includeExcelData = (localStorage.getItem('includeExcelData') !== null) ? (localStorage.getItem('includeExcelData') === 'true') : true; 
-            includeExcelDataCheckbox.checked = includeExcelData;
-
-            // Set up real-time listeners for all relevant collections (this also fetches initial allOrdersData in background)
-            setupRealtimeListeners();
-
-            // Activate the first tab (DASHBOARD) on load, but don't load data immediately
-            document.querySelector('.tab-button').click(); 
-
-            // Dashboard Tab Event Listeners
-            uploadExcelBtnDashboard.addEventListener('click', handleExcelUploadDashboard);
-            deleteExcelDataBtnDashboard.addEventListener('click', showDeleteConfirmationExcel);
-            filterDataBtnDashboard.addEventListener('click', () => {
-                currentDashboardFilterMode = 'custom_date_range';
-                loadAndFilterDashboardData();
+        // Escuchar presencia en tiempo real
+        function listenToPresence(currentUid) {
+            const presenceRef = ref(rtdb, 'presence');
+            
+            onValue(presenceRef, (snapshot) => {
+                const list = document.getElementById('onlineWorkersList');
+                const countEl = document.getElementById('operariosOnline');
+                
+                if (!snapshot.exists()) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin operarios conectados</p>';
+                    countEl.textContent = '0';
+                    return;
+                }
+                
+                const presence = snapshot.val();
+                const onlineUsers = Object.entries(presence).filter(([uid, data]) => data.online && uid !== currentUid);
+                
+                countEl.textContent = onlineUsers.length;
+                
+                if (onlineUsers.length === 0) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin operarios conectados</p>';
+                    return;
+                }
+                
+                list.innerHTML = onlineUsers.map(([uid, data]) => `
+                    <div class="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3 cursor-pointer hover:bg-gray-600/50 transition chat-user-btn" data-uid="${uid}" data-name="${data.nombre || 'Usuario'}">
+                        <div class="relative">
+                            <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-700"></span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-white text-sm font-medium">${data.nombre || 'Usuario'}</p>
+                            <p class="text-green-400 text-xs">En línea</p>
+                        </div>
+                        <i class="fas fa-comment text-blue-400 opacity-50"></i>
+                    </div>
+                `).join('');
+                
+                // Agregar evento de clic para abrir chat
+                document.querySelectorAll('.chat-user-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        openChat(btn.dataset.uid, btn.dataset.name);
+                    });
+                });
             });
-            monthSelectorDashboard.addEventListener('change', handleMonthSelectionDashboard);
-            filterCurrentWeekBtnDashboard.addEventListener('click', filterCurrentWeekDashboard);
-            filterCurrentMonthBtnDashboard.addEventListener('click', filterCurrentMonthDashboard);
-            resetDashboardBtnDashboard.addEventListener('click', resetDashboardFilters);
-            includeExcelDataCheckbox.addEventListener('change', () => {
-                includeExcelData = includeExcelDataCheckbox.checked;
-                localStorage.setItem('includeExcelData', includeExcelData);
-                // Re-fetch all data to ensure Excel data is included/excluded correctly
-                fetchAllOrdersFromFirestore().then(() => {
-                    // Only load dashboard data if a filter is already applied or it's a quick filter mode
-                    if (startDateInputDashboard.value || endDateInputDashboard.value || monthSelectorDashboard.value || currentDashboardFilterMode !== 'custom_date_range') {
-                         loadAndFilterDashboardData(); 
-                    } else {
-                        // If no filters are applied, just clear metrics and charts
-                        totalParesMetricDashboard.textContent = '0';
-                        totalValorMetricDashboard.textContent = '$0';
-                        totalPedidosMetricDashboard.textContent = '0';
-                        salesByDateChart_dashboard.data.labels = [];
-                        salesByDateChart_dashboard.data.datasets[0].data = [];
-                        salesByDateChart_dashboard.update();
-                        salesByAsesorChart_dashboard.data.labels = [];
-                        salesByAsesorChart_dashboard.data.datasets[0].data = [];
-                        salesByAsesorChart_dashboard.update();
-                        pairsByProductChart_dashboard.data.labels = [];
-                        pairsByProductChart_dashboard.data.datasets[0].data = [];
-                        pairsByProductChart_dashboard.update();
+        }
+
+        // Inicializar gráfica de producción
+        async function initProductionChart(operarioUid = null) {
+            try {
+                // Obtener datos de los últimos 7 días
+                const labels = [];
+                const data = [];
+                
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dayStart = getDayStart(date);
+                    const dayEnd = getDayEnd(date);
+                    
+                    labels.push(date.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' }));
+                    
+                    let dayQuery = query(
+                        collection(db, 'produccion_logs'),
+                        where('fecha', '>=', Timestamp.fromDate(dayStart)),
+                        where('fecha', '<=', Timestamp.fromDate(dayEnd))
+                    );
+                    
+                    if (operarioUid) {
+                        dayQuery = query(
+                            collection(db, 'produccion_logs'),
+                            where('uid_operario', '==', operarioUid),
+                            where('fecha', '>=', Timestamp.fromDate(dayStart)),
+                            where('fecha', '<=', Timestamp.fromDate(dayEnd))
+                        );
+                    }
+                    
+                    const snapshot = await getDocs(dayQuery);
+                    let totalPares = 0;
+                    snapshot.forEach(doc => {
+                        totalPares += doc.data().cantidad || 0;
+                    });
+                    data.push(totalPares);
+                }
+                
+                const ctx = document.getElementById('productionChart').getContext('2d');
+                
+                if (productionChart) {
+                    productionChart.destroy();
+                }
+                
+                productionChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Pares Producidos',
+                            data: data,
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#9CA3AF'
+                                },
+                                grid: {
+                                    color: 'rgba(75, 85, 99, 0.3)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#9CA3AF'
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
                     }
                 });
+                
+            } catch (error) {
+                console.error('Error inicializando gráfica:', error);
+            }
+        }
+
+        // Escuchar notificaciones en tiempo real
+        function listenToNotifications() {
+            // Escuchar desde Realtime Database para notificaciones instantáneas
+            const notifsRef = ref(rtdb, 'notificaciones_fabrica');
+            onValue(notifsRef, (snapshot) => {
+                const list = document.getElementById('notificationsList');
+                const badge = document.getElementById('notifBadge');
+                
+                if (!snapshot.exists()) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin notificaciones</p>';
+                    badge.classList.add('hidden');
+                    return;
+                }
+                
+                const notifs = [];
+                snapshot.forEach(child => {
+                    notifs.push({ id: child.key, ...child.val() });
+                });
+                
+                // Ordenar por fecha descendente
+                notifs.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+                
+                const unread = notifs.filter(n => !n.leido).length;
+                
+                // Reproducir sonido si hay nuevas notificaciones (ignorar carga inicial)
+                if (unread > lastNotifCount && lastNotifCount >= 0) {
+                    playNotificationSound();
+                }
+                // Después de la primera carga, empezar a contar
+                if (lastNotifCount === -1) {
+                    lastNotifCount = unread;
+                } else {
+                    lastNotifCount = unread;
+                }
+                
+                if (unread > 0) {
+                    badge.textContent = unread;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+                
+                list.innerHTML = notifs.slice(0, 10).map(notif => {
+                    const fecha = notif.fecha ? new Date(notif.fecha).toLocaleString('es-CO') : '';
+                    const isNew = !notif.leido;
+                    const iconClass = notif.tipo === 'nuevo_pedido' ? 'fa-box text-blue-500' : 
+                                     notif.tipo === 'nuevo_cliente' ? 'fa-user-plus text-green-500' : 'fa-bell text-yellow-500';
+                    
+                    return `
+                        <div class="flex items-start gap-3 p-3 rounded-lg ${isNew ? 'bg-blue-900/30 border border-blue-700/50' : 'bg-gray-700/30'}" data-id="${notif.id}">
+                            <div class="w-10 h-10 bg-gray-700 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-white font-medium text-sm">${notif.titulo || 'Notificación'}</p>
+                                <p class="text-gray-400 text-xs mt-1">${notif.mensaje || ''}</p>
+                                <p class="text-gray-500 text-xs mt-1">${fecha}</p>
+                            </div>
+                            <button class="delete-notif-btn p-1 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded transition flex-shrink-0" data-id="${notif.id}" title="Eliminar">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Event listeners para eliminar notificaciones
+                document.querySelectorAll('.delete-notif-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const notifId = btn.dataset.id;
+                        const deleteRef = ref(rtdb, `notificaciones_fabrica/${notifId}`);
+                        set(deleteRef, null);
+                    });
+                });
             });
-
-            // General Commission Tab Event Listeners
-            filterDataBtnGeneral.addEventListener('click', calculateAndDisplayGeneralCommissions);
-            resetFilterBtnGeneral.addEventListener('click', resetGeneralFilter);
-
-
-            // Weekly Commission Tab Event Listeners
-            filterDataBtnWeekly.addEventListener('click', () => {
-                currentWeeklyFilterMode = 'custom_date_range';
-                calculateAndDisplayWeeklyCommissions();
+            
+            // Marcar todas como leídas
+            document.getElementById('clearNotifsBtn').addEventListener('click', async () => {
+                const notifsRef = ref(rtdb, 'notificaciones_fabrica');
+                onValue(notifsRef, (snapshot) => {
+                    snapshot.forEach(child => {
+                        const updateRef = ref(rtdb, `notificaciones_fabrica/${child.key}/leido`);
+                        set(updateRef, true);
+                    });
+                }, { onlyOnce: true });
             });
-            resetFilterBtnWeekly.addEventListener('click', resetWeeklyFilter);
-            filterCurrentWeekBtnWeekly.addEventListener('click', filterCurrentWeekWeekly); // New button
-            filterLastWeekBtnWeekly.addEventListener('click', filterLastWeekWeekly); // New button
+        }
 
-            // History Tab Event Listeners
-            applyFilterHistoryBtn.addEventListener('click', loadAndFilterHistoryData);
-            resetFilterHistoryBtn.addEventListener('click', resetHistoryFilters);
-
-            // Capturar Semana button
-            document.getElementById('btn_capturar_semana').addEventListener('click', capturarSemana);
-
-            // Liquidación Mensual Tab Event Listeners
-            document.getElementById('btn_cargar_liquidacion').addEventListener('click', cargarLiquidacionMensual);
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await logout();
         });
+
+        // Settings Menu Toggle
+        document.getElementById('settingsBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('settingsMenu').classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', () => {
+            document.getElementById('settingsMenu').classList.add('hidden');
+        });
+        
+        // Reset System Modal
+        document.getElementById('resetSystemBtn').addEventListener('click', () => {
+            document.getElementById('settingsMenu').classList.add('hidden');
+            document.getElementById('resetModal').classList.remove('hidden');
+            document.getElementById('resetPassword').value = '';
+        });
+        
+        document.getElementById('cancelResetBtn').addEventListener('click', () => {
+            document.getElementById('resetModal').classList.add('hidden');
+        });
+        
+        document.getElementById('resetModal').addEventListener('click', (e) => {
+            if (e.target.id === 'resetModal') {
+                document.getElementById('resetModal').classList.add('hidden');
+            }
+        });
+        
+        // Confirm Reset System
+        document.getElementById('confirmResetBtn').addEventListener('click', async () => {
+            const password = document.getElementById('resetPassword').value;
+            
+            if (password !== 'Avanzar170518') {
+                alert('❌ Contraseña incorrecta');
+                return;
+            }
+            
+            if (!confirm('⚠️ ÚLTIMA ADVERTENCIA: ¿Está COMPLETAMENTE seguro de eliminar TODOS los datos del sistema?')) {
+                return;
+            }
+            
+            try {
+                document.getElementById('confirmResetBtn').disabled = true;
+                document.getElementById('confirmResetBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Eliminando...';
+                
+                // Colecciones de Firestore a eliminar
+                const collections = [
+                    'ordenes',
+                    'usuarios', 
+                    'clientes',
+                    'pedidos_cliente',
+                    'produccion_logs',
+                    'inventario',
+                    'inventario_clientes',
+                    'nomina',
+                    'caja_menor',
+                    'asistencia',
+                    'sanciones',
+                    'notificaciones'
+                ];
+                
+                // Eliminar documentos de cada colección
+                for (const collName of collections) {
+                    try {
+                        const snapshot = await getDocs(collection(db, collName));
+                        const deletePromises = [];
+                        snapshot.forEach(docSnap => {
+                            deletePromises.push(deleteDoc(doc(db, collName, docSnap.id)));
+                        });
+                        await Promise.all(deletePromises);
+                        console.log(`Colección ${collName} eliminada`);
+                    } catch (e) {
+                        console.log(`Error eliminando ${collName}:`, e);
+                    }
+                }
+                
+                // Eliminar datos de Realtime Database
+                try {
+                    await set(ref(rtdb, 'notificaciones_fabrica'), null);
+                    await set(ref(rtdb, 'chats'), null);
+                    console.log('Realtime Database limpiada');
+                } catch (e) {
+                    console.log('Error limpiando RTDB:', e);
+                }
+                
+                alert('✅ Sistema restablecido correctamente. El sistema está ahora en blanco.');
+                document.getElementById('resetModal').classList.add('hidden');
+                
+                // Cerrar sesión y recargar
+                await logout();
+                
+            } catch (error) {
+                console.error('Error restableciendo sistema:', error);
+                alert('❌ Error al restablecer el sistema');
+                document.getElementById('confirmResetBtn').disabled = false;
+                document.getElementById('confirmResetBtn').innerHTML = '<i class="fas fa-trash-alt mr-2"></i>Restablecer';
+            }
+        });
+
+        // Iniciar
+        init();
+        
+        // Inicializar notificaciones globales después de autenticación
+        checkAuthAndRedirect([ROLES.ADMIN_FINANZAS, ROLES.ADMIN_RRHH, ROLES.OPERARIO]).then(({ user }) => {
+            initNotifications(user.uid);
+        }).catch(() => {});
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
     </script>
 </body>
 </html>
